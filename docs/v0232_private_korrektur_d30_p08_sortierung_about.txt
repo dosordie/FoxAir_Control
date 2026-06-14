@@ -1,0 +1,6 @@
+V0.2.32 PRIVATE Korrektur
+
+- 1437 = D30 Gehaeusewannenheizung Delays Off Time after Defrost, Einheit Minuten.
+- 1204 = P08 Main Circulation Pump Rated Power, Einheit Watt.
+- Parameterfenster sortiert nach App: H A F D E R P G C Z; T/Temperatur bleibt am Ende.
+- Sichtbare Hilfe-Menueleiste entfernt, da sie eine eigene Zeile belegte. About-Button rechts in der Kopfzeile, F1 bleibt aktiv.

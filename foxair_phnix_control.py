@@ -72,7 +72,7 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.31"
+APP_VERSION = "0.2.32"
 BUILD_DATE = "2026-06-14"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION} {APP_EDITION} - by DosOrDie"
@@ -80,7 +80,7 @@ PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr.
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = ""
 DEFAULT_PORT = 2001
-UPDATE_REPO = "dosordie/FoxAir_Controll"
+UPDATE_REPO = "dosordie/FoxAir_Control"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
 UPDATE_RELEASES_URL = f"https://github.com/{UPDATE_REPO}/releases/latest"
 
@@ -2246,6 +2246,12 @@ class ManualRegisterDialog(QDialog):
         buttons.addWidget(self.send_btn)
         layout.addLayout(buttons)
 
+        self.result_box = QTextEdit()
+        self.result_box.setReadOnly(True)
+        self.result_box.setMinimumHeight(115)
+        self.result_box.setPlaceholderText("Antwort der letzten FC03-Abfrage erscheint hier ...")
+        layout.addWidget(self.result_box)
+
         self.read_btn.clicked.connect(self.read_registers)
         self.dry_btn.clicked.connect(self.show_write_frame)
         self.send_btn.clicked.connect(self.send_write_frame)
@@ -2265,9 +2271,29 @@ class ManualRegisterDialog(QDialog):
 
     def read_registers(self):
         try:
-            self.main_window.send_read_request(self._addr(), int(self.count_spin.value()), slave_addr=self._bus(), label="manuelles Popup")
+            addr = self._addr()
+            quantity = int(self.count_spin.value())
+            self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
+            self.main_window.send_read_request(addr, quantity, slave_addr=self._bus(), label="manuelles Popup")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
+
+    def show_read_response(self, start_addr: int, quantity: int, registers: list[DecodedRegister]):
+        if not registers:
+            self.result_box.setPlainText(
+                f"Antwort erhalten, aber keine Register dekodiert.\n"
+                f"Start: {start_addr} / 0x{start_addr:04X}, Anzahl: {quantity}"
+            )
+            return
+        lines = [f"Antwort: {start_addr} / 0x{start_addr:04X}, Anzahl {quantity}", ""]
+        for reg in registers:
+            name = f"  {reg.name}" if reg.name else ""
+            lines.append(
+                f"{reg.reg} / 0x{reg.reg:04X}: {reg.raw_value} / 0x{reg.raw_value:04X} -> {reg.display_value}{name}"
+            )
+        self.result_box.setPlainText("\n".join(lines))
+        if len(registers) == 1:
+            self.value_edit.setText(str(int(registers[0].raw_value) & 0xFFFF))
 
     def show_write_frame(self):
         try:
@@ -2808,7 +2834,9 @@ class ParameterSettingsDialog(QDialog):
 
     def refresh_blocks(self):
         blocks = sorted({item["block"] for item in self._items})
-        preferred = ["H", "A", "F", "D", "E", "C", "R", "Z", "G", "P", "SG", "KG", "T"]
+        # Reihenfolge wie in der Warmlink-App: H A F D E R P G C Z.
+        # T/Temperatur bleibt bewusst ganz am Schluss.
+        preferred = ["H", "A", "F", "D", "E", "R", "P", "G", "C", "Z", "SG", "KG", "T"]
         ordered = [b for b in preferred if b in blocks] + [b for b in blocks if b not in preferred]
         if not self.current_block or self.current_block not in ordered:
             self.current_block = ordered[0] if ordered else ""
@@ -3846,11 +3874,13 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(2500, self.check_for_updates_on_startup)
 
     def _setup_help_actions(self):
-        help_menu = self.menuBar().addMenu("Hilfe")
-        about_action = QAction("Hilfe / About", self)
+        # Kein sichtbares Menue mehr: Die alte Menueleiste mit "Hilfe" belegte
+        # unter Windows eine eigene Zeile. F1 bleibt als unsichtbare Aktion aktiv;
+        # zusaetzlich gibt es einen kleinen About-Button in der oberen Kopfzeile.
+        about_action = QAction("About", self)
         about_action.setShortcut("F1")
         about_action.triggered.connect(self.open_about_dialog)
-        help_menu.addAction(about_action)
+        self.addAction(about_action)
 
     def open_about_dialog(self):
         if self.about_dialog is None or not self.about_dialog.isVisible():
@@ -3994,6 +4024,10 @@ class MainWindow(QMainWindow):
         self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
         self.raw_ascii_cb = QCheckBox("Raw ASCII-Vorschau")
 
+        self.about_btn = QPushButton("About")
+        self.about_btn.setMaximumWidth(72)
+        self.about_btn.setToolTip("Hilfe / About (F1)")
+
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
@@ -4005,6 +4039,7 @@ class MainWindow(QMainWindow):
         top.addWidget(self.raw_file_cb)
         top.addWidget(self.raw_ascii_cb)
         top.addStretch(1)
+        top.addWidget(self.about_btn)
 
         splitter = QSplitter(Qt.Vertical)
         main_layout.addWidget(splitter, 1)
@@ -4148,7 +4183,6 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
-        self.about_btn = QPushButton("Hilfe / About ...")
         self.contact_value_label.setVisible(False)
         special_layout.addWidget(self.param_settings_btn, 0, 0, 1, 2)
         special_layout.addWidget(self.onoff_timer_btn, 1, 0, 1, 2)
@@ -4160,7 +4194,6 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.backup_restore_btn, 7, 0, 1, 2)
         special_layout.addWidget(self.offline_browser_btn, 8, 0, 1, 2)
         special_layout.addWidget(self.bus_popup_btn, 9, 0, 1, 2)
-        special_layout.addWidget(self.about_btn, 10, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -4245,6 +4278,7 @@ class MainWindow(QMainWindow):
         self.log_text.setMinimumHeight(170)
 
         self.comm_settings_btn.clicked.connect(self.open_communication_settings)
+        self.about_btn.clicked.connect(self.open_about_dialog)
         self.connect_btn.clicked.connect(self.connect_to_device)
         self.disconnect_btn.clicked.connect(self.disconnect_from_device)
         self.write_dry_btn.clicked.connect(self.show_write_frame)
@@ -4272,7 +4306,6 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
-        self.about_btn.clicked.connect(self.open_about_dialog)
         self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
         self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
         self.cache_save_btn.clicked.connect(lambda: self.save_value_cache(silent=False))
@@ -4550,6 +4583,18 @@ class MainWindow(QMainWindow):
             return f"{signed / 10.0:.1f} m³/h"
         if dtype in ("MINUTES", "MIN"):
             return f"{signed} min"
+        if dtype in ("SECONDS", "SEC"):
+            return f"{signed} s"
+        if dtype in ("HOURS", "HOUR"):
+            return f"{signed} h"
+        if dtype in ("DAYS", "DAY"):
+            return f"{signed} days"
+        if dtype in ("HZ", "FREQUENCY_HZ"):
+            return f"{signed} Hz"
+        if dtype in ("STEPS_N", "EEV_STEPS", "STEPS"):
+            return f"{signed} N"
+        if dtype in ("PERCENT", "PCT"):
+            return f"{signed} %"
         if dtype in ("DIGI5",):
             return f"{signed / 10.0:.1f}"
         if dtype == "DIGI6":
@@ -5442,6 +5487,15 @@ class MainWindow(QMainWindow):
             self.pending_read_requests.remove(req)
             label = f" ({req.get('label')})" if req.get("label") else ""
             self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register")
+            if frame.registers:
+                value_lines = []
+                for reg in frame.registers[:12]:
+                    name = f" {reg.name}" if reg.name else ""
+                    value_lines.append(f"{reg.reg}={reg.raw_value}/0x{reg.raw_value:04X} ({reg.display_value}){name}")
+                more = "" if len(frame.registers) <= 12 else f" ... (+{len(frame.registers) - 12})"
+                self._log("READ Werte: " + "; ".join(value_lines) + more)
+            if req.get("label") == "manuelles Popup" and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
+                self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
             return
 
     def send_read_from_fields(self):

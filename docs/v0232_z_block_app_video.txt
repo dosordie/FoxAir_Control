@@ -1,0 +1,29 @@
+V0.2.32 PRIVATE - Z-Block aus Warmlink-App-Video
+
+Quelle: ScreenRecording_06-14-2026 18-17-00_1.mp4
+
+Übernommen:
+- Z01 Enable Multi-Zone Control
+- Z02 Zone 1 Target RT
+- Z03 Zone 1 RT Diff. to Start
+- Z04 Zone 2 Target RT
+- Z05 Zone 2 RT Diff. to Start
+- Z06 Zone 1 Heating Target Outlet WT
+- Z07 Zone 2 Mixing Target Outlet WT
+- Z08 Mixing Valve Manual Adjustment Ratio (0% for Auto Control)
+- Z09 Mixing Valve Opening Time
+- Z10 Mixing Valve Closing Time
+- Z11 Mixing Valve Adjustment P(PID)
+- Z12 Mixing Valve Adjustment I(PID)
+- Z13 Mixing Valve PID Period
+- Z14 Steps of Mixing Valve in Cooling
+- Z15 Zone 2 Max. Water Target Temp.
+- Z16 Enable AT Compensation Curve Zone 1
+- Z17 Enable AT Compensation Curve Zone 2
+- Z19 Diff. of No Pump On at Low Water Temp.
+- Z20 Enable Zone 1 Water Pump in Cooling
+
+Hinweise:
+- Z18 ist in der sichtbaren App-Liste nicht vorhanden; ASM-Hinweis: Z18 gelöscht, Z19/Z20 ergänzt.
+- 1236 war vorher als H36 / Weather Compensation geführt; die App zeigt das Register im Z-Block als Z16.
+- Registerzuordnung basiert auf vorhandener ASM/XLS-Zuordnung; sichtbare Namen/Werte aus Video.

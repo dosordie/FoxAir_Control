@@ -106,7 +106,7 @@ Voraussetzung: Inno Setup 6 ist installiert.
 Empfohlener Ablauf:
 
 ```bat
-git tag v0.2.31
+git tag v0.2.32
 git push origin main --tags
 ```
 
@@ -138,4 +138,21 @@ Die Setup-EXE kann später über eine vorhandene Installation drüber installier
 
 Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Control\` gespeichert.
 Das vermeidet Schreibfehler unter `C:\Program Files`.
-Portable/private Versionen koennen weiterhin alles im Programmordner speichern.
+Portable/private Versionen koennen weiterhin alles im Programmordner speichern. Die Public-Version startet mit leerem Host und Standard-Modbus als Vorgabe.
+
+### PUBLIC V0.2.32 Hinweise
+
+- Das Fenster **Parameter Einstellungen** folgt bei den Block-Tabs jetzt der Warmlink-App-Reihenfolge: A, F, D, E, R, P, G, C, Z. Temperatur/T bleibt bewusst am Schluss.
+- Der doppelte Hilfe-Button wurde entfernt; About sitzt rechts in der Kopfzeile, **F1** bleibt aktiv.
+- Die Parameterblöcke P, G und C wurden anhand der Warmlink-App-Aufnahme ergänzt.
+- P15/P16 sind live bestätigt: P15 = Register 1438, P16 = Register 1444.
+- Achtung: Register 1437 ist live bestätigt D30 „Gehaeusewannenheizung Delays Off Time after Defrost“.
+- EEV Smart-Modus ist in der Knowledge Base als Vermutung markiert, nicht als bestätigter Fakt.
+
+
+### V0.2.32 PUBLIC Z-Block
+
+Der Z-Block wurde anhand des Warmlink-App-Videos ergänzt. Die App-Reihenfolge im Parameterfenster bleibt H A F D E R P G C Z, Temperaturblock T am Schluss.
+
+
+Hinweis V0.2.32: H36 ist Register 1236, H37 ist Register 1046. Register 1048 ist nicht mehr als H37 gekennzeichnet.

@@ -1,5 +1,49 @@
 # Changelog
 
+## V0.2.32 PUBLIC
+
+- Public-Version aus dem letzten PRIVATE V0.2.32 Stand erstellt.
+- Edition auf PUBLIC gesetzt; neutrale Public-Defaults bleiben aktiv: Host leer, Standard-Modbus als Default, Autoconnect aus.
+- Update-Repo bleibt auf dosordie/FoxAir_Control korrigiert.
+- Parameterfenster-Sortierung wie Warmlink-App: H, A, F, D, E, R, P, G, C, Z; Temperatur/T bleibt am Schluss.
+- Hilfe/About bereinigt: kein doppelter Hilfe-Button, About rechts in der Kopfzeile, F1 bleibt aktiv.
+- E-, R-, P-, G-, C- und Z-Block anhand der Warmlink-App-Videos ergänzt/korrigiert.
+- Live bestätigte Registerkorrekturen übernommen: 1437 = D30, 1438 = P15, 1444 = P16, 1347 = C12, 1236 = H36, 1046 = H37.
+- Manuelles Register-Lesen zeigt FC03-Antworten wieder direkt im Popup an und loggt die Werte als READ Werte.
+- KB-Notiz für EEV-Smart-Modus als Vermutung/noch nicht verifiziert ergänzt.
+
+### PRIVATE V0.2.32 - Korrektur H36/H37/Z16 (ohne Versionsanhebung)
+- Register 1236 wieder korrekt als H36 / AT-Kompensationskurve Zone 1 aktivieren geführt; Z16-Duplikat entfernt.
+- Register 1046 als H37 bestätigt; Register 1048 nicht mehr als H37 benannt.
+- Knowledge-Base Hinweise zu H36/H37/Z16 ergänzt.
+
+
+## V0.2.32 PRIVATE - Z-Block Video-Update
+
+- Z-Block aus Warmlink-App-Video ergänzt/korrigiert.
+- Z01-Z17 sowie Z19/Z20 mit App-Bezeichnungen, Einheiten/Typen und sichtbaren Defaults gepflegt.
+- Z18 bewusst nicht angelegt: in App nicht sichtbar; ASM-Hinweis nennt Z18 gelöscht, Z19/Z20 ergänzt.
+- Register 1236 wird für die Parameteransicht als Z16 geführt; vorherige H36/Weather-Compensation-Herkunft ist in der Wissensdatenbank notiert.
+- Version nicht angehoben.
+
+
+## V0.2.32 PRIVATE
+
+- PRIVATE-Version auf Basis von V0.2.31 PUBLIC erstellt.
+- App-Version auf 0.2.32 und Edition auf PRIVATE gesetzt.
+- Private Default-IP wieder auf 192.168.10.43 gesetzt.
+- Update-Repo auf dosordie/FoxAir_Control korrigiert, damit der Control/Controll-Versionsmismatch nicht mehr greift.
+- Doppelten Hilfe-Button entfernt: Hilfe/About bleibt nur im Menü „Hilfe“ und per F1 erreichbar.
+- Parameterblock-Reihenfolge im Fenster „Parameter Einstellungen“ an die Warmlink-App angepasst: A, F, D, E, R, P, G, C, Z; Temperatur/T bleibt am Schluss.
+- Video 1: E-Block/EEV und R-Block Bezeichnungen, Einheiten und App-Werte ergänzt/korrigiert.
+- Video 2: P-Block (Pumpen/Nachfüllung), G-Block (Desinfektion) und C-Block (Kompressor) Bezeichnungen, Einheiten und App-Werte ergänzt/korrigiert.
+- Neue Anzeige-/Datentypen ergänzt: Hz, Sekunden, Stunden und Tage.
+- C12 „Max. Comp. Frequency in DHW mode“ anhand Warmlink-App und ASM-Adresse 0543H/1347 ergänzt; Register 1347 zusätzlich live bestätigt.
+- Korrektur nach Live-Test: 1437 ist D30 „Gehaeusewannenheizung Delays Off Time after Defrost“ und nicht P15.
+- Korrektur nach Live-Test: P15 = Register 1438, P16 = Register 1444.
+- Manuelles „Register lesen/schreiben“-Popup zeigt FC03-Antworten jetzt direkt im Popup an und loggt die gelesenen Werte zusätzlich als „READ Werte“.
+- KB-Notiz für EEV-Smart-Modus ergänzt: Smart vermutlich erweiterte Auto-Regelung, E19 begrenzt wahrscheinlich den Korrekturbereich.
+
 ## V0.2.31 PUBLIC
 
 - F1 Hilfe/About-Dialog ergänzt.

@@ -1,0 +1,28 @@
+V0.2.32 PRIVATE - Warmlink-App-Video 2026-06-14
+
+Quelle:
+- ScreenRecording_06-14-2026 15-53-24_1.mp4
+
+Umgesetzt:
+- E-Block Bezeichnungen aus der Warmlink-App übernommen.
+- R-Block Bezeichnungen aus der Warmlink-App übernommen.
+- EEV-Schritte werden als STEPS_N / N dargestellt.
+- E19 wird als PERCENT / % dargestellt.
+- R35 Value-Map zeigt 0 = Not Available.
+- R62 wurde von RAW auf TEMP1 korrigiert.
+
+Wichtige Zuordnung E-Unterparameter:
+- E03-1: 0x04B0 / 1200
+- E03-2: 0x0476 / 1142
+- E03-3: 0x04B6 / 1206
+- E03-4: 0x04B7 / 1207
+- E03-5: 0x04B8 / 1208
+- E07-1: 0x04B9 / 1209
+- E07-2: 0x04BA / 1210
+- E07-3: 0x04BB / 1211
+- E07-4: 0x04BF / 1215
+- E07-5: 0x04C0 / 1216
+
+Hinweis:
+- Es wurden nur die im Video erkennbaren App-Bezeichnungen und aktuellen App-Werte übernommen.
+- Vollständige Min-/Max-Wertbereiche sind im Video nicht für alle Parameter sichtbar.

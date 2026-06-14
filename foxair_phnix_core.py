@@ -320,6 +320,18 @@ def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[in
         return f"{signed / 10.0:.1f} m³/h"
     if dtype in ("MINUTES", "MIN"):
         return f"{signed} min"
+    if dtype in ("SECONDS", "SEC"):
+        return f"{signed} s"
+    if dtype in ("HOURS", "HOUR"):
+        return f"{signed} h"
+    if dtype in ("DAYS", "DAY"):
+        return f"{signed} days"
+    if dtype in ("HZ", "FREQUENCY_HZ"):
+        return f"{signed} Hz"
+    if dtype in ("STEPS_N", "EEV_STEPS", "STEPS"):
+        return f"{signed} N"
+    if dtype in ("PERCENT", "PCT"):
+        return f"{signed} %"
     if dtype in ("TIMER_BITPAIR", "DAYPAIR"):
         low = raw_value & 0xFF
         high = (raw_value >> 8) & 0xFF

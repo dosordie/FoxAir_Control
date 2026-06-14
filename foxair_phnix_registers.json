@@ -1,62 +1,62 @@
 {
   "1001": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1002": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1003": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1004": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1005": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1006": {
-    "name": "Blockkopf Paket 1 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1007": {
-    "name": "Blockkopf Paket 1 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Reserve 1",
     "type": "BLOCK"
   },
   "1008": {
-    "name": "Blockkopf Paket 1 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Reserve 2",
     "type": "BLOCK"
   },
   "1009": {
-    "name": "Blockkopf Paket 1 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / Marker-Länge",
     "type": "BLOCK"
   },
   "1010": {
-    "name": "Blockkopf Paket 1 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 1 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1011": {
@@ -128,6 +128,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "H",
+    "code": "H01",
     "function": "03/16",
     "mode": "r/w",
     "name": "Power Off Memory aktivieren (Autostart)",
@@ -135,9 +137,7 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "H01",
-    "block": "H"
+    }
   },
   "1019": {
     "app_label": "Fan Motor Driver and Comp. Driver Integrated",
@@ -146,6 +146,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "H",
+    "code": "H33",
     "function": "03/16",
     "mode": "r/w",
     "name": "Lüftermotorantrieb und Kompressorantrieb integriert",
@@ -153,13 +155,13 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "H33",
-    "block": "H"
+    }
   },
   "1020": {
     "app_label": "Parameter Code",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "block": "H",
+    "code": "H34",
     "function": "03/16",
     "mode": "r/w",
     "name": "ERP Testmodus",
@@ -168,9 +170,7 @@
       "0": "Nein / kein ERP-Test",
       "1": "35 °C Testbedingung",
       "2": "55 °C Testbedingung"
-    },
-    "code": "H34",
-    "block": "H"
+    }
   },
   "1021": {
     "app_label": "Cooling Mode",
@@ -179,6 +179,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "H",
+    "code": "H05",
     "function": "03/16",
     "mode": "r/w",
     "name": "Kühlfunktion aktivieren",
@@ -186,9 +188,7 @@
     "value_map": {
       "0": "Kühlfunktion nicht vorhanden/aus",
       "1": "Kühlfunktion vorhanden/ein"
-    },
-    "code": "H05",
-    "block": "H"
+    }
   },
   "1022": {
     "function": "03/16",
@@ -203,6 +203,8 @@
       "0": "Display Control",
       "1": "Remote Control"
     },
+    "block": "H",
+    "code": "H07",
     "function": "03/16",
     "mode": "r/w",
     "name": "Reglerwahl",
@@ -210,35 +212,33 @@
     "value_map": {
       "0": "Master/Hauptregler",
       "1": "Slave/Nebenregler"
-    },
-    "code": "H07",
-    "block": "H"
+    }
   },
   "1024": {
     "app_label": "Unit Address",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "block": "H",
+    "code": "H10",
     "function": "03/16",
     "mode": "r/w",
     "name": "Geräteadresse",
-    "type": "DIGI1",
-    "code": "H10",
-    "block": "H"
+    "type": "DIGI1"
   },
   "1025": {
+    "block": "H",
+    "code": "H38",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "H38",
-    "block": "H"
+    "type": "RAW"
   },
   "1026": {
+    "block": "H",
+    "code": "H39",
     "function": "03/16",
     "mode": "r/w",
     "name": "Logo-Auswahl / Kundenlogo-Code (ASM)",
-    "type": "RAW",
-    "code": "H39",
-    "block": "H"
+    "type": "RAW"
   },
   "1027": {
     "app_label": "EVI Enabled",
@@ -249,6 +249,8 @@
       "1": "EVI for cooling",
       "2": "EVI for heating"
     },
+    "block": "H",
+    "code": "H27",
     "function": "03/16",
     "mode": "r/w",
     "name": "EVI aktivieren",
@@ -258,9 +260,7 @@
       "1": "EVI bei Kühlung",
       "2": "EVI bei Heizung",
       "3": "EVI bei Heizung und Kühlung"
-    },
-    "code": "H27",
-    "block": "H"
+    }
   },
   "1028": {
     "app_label": "Heating/Cooling and Hot Water Function Enabled",
@@ -270,6 +270,8 @@
       "1": "YES",
       "2": "Only DHW"
     },
+    "block": "H",
+    "code": "H28",
     "function": "03/16",
     "mode": "r/w",
     "name": "Heiz-/Kühl- und Warmwasserfunktion aktiviert",
@@ -278,9 +280,7 @@
       "0": "ohne Warmwasserfunktion",
       "1": "mit Warmwasserfunktion",
       "2": "Nur Warmwasser / Only DHW"
-    },
-    "code": "H28",
-    "block": "H"
+    }
   },
   "1029": {
     "app_label": "Temperature Unit",
@@ -289,6 +289,8 @@
       "0": "°C",
       "1": "°F"
     },
+    "block": "H",
+    "code": "H21",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatureinheit",
@@ -296,9 +298,7 @@
     "value_map": {
       "0": "Celsius",
       "1": "Fahrenheit"
-    },
-    "code": "H21",
-    "block": "H"
+    }
   },
   "1030": {
     "app_label": "Silence Mode",
@@ -307,6 +307,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "H",
+    "code": "H22",
     "function": "03/16",
     "mode": "r/w",
     "name": "Silent-Modus aktivieren",
@@ -314,22 +316,20 @@
     "value_map": {
       "0": "Silent-Modus aus",
       "1": "Silent-Modus ein"
-    },
-    "code": "H22",
-    "block": "H"
+    }
   },
   "1031": {
     "app_current_video_value": "0.0 °C",
     "app_label": "Electric Heater Off Temp. Diff",
     "app_mapping_mode": "app_label_only; kein Dropdown, numerischer 0.5°C-Schrittwert",
+    "block": "A",
+    "code": "A35",
     "function": "03/16",
     "mode": "r/w",
     "name": "Electric Heater Off Temp Diff / E-Heizer Ausschalt-Temperaturdifferenz",
     "step": "0.5",
     "type": "TEMP05",
-    "unit": "°C",
-    "code": "A35",
-    "block": "A"
+    "unit": "°C"
   },
   "1032": {
     "app_label": "Electric Heater Energy Stage",
@@ -339,6 +339,8 @@
       "2": "Stage2",
       "3": "Stage3"
     },
+    "block": "H",
+    "code": "H18",
     "function": "03/16",
     "mode": "r/w",
     "name": "Elektrische Heizstufe",
@@ -347,9 +349,7 @@
       "1": "Elektrische Heizstufe 1",
       "2": "Elektrische Heizstufe 2",
       "3": "Elektrische Heizstufe 3"
-    },
-    "code": "H18",
-    "block": "H"
+    }
   },
   "1033": {
     "app_label": "3-Way Valve Polarity",
@@ -359,6 +359,8 @@
       "0": "Heating-ON / Cooling-ON?",
       "1": "Hot Water-ON"
     },
+    "block": "H",
+    "code": "H20",
     "function": "03/16",
     "mode": "r/w",
     "name": "3-Wege-Ventil-Polarität",
@@ -366,19 +368,17 @@
     "value_map": {
       "0": "3-Wege-Ventil EIN im Warmwasser-Modus",
       "1": "3-Wege-Ventil AUS im Warmwasser-Modus"
-    },
-    "code": "H20",
-    "block": "H"
+    }
   },
   "1034": {
     "app_label": "Mode Running",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "block": "H",
+    "code": "H29",
     "function": "03/16",
     "mode": "r/w",
     "name": "Operationscode",
-    "type": "DIGI1",
-    "code": "H29",
-    "block": "H"
+    "type": "DIGI1"
   },
   "1035": {
     "app_label": "Air Conditioner Tempt. Choice",
@@ -389,6 +389,8 @@
       "2": "Buffer Tank Temp.",
       "3": "Inlet Water Temp."
     },
+    "block": "H",
+    "code": "H25",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temp.-Regelauswahl",
@@ -398,9 +400,7 @@
       "1": "Raumtemperatur",
       "2": "Puffertanktemperatur",
       "3": "Einlasswassertemperatur"
-    },
-    "code": "H25",
-    "block": "H"
+    }
   },
   "1036": {
     "app_label": "Indoor Unit Type",
@@ -410,6 +410,8 @@
       "2": "2nd Type",
       "3": "3rd Type"
     },
+    "block": "H",
+    "code": "H30",
     "function": "03/16",
     "mode": "r/w",
     "name": "Indoor Unit Type / Hydraulikmodul-Typ",
@@ -419,50 +421,48 @@
       "1": "1st Type",
       "2": "2nd Type",
       "3": "3rd Type"
-    },
-    "code": "H30",
-    "block": "H"
+    }
   },
   "1037": {
     "app_current_video_value": "-25.0 °C",
     "app_label": "Shutdown Ambient Temp.",
+    "block": "A",
+    "code": "A03",
     "function": "03/16",
     "mode": "r/w",
     "name": "Abschalttemperatur Umgebung",
-    "type": "TEMP1",
-    "code": "A03",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1038": {
     "app_current_video_value": "4.0 °C",
     "app_label": "Antifreeze Temp.",
+    "block": "A",
+    "code": "A04",
     "function": "03/16",
     "mode": "r/w",
     "my_value": "4",
     "name": "Frostschutztemperatur",
-    "type": "TEMP1",
-    "code": "A04",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1039": {
     "app_current_video_value": "3.0 °C",
     "app_label": "Antifreeze Temp. Difference",
+    "block": "A",
+    "code": "A05",
     "function": "03/16",
     "mode": "r/w",
     "name": "Frostschutztemperaturdifferenz",
-    "type": "TEMP1",
-    "code": "A05",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1040": {
     "app_current_video_value": "110 °C",
     "app_label": "Exhaust Temp Protect Setup",
+    "block": "A",
+    "code": "A06",
     "function": "03/16",
     "mode": "r/w",
     "name": "Max. Abgastemperatur",
-    "type": "TEMP1",
-    "code": "A06",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1041": {
     "app_label": "Pump Type",
@@ -475,6 +475,8 @@
       "4": "APM25(9~130)",
       "5": "APM25(12~130)"
     },
+    "block": "H",
+    "code": "H31",
     "function": "03/16",
     "mode": "r/w",
     "name": "Zirkulationswasserpumpentyp",
@@ -486,9 +488,7 @@
       "3": "Grundfos 25-125",
       "4": "APM25 9-130",
       "5": "APM25 12-130"
-    },
-    "code": "H31",
-    "block": "H"
+    }
   },
   "1042": {
     "app_current_video_value": "YES",
@@ -497,6 +497,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "A",
+    "code": "A11",
     "function": "03/16",
     "mode": "r/w",
     "name": "Niederdrucksensor aktivieren",
@@ -504,54 +506,53 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "A11",
-    "block": "A"
+    }
   },
   "1043": {
     "app_current_video_value": "3.0 °C",
     "app_label": "Antifreeze Min Temp",
+    "block": "A",
+    "code": "A23",
     "function": "03/16",
     "mode": "r/w",
     "name": "Min. Auslasswassertemperatur schutz",
-    "type": "TEMP1",
-    "code": "A23",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1044": {
     "app_current_video_value": "10.0 °C",
     "app_label": "Excess Temp. Diff. Between inlet and Outlet Temp.",
+    "block": "A",
+    "code": "A24",
     "function": "03/16",
     "mode": "r/w",
     "name": "Übermäßige Temperaturdifferenz zwischen Einlass- und Auslasswasser",
-    "type": "TEMP1",
-    "code": "A24",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1045": {
     "app_label": "Heating and hot water forced switching time",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "block": "H",
+    "code": "H32",
     "function": "03/16",
     "mode": "r/w",
     "my_value": "180",
     "name": "Erzwungene Umschaltzeit",
-    "type": "DIGI1",
-    "code": "H32",
-    "block": "H"
+    "type": "DIGI1"
   },
   "1046": {
     "app_label": "DHW Temp. Sourcing",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "app_mapping_mode": "app_label_only; technical name/value_map preserved; user-tested H37 register 1046",
+    "block": "H",
+    "code": "H37",
     "function": "03/16",
     "mode": "r/w",
     "name": "Wassertank-Temperaturquelle",
+    "source_user_test": "2026-06-14: H37 = Register 1046 selbst getestet",
     "type": "DIGI1",
     "value_map": {
       "0": "Wärmepumpe / Wassertank-Temperatursensor",
       "1": "Modbus / Zentralregler"
-    },
-    "code": "H37",
-    "block": "H"
+    }
   },
   "1047": {
     "app_label": "Enable Defrosting Communication in Cascade",
@@ -559,6 +560,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "D",
+    "code": "D26",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -567,50 +570,50 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "D26",
-    "block": "D"
+    }
   },
   "1048": {
     "app_label": "External Pump Selection",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "app_mapping_mode": "app_label_only; code intentionally cleared because H37 is confirmed as register 1046",
+    "block": "",
+    "code": "",
     "function": "03/16",
+    "last_review": "v0.2.32-user-fix-h37",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "H37",
-    "block": "H"
+    "name": "External Pump Selection (Code unbekannt / nicht H37)",
+    "source_user_test": "2026-06-14: 1048 ist nicht H37; H37 = 1046 bestätigt",
+    "type": "RAW"
   },
   "1049": {
     "app_current_video_value": "-8.0 °C",
     "app_label": "Electric Heater On AT",
+    "block": "A",
+    "code": "A31",
     "function": "03/16",
     "mode": "r/w",
     "name": "Electric-Heater-On AT Grenzwert / Temperaturparameter (ASM)",
-    "type": "TEMP1",
-    "code": "A31",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1050": {
     "app_current_video_value": "60 min",
     "app_label": "Electric Heater Delays Comp. On Time",
+    "block": "A",
+    "code": "A32",
     "function": "03/16",
     "mode": "r/w",
     "name": "Electric Heater Delays Comp on Time",
     "type": "MINUTES",
-    "unit": "min",
-    "code": "A32",
-    "block": "A"
+    "unit": "min"
   },
   "1051": {
     "app_current_video_value": "10.0 °C",
     "app_label": "Min. AT for Cooling",
+    "block": "A",
+    "code": "A30",
     "function": "03/16",
     "mode": "r/w",
     "name": "Min. Umgebungstemperatur im Kühlmodus",
-    "type": "TEMP1",
-    "code": "A30",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1052": {
     "app_current_video_value": "5K",
@@ -619,6 +622,8 @@
       "0": "5K",
       "1": "2K"
     },
+    "block": "A",
+    "code": "A21",
     "function": "03/16",
     "mode": "r/w",
     "name": "Umgebungs-/Saug-/Spulensensortyp",
@@ -626,19 +631,17 @@
     "value_map": {
       "0": "5K Sensortyp",
       "1": "2K Sensortyp"
-    },
-    "code": "A21",
-    "block": "A"
+    }
   },
   "1053": {
     "app_current_video_value": "5.0 °C",
     "app_label": "Niedrige Wassertemperatur Schutzwert",
+    "block": "A",
+    "code": "A22",
     "function": "03/16",
     "mode": "r/w",
     "name": "Min. Frostschutztemperatur",
-    "type": "TEMP1",
-    "code": "A22",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1054": {
     "app_current_video_value": "R290",
@@ -653,6 +656,8 @@
       "6": "R32-3",
       "7": "R290-3"
     },
+    "block": "A",
+    "code": "A26",
     "function": "03/16",
     "mode": "r/w",
     "name": "Kältemitteltyp",
@@ -666,39 +671,37 @@
       "5": "R290-2",
       "6": "R32-3",
       "7": "R290-3"
-    },
-    "code": "A26",
-    "block": "A"
+    }
   },
   "1055": {
     "app_current_video_value": "-4.5 °C",
     "app_label": "Minimum Evaporation Temp. of Cooling",
+    "block": "A",
+    "code": "A25",
     "function": "03/16",
     "mode": "r/w",
     "name": "Minimale Verdampfungstemperatur der Kühlung",
-    "type": "TEMP1",
-    "code": "A25",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1056": {
     "app_current_video_value": "7.0 °C",
     "app_label": "Temp Difference A Of Limiting Frequency",
+    "block": "A",
+    "code": "A27",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturdifferenz der Begrenzungsfrequenz",
-    "type": "TEMP1",
-    "code": "A27",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1057": {
     "app_current_video_value": "7.0 °C",
     "app_label": "Temp Difference B Of Limiting Frequency",
+    "block": "A",
+    "code": "A28",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturdifferenz zwischen Auslass- und WW-Temperatur",
-    "type": "TEMP1",
-    "code": "A28",
-    "block": "A"
+    "type": "TEMP1"
   },
   "1058": {
     "app_current_video_value": "NO",
@@ -707,6 +710,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "A",
+    "code": "A29",
     "function": "03/16",
     "mode": "r/w",
     "name": "Hochdrucksensor aktivieren",
@@ -714,12 +719,12 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "A29",
-    "block": "A"
+    }
   },
   "1059": {
     "app_label": "Fan Motor Type",
+    "block": "F",
+    "code": "F01",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -730,61 +735,59 @@
       "1": "Legacy: zweistufiger Lüfter",
       "3": "DC Fan Motor",
       "4": "DC Fan Motor External Drive"
-    },
-    "code": "F01",
-    "block": "F"
+    }
   },
   "1060": {
     "app_label": "Max Cool Coil Temp",
+    "block": "F",
+    "code": "F02",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur für maximale Lüfterdrehzahl im Kühlbetrieb",
-    "type": "TEMP1",
-    "code": "F02",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1061": {
     "app_label": "Fan Motor Power Curve",
+    "block": "F",
+    "code": "F27",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "F27",
-    "block": "F"
+    "type": "RAW"
   },
   "1062": {
     "app_label": "Min Cool Coil Temp",
+    "block": "F",
+    "code": "F03",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur für minimale Lüfterdrehzahl im Kühlbetrieb",
-    "type": "TEMP1",
-    "code": "F03",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1063": {
     "app_current_video_value": "3.0 °C",
     "app_label": "Electric Heater Opening Temp. Diff",
+    "block": "A",
+    "code": "A33",
     "function": "03/16",
     "mode": "r/w",
     "name": "E-Heizer Einschalt-Temperaturdifferenz",
     "type": "TEMP1",
-    "unit": "°C",
-    "code": "A33",
-    "block": "A"
+    "unit": "°C"
   },
   "1064": {
     "app_current_video_value": "5 min",
     "app_label": "Crank Preheating Time",
+    "block": "A",
+    "code": "A34",
     "function": "03/16",
     "mode": "r/w",
     "name": "Kurbelgehäuseheizung Vorheizzeit",
     "type": "MINUTES",
-    "unit": "min",
-    "code": "A34",
-    "block": "A"
+    "unit": "min"
   },
   "1065": {
     "function": "03/16",
@@ -794,13 +797,13 @@
   },
   "1066": {
     "app_label": "Max Heat Coil Temp",
+    "block": "F",
+    "code": "F05",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur für maximale Lüfterdrehzahl im Heizbetrieb",
-    "type": "TEMP1",
-    "code": "F05",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1067": {
     "function": "03/16",
@@ -810,65 +813,99 @@
   },
   "1068": {
     "app_label": "Min Heat Coil Temp",
+    "block": "F",
+    "code": "F06",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur für minimale Lüfterdrehzahl im Heizbetrieb",
-    "type": "TEMP1",
-    "code": "F06",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1069": {
+    "app_label": "Enable Multi-Zone Control",
+    "app_values": {
+      "0": "None",
+      "1": "Zone 1-S",
+      "2": "Zone 2-S",
+      "3": "Zone 1+2-S",
+      "4": "Zone 1-T",
+      "5": "Zone 2-T",
+      "6": "Zone 1+2-T",
+      "7": "Zone 1-P",
+      "8": "Zone 2-P",
+      "9": "Zone 1+2-P"
+    },
+    "block": "Z",
+    "code": "Z01",
+    "default": "None",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
-    "name": "Multi-Zone Auswahl",
-    "type": "RAW",
+    "name": "Mehrzonenregelung aktivieren",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "DIGI1",
     "value_map": {
       "0": "Keine Zone",
-      "1": "Zone 1S",
-      "2": "Zone 2S",
-      "3": "Zone 1+2S",
-      "4": "Zone 1T",
-      "5": "Zone 2T",
-      "6": "Zone 1+2T",
-      "7": "Zone 1P",
-      "8": "Zone 2P",
-      "9": "Zone 1+2P"
-    },
-    "code": "Z01",
-    "block": "Z"
+      "1": "Zone 1-S",
+      "2": "Zone 2-S",
+      "3": "Zone 1+2-S",
+      "4": "Zone 1-T",
+      "5": "Zone 2-T",
+      "6": "Zone 1+2-T",
+      "7": "Zone 1-P",
+      "8": "Zone 2-P",
+      "9": "Zone 1+2-P"
+    }
   },
   "1070": {
+    "app_label": "Zone 1 Target RT",
+    "block": "Z",
+    "code": "Z02",
+    "default": "20.0°C",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
     "name": "Zone 1 Raumtemperatur-Sollwert",
-    "type": "RAW",
-    "code": "Z02",
-    "block": "Z"
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1"
   },
   "1071": {
+    "app_label": "Zone 1 RT Diff. to Start",
+    "block": "Z",
+    "code": "Z03",
+    "default": "2.0°C",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
     "name": "Zone 1 Raumtemperatur-Differenz zum Start",
-    "type": "RAW",
-    "code": "Z03",
-    "block": "Z"
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1",
+    "unit": "K"
   },
   "1072": {
+    "app_label": "Zone 2 Target RT",
+    "block": "Z",
+    "code": "Z04",
+    "default": "20.0°C",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
     "name": "Zone 2 Raumtemperatur-Sollwert",
-    "type": "RAW",
-    "code": "Z04",
-    "block": "Z"
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1"
   },
   "1073": {
+    "app_label": "Zone 2 RT Diff. to Start",
+    "block": "Z",
+    "code": "Z05",
+    "default": "2.0°C",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
     "name": "Zone 2 Raumtemperatur-Differenz zum Start",
-    "type": "RAW",
-    "code": "Z05",
-    "block": "Z"
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1",
+    "unit": "K"
   },
   "1074": {
     "app_label": "Quantity",
@@ -876,6 +913,8 @@
       "0": "Single",
       "1": "Double"
     },
+    "block": "F",
+    "code": "F10",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -884,37 +923,51 @@
     "value_map": {
       "0": "Einzellüfter",
       "1": "Doppellüfter"
-    },
-    "code": "F10",
-    "block": "F"
+    }
   },
   "1075": {
+    "app_label": "Zone 1 Heating Target Outlet WT",
+    "block": "Z",
+    "code": "Z06",
+    "default": "45.0°C",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
     "name": "Zone 1 Heizungs-Auslasswasser-Sollwert",
-    "type": "RAW",
-    "code": "Z06",
-    "block": "Z"
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1"
   },
   "1076": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Zone 1 Mischwasser-Auslasswasser-Sollwert",
-    "type": "RAW",
+    "app_label": "Zone 2 Mixing Target Outlet WT",
+    "block": "Z",
     "code": "Z07",
-    "block": "Z"
+    "default": "35.0°C",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Zone 2 Mischwasser-Auslasswasser-Sollwert",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1"
   },
   "1077": {
+    "app_label": "Enable AT Compensation Curve Zone 2",
+    "app_values": {
+      "0": "NO",
+      "1": "YES"
+    },
+    "block": "Z",
+    "code": "Z17",
+    "default": "NO",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
-    "name": "AT-Kompensation Zone 2 aktivieren",
-    "type": "RAW",
+    "name": "AT-Kompensationskurve Zone 2 aktivieren",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "DIGI1",
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "Z17",
-    "block": "Z"
+    }
   },
   "1078": {
     "function": "03/16",
@@ -929,64 +982,85 @@
     "type": "RAW"
   },
   "1080": {
+    "app_label": "Mixing Valve Manual Adjustment Ratio (0% for Auto Control)",
+    "block": "Z",
+    "code": "Z08",
+    "default": "0%",
     "function": "03/16",
+    "last_review": "v0.2.32-zblock",
     "mode": "r/w",
-    "name": "Mischventil-Regelart (0=manuell, 1=auto) (ASM)",
-    "type": "RAW",
+    "name": "Mischventil manuelle Stellrate (0% = Auto-Regelung)",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "PERCENT",
+    "unit": "%",
     "value_map": {
       "0": "Manuell",
       "1": "Auto"
-    },
-    "code": "Z08",
-    "block": "Z"
+    }
   },
   "1081": {
     "app_label": "Cooling Fan Min Speed",
+    "block": "F",
+    "code": "F18",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Min. Lüfterdrehzahl im Kühlbetrieb",
     "type": "DIGI1",
-    "unit": "rpm",
-    "code": "F18",
-    "block": "F"
+    "unit": "rpm"
   },
   "1082": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Mischventil Öffnungszeit (s) (ASM)",
-    "type": "RAW",
+    "app_label": "Mixing Valve Opening Time",
+    "block": "Z",
     "code": "Z09",
-    "block": "Z"
+    "default": "150s",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil Öffnungszeit",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "SECONDS",
+    "unit": "s"
   },
   "1083": {
     "app_label": "Min. Fan Speed in Heating",
+    "block": "F",
+    "code": "F19",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Min. Lüfterdrehzahl im Heizbetrieb",
     "type": "DIGI1",
-    "unit": "rpm",
-    "code": "F19",
-    "block": "F"
+    "unit": "rpm"
   },
   "1084": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Mischventil Schließzeit (s) (ASM)",
-    "type": "RAW",
+    "app_label": "Mixing Valve Closing Time",
+    "block": "Z",
     "code": "Z10",
-    "block": "Z"
+    "default": "150s",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil Schließzeit",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "SECONDS",
+    "unit": "s"
   },
   "1085": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Mischventil Regel-P (ASM)",
-    "type": "RAW",
+    "app_label": "Mixing Valve Adjustment P(PID)",
+    "block": "Z",
     "code": "Z11",
-    "block": "Z"
+    "default": "2.0",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil Regelung P-Anteil (PID)",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "DIGI5"
   },
   "1086": {
+    "block": "F",
+    "code": "F21",
     "function": "03/16",
     "mode": "r/w",
     "name": "Timer-Stummschaltung aktivieren (ASM V1.3: 243E)",
@@ -994,9 +1068,7 @@
     "value_map": {
       "0": "Aus",
       "1": "Ein"
-    },
-    "code": "F21",
-    "block": "F"
+    }
   },
   "1087": {
     "app_label": "Manual Control Fan Speed",
@@ -1004,6 +1076,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "F",
+    "code": "F22",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -1012,353 +1086,360 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "F22",
-    "block": "F"
+    }
   },
   "1088": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Mischventil Regel-I (ASM)",
-    "type": "RAW",
+    "app_label": "Mixing Valve Adjustment I(PID)",
+    "block": "Z",
     "code": "Z12",
-    "block": "Z"
+    "default": "0.2",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil Regelung I-Anteil (PID)",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "DIGI5"
   },
   "1089": {
     "app_label": "DC/AC Fan Rated Speed",
+    "block": "F",
+    "code": "F23",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Nenn-DC-Lüftermotordrehzahl",
     "type": "DIGI1",
-    "unit": "rpm",
-    "code": "F23",
-    "block": "F"
+    "unit": "rpm"
   },
   "1090": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "PID-Regelzyklus (ASM)",
-    "type": "RAW",
+    "app_label": "Mixing Valve PID Period",
+    "block": "Z",
     "code": "Z13",
-    "block": "Z"
+    "default": "2min",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil PID-Zyklus",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1091": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1092": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1093": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1094": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1095": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1096": {
-    "name": "Blockkopf Paket 2 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1097": {
-    "name": "Blockkopf Paket 2 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Reserve 1",
     "type": "BLOCK"
   },
   "1098": {
-    "name": "Blockkopf Paket 2 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Reserve 2",
     "type": "BLOCK"
   },
   "1099": {
-    "name": "Blockkopf Paket 2 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / Marker-Länge",
     "type": "BLOCK"
   },
   "1100": {
-    "name": "Blockkopf Paket 2 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 2 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1101": {
     "app_label": "CT to Reduce Top Fans in Cooling",
+    "block": "F",
+    "code": "F28",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur des Einzel-/Doppellüfterschalters im Kühlbetrieb",
-    "type": "TEMP1",
-    "code": "F28",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1102": {
     "app_label": "CT to Stop Single Fan in Cooling",
+    "block": "F",
+    "code": "F29",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verdampfertemperatur des Einzellüfterstopps im Kühlbetrieb",
-    "type": "TEMP1",
-    "code": "F29",
-    "block": "F"
+    "type": "TEMP1"
   },
   "1103": {
     "app_label": "Cooling Fan Max Speed",
+    "block": "F",
+    "code": "F25",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüfterdrehzahl im Kühlbetrieb",
     "type": "DIGI1",
-    "unit": "rpm",
-    "code": "F25",
-    "block": "F"
+    "unit": "rpm"
   },
   "1104": {
     "app_label": "Heating Fan Max Speed",
+    "block": "F",
+    "code": "F26",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüfterdrehzahl im Heizbetrieb",
     "type": "DIGI1",
-    "unit": "rpm",
-    "code": "F26",
-    "block": "F"
+    "unit": "rpm"
   },
   "1105": {
     "app_label": "Ambient Temp. of Starting Defrosting",
+    "block": "D",
+    "code": "D01",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Umgebungstemperatur des Start-Abtauens",
-    "type": "TEMP1",
-    "code": "D01",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1106": {
     "app_label": "Heating Operation Time Before Defrosting",
+    "block": "D",
+    "code": "D02",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Heizbetriebszeit vor dem Abtauen",
-    "type": "DIGI1",
-    "code": "D02",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1107": {
     "app_label": "Defrosting Cycle",
+    "block": "D",
+    "code": "D03",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Intervallzeit zwischen den Abtauzyklen",
-    "type": "DIGI1",
-    "code": "D03",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1108": {
     "app_label": "Exhaust Temp. Correction for Defrosting Cycle",
+    "block": "D",
+    "code": "D04",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Heißgastemperaturkorrektur für den Abtauzyklus",
-    "type": "TEMP1",
-    "code": "D04",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1109": {
     "app_label": "Defrosting Suction Pressure 1",
+    "block": "D",
+    "code": "D05-1",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Abtau-Saugsdruck 1",
-    "type": "DIGI5",
-    "code": "D05-1",
-    "block": "D"
+    "type": "DIGI5"
   },
   "1110": {
     "app_label": "Defrosting Suction Pressure 2",
+    "block": "D",
+    "code": "D05-2",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Abtau-Saugsdruck 2",
-    "type": "DIGI5",
-    "code": "D05-2",
-    "block": "D"
+    "type": "DIGI5"
   },
   "1111": {
     "app_label": "Defrosting Cycle Time Correction",
+    "block": "D",
+    "code": "D06",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "2min",
     "name": "Abtauzykluszeitkorrektur",
-    "type": "DIGI1",
-    "code": "D06",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1112": {
     "app_label": "Ambient Temp. of Start Sliding Defrosting",
+    "block": "D",
+    "code": "D07",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Umgebungstemperatur des Start-Gleitabtauens",
-    "type": "TEMP1",
-    "code": "D07",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1113": {
     "app_label": "Suction Temp. of Start Sliding Defrosting",
+    "block": "D",
+    "code": "D08",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Saugsungstemperatur des Start-Gleitabtauens",
-    "type": "TEMP1",
-    "code": "D08",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1114": {
     "app_label": "Ambient Temp. of Stop Sliding Defrosting",
+    "block": "D",
+    "code": "D09",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Umgebungstemperatur des Stopp-Gleitabtauens",
-    "type": "TEMP1",
-    "code": "D09",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1115": {
     "app_label": "Suction Temp. of Stop Sliding Defrosting",
+    "block": "D",
+    "code": "D10",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Saugsungstemperatur des Stopp-Gleitabtauens",
-    "type": "TEMP1",
-    "code": "D10",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1116": {
     "app_label": "Min. Inlet Water Temp. of Defrosting",
+    "block": "D",
+    "code": "D11",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "19°C",
     "name": "Min. Einlasswassertemperatur des Abtauens",
-    "type": "DIGI5",
-    "code": "D11",
-    "block": "D"
+    "type": "DIGI5"
   },
   "1117": {
     "app_label": "Suction Pressure of Forced Defrosting",
+    "block": "D",
+    "code": "D12",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Saugsdruck des erzwungenen Abtauens",
-    "type": "DIGI5",
-    "code": "D12",
-    "block": "D"
+    "type": "DIGI5"
   },
   "1118": {
     "app_label": "Heating Operation Time Before Forced Defrosting",
+    "block": "D",
+    "code": "D13",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "210min",
     "name": "Heizbetriebszeit vor dem erzwungenen Abtauen",
-    "type": "DIGI1",
-    "code": "D13",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1119": {
     "app_label": "Fan Motor Power Ratio to Extend Defrosting Cycle",
+    "block": "D",
+    "code": "D14",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Lüftermotorleistungsverhältnis zur Verlängerung des Abtauzyklus",
-    "type": "DIGI7",
-    "code": "D14",
-    "block": "D"
+    "type": "DIGI7"
   },
   "1120": {
     "app_label": "Fan Motor Power Ratio to Enter Forced Defrosting",
+    "block": "D",
+    "code": "D15",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Lüftermotorleistungsverhältnis zum Eintritt in das erzwungene Abtauen",
-    "type": "DIGI7",
-    "code": "D15",
-    "block": "D"
+    "type": "DIGI7"
   },
   "1121": {
     "app_label": "Max. Fan Motor Power to Enter Forced Defrosting",
+    "block": "D",
+    "code": "D16",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüftermotorleistung zum Eintritt in das erzwungene Abtauen",
-    "type": "DIGI1",
-    "code": "D16",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1122": {
     "app_label": "Coil Temp. of Exit Defrosting",
+    "block": "D",
+    "code": "D17",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "19",
     "name": "Verdampfertemperatur des Abtauausgangs",
-    "type": "TEMP1",
-    "code": "D17",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1123": {
     "app_label": "Distributor Tube Temp. of Exit Defrosting",
+    "block": "D",
+    "code": "D18",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Verteilerrohrtemperatur des Abtauausgangs",
-    "type": "TEMP1",
-    "code": "D18",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1124": {
     "app_label": "Max. Defrosting Time",
+    "block": "D",
+    "code": "D19",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Abtauzeit",
-    "type": "DIGI1",
-    "code": "D19",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1125": {
     "app_label": "Defrosting Frequency",
+    "block": "D",
+    "code": "D20",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "77Hz",
     "name": "Abtaufrequenz",
-    "type": "DIGI1",
-    "code": "D20",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1126": {
     "app_label": "Enable Electric Heater During Defrosting",
@@ -1366,6 +1447,8 @@
       "0": "NO",
       "1": "YES"
     },
+    "block": "D",
+    "code": "D21",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -1374,31 +1457,29 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "D21",
-    "block": "D"
+    }
   },
   "1127": {
     "app_label": "Water Flow of Defrosting",
+    "block": "D",
+    "code": "D22",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "0",
     "name": "Wasserdurchfluss beim Abtauen",
-    "type": "DIGI9",
-    "code": "D22",
-    "block": "D"
+    "type": "DIGI9"
   },
   "1128": {
     "app_label": "Max. Defrosting Cycle by Fan Motor Power",
+    "block": "D",
+    "code": "D23",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "135min",
     "name": "Max. Abtauzyklus durch Lüftermotorleistung",
-    "type": "DIGI1",
-    "code": "D23",
-    "block": "D"
+    "type": "DIGI1"
   },
   "1129": {
     "app_label": "Defrosting Heating Source in Heating / DHW Mode",
@@ -1407,6 +1488,8 @@
       "1": "DHW Circuit",
       "2": "Heating Circuit"
     },
+    "block": "D",
+    "code": "D24",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
@@ -1416,207 +1499,259 @@
       "0": "nicht umschalten",
       "1": "WW-Seite / WW-Tank",
       "2": "Heizseite / Pufferspeicher"
-    },
-    "code": "D24",
-    "block": "D"
+    }
   },
   "1130": {
     "app_label": "Max. Water Temp. Decrease during Defrosting",
+    "block": "D",
+    "code": "D25",
     "function": "03/16",
     "last_review": "v39",
     "mode": "r/w",
     "my_value": "30°C",
     "name": "Max. Einlasswassertemperaturabfall beim Abtauen",
-    "type": "TEMP1",
-    "code": "D25",
-    "block": "D"
+    "type": "TEMP1"
   },
   "1131": {
-    "app_label": "EEV1 EEV Adjust Mode",
+    "app_current_video_value": "Smart/Auto umschaltbar",
+    "app_label": "EEV Control Mode",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
     "app_values": {
       "0": "Manual",
       "1": "Auto",
       "2": "Smart"
     },
+    "block": "E",
+    "code": "E17",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
-    "name": "EEV-Anpassungsmodus",
+    "name": "EEV Regelmodus",
     "type": "DIGI1",
     "value_map": {
-      "0": "Manuell",
+      "0": "Manual",
       "1": "Auto",
       "2": "Smart"
-    },
-    "code": "E01",
-    "block": "E"
+    }
   },
   "1132": {
+    "app_current_video_value": "3.0 °C",
     "app_label": "Target Superheat for Heating",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Ziel-Superheat für Heizung",
-    "type": "TEMP1",
+    "block": "E",
     "code": "E02",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Ziel-Überhitzung Heizen",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1133": {
+    "app_current_video_value": "0 N",
     "app_label": "EEV Initial Steps for Heating",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV-Anfangsschritte für Heizung",
-    "type": "DIGI1",
+    "block": "E",
     "code": "E03",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Anfangsschritte Heizen",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1134": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Kühlmodus Mischventil-Regelart (ASM)",
-    "type": "RAW",
+    "app_label": "Steps of Mixing Valve in Cooling",
+    "block": "Z",
     "code": "Z14",
-    "block": "Z"
+    "default": "0%",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Mischventil-Stellwert im Kühlbetrieb",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "PERCENT",
+    "unit": "%"
   },
   "1135": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Zone2 Mischwasser-Zieltemperatur Maximum (ASM)",
-    "type": "TEMP1",
+    "app_label": "Zone 2 Max. Water Target Temp.",
+    "block": "Z",
     "code": "Z15",
-    "block": "Z"
+    "default": "40.0°C",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Zone 2 maximale Wasser-Solltemperatur",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1"
   },
   "1136": {
+    "block": "Z",
+    "code": "Z16",
     "function": "03/16",
+    "last_review": "v0.2.32-user-fix-h36",
     "mode": "r/w",
     "name": "Mischventil Regel-I (DIGI5 laut ASM-Kommentar) (ASM)",
-    "type": "DIGI5",
-    "code": "Z16",
-    "block": "Z"
+    "note": "Nicht mit H36 / Register 1236 verwechseln.",
+    "type": "DIGI5"
   },
   "1137": {
+    "app_current_video_value": "60 N",
     "app_label": "Min Initial Steps",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV Min. Schritte",
-    "type": "DIGI1",
+    "block": "E",
     "code": "E07",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV minimale Anfangsschritte",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1138": {
+    "app_current_video_value": "350 N",
     "app_label": "EEV Initial Steps for Cooling",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV-Anfangsschritte für Kühlung",
-    "type": "DIGI1",
+    "block": "E",
     "code": "E08",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Anfangsschritte Kühlen",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1139": {
+    "app_current_video_value": "Auto",
     "app_label": "EVI EEV: Adjustment Mode",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
     "app_values": {
-      "0": "Auto",
-      "1": "Manual"
-    },
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EVI EEV: Anpassungsmodus",
-    "type": "DIGI1",
-    "value_map": {
-      "0": "Manuell",
+      "0": "Manual",
       "1": "Auto"
     },
+    "block": "E",
     "code": "E09",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EVI-EEV Anpassungsmodus",
+    "type": "DIGI1",
+    "value_map": {
+      "0": "Manual",
+      "1": "Auto"
+    }
   },
   "1140": {
+    "app_current_video_value": "200 N",
     "app_label": "EVI EEV: Initial Steps",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EVI EEV: Anfangsschritte",
-    "type": "DIGI1",
+    "block": "E",
     "code": "E10",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EVI-EEV Anfangsschritte",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1141": {
+    "app_current_video_value": "140 N",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "System 2 EVI/Enthalpie vorhanden wenn Wert != 0 (ASM V1.3)",
-    "type": "RAW",
-    "code": "E03-4",
-    "block": "E"
+    "type": "RAW"
   },
   "1142": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
+    "app_current_video_value": "185 N",
+    "app_label": "EEV Initial Steps for Heating2",
+    "block": "E",
     "code": "E03-2",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Anfangsschritte Heizen 2",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1143": {
+    "app_current_video_value": "3.0 °C",
     "app_label": "EVI EEV Target Superheat Degree",
     "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EVI EEV Ziel-Überhitzungsgrad",
-    "type": "TEMP1",
+    "block": "E",
     "code": "E13",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EVI-EEV Ziel-Überhitzungsgrad",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1144": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EVI EEV Min. Schritte",
-    "type": "DIGI1",
+    "app_current_video_value": "50 N",
+    "app_label": "EVI EEV Min. Steps",
+    "block": "E",
     "code": "E14",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EVI-EEV minimale Schritte",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1145": {
+    "block": "E",
+    "code": "E15",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1",
-    "code": "E15",
-    "block": "E"
+    "type": "TEMP1"
   },
   "1146": {
+    "block": "E",
+    "code": "E16",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1",
-    "code": "E16",
-    "block": "E"
+    "type": "TEMP1"
   },
   "1147": {
+    "app_current_video_value": "470 N",
+    "app_label": "Defrosting EEV Steps",
+    "block": "E",
+    "code": "E17",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "my_value": "460",
-    "name": "Abtau-EEV-Schritte",
-    "type": "DIGI1",
-    "code": "E17",
-    "block": "E"
+    "name": "Abtau-EEV Schritte",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1148": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Ziel-Überhitzung für Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "3.0 °C",
+    "app_label": "Target Superheat For Cooling",
+    "block": "E",
     "code": "E18",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Ziel-Überhitzung Kühlen",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1149": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV-Anpassungsbereich im Smart-Modus",
-    "type": "DIGI1",
+    "app_current_video_value": "20 %",
+    "app_label": "EEV Adjustment Range In Smart Mode",
+    "block": "E",
     "code": "E19",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Anpassungsbereich im Smart-Modus",
+    "notes": "Vermutung, noch nicht verifiziert: E19 begrenzt vermutlich, wie stark der Smart-Algorithmus vom normalen/Auto-EEV-Wert abweichen darf. Bei Default 20 % dürfte Smart den berechneten EEV-Wert vermutlich um bis zu ca. 20 % korrigieren.",
+    "type": "PERCENT",
+    "unit": "%"
   },
   "1150": {
     "function": "03/16",
@@ -1631,304 +1766,410 @@
     "type": "RAW"
   },
   "1152": {
+    "app_current_video_value": "62.5 °C",
+    "app_label": "Disinfection Water Temp.",
+    "block": "G",
+    "code": "G01",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Desinfektionswassertemperatur",
     "type": "TEMP1",
-    "code": "G01",
-    "block": "G"
+    "unit": "°C"
   },
   "1153": {
+    "app_current_video_value": "0 min",
+    "app_label": "Time Duration of Disinfection",
+    "block": "G",
+    "code": "G02",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Desinfektionsdauer",
-    "type": "DIGI1",
-    "code": "G02",
-    "block": "G"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1154": {
+    "app_current_video_value": "1 h",
+    "app_label": "Disinfection Starting Time",
+    "block": "G",
+    "code": "G03",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Desinfektionsstartzeit",
-    "type": "DIGI1",
-    "code": "G03",
-    "block": "G"
+    "type": "HOURS",
+    "unit": "h"
   },
   "1155": {
+    "app_current_video_value": "30 days",
+    "app_label": "Interval Period of Disinfection",
+    "block": "G",
+    "code": "G04",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Intervallzeit der Desinfektion",
-    "type": "DIGI1",
-    "code": "G04",
-    "block": "G"
+    "type": "DAYS",
+    "unit": "days"
   },
   "1156": {
+    "app_current_video_value": "NO",
+    "app_label": "Enable Disinfection",
+    "block": "G",
+    "code": "G05",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Desinfektion aktivieren",
     "type": "DIGI1",
     "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    },
-    "code": "G05",
-    "block": "G"
+      "0": "NO",
+      "1": "YES"
+    }
   },
   "1157": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Brauchwarmwasser / WW-Solltemperatur",
-    "type": "TEMP1",
+    "app_current_video_value": "16.0 °C",
+    "app_label": "Hot Water Setpoint",
+    "block": "R",
     "code": "R01",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Warmwasser-Solltemperatur",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1158": {
+    "app_current_video_value": "35.0 °C",
+    "app_label": "Heating Setpoint",
+    "block": "R",
+    "code": "R02",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Heizungssolltemperatur",
     "type": "TEMP1",
-    "code": "R02",
-    "block": "R"
+    "unit": "°C"
   },
   "1159": {
+    "app_current_video_value": "14.9 °C",
+    "app_label": "Cooling Setpoint",
+    "block": "R",
+    "code": "R03",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Kühlsolltemperatur",
     "type": "TEMP1",
-    "code": "R03",
-    "block": "R"
+    "unit": "°C"
   },
   "1160": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zum Einschalten der Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "3.0 °C",
+    "app_label": "Heating Power-on Return Difference",
+    "block": "R",
     "code": "R04",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Heizung Einschalt-Rücklaufdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1161": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz für Standby in Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "3.5 °C",
+    "app_label": "Heating Constant Tempt. Power-off Tempt. Difference",
+    "block": "R",
     "code": "R05",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Heizung Standby-/Abschalt-Temperaturdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1162": {
+    "app_current_video_value": "10.0 °C",
+    "app_label": "Min Cooling Setpoint",
+    "block": "R",
+    "code": "R08",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Min. Kühlsolltemperatur",
     "type": "TEMP1",
-    "code": "R08",
-    "block": "R"
+    "unit": "°C"
   },
   "1163": {
+    "app_current_video_value": "28.0 °C",
+    "app_label": "Max Cooling Setpoint",
+    "block": "R",
+    "code": "R09",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Max. Kühlsolltemperatur",
     "type": "TEMP1",
-    "code": "R09",
-    "block": "R"
+    "unit": "°C"
   },
   "1164": {
+    "app_current_video_value": "15.0 °C",
+    "app_label": "Min Heating Setpoint",
+    "block": "R",
+    "code": "R10",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Min. Heizungssolltemperatur",
     "type": "TEMP1",
-    "code": "R10",
-    "block": "R"
+    "unit": "°C"
   },
   "1165": {
+    "app_current_video_value": "64.0 °C",
+    "app_label": "Max Heating Setpoint",
+    "block": "R",
+    "code": "R11",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Max. Heizungssolltemperatur",
     "type": "TEMP1",
-    "code": "R11",
-    "block": "R"
+    "unit": "°C"
   },
   "1166": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz beim Verlassen der zu hohen Auslasstemperatur",
-    "type": "TEMP1",
+    "app_current_video_value": "2.0 °C",
+    "app_label": "Return Difference of Exiting High Tempt. Mode",
+    "block": "R",
     "code": "R15",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Rückkehrdifferenz zum Verlassen des Hochtemperatur-Modus",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1167": {
+    "app_current_video_value": "-7.0 °C",
+    "app_label": "Low AT for Water Temp. Limit On",
+    "block": "R",
+    "code": "R29",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "code": "R29",
-    "block": "R"
+    "unit": "°C"
   },
   "1168": {
+    "app_current_video_value": "-20.0 °C",
+    "app_label": "Low AT for Water Temp. Limit Off",
+    "block": "R",
+    "code": "R30",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "code": "R30",
-    "block": "R"
+    "unit": "°C"
   },
   "1169": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Begrenzung Auslasswassertemperatur bei niedriger AT",
-    "type": "TEMP1",
+    "app_current_video_value": "62.0 °C",
+    "app_label": "Max. Limit Outlet Water Temp. at Low AT",
+    "block": "R",
     "code": "R31",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Auslasswassertemperaturbegrenzung bei niedriger AT",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1170": {
+    "app_current_video_value": "15.0 °C",
+    "app_label": "High AT for Water Temp. Limit On",
+    "block": "R",
+    "code": "R32",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "code": "R32",
-    "block": "R"
+    "unit": "°C"
   },
   "1171": {
+    "app_current_video_value": "43.0 °C",
+    "app_label": "High AT for Water Temp. Limit Off",
+    "block": "R",
+    "code": "R33",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "code": "R33",
-    "block": "R"
+    "unit": "°C"
   },
   "1172": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Begrenzung Auslasswassertemperatur bei hoher AT",
-    "type": "TEMP1",
+    "app_current_video_value": "67.0 °C",
+    "app_label": "Max. Limit Outlet Water Temp. at High AT",
+    "block": "R",
     "code": "R34",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Auslasswassertemperaturbegrenzung bei hoher AT",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1173": {
+    "app_current_video_value": "Not Available",
+    "app_label": "Location of Electric Heater",
+    "app_values": {
+      "0": "Not Available",
+      "1": "Heating water circuit",
+      "2": "Tank/buffer heater"
+    },
+    "block": "R",
+    "code": "R35",
     "function": "03/16",
     "mode": "r/w",
     "name": "Position des elektrischen Heizers",
     "type": "DIGI1",
     "value_map": {
-      "0": "nicht verwendet",
-      "1": "Wasserheizkreislauf",
-      "2": "Wassertank-/Puffertankheizung"
-    },
-    "code": "R35",
-    "block": "R"
+      "0": "Not Available",
+      "1": "Heating water circuit",
+      "2": "Tank/buffer heater"
+    }
   },
   "1174": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zum Einschalten der Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "2.0 °C",
+    "app_label": "Cooling Power-on Return Difference",
+    "block": "R",
     "code": "R06",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Kühlung Einschalt-Rücklaufdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1175": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz für Standby in Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "1.0 °C",
+    "app_label": "Cooling Constant Tempt. Power-off Tempt. Difference",
+    "block": "R",
     "code": "R07",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Kühlung Standby-/Abschalt-Temperaturdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1176": {
+    "app_current_video_value": "15.0 °C",
+    "app_label": "Min. DHW Target Temp.",
+    "block": "R",
+    "code": "R36",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Min. WW-Solltemperatur",
     "type": "TEMP1",
-    "code": "R36",
-    "block": "R"
+    "unit": "°C"
   },
   "1177": {
+    "app_current_video_value": "53.0 °C",
+    "app_label": "Max. DHW Target Temp.",
+    "block": "R",
+    "code": "R37",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Max. WW-Solltemperatur",
     "type": "TEMP1",
-    "code": "R37",
-    "block": "R"
+    "unit": "°C"
   },
   "1178": {
+    "block": "R",
+    "code": "R12",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1",
-    "code": "R12",
-    "block": "R"
+    "type": "TEMP1"
   },
   "1179": {
+    "block": "R",
+    "code": "R13",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1",
-    "code": "R13",
-    "block": "R"
+    "type": "TEMP1"
   },
   "1180": {
+    "block": "R",
+    "code": "R14",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1",
-    "code": "R14",
-    "block": "R"
+    "type": "TEMP1"
   },
   "1181": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1182": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1183": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1184": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1185": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1186": {
-    "name": "Blockkopf Paket 3 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1187": {
-    "name": "Blockkopf Paket 3 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Reserve 1",
     "type": "BLOCK"
   },
   "1188": {
-    "name": "Blockkopf Paket 3 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Reserve 2",
     "type": "BLOCK"
   },
   "1189": {
-    "name": "Blockkopf Paket 3 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / Marker-Länge",
     "type": "BLOCK"
   },
   "1190": {
-    "name": "Blockkopf Paket 3 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 3 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1191": {
@@ -1938,174 +2179,256 @@
     "type": "BLOCK"
   },
   "1192": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "AT für Auto-Start-Heizmodus",
-    "type": "TEMP1",
+    "app_current_video_value": "5.0 °C",
+    "app_label": "AT for Auto-start Heating Mode",
+    "block": "R",
     "code": "R39",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "AT für Auto-Start Heizmodus",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1193": {
+    "block": "R",
+    "code": "R40",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1",
-    "code": "R40",
-    "block": "R"
+    "type": "TEMP1"
   },
   "1194": {
+    "block": "R",
+    "code": "R41",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1",
-    "code": "R41",
-    "block": "R"
+    "type": "TEMP1"
   },
   "1195": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zum Einschalten des WW",
-    "type": "TEMP1",
+    "app_current_video_value": "2.0 °C",
+    "app_label": "Power-on Return Difference of Tank Water",
+    "block": "R",
     "code": "R16",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "WW-Tank Einschalt-Rücklaufdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1196": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz für Standby im WW",
-    "type": "TEMP1",
+    "app_current_video_value": "0.0 °C",
+    "app_label": "Standby Temp Difference of Tank Water",
+    "block": "R",
     "code": "R17",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "WW-Tank Standby-Temperaturdifferenz",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1197": {
+    "app_current_video_value": "Interval",
+    "app_label": "Main Circulation Pump Operation Mode",
+    "block": "P",
+    "code": "P01",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Betriebsmodus der Hauptumwälzpumpe",
     "type": "DIGI1",
     "value_map": {
-      "0": "Normal",
-      "1": "Economic / Sparbetrieb",
-      "2": "Interval / Intervall"
-    },
-    "code": "P01",
-    "block": "P"
+      "0": "Always On",
+      "1": "Saving",
+      "2": "Interval"
+    }
   },
   "1198": {
+    "app_current_video_value": "35 min",
+    "app_label": "Interval Time",
+    "block": "P",
+    "code": "P02",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Intervallzeit",
-    "type": "DIGI1",
-    "code": "P02",
-    "block": "P"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1199": {
+    "app_current_video_value": "1 min",
+    "app_label": "Operation Duration Time",
+    "block": "P",
+    "code": "P03",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Betriebsdauer",
-    "type": "DIGI1",
-    "code": "P03",
-    "block": "P"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1200": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV Initial Steps Heating1 (ASM)",
-    "type": "RAW",
+    "app_current_video_value": "250 N",
+    "app_label": "EEV Initial Steps for Heating1",
+    "block": "E",
     "code": "E03-1",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Anfangsschritte Heizen 1",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1201": {
+    "app_current_video_value": "Interval",
+    "app_label": "DHW Pump Operation Mode",
+    "block": "P",
+    "code": "P05",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "WW-Pumpenbetriebsmodus",
     "type": "DIGI1",
     "value_map": {
-      "0": "Normal",
-      "1": "Economic / Sparbetrieb",
-      "2": "Interval / Intervall"
-    },
-    "code": "P05",
-    "block": "P"
+      "0": "Always On",
+      "1": "Saving",
+      "2": "Interval"
+    }
   },
   "1202": {
+    "app_current_video_value": "NO",
+    "app_label": "Main Circulation Pump Manual Control",
+    "block": "P",
+    "code": "P06",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Manuelle Steuerung der Hauptumwälzpumpe",
     "type": "DIGI1",
     "value_map": {
-      "0": "AUS",
-      "1": "EIN"
-    },
-    "code": "P06",
-    "block": "P"
+      "0": "NO",
+      "1": "YES"
+    }
   },
   "1203": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Intervallzeitraum für die Aktivierung des Wasserpumpenschutzmodus",
-    "type": "DIGI1",
+    "app_current_video_value": "30 days",
+    "app_label": "Circulation Pump Protection Period",
+    "block": "P",
     "code": "P09",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Schutzintervall der Umwälzpumpe",
+    "type": "DAYS",
+    "unit": "days"
   },
   "1204": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
+    "app_current_video_value": "",
+    "app_label": "Main Circulation Pump Rated Power",
+    "block": "P",
     "code": "P08",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 correction 2026-06-14; user confirmed unit Watt",
+    "mode": "r/w",
+    "name": "Nennleistung Hauptumwälzpumpe",
+    "notes": "Einheit sicher: Watt.",
+    "type": "RAW",
+    "unit": "W"
   },
   "1205": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Wasserpumpendrehzahl",
-    "type": "DIGI1",
+    "app_current_video_value": "0 %",
+    "app_label": "Speed of Circulation Pump",
+    "block": "P",
     "code": "P10",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Drehzahl der Umwälzpumpe",
+    "type": "PERCENT",
+    "unit": "%"
   },
   "1206": {
+    "app_current_video_value": "140 N",
+    "app_label": "EEV Initial Steps for Heating3",
+    "block": "E",
+    "code": "E03-3",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion Start",
-    "type": "DIGI1",
+    "name": "EEV Anfangsschritte Heizen 3",
+    "type": "STEPS_N",
+    "unit": "N",
     "value_map": {
       "0": "Nein",
       "1": "Ja"
     }
   },
   "1207": {
+    "app_current_video_value": "125 N",
+    "app_label": "EEV Initial Steps for Heating4",
+    "block": "E",
+    "code": "E03-4",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion - Stunde Start Einstellung",
-    "type": "DIGI1"
+    "name": "EEV Anfangsschritte Heizen 4",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1208": {
+    "app_current_video_value": "110 N",
+    "app_label": "EEV Initial Steps for Heating5",
+    "block": "E",
+    "code": "E03-5",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion geschlossen",
-    "type": "DIGI1",
+    "name": "EEV Anfangsschritte Heizen 5",
+    "type": "STEPS_N",
+    "unit": "N",
     "value_map": {
       "0": "Nein",
       "1": "Ja"
     }
   },
   "1209": {
+    "app_current_video_value": "130 N",
+    "app_label": "EEV Min. Steps1",
+    "block": "E",
+    "code": "E07-1",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion Stunde geschlossen Einstellung",
-    "type": "DIGI1"
+    "name": "EEV Min. Schritte 1",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1210": {
+    "app_current_video_value": "130 N",
+    "app_label": "EEV Min. Steps2",
+    "block": "E",
+    "code": "E07-2",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion Minute Start Einstellung",
-    "type": "DIGI1"
+    "name": "EEV Min. Schritte 2",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1211": {
+    "app_current_video_value": "110 N",
+    "app_label": "EEV Min. Steps3",
+    "block": "E",
+    "code": "E07-3",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Timerfunktion Minute geschlossen Einstellung",
-    "type": "DIGI1"
+    "name": "EEV Min. Schritte 3",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1212": {
     "function": "03/16",
@@ -2126,156 +2449,229 @@
     "type": "RAW"
   },
   "1215": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV min Steps4 (ASM)",
-    "type": "RAW",
+    "app_current_video_value": "90 N",
+    "app_label": "EEV Min. Steps4",
+    "block": "E",
     "code": "E07-4",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Min. Schritte 4",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1216": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "EEV min Steps5 (ASM)",
-    "type": "RAW",
+    "app_current_video_value": "85 N",
+    "app_label": "EEV Min. Steps5",
+    "block": "E",
     "code": "E07-5",
-    "block": "E"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "EEV Min. Schritte 5",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1217": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Kompressorfrequenz bei Kühlung bei hoher Umgebungstemperatur",
-    "type": "DIGI1",
+    "app_current_video_value": "72 Hz",
+    "app_label": "Max. Comp. Frequency in Cooling at High Ambient Temp.",
+    "block": "C",
     "code": "C11",
-    "block": "C"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Kompressorfrequenz im Kühlbetrieb bei hoher Umgebungstemperatur",
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1218": {
+    "app_current_video_value": "0 Hz",
+    "app_label": "Manual Comp. Frequency",
+    "block": "C",
+    "code": "C01",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Manuelle Kompressorfrequenz",
-    "type": "DIGI1",
-    "code": "C01",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1219": {
+    "app_current_video_value": "29 Hz",
+    "app_label": "Min. Comp. Frequency",
+    "block": "C",
+    "code": "C02",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Min. Kompressorfrequenz",
-    "type": "DIGI1",
-    "code": "C02",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1220": {
+    "app_current_video_value": "90 Hz",
+    "app_label": "Max. Comp. Frequency",
+    "block": "C",
+    "code": "C03",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Max. Kompressorfrequenz",
-    "type": "DIGI1",
-    "code": "C03",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1221": {
+    "app_current_video_value": "13",
+    "app_label": "Model Selection",
+    "block": "C",
+    "code": "C04",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Kompressormodellauswahl",
-    "type": "DIGI1",
-    "code": "C04",
-    "block": "C"
+    "type": "DIGI1"
   },
   "1222": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Min. Kompressorfrequenz bei Kühlung bei niedriger Umgebungstemperatur",
-    "type": "DIGI1",
+    "app_current_video_value": "50 Hz",
+    "app_label": "Min. Comp. Frequency in Cooling at Low Ambient Temp.",
+    "block": "C",
     "code": "C05",
-    "block": "C"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Min. Kompressorfrequenz im Kühlbetrieb bei niedriger Umgebungstemperatur",
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1223": {
+    "app_label": "",
+    "block": "C",
+    "code": "C06",
     "function": "03/16",
+    "last_review": "XLS / nicht im Video sichtbar",
     "mode": "r/w",
     "name": "Frequenzregelungsmodus",
-    "type": "DIGI1",
-    "code": "C06",
-    "block": "C"
+    "type": "DIGI1"
   },
   "1224": {
+    "app_current_video_value": "27 Hz",
+    "app_label": "Resonanzpunkt 1",
+    "block": "C",
+    "code": "C07",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Resonanzpunkt 1",
-    "type": "DIGI1",
-    "code": "C07",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1225": {
+    "app_current_video_value": "0 Hz",
+    "app_label": "Resonanzpunkt 2",
+    "block": "C",
+    "code": "C08",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Resonanzpunkt 2",
-    "type": "DIGI1",
-    "code": "C08",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1226": {
+    "app_current_video_value": "0 Hz",
+    "app_label": "Resonanzpunkt 3",
+    "block": "C",
+    "code": "C09",
     "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
     "name": "Resonanzpunkt 3",
-    "type": "DIGI1",
-    "code": "C09",
-    "block": "C"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1227": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Min. Kompressorfrequenz bei Heizung bei niedriger Umgebungstemperatur",
-    "type": "DIGI1",
+    "app_current_video_value": "40 Hz",
+    "app_label": "Min. Comp. Frequency in Heating at Low Ambient Temp.",
+    "block": "C",
     "code": "C10",
-    "block": "C"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Min. Kompressorfrequenz im Heizbetrieb bei niedriger Umgebungstemperatur",
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1228": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Auslasswassertemperatur bei Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "58.0 °C",
+    "app_label": "Max. Outlet Water Temp. in Heating",
+    "block": "R",
     "code": "R42",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Auslasswassertemperatur im Heizbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1229": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Begrenzung Zielwassertemperatur bei niedriger AT bei Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "60.0 °C",
+    "app_label": "Max. Limit Target Water Temp. at Low AT in Heating",
+    "block": "R",
     "code": "R43",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Zielwassertemperaturbegrenzung bei niedriger AT im Heizbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1230": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Max. Begrenzung Zielwassertemperatur bei hoher AT bei Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "65.0 °C",
+    "app_label": "Max. Limit Target Water Temp. at High AT in Heating",
+    "block": "R",
     "code": "R44",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Zielwassertemperaturbegrenzung bei hoher AT im Heizbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1231": {
+    "app_current_video_value": "-10.0 °C",
+    "app_label": "AT to Start Electric Heater Without Delay",
+    "block": "R",
+    "code": "R45",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "AT zum Starten des elektrischen Heizers ohne Verzögerung",
     "type": "TEMP1",
-    "code": "R45",
-    "block": "R"
+    "unit": "°C"
   },
   "1232": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zwischen Max. WW-Solltemperatur & Max Auslass Temp",
-    "type": "TEMP1",
+    "app_current_video_value": "5.0 °C",
+    "app_label": "Temp. Diff. between Max. DHW Target Temp. & Max. Outlet Temp.",
+    "block": "R",
     "code": "R46",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Temp.-Differenz zwischen max. WW-Solltemp. und max. Auslasstemp.",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1233": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "AT zum Starten der Frequenzbegrenzung bei Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "25.0 °C",
+    "app_label": "AT to Start Frequency Limit in Cooling",
+    "block": "R",
     "code": "R60",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "AT zum Start der Frequenzbegrenzung im Kühlbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1234": {
     "function": "03/16",
@@ -2290,89 +2686,121 @@
     "type": "TEMP1"
   },
   "1236": {
-    "app_label": "Weather Compensation",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved",
+    "app_label": "Enable AT Compensation Curve Zone 1",
+    "app_mapping_mode": "app_label_only; technical name/value_map preserved; user-tested H36 register 1236",
     "app_values": {
       "0": "NO",
       "1": "YES"
     },
+    "block": "H",
+    "code": "H36",
+    "default": "NO",
     "function": "03/16",
+    "last_review": "v0.2.32-user-fix-h36",
     "mode": "r/w",
-    "name": "Wetterkompensationsfunktion während des Heizens aktivieren",
+    "name": "AT-Kompensationskurve Zone 1 aktivieren",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet; nicht Z16",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    },
-    "code": "H36",
-    "block": "H"
+    }
   },
   "1237": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "AT zum Stoppen der Frequenzbegrenzung bei Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "43.0 °C",
+    "app_label": "AT to Stop Frequency Limit in Cooling",
+    "block": "R",
     "code": "R61",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "AT zum Stoppen der Frequenzbegrenzung im Kühlbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1238": {
+    "app_current_video_value": "64.0 °C",
+    "app_label": "Max. Heat Pump Outlet Water Temp.",
+    "block": "R",
+    "code": "R62",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Max. Wärmepumpen-Auslasswassertemperatur",
-    "type": "RAW",
-    "code": "R62",
-    "block": "R"
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1239": {
+    "app_current_video_value": "20.0 °C",
+    "app_label": "Target Room Temp.",
+    "block": "R",
+    "code": "R70",
     "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "name": "Ziel-Raumtemperatur",
     "type": "TEMP1",
-    "code": "R70",
-    "block": "R"
+    "unit": "°C"
   },
   "1240": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zum Einschalten der Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "0.5 °C",
+    "app_label": "Room Temp. Diff. for Power-on in Heating",
+    "block": "R",
     "code": "R71",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Raumtemperaturdifferenz zum Einschalten im Heizbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1241": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz für Standby in Heizung",
-    "type": "TEMP1",
+    "app_current_video_value": "0.5 °C",
+    "app_label": "Room Temp. Diff. for Standby in Heating",
+    "block": "R",
     "code": "R72",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Raumtemperaturdifferenz für Standby im Heizbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1242": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz zum Einschalten der Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "0.5 °C",
+    "app_label": "Room Temp. Diff. for Power-on in Cooling",
+    "block": "R",
     "code": "R73",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Raumtemperaturdifferenz zum Einschalten im Kühlbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1243": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Temperaturdifferenz für Standby in Kühlung",
-    "type": "TEMP1",
+    "app_current_video_value": "0.5 °C",
+    "app_label": "Room Temp. Diff. for Standby in Cooling",
+    "block": "R",
     "code": "R74",
-    "block": "R"
+    "function": "03/16",
+    "last_review": "v0.2.32 video 2026-06-14",
+    "mode": "r/w",
+    "name": "Raumtemperaturdifferenz für Standby im Kühlbetrieb",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1244": {
     "function": "03/16",
+    "info": "Quelle: Firmware/App-Review; Start und Stop sind getrennt aktivierbar.",
     "mode": "r/w",
     "name": "Silentmodus Timer Start aktivieren",
     "type": "DIGI1",
     "value_map": {
       "0": "Aus",
       "1": "Ein"
-    },
-    "info": "Quelle: Firmware/App-Review; Start und Stop sind getrennt aktivierbar."
+    }
   },
   "1245": {
     "function": "03/16",
@@ -2388,14 +2816,14 @@
   },
   "1247": {
     "function": "03/16",
+    "info": "Quelle: Firmware/App-Review; Start und Stop sind getrennt aktivierbar.",
     "mode": "r/w",
     "name": "Silentmodus Timer Stop aktivieren",
     "type": "DIGI1",
     "value_map": {
       "0": "Aus",
       "1": "Ein"
-    },
-    "info": "Quelle: Firmware/App-Review; Start und Stop sind getrennt aktivierbar."
+    }
   },
   "1248": {
     "function": "03/16",
@@ -2450,198 +2878,198 @@
     "type": "RAW"
   },
   "1256": {
+    "block": "KG",
+    "code": "KG1",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG1",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1257": {
+    "block": "KG",
+    "code": "KG2",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG2",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1258": {
+    "block": "KG",
+    "code": "KG3",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG3",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1259": {
+    "block": "KG",
+    "code": "KG4",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG4",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1260": {
+    "block": "KG",
+    "code": "KG5",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG5",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1261": {
+    "block": "KG",
+    "code": "KG6",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG6",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1262": {
+    "block": "KG",
+    "code": "KG7",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG7",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1263": {
+    "block": "KG",
+    "code": "KG8",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG8",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1264": {
+    "block": "KG",
+    "code": "KG9",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG9",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1265": {
+    "block": "KG",
+    "code": "KG10",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG10",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1266": {
+    "block": "KG",
+    "code": "KG11",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Startzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG11",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1267": {
+    "block": "KG",
+    "code": "KG12",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Stopzeit",
-    "type": "TIME_HHMM",
-    "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
-    "code": "KG12",
-    "block": "KG"
+    "type": "TIME_HHMM"
   },
   "1268": {
+    "block": "KG",
+    "code": "KG13-KG28",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1+2 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR",
-    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
-    "code": "KG13-KG28",
-    "block": "KG"
+    "type": "TIMER_BITPAIR"
   },
   "1269": {
+    "block": "KG",
+    "code": "KG29-KG44",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3+4 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR",
-    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
-    "code": "KG29-KG44",
-    "block": "KG"
+    "type": "TIMER_BITPAIR"
   },
   "1270": {
+    "block": "KG",
+    "code": "KG45-KG60",
     "function": "03/16",
+    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5+6 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR",
-    "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
-    "code": "KG45-KG60",
-    "block": "KG"
+    "type": "TIMER_BITPAIR"
   },
   "1271": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1272": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1273": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1274": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1275": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1276": {
-    "name": "Blockkopf Paket 4 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1277": {
-    "name": "Blockkopf Paket 4 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Reserve 1",
     "type": "BLOCK"
   },
   "1278": {
-    "name": "Blockkopf Paket 4 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Reserve 2",
     "type": "BLOCK"
   },
   "1279": {
-    "name": "Blockkopf Paket 4 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / Marker-Länge",
     "type": "BLOCK"
   },
   "1280": {
-    "name": "Blockkopf Paket 4 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 4 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1281": {
@@ -3011,6 +3439,8 @@
     "type": "RAW"
   },
   "1334": {
+    "block": "SG",
+    "code": "SG01",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Ready Funktion (ASM)",
@@ -3019,157 +3449,161 @@
       "0": "Aus",
       "1": "Einfach / 1 Kontakt",
       "2": "Erweitert / 2 Kontakte"
-    },
-    "code": "SG01",
-    "block": "SG"
+    }
   },
   "1335": {
+    "block": "SG",
+    "code": "SG02",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 1 Schlafmodus Zeit (ASM)",
-    "type": "RAW",
-    "code": "SG02",
-    "block": "SG"
+    "type": "RAW"
   },
   "1336": {
+    "block": "SG",
+    "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 2 Einschaltverzögerung (ASM)",
-    "type": "RAW",
-    "code": "SG03",
-    "block": "SG"
+    "type": "RAW"
   },
   "1337": {
+    "block": "SG",
+    "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 3 Einschaltverzögerung (ASM)",
-    "type": "RAW",
-    "code": "SG04",
-    "block": "SG"
+    "type": "RAW"
   },
   "1338": {
+    "block": "SG",
+    "code": "SG05",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 WW-Zieltemperatur-Anhebung (ASM)",
-    "type": "TEMP1",
-    "code": "SG05",
-    "block": "SG"
+    "type": "TEMP1"
   },
   "1339": {
+    "block": "SG",
+    "code": "SG06",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung (ASM)",
-    "type": "TEMP1",
-    "code": "SG06",
-    "block": "SG"
+    "type": "TEMP1"
   },
   "1340": {
+    "block": "SG",
+    "code": "SG07",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung (ASM)",
-    "type": "TEMP1",
-    "code": "SG07",
-    "block": "SG"
+    "type": "TEMP1"
   },
   "1341": {
+    "block": "SG",
+    "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Ready Parameter (ASM)",
-    "type": "RAW",
-    "code": "SG08",
-    "block": "SG"
+    "type": "RAW"
   },
   "1342": {
     "app_current_video_value": "0.0 bar",
     "app_label": "Low Pressure of Limiting Frequency",
+    "block": "A",
+    "code": "A38",
     "function": "03/16",
     "mode": "r/w",
     "name": "Niederdruck-Grenzwert für Frequenzbegrenzung",
     "type": "BAR_X10",
-    "unit": "bar",
-    "code": "A38",
-    "block": "A"
+    "unit": "bar"
   },
   "1343": {
     "app_current_video_value": "0.0 A",
     "app_label": "Max. Current Value",
+    "block": "A",
+    "code": "A39",
     "function": "03/16",
     "mode": "r/w",
     "name": "Maximaler Stromwert",
     "type": "AMP_X2",
-    "unit": "A",
-    "code": "A39",
-    "block": "A"
+    "unit": "A"
   },
   "1344": {
     "app_current_video_value": "0.5 m³/h",
     "app_label": "Rated Water Flow",
+    "block": "A",
+    "code": "A40",
     "last_review": "v026",
     "name": "Nenn-Wasserdurchfluss",
     "type": "FLOW_M3H_X100",
-    "unit": "m³/h",
-    "code": "A40",
-    "block": "A"
+    "unit": "m³/h"
   },
   "1345": {
+    "block": "H",
+    "code": "H40",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "H40",
-    "block": "H"
+    "type": "RAW"
   },
   "1346": {
-    "name": "Supervisor-Passwort (unconfirmed): 66",
-    "type": "RAW",
+    "block": "H",
     "code": "H41",
-    "block": "H"
+    "name": "Supervisor-Passwort (unconfirmed): 66",
+    "type": "RAW"
   },
   "1347": {
-    "name": "Segmet 5 of EEV Min Steps (unconfirmed) : 90 N",
-    "type": "RAW",
-    "code": "E07-5",
-    "block": "E"
+    "app_current_video_value": "90 Hz",
+    "app_label": "Max. Comp. Frequency in DHW mode",
+    "block": "C",
+    "code": "C12",
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Max. Kompressorfrequenz im Warmwasserbetrieb",
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1348": {
+    "block": "C",
+    "code": "C13",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "C13",
-    "block": "C"
+    "type": "RAW"
   },
   "1349": {
+    "block": "C",
+    "code": "C14",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "C14",
-    "block": "C"
+    "type": "RAW"
   },
   "1350": {
+    "block": "C",
+    "code": "C15",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "C15",
-    "block": "C"
+    "type": "RAW"
   },
   "1351": {
+    "block": "E",
+    "code": "E20",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "E20",
-    "block": "E"
+    "type": "RAW"
   },
   "1352": {
+    "block": "E",
+    "code": "E21",
     "function": "03/16",
     "mode": "r/w",
     "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW",
-    "code": "E21",
-    "block": "E"
+    "type": "RAW"
   },
   "1353": {
     "function": "03/16",
@@ -3190,85 +3624,102 @@
     "type": "RAW"
   },
   "1356": {
-    "name": "Einschalt-AT Gehaeusewannenheizung (wenn AT kleiner füx H.. Min ein)",
-    "type": "RAW",
+    "block": "H",
     "code": "H42",
-    "block": "H"
+    "name": "Einschalt-AT Gehaeusewannenheizung (wenn AT kleiner füx H.. Min ein)",
+    "type": "RAW"
   },
   "1357": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Low-Water-Temp Pumpenabschalt-Abweichung (ASM)",
-    "type": "TEMP1",
+    "app_label": "Diff. of No Pump On at Low Water Temp.",
+    "block": "Z",
     "code": "Z19",
-    "block": "Z"
+    "default": "2.0°C",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Differenz: Keine Pumpe Ein bei niedriger Wassertemperatur",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "TEMP1",
+    "unit": "K"
   },
   "1358": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Kühlmodus Zone1 Wasserpumpensteuerung (ASM)",
-    "type": "RAW",
+    "app_label": "Enable Zone 1 Water Pump in Cooling",
+    "app_values": {
+      "0": "NO",
+      "1": "YES"
+    },
+    "block": "Z",
     "code": "Z20",
-    "block": "Z"
+    "default": "NO",
+    "function": "03/16",
+    "last_review": "v0.2.32-zblock",
+    "mode": "r/w",
+    "name": "Zone 1 Wasserpumpe im Kühlbetrieb aktivieren",
+    "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
+    "type": "DIGI1",
+    "value_map": {
+      "0": "Nein",
+      "1": "Ja"
+    }
   },
   "1361": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1362": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1363": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1364": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1365": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1366": {
-    "name": "Blockkopf Paket 5 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1367": {
-    "name": "Blockkopf Paket 5 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Reserve 1",
     "type": "BLOCK"
   },
   "1368": {
-    "name": "Blockkopf Paket 5 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Reserve 2",
     "type": "BLOCK"
   },
   "1369": {
-    "name": "Blockkopf Paket 5 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / Marker-Länge",
     "type": "BLOCK"
   },
   "1370": {
-    "name": "Blockkopf Paket 5 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 5 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1371": {
@@ -3332,215 +3783,285 @@
     "type": "RAW"
   },
   "1432": {
-    "name": "Target Temp Diff for Pump Speed Control",
-    "type": "RAW",
+    "app_current_video_value": "4.4 °C",
+    "app_label": "Target Temp. Diff. for Pump Speed Control",
+    "block": "P",
     "code": "P11",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Ziel-Temperaturdifferenz für Pumpendrehzahlregelung",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1433": {
-    "name": "Pump Speed Adjust Range for each Period (Um soviel steigt PWM % pro Periode)",
-    "type": "RAW",
+    "app_current_video_value": "2 N",
+    "app_label": "Pump Speed Adjust Range for Each Period",
+    "block": "P",
     "code": "P12",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Pumpendrehzahl-Anpassbereich je Periode",
+    "type": "STEPS_N",
+    "unit": "N"
   },
   "1435": {
-    "name": "Refill Valve Start Cycle (for IDU)",
-    "type": "RAW",
+    "app_current_video_value": "30 days",
+    "app_label": "Refill Valve Start Cycle (for IDU)",
+    "block": "P",
     "code": "P13",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Nachfüllventil Startzyklus (IDU)",
+    "type": "DAYS",
+    "unit": "days"
   },
   "1436": {
-    "name": "Refill Valve Working  Duration (for IDU)",
-    "type": "RAW",
+    "app_current_video_value": "30 s",
+    "app_label": "Refill Valve Working Duration (for IDU)",
+    "block": "P",
     "code": "P14",
-    "block": "P"
+    "function": "03/16",
+    "last_review": "v0.2.32 video2 2026-06-14",
+    "mode": "r/w",
+    "name": "Nachfüllventil Arbeitsdauer (IDU)",
+    "type": "SECONDS",
+    "unit": "s"
   },
   "1437": {
+    "app_current_video_value": "",
     "app_label": "Button Heater Delays OFF Time after Defrost",
-    "last_review": "v39",
-    "name": "Gehaeusewannenheizung Delays Off Time after Defrost",
-    "type": "RAW",
+    "block": "D",
     "code": "D30",
-    "block": "D"
+    "function": "03/16",
+    "last_review": "v0.2.32 correction 2026-06-14; user confirmed register and unit minutes",
+    "mode": "r/w",
+    "name": "Gehaeusewannenheizung Delays Off Time after Defrost",
+    "notes": "Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten.",
+    "source": "User confirmed; used in live system",
+    "type": "MINUTES",
+    "unit": "min"
+  },
+  "1438": {
+    "app_current_video_value": "1.0 bar",
+    "app_label": "Target Water Pressure (for IDU)",
+    "block": "P",
+    "code": "P15",
+    "function": "03/16",
+    "last_review": "v0.2.32 correction 2026-06-14; user live-tested",
+    "mode": "r/w",
+    "name": "Ziel-Wasserdruck (IDU)",
+    "notes": "User tested: P15 = Register 1438.",
+    "source": "Warmlink-App Video + user live test",
+    "type": "BAR_X10",
+    "unit": "bar"
+  },
+  "1444": {
+    "app_current_video_value": "0.5 bar",
+    "app_label": "Stop Refilling Pressure Diff. (for IDU)",
+    "block": "P",
+    "code": "P16",
+    "function": "03/16",
+    "last_review": "v0.2.32 correction 2026-06-14; user live-tested",
+    "mode": "r/w",
+    "name": "Stopp-Nachfülldruckdifferenz (IDU)",
+    "notes": "User tested: P16 = Register 1444.",
+    "source": "Warmlink-App Video + user live test",
+    "type": "BAR_X10",
+    "unit": "bar"
   },
   "1451": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1452": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1453": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1454": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1455": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1456": {
-    "name": "Blockkopf Paket 6 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1457": {
-    "name": "Blockkopf Paket 6 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Reserve 1",
     "type": "BLOCK"
   },
   "1458": {
-    "name": "Blockkopf Paket 6 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Reserve 2",
     "type": "BLOCK"
   },
   "1459": {
-    "name": "Blockkopf Paket 6 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / Marker-Länge",
     "type": "BLOCK"
   },
   "1460": {
-    "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "1541": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "1542": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "1543": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "1544": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "1545": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "1546": {
-    "name": "Blockkopf Paket 7 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "1547": {
-    "name": "Blockkopf Paket 7 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Reserve 1",
     "type": "BLOCK"
   },
   "1548": {
-    "name": "Blockkopf Paket 7 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Reserve 2",
     "type": "BLOCK"
   },
   "1549": {
-    "name": "Blockkopf Paket 7 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / Marker-Länge",
     "type": "BLOCK"
   },
   "1550": {
-    "name": "Blockkopf Paket 7 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket 7 / erstes Blockkopf-Register",
+    "type": "BLOCK"
+  },
+  "200": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1",
     "type": "BLOCK"
   },
   "2001": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "2002": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "2003": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "2004": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "2005": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "2006": {
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "2007": {
-    "name": "Blockkopf Paket Status 1 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Reserve 1",
     "type": "BLOCK"
   },
   "2008": {
-    "name": "Blockkopf Paket Status 1 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Reserve 2",
     "type": "BLOCK"
   },
   "2009": {
-    "name": "Blockkopf Paket Status 1 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / Marker-Länge",
+    "type": "BLOCK"
+  },
+  "201": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2",
     "type": "BLOCK"
   },
   "2010": {
-    "name": "Blockkopf Paket Status 1 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 1 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "2011": {
@@ -3631,6 +4152,12 @@
     "name": "001 bis 023 / Lastausgänge Bitfeld (vollständig decodiert)",
     "type": "BITFIELD"
   },
+  "202": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3",
+    "type": "BLOCK"
+  },
   "2020": {
     "function": "16",
     "mode": "write",
@@ -3691,6 +4218,12 @@
     "name": "Eingangsstrom 1",
     "type": "DIGI5"
   },
+  "203": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4",
+    "type": "BLOCK"
+  },
   "2030": {
     "function": "16",
     "mode": "write",
@@ -3734,52 +4267,58 @@
       "8": "S09 Reserviert / unbekannt",
       "9": "S10 Heizen/Kühlen AN/AUS"
     },
+    "block": "S",
+    "code": "S01",
     "function": "03",
     "mode": "read-only",
     "name": "bis S16 / Schalterzustand / Kontakte Bitfeld inkl. SG-Kontakte",
-    "type": "BITFIELD",
-    "code": "S01",
-    "block": "S"
+    "type": "BITFIELD"
   },
   "2035": {
+    "block": "T",
+    "code": "T40",
     "function": "16",
     "mode": "write",
     "name": "Heizungsrücklauftemperatur",
-    "type": "TEMP1",
-    "code": "T40",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2036": {
+    "block": "T",
+    "code": "T41",
     "function": "16",
     "mode": "write",
     "name": "Heizungsvorlauftemperatur",
-    "type": "TEMP1",
-    "code": "T41",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2037": {
+    "block": "T",
+    "code": "T42",
     "function": "16",
     "mode": "write",
     "name": "Mischrohrauslasswassertemperatur",
-    "type": "TEMP1",
-    "code": "T42",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2038": {
+    "block": "T",
+    "code": "T43",
     "function": "16",
     "mode": "write",
     "name": "WW-Rücklauftemperatur",
-    "type": "TEMP1",
-    "code": "T43",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2039": {
+    "block": "T",
+    "code": "T44",
     "function": "16",
     "mode": "write",
     "name": "WW-Vorlauftemperatur",
-    "type": "TEMP1",
-    "code": "T44",
-    "block": "T"
+    "type": "TEMP1"
+  },
+  "204": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5",
+    "type": "BLOCK"
   },
   "2040": {
     "function": "16",
@@ -3794,100 +4333,106 @@
     "type": "RAW"
   },
   "2042": {
+    "block": "T",
+    "code": "T36",
     "function": "16",
     "mode": "write",
     "name": "Phasenstrom des Kompressors",
-    "type": "DIGI5",
-    "code": "T36",
-    "block": "T"
+    "type": "DIGI5"
   },
   "2043": {
+    "block": "T",
+    "code": "T37",
     "function": "16",
     "mode": "write",
     "name": "DC-Power-Bus-Spannung",
-    "type": "DIGI1",
-    "code": "T37",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2044": {
+    "block": "T",
+    "code": "T38",
     "function": "16",
     "mode": "write",
     "name": "IPM-Temperatur.",
-    "type": "TEMP1",
-    "code": "T38",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2045": {
+    "block": "T",
+    "code": "T01",
     "function": "16",
     "mode": "write",
     "name": "Einlasswassertemperatur",
-    "type": "TEMP1",
-    "code": "T01",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2046": {
+    "block": "T",
+    "code": "T02",
     "function": "16",
     "mode": "write",
     "name": "Auslasswassertemperatur",
-    "type": "TEMP1",
-    "code": "T02",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2047": {
+    "block": "T",
+    "code": "T08",
     "function": "16",
     "mode": "write",
     "name": "WW-Tanktemperatur",
-    "type": "TEMP1",
-    "code": "T08",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2048": {
+    "block": "T",
+    "code": "T04",
     "function": "16",
     "mode": "write",
     "name": "Umgebungstemperatur (AT)",
-    "type": "TEMP1",
-    "code": "T04",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2049": {
+    "block": "T",
+    "code": "T03",
     "function": "16",
     "mode": "write",
     "name": "Verdampfertemperatur",
-    "type": "TEMP1",
-    "code": "T03",
-    "block": "T"
+    "type": "TEMP1"
+  },
+  "205": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6",
+    "type": "BLOCK"
   },
   "2050": {
+    "block": "T",
+    "code": "T14",
     "function": "16",
     "mode": "write",
     "name": "Verteilerrohrtemperatur",
-    "type": "TEMP1",
-    "code": "T14",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2051": {
+    "block": "T",
+    "code": "T05",
     "function": "16",
     "mode": "write",
     "name": "Saugsungstemperatur",
-    "type": "TEMP1",
-    "code": "T05",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2052": {
+    "block": "T",
+    "code": "T07",
     "function": "16",
     "mode": "write",
     "name": "Puffertanktemperatur",
-    "type": "TEMP1",
-    "code": "T07",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2053": {
+    "block": "T",
+    "code": "T12",
     "function": "16",
     "mode": "write",
     "name": "Abgastemperatur",
-    "type": "TEMP1",
-    "code": "T12",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2054": {
     "function": "16",
@@ -3896,12 +4441,12 @@
     "type": "RAW"
   },
   "2055": {
+    "block": "T",
+    "code": "T06",
     "function": "16",
     "mode": "write",
     "name": "Frostschutztemperatur (Am PlattenWT)",
-    "type": "TEMP1",
-    "code": "T06",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2056": {
     "function": "16",
@@ -3910,26 +4455,32 @@
     "type": "TEMP1"
   },
   "2057": {
+    "block": "T",
+    "code": "T35",
     "function": "16",
     "mode": "write",
     "name": "AC-Eingangsstrom",
-    "type": "DIGI5",
-    "code": "T35",
-    "block": "T"
+    "type": "DIGI5"
   },
   "2058": {
+    "block": "T",
+    "code": "T09",
     "function": "16",
     "mode": "write",
     "name": "Raumtemperatur",
-    "type": "DIGI5",
-    "code": "T09",
-    "block": "T"
+    "type": "DIGI5"
   },
   "2059": {
     "function": "16",
     "mode": "write",
     "name": "Wärmeleistung / Unit Capacity",
     "type": "RAW"
+  },
+  "206": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
   },
   "2060": {
     "function": "16",
@@ -3938,36 +4489,36 @@
     "type": "TEMP1"
   },
   "2061": {
+    "block": "T",
+    "code": "T33",
     "function": "16",
     "mode": "write",
     "name": "IPM-Hochfehler-Temperatur",
-    "type": "TEMP1",
-    "code": "T33",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2062": {
+    "block": "T",
+    "code": "T34",
     "function": "16",
     "mode": "write",
     "name": "AC-Eingangsspannung",
-    "type": "TEMP1",
-    "code": "T34",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2063": {
+    "block": "T",
+    "code": "T10",
     "function": "16",
     "mode": "write",
     "name": "EVI-Einlasstemperatur",
-    "type": "DIGI1",
-    "code": "T10",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2064": {
+    "block": "T",
+    "code": "T11",
     "function": "16",
     "mode": "write",
     "name": "EVI-Auslasstemperatur",
-    "type": "TEMP1",
-    "code": "T11",
-    "block": "T"
+    "type": "TEMP1"
   },
   "2065": {
     "function": "16",
@@ -3994,12 +4545,18 @@
     "type": "DIGI5"
   },
   "2069": {
+    "block": "T",
+    "code": "T15",
     "function": "16",
     "mode": "write",
     "name": "Niederdruck",
-    "type": "DIGI5",
-    "code": "T15",
-    "block": "T"
+    "type": "DIGI5"
+  },
+  "207": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
   },
   "2070": {
     "function": "16",
@@ -4008,60 +4565,60 @@
     "type": "DIGI5"
   },
   "2071": {
+    "block": "T",
+    "code": "T30",
     "function": "16",
     "mode": "write",
     "name": "Kompressorfrequenz",
-    "type": "DIGI1",
-    "code": "T30",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2072": {
+    "block": "T",
+    "code": "T31",
     "function": "16",
     "mode": "write",
     "name": "Betriebsfrequenz des Kompressors",
-    "type": "DIGI1",
-    "code": "T31",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2073": {
+    "block": "T",
+    "code": "T32",
     "function": "16",
     "mode": "write",
     "name": "Max. Frequenz vom Kompressortreiber",
-    "type": "DIGI1",
-    "code": "T32",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2074": {
+    "block": "T",
+    "code": "T27",
     "function": "16",
     "mode": "write",
     "name": "Drehzahl des Lüftermotors 1",
-    "type": "DIGI1",
-    "code": "T27",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2075": {
+    "block": "T",
+    "code": "T28",
     "function": "16",
     "mode": "write",
     "name": "Drehzahl des Lüftermotors 2",
-    "type": "DIGI1",
-    "code": "T28",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2076": {
+    "block": "T",
+    "code": "T29",
     "function": "16",
     "mode": "write",
     "name": "Zieldrehzahl des Lüftermotors",
-    "type": "DIGI1",
-    "code": "T29",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2077": {
+    "block": "T",
+    "code": "T39",
     "function": "16",
     "mode": "write",
     "name": "Wasserdurchflussrate",
-    "type": "DIGI9",
-    "code": "T39",
-    "block": "T"
+    "type": "DIGI9"
   },
   "2078": {
     "function": "16",
@@ -4074,6 +4631,12 @@
     "mode": "write",
     "name": "Leistung",
     "type": "DIGI1"
+  },
+  "208": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
   },
   "2080": {
     "function": "16",
@@ -4216,6 +4779,12 @@
     "name": "Fehler 5 / Sensorfehler System 1 Bitfeld",
     "type": "FAULT_BITS"
   },
+  "209": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
   "2090": {
     "bit_map": {
       "0": "System 2 Coil-/Verdampfertemperatur Fehler",
@@ -4238,63 +4807,69 @@
     "type": "FAULT_BITS"
   },
   "2091": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 1",
     "type": "BLOCK"
   },
   "2092": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 2",
     "type": "BLOCK"
   },
   "2093": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 3",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 3",
     "type": "BLOCK"
   },
   "2094": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 4",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 4",
     "type": "BLOCK"
   },
   "2095": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 5",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 5",
     "type": "BLOCK"
   },
   "2096": {
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 6",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Kennung Wort 6",
     "type": "BLOCK"
   },
   "2097": {
-    "name": "Blockkopf Paket Status 2 / Reserve 1",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Reserve 1",
     "type": "BLOCK"
   },
   "2098": {
-    "name": "Blockkopf Paket Status 2 / Reserve 2",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Reserve 2",
     "type": "BLOCK"
   },
   "2099": {
-    "name": "Blockkopf Paket Status 2 / Marker-Länge",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / Marker-Länge",
+    "type": "BLOCK"
+  },
+  "210": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
     "type": "BLOCK"
   },
   "2100": {
-    "name": "Blockkopf Paket Status 2 / erstes Blockkopf-Register",
     "function": "03",
     "mode": "read",
+    "name": "Blockkopf Paket Status 2 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
   "2101": {
@@ -4350,6 +4925,12 @@
     "mode": "write",
     "name": "Reserviert",
     "type": "RAW"
+  },
+  "211": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
   },
   "2110": {
     "function": "16",
@@ -4411,6 +4992,12 @@
     "name": "Reserviert",
     "type": "RAW"
   },
+  "212": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
   "2120": {
     "function": "16",
     "mode": "write",
@@ -4471,124 +5058,46 @@
     "name": "Reserviert",
     "type": "RAW"
   },
+  "213": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
   "2130": {
+    "block": "T",
+    "code": "T46",
     "function": "16",
     "mode": "write",
     "name": "IPM-Temperatur des externen Lüftermotorantriebs",
-    "type": "DIGI5",
-    "code": "T46",
-    "block": "T"
+    "type": "DIGI5"
   },
   "2131": {
+    "block": "T",
+    "code": "T47",
     "function": "16",
     "mode": "write",
     "name": "Leistung des externen Lüftermotorantriebs",
-    "type": "DIGI1",
-    "code": "T47",
-    "block": "T"
+    "type": "DIGI1"
   },
   "2132": {
+    "block": "T",
+    "code": "T48",
     "function": "16",
     "mode": "write",
     "name": "Strom des externen Lüftermotorantriebs.",
-    "type": "DIGI6",
-    "code": "T48",
-    "block": "T"
-  },
-  "200": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "201": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "202": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "203": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "204": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "205": {
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "206": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "207": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "208": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "209": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "210": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "211": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "212": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
-  },
-  "213": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "function": "03",
-    "mode": "read",
-    "type": "BLOCK"
+    "type": "DIGI6"
   },
   "214": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
     "function": "03",
     "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
     "type": "BLOCK"
   },
   "215": {
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
     "function": "03",
     "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
     "type": "BLOCK"
   }
 }

@@ -1,0 +1,11 @@
+V0.2.32 PRIVATE
+
+- Basis: letzter PUBLIC-Stand V0.2.31.
+- APP_VERSION auf 0.2.32 gesetzt.
+- APP_EDITION auf PRIVATE gesetzt.
+- DEFAULT_HOST fuer private/portable Nutzung wieder auf 192.168.10.43 gesetzt.
+- UPDATE_REPO von dosordie/FoxAir_Controll auf dosordie/FoxAir_Control korrigiert.
+- Hilfe/About-Button aus der Funktions-Seitenleiste entfernt.
+- Neuer kleiner Hilfe-Button oben neben Programm-Einstellungen; F1 und Menue Hilfe bleiben unveraendert.
+
+Kein EXE-/Installer-/Release-Build in diesem Stand.
