@@ -1,6 +1,6 @@
 #define MyAppName "FoxAir / Phnix Control"
 #define MyAppExeName "FoxAir_Phnix_Control.exe"
-#define MyAppVersion "0.2.30"
+#define MyAppVersion "0.2.31"
 #define MyAppPublisher "DosOrDie"
 
 [Setup]
