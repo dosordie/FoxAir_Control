@@ -7,20 +7,38 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 ## Funktionen
 
 - Live-Registeranzeige mit bekannten FoxAir/Phnix-Datenpunkten
-- Lesen und Schreiben per Warmlink RAW, Standard Modbus und Display Modbus
+- Lesen und Schreiben per Modbus Standart, Modbus Display und Modbus Warmlink LTE
 - TCP/IP/ser2net oder USB-RS485/COM-Port
+- F1 Hilfe/About mit Version, GitHub-Link und Update-Prüfung
 - Parameter-Einstellfenster mit Beschreibungen/Wissensdatenbank
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
 - Offline Register-Browser mit editierbarer Wissensdatenbank
 
-## Unterstützte Verbindungstypen
+## Installation / Download
 
-| Modus | Transport | Hinweis |
-|---|---|---|
-| Warmlink RAW | TCP/IP oder COM | bisheriger Hauptmodus |
-| Standard Modbus | TCP/IP oder COM | typischerweise Unit 1 |
-| Display Modbus / DWIN | TCP/IP oder COM | typischerweise Unit 3, optional +0x2000 |
+Für normale Windows-Nutzer sind die GitHub-Release-Downloads der einfachste Weg:
+
+1. **Setup-EXE** herunterladen und installieren.  
+   Erstellt Startmenü-/optional Desktop-Verknüpfung und kann spätere Versionen überinstallieren.
+2. **Windows Portable ZIP** herunterladen, entpacken und EXE starten.  
+   Ohne Installation, gut für Tests oder portable Nutzung.
+
+Python-Start ist weiterhin möglich, aber eher für Entwicklung/Tests gedacht.
+
+## Unterstützte Verbindungstypen / „Modbusse“
+
+| Modus | Transport | Was ist das? | Typisch |
+|---|---|---|---|
+| Modbus Standart | TCP/IP oder COM/RS485 | Offizielle Modbus-Klemmen am Gerät | Unit 1, Port 10001 bei TCP-Gateway |
+| Modbus Display | TCP/IP oder COM/RS485 | Bus, der zum Display / DWIN-HMI geht | meist Unit 3, optional +0x2000 für Parameter |
+| Modbus Warmlink LTE | TCP/IP/ser2net oder COM/RS485 | Modem-/Warmlink-Bus im Außengerät, an den Klemmen am Mainboard | Bus 0x63, RAW-Protokoll |
+
+Kurz gesagt:
+
+- **Standart** = die offiziellen Modbus-Klemmen am Gerät.
+- **Display** = der Bus, der zum Display geht.
+- **Warmlink LTE** = nur im Außengerät vorhanden, an den Klemmen am Mainboard / Modem-Bus.
 
 ## Unterstützte Geräteauswahl für Defaultwerte
 
@@ -35,7 +53,7 @@ Die Geräteauswahl beeinflusst nur die Anzeige und Pflege von Defaultwerten in d
 
 GL = R290, BL = R32.
 
-## Installation mit Python
+## Installation mit Python / Entwicklung
 
 1. Python 3.11, 3.12 oder 3.13 64-Bit installieren.
 2. ZIP entpacken.
@@ -88,7 +106,7 @@ Voraussetzung: Inno Setup 6 ist installiert.
 Empfohlener Ablauf:
 
 ```bat
-git tag v0.2.26
+git tag v0.2.31
 git push origin main --tags
 ```
 
@@ -111,9 +129,10 @@ Dieses Tool kann Register schreiben. Falsche Werte können Störungen, Fehlfunkt
 
 ### Updates
 
-Die Public-Version prueft beim Start automatisch die neueste GitHub-Release-Version.
-Manuell geht das ueber **Programm-Einstellungen ... → Update jetzt prüfen ...** oder ueber den Button **Update prüfen ...**.
+Die Public-Version prüft beim Start automatisch die neueste GitHub-Release-Version.
+Manuell geht das über **F1 / Hilfe → About → Update prüfen ...**.
 Wenn eine neue Version vorhanden ist, wird ein Download-Link zur Setup-EXE bzw. Portable-ZIP angezeigt.
+Die Setup-EXE kann später über eine vorhandene Installation drüber installiert werden.
 
 ### Speicherort der Einstellungen
 

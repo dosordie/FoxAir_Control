@@ -72,7 +72,7 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.30"
+APP_VERSION = "0.2.31"
 BUILD_DATE = "2026-06-14"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION} {APP_EDITION} - by DosOrDie"
@@ -80,7 +80,7 @@ PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr.
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = ""
 DEFAULT_PORT = 2001
-UPDATE_REPO = "dosordie/FoxAir_Control"
+UPDATE_REPO = "dosordie/FoxAir_Controll"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
 UPDATE_RELEASES_URL = f"https://github.com/{UPDATE_REPO}/releases/latest"
 
@@ -146,6 +146,13 @@ def app_icon() -> QIcon:
     icon_path = resource_path(APP_ICON_FILE)
     icon = QIcon(icon_path)
     return icon
+
+
+def app_icon_pixmap(size: int = 96) -> QPixmap:
+    pix = QPixmap(resource_path(APP_ICON_FILE))
+    if pix.isNull():
+        return QPixmap()
+    return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
 KNOWLEDGE_FIELDS = ("description", "knowledge", "notes", "hint", "explanation", "default", "default_by_device", "source", "source_app_video")
 
@@ -3154,6 +3161,7 @@ class BackupRestoreDialog(QDialog):
         self.backup_table.verticalHeader().setVisible(False)
         self.backup_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.backup_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.backup_table.setWordWrap(False)
         hdr = self.backup_table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -3194,6 +3202,7 @@ class BackupRestoreDialog(QDialog):
         self.restore_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.restore_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.restore_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.restore_table.setWordWrap(False)
         hdr = self.restore_table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -3327,6 +3336,8 @@ class BackupRestoreDialog(QDialog):
         path, _ = QFileDialog.getSaveFileName(self, "Backup speichern", os.path.join(getattr(self.main_window, "user_data_dir", self.main_window.base_dir), default_name), "JSON Backup (*.json)")
         if not path:
             return
+        self.backup_info_label.setText("Backup-Datei wird geschrieben ...")
+        QApplication.processEvents()
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             with open(path, "w", encoding="utf-8") as f:
@@ -3343,18 +3354,23 @@ class BackupRestoreDialog(QDialog):
         path, _ = QFileDialog.getOpenFileName(self, "Backup laden", getattr(self.main_window, "user_data_dir", self.main_window.base_dir), "JSON Backup (*.json);;Alle Dateien (*.*)")
         if not path:
             return
+        self.restore_info_label.setText("Backup-Datei wird geladen ...")
+        self.load_btn.setEnabled(False)
+        QApplication.processEvents()
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict) or data.get("format") != "FoxAir_Phnix_Control_Parameter_Backup":
                 raise ValueError("Keine passende FoxAir/Phnix Backup-Datei.")
             self.loaded_backup = data
-            self.refresh_restore_table()
+            QTimer.singleShot(0, self.refresh_restore_table)
             self.restore_changed_btn.setEnabled(True)
             self.restore_selected_btn.setEnabled(True)
             self.tabs.setCurrentIndex(1)
         except Exception as exc:
             QMessageBox.warning(self, "Backup laden Fehler", str(exc))
+        finally:
+            self.load_btn.setEnabled(True)
 
     def refresh_restore_table(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -3486,9 +3502,9 @@ class BackupRestoreDialog(QDialog):
 
 
 BACKEND_CHOICES = [
-    ("warmlink_raw", "Warmlink RAW"),
-    ("standard_modbus", "Standard Modbus"),
-    ("display_modbus", "Display Modbus (DWIN)"),
+    ("warmlink_raw", "Modbus Warmlink LTE"),
+    ("standard_modbus", "Modbus Standart"),
+    ("display_modbus", "Modbus Display"),
 ]
 BACKEND_LABELS = dict(BACKEND_CHOICES)
 TRANSPORT_CHOICES = [
@@ -3530,7 +3546,7 @@ class CommunicationSettingsDialog(QDialog):
         for key, label in BACKEND_CHOICES:
             self.backend_combo.addItem(label, key)
         idx = self.backend_combo.findData(main_window.current_backend_key())
-        self.backend_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.backend_combo.setCurrentIndex(idx if idx >= 0 else (self.backend_combo.findData("standard_modbus") if APP_EDITION.upper() == "PUBLIC" else 0))
 
         self.transport_combo = QComboBox()
         for key, label in TRANSPORT_CHOICES:
@@ -3591,9 +3607,6 @@ class CommunicationSettingsDialog(QDialog):
         self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
         form.addRow("Anzeige:", self.show_warning_cb)
 
-        self.update_btn = QPushButton("Update jetzt prüfen ...")
-        self.update_btn.setToolTip("Prüft die neueste öffentliche GitHub-Release-Version.")
-        form.addRow("Update:", self.update_btn)
 
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
@@ -3606,7 +3619,6 @@ class CommunicationSettingsDialog(QDialog):
 
         self.backend_combo.currentIndexChanged.connect(lambda _=None: self._backend_changed(load_values=True))
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
-        self.update_btn.clicked.connect(self.main_window.check_for_updates)
         self._backend_changed(load_values=True)
 
     def _backend_settings(self, backend: str) -> dict:
@@ -3655,11 +3667,11 @@ class CommunicationSettingsDialog(QDialog):
         self.unit_spin.setVisible(backend in ("display_modbus", "standard_modbus"))
         self._transport_changed()
         if backend == "warmlink_raw":
-            self.info_label.setText("Warmlink RAW kann per TCP/ser2net oder direkt per COM-Port genutzt werden. WP-Busadresse bleibt intern 0x63.")
+            self.info_label.setText("Modbus Warmlink LTE: Bus/Modem im Außengerät am Mainboard. WP-Busadresse bleibt intern 0x63.")
         elif backend == "standard_modbus":
-            self.info_label.setText("Standard-Modbus nutzt FC03 lesen und FC06 schreiben. Bei deiner Anlage bestätigt: Port 10001, Unit 1.")
+            self.info_label.setText("Modbus Standart: offizielle Modbus-Klemmen am Gerät, typ. Unit 1. Nutzt FC03 lesen und FC06 schreiben.")
         else:
-            self.info_label.setText("Display-Modbus nutzt DWIN/Display-Unit, typ. Unit 3. Optional werden Parameterregister 1000–1999 auf +0x2000 übersetzt.")
+            self.info_label.setText("Modbus Display: Bus zum Display / DWIN-HMI, typ. Unit 3. Optional werden Parameterregister 1000–1999 auf +0x2000 übersetzt.")
 
     def _transport_changed(self):
         is_serial = str(self.transport_combo.currentData() or "tcp") == "serial"
@@ -3680,6 +3692,65 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.apply_communication_settings(backend)
         self.main_window._save_settings(sync_main_fields=False)
         super().accept()
+
+
+class AboutDialog(QDialog):
+    def __init__(self, main_window: "MainWindow"):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self.setWindowTitle("Hilfe / About")
+        self.setWindowIcon(app_icon())
+        self.resize(560, 420)
+        layout = QVBoxLayout(self)
+
+        head = QHBoxLayout()
+        icon_label = QLabel()
+        pm = app_icon_pixmap(96)
+        if not pm.isNull():
+            icon_label.setPixmap(pm)
+        head.addWidget(icon_label)
+
+        text = QLabel(
+            f"<b>FoxAir / Phnix Control</b><br>"
+            f"Version V{APP_VERSION} {APP_EDITION}<br>"
+            f"Build: {BUILD_DATE}<br>"
+            f"by DosOrDie"
+        )
+        text.setTextFormat(Qt.RichText)
+        text.setOpenExternalLinks(True)
+        head.addWidget(text, 1)
+        layout.addLayout(head)
+
+        warn = QLabel(PUBLIC_WARNING_TEXT)
+        warn.setWordWrap(True)
+        warn.setStyleSheet("color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 6px; font-weight: bold;")
+        layout.addWidget(warn)
+
+        info = QLabel(
+            "Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir/Phnix-basierte Wärmepumpen. "
+            "Register-Schreibzugriffe können Anlagenparameter verändern. Vor Änderungen immer ein Backup erstellen."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        repo = QLabel(f'GitHub: <a href="https://github.com/{UPDATE_REPO}">https://github.com/{UPDATE_REPO}</a>')
+        repo.setTextFormat(Qt.RichText)
+        repo.setOpenExternalLinks(True)
+        layout.addWidget(repo)
+
+        btn_row = QHBoxLayout()
+        self.update_btn = QPushButton("Update prüfen ...")
+        repo_btn = QPushButton("GitHub öffnen")
+        close_btn = QPushButton("Schließen")
+        btn_row.addWidget(self.update_btn)
+        btn_row.addWidget(repo_btn)
+        btn_row.addStretch(1)
+        btn_row.addWidget(close_btn)
+        layout.addLayout(btn_row)
+
+        self.update_btn.clicked.connect(main_window.check_for_updates)
+        repo_btn.clicked.connect(lambda: webbrowser.open(f"https://github.com/{UPDATE_REPO}"))
+        close_btn.clicked.connect(self.accept)
 
 
 class MainWindow(QMainWindow):
@@ -3748,6 +3819,7 @@ class MainWindow(QMainWindow):
         self.bus_dialog: Optional[BusAddressDialog] = None
         self.offline_dialog: Optional[OfflineRegisterBrowserDialog] = None
         self.backup_restore_dialog: Optional[BackupRestoreDialog] = None
+        self.about_dialog: Optional[AboutDialog] = None
         self.update_thread: Optional[QThread] = None
         self.update_worker: Optional[UpdateCheckWorker] = None
         self.register_write_dialogs: Dict[tuple[int, int], RegisterQuickWriteDialog] = {}
@@ -3758,6 +3830,7 @@ class MainWindow(QMainWindow):
         self._suppress_name_resize = False
 
         self._build_ui()
+        self._setup_help_actions()
         self.init_read_timer = QTimer(self)
         self.init_read_timer.setSingleShot(True)
         self.init_read_timer.timeout.connect(self._send_next_init_read)
@@ -3771,6 +3844,22 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(700, self._autoconnect_if_enabled)
         if APP_EDITION.upper() == "PUBLIC":
             QTimer.singleShot(2500, self.check_for_updates_on_startup)
+
+    def _setup_help_actions(self):
+        help_menu = self.menuBar().addMenu("Hilfe")
+        about_action = QAction("Hilfe / About", self)
+        about_action.setShortcut("F1")
+        about_action.triggered.connect(self.open_about_dialog)
+        help_menu.addAction(about_action)
+
+    def open_about_dialog(self):
+        if self.about_dialog is None or not self.about_dialog.isVisible():
+            self.about_dialog = AboutDialog(self)
+            self.about_dialog.finished.connect(lambda _=None: setattr(self, "about_dialog", None))
+            self.about_dialog.show()
+        else:
+            self.about_dialog.raise_()
+            self.about_dialog.activateWindow()
 
     def _autoconnect_if_enabled(self):
         if self.autoconnect_cb.isChecked() and not self.connected:
@@ -3868,9 +3957,9 @@ class MainWindow(QMainWindow):
         self.backend_combo = QComboBox()
         for key, label in BACKEND_CHOICES:
             self.backend_combo.addItem(label, key)
-        backend_saved = str(self.settings.get("backend", "warmlink_raw"))
+        backend_saved = str(self.settings.get("backend", "standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw"))
         if backend_saved not in BACKEND_LABELS:
-            backend_saved = "warmlink_raw"
+            backend_saved = "standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw"
         idx = self.backend_combo.findData(backend_saved)
         self.backend_combo.setCurrentIndex(idx if idx >= 0 else 0)
 
@@ -4059,7 +4148,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
-        self.update_check_btn = QPushButton("Update prüfen ...")
+        self.about_btn = QPushButton("Hilfe / About ...")
         self.contact_value_label.setVisible(False)
         special_layout.addWidget(self.param_settings_btn, 0, 0, 1, 2)
         special_layout.addWidget(self.onoff_timer_btn, 1, 0, 1, 2)
@@ -4071,7 +4160,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.backup_restore_btn, 7, 0, 1, 2)
         special_layout.addWidget(self.offline_browser_btn, 8, 0, 1, 2)
         special_layout.addWidget(self.bus_popup_btn, 9, 0, 1, 2)
-        special_layout.addWidget(self.update_check_btn, 10, 0, 1, 2)
+        special_layout.addWidget(self.about_btn, 10, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -4183,7 +4272,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
-        self.update_check_btn.clicked.connect(self.check_for_updates)
+        self.about_btn.clicked.connect(self.open_about_dialog)
         self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
         self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
         self.cache_save_btn.clicked.connect(lambda: self.save_value_cache(silent=False))
@@ -4286,8 +4375,8 @@ class MainWindow(QMainWindow):
             self._log(f"SETTINGS speichern fehlgeschlagen: {exc}")
 
     def _backend_settings(self, backend: str) -> dict:
-        backend = backend if backend in BACKEND_LABELS else "warmlink_raw"
-        defaults = dict(BACKEND_DEFAULTS.get(backend, BACKEND_DEFAULTS["warmlink_raw"]))
+        backend = backend if backend in BACKEND_LABELS else ("standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw")
+        defaults = dict(BACKEND_DEFAULTS.get(backend, BACKEND_DEFAULTS["standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw"]))
         all_settings = self.settings.setdefault("backend_settings", {})
         saved = all_settings.get(backend, {})
         if not isinstance(saved, dict):
@@ -4327,7 +4416,7 @@ class MainWindow(QMainWindow):
         }
 
     def apply_communication_settings(self, backend: str):
-        backend = backend if backend in BACKEND_LABELS else "warmlink_raw"
+        backend = backend if backend in BACKEND_LABELS else ("standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw")
         idx = self.backend_combo.findData(backend)
         if idx >= 0:
             self.backend_combo.setCurrentIndex(idx)
@@ -4543,9 +4632,9 @@ class MainWindow(QMainWindow):
         current = parse_version_tuple(APP_VERSION)
         latest = parse_version_tuple(tag)
 
-        setup_asset = next((a for a in assets if "setup" in str(a.get("name", "")).lower() and str(a.get("url", "")).strip()), None)
-        portable_asset = next((a for a in assets if "portable" in str(a.get("name", "")).lower() and str(a.get("url", "")).strip()), None)
-        primary_url = str((setup_asset or portable_asset or {}).get("url") or url)
+        setup_asset = next((a for a in assets if "setup" in str(a.get("name", "")).lower() and str((a.get("browser_download_url") or a.get("url") or "")).strip()), None)
+        portable_asset = next((a for a in assets if "portable" in str(a.get("name", "")).lower() and str((a.get("browser_download_url") or a.get("url") or "")).strip()), None)
+        primary_url = str((setup_asset or portable_asset or {}).get("browser_download_url") or (setup_asset or portable_asset or {}).get("url") or url)
 
         if latest > current:
             asset_lines = []
@@ -4595,7 +4684,7 @@ class MainWindow(QMainWindow):
     def current_backend_key(self) -> str:
         if hasattr(self, "backend_combo"):
             return str(self.backend_combo.currentData() or "warmlink_raw")
-        return "warmlink_raw"
+        return "standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw"
 
     def current_backend_label(self) -> str:
         if hasattr(self, "backend_combo"):

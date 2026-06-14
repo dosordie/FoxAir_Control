@@ -1,5 +1,19 @@
 # Changelog
 
+## V0.2.31 PUBLIC
+
+- F1 Hilfe/About-Dialog ergänzt.
+- About-Dialog zeigt Version, Build-Datum, kleines Logo, GitHub-Link und Warnhinweis.
+- Update-Prüfung in den About-Dialog verschoben.
+- Button im Hauptfenster: „Hilfe / About ...“.
+- Kommunikationsmodi umbenannt:
+  - Modbus Warmlink LTE
+  - Modbus Display
+  - Modbus Standart
+- Public-Default jetzt Modbus Standart.
+- Backup/Restore-Laden/Speichern mit besserem Busy-Status und weniger blockierenden Tabellenupdates.
+- README erweitert: Setup/Portable als erste Installationsart und kurze Erklärung der Modbus-Anschlüsse.
+
 ## V0.2.30 PUBLIC
 
 - Schreibweise von Controll auf Control korrigiert.
