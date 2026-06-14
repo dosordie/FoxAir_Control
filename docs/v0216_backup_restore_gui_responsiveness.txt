@@ -1,0 +1,12 @@
+V0.2.16 - Backup/Restore GUI-Reaktionszeit
+
+Aenderungen:
+- Backup-Vorschau und Restore-Vorschau blockieren die Tabelle waehrend des Neuaufbaus nicht mehr so stark.
+- Tabellenupdates werden waehrend des Befuellens deaktiviert und danach wieder aktiviert.
+- Busy-Cursor und Statusmeldung waehrend Vorschau-Aufbau.
+- Beim Speichern wird die Backup-Vorschau nicht mehr automatisch neu aufgebaut.
+- Speichern nutzt direkt die aktuell vorhandenen Registerwerte.
+
+Hintergrund:
+Bei grossen Tabellen/Qt unter Windows konnte das fortlaufende Einfuegen vieler QTableWidgetItems
+sichtbar lange blockieren oder "keine Rueckmeldung" zeigen.

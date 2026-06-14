@@ -1,0 +1,22 @@
+FoxAir / Phnix Controll V0.2.10
+
+Änderungen:
+- Logtexte gekürzt:
+  - READ wirklich gesendet -> READ gesendet
+  - WRITE wirklich gesendet -> WRITE gesendet
+- Dry-Run Buttons aus den Timer-Editoren entfernt.
+- Silentmodus Timer in den WP Ein/Aus Timer Editor integriert:
+  - eigene Registerkarte "Silentmodus"
+  - Register 1244-1249
+- Betriebs-/Timer-Modus Klartexte verbessert:
+  - WW -> Warmwasser
+  - HZ -> Heizen
+  - WW+HZ/HZ+WW -> Warmwasser + Heizen
+  - WW+Kühlen/Kühlen+WW -> Warmwasser + Kühlen
+- Registerliste: Spalte "Wert" wieder breiter.
+- Endblock-Text korrigiert:
+  - "erstes Endblock-Register" statt "letztes Endblock-Register".
+- Plausibilitätsprüfung für bekannte Blocksignatur ergänzt:
+  - bekannte 90er-Blöcke starten normalerweise mit
+    5AA6 3232 3130 3235 3034 3735
+  - bei Abweichung wird eine Warnung geloggt.

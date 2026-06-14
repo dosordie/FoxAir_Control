@@ -1,0 +1,6 @@
+V0.2.23
+
+Aenderung:
+- KG / WP Ein-Aus-Timer Register werden im Fenster "Parameter Einstellungen" nicht mehr angezeigt.
+- Die KG-Register bleiben im Mapping und im Offline Register-Browser erhalten.
+- Bearbeitung/Schreiben der Timer weiterhin ueber den separaten WP Ein/Aus Timer Editor.

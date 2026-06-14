@@ -1,0 +1,12 @@
+v26
+===
+
+Kontaktdecoder erweitert:
+2034 / 0x07F2 Bit12 = SG Kontakt 1, Maske 0x1000, 0=AUS/1=EIN.
+2034 / 0x07F2 Bit13 = SG Kontakt 2, Maske 0x2000, 0=AUS/1=EIN.
+
+Kontaktdecoder-Fenster:
+- optionaler Poll aktivierbar
+- Intervall 1..3600 s
+- Button „jetzt lesen"
+- liest Register 2034 per FC03

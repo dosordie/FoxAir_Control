@@ -1,0 +1,9 @@
+V0.1.41 UI-Cleanup
+
+- Register schreiben/lesen aus der rechten Seitenleiste entfernt und als Popup geloest.
+- Init-Lesen bleibt direkt in der Seitenleiste: Init-Blöcke lesen, extra, V1.3, Pause.
+- Timer 1-6 Editor in Sonderfunktionen verschoben.
+- Gesehene Bus-Adressen als Popup geloest.
+- Neuer Offline Register-Browser: alle Mapping-Register ohne Verbindung durchscrollen und nach Namen/App-Text/Info suchen.
+- Registerübersicht: neue Spalte Block direkt nach Reg; Block-/Code-Praefix wird im Namen nicht mehr angezeigt.
+- Parameter-Einstellungen: Register, Block und Code als eigene Spalten; Name bleibt ohne Block-Praefix.

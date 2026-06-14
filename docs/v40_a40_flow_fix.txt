@@ -1,0 +1,8 @@
+V0.1.40
+
+Fix A40 / Rated Water Flow:
+- Register 1344 / A40 bleibt Typ FLOW_M3H_X10.
+- Anzeige: raw / 10 = m³/h.
+- Beispiel: raw 5 -> 0.5 m³/h.
+- Parameterfenster: geladene/Cache-Werte werden nun mit format_value_by_type() formatiert.
+- Schnellschreiben-Dialog: geladene/Cache-Werte werden nun mit format_value_by_type() formatiert.

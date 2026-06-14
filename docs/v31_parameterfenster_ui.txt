@@ -1,0 +1,13 @@
+V0.1.31
+- Parameter-Einstellungen-Fenster kompakter und app-aehnlicher:
+  - Blockauswahl jetzt als nebeneinanderliegende Buttons/Tabs statt Dropdown.
+  - Kein Block "Alle" mehr.
+  - Bus-Eingabe im Parameterfenster entfernt; Standard-Warmlink/WP-Adresse wird intern verwendet.
+  - Name-Spalte zeigt standardmaessig den erkannten deutschen/technischen Namen.
+  - Checkbox "App-Name anzeigen" schaltet auf Original-App-Namen um, falls bekannt.
+  - Rohwert-Spalte zeigt nur noch Dezimalwert, kein Hex.
+- Einzelregister-Schnellschreibdialog:
+  - Bus-Adresse aus dem Dialog entfernt; verwendet die beim Oeffnen uebergebene Adresse.
+  - Dropdown nutzt jetzt value_map bevorzugt und app_values als Fallback.
+  - Damit erscheinen App-bekannte Wertelisten wie H31 Pump Type auch ohne technische value_map im Dropdown.
+- Fenstertitel auf FoxAir / Phnix Controll V0.1.31 gesetzt.

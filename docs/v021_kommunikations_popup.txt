@@ -1,0 +1,9 @@
+V0.2.1
+- Kommunikationsauswahl aus der Hauptleiste in ein Popup verschoben.
+- Standard beim ersten Start ist wieder Warmlink RAW TCP.
+- Danach wird die zuletzt genutzte Kommunikationsart geladen.
+- Je Kommunikationsart werden eigene Host/Port/Unit/Display-Translate Defaults gespeichert.
+- Popup zeigt nur die Parameter, die zur gewählten Kommunikationsart passen:
+  - Warmlink RAW TCP: Host, Port
+  - Standard Modbus RTU/TCP: Host, Port, Unit
+  - Display Modbus RTU/TCP: Host, Port, Unit, +0x2000-Übersetzung

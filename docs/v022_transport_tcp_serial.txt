@@ -1,0 +1,29 @@
+V0.2.2 - Kommunikations-Transport TCP/Serial
+
+Neu:
+- Kommunikationsart und Transport sind getrennt.
+- Kommunikationsarten:
+  - Warmlink RAW
+  - Standard Modbus
+  - Display Modbus (DWIN)
+- Jeder Kommunikationsweg kann jetzt per TCP/IP/ser2net oder per Serial/COM-Port konfiguriert werden.
+
+TCP-Felder:
+- Host
+- Port
+
+Serial/COM-Felder:
+- COM-Port, z. B. COM3
+- Baudrate
+- Parität N/E/O
+- Datenbits
+- Stopbits
+
+Defaults:
+- Warmlink RAW: TCP, Port 2001, Bus intern 0x63
+- Standard Modbus: TCP, Port 10001, Unit 1
+- Display Modbus: TCP, Port 10001, Unit 3, optional +0x2000
+
+Hinweis:
+- Für COM-Port Nutzung ist pyserial nötig.
+- requirements.txt enthält jetzt pyserial>=3.5.

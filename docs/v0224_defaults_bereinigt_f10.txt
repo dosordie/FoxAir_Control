@@ -1,0 +1,22 @@
+FoxAir / Phnix Controll V0.2.24
+
+Änderungen Defaultwerte:
+
+- Falsch migrierte Defaultwerte "9" aus der Wissensdatenbank entfernt.
+  Diese Werte waren keine belastbaren Geräte-Defaults und wurden u. a. bei 0/1-Registern angezeigt.
+
+- Register ab 2011 bleiben weiterhin ohne Default-Anzeige, da Live-/Statuswerte.
+
+- Gerätespezifischer Default für F10 / Lüfteranzahl ergänzt.
+  Aktuelles Mapping: Register 1074 / F10.
+
+  GL9-1  = 0 Einzellüfter
+  GL15-3 = 0 Einzellüfter
+  BL8-1  = 0 Einzellüfter
+  BL12-3 = 0 Einzellüfter
+  GL22-3 = 1 Doppellüfter
+  BL23-3 = 1 Doppellüfter
+
+Hinweis:
+- Der im Gespräch genannte Wert "1047 F10" wurde nicht als Registeradresse übernommen,
+  da F10 im aktuellen Mapping auf 1074 liegt. 1047 bleibt D26.

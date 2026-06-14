@@ -1,0 +1,13 @@
+Warmlink GUI v24
+=================
+
+Neue Bedienfunktion:
+- Einzelregister-Schreibpopup (Rechtsklick auf Register) nutzt jetzt bekannte Wertelisten.
+- Wenn foxair_phnix_registers.json fuer ein Register value_map/values enthaelt, erscheint ein Dropdown mit Klartext.
+- Beispiele: SG Ready Funktion, Betriebsart, Timer-Modus, AN/AUS-Parameter.
+- Auswahl im Dropdown schreibt keinen Wert sofort, sondern setzt nur das Raw-Schreibfeld.
+- Gesendet wird erst mit Button "Schreiben".
+
+Ziel:
+- Spaetere Werte aus der Original-App/Bildschirmaufnahme koennen einfach als value_map in der JSON ergaenzt werden.
+- Das Schnellschreib-Popup bekommt diese Auswahl dann automatisch ohne Codeaenderung.

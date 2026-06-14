@@ -1,0 +1,12 @@
+FoxAir / Phnix Controll - Warnhinweis
+=====================================
+
+Dieses Programm ist ein inoffizielles Diagnose- und Parametrierwerkzeug.
+Es ist kein offizielles FoxAir- oder Phnix-Produkt.
+
+Das Programm kann Register lesen und schreiben. Falsche Registerwerte können
+Betriebsparameter verändern und zu Störungen oder Fehlfunktionen führen.
+
+Vor Änderungen immer ein Backup erstellen.
+Restore/Schreiben nur verwenden, wenn die Bedeutung der Register bekannt ist.
+Nutzung auf eigene Verantwortung.

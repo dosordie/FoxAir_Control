@@ -1,0 +1,18 @@
+V0.1.33
+
+Parameter-Einstellungen:
+- Blockbeschreibungen unter den Block-Tabs ergänzt.
+- Kurztexte:
+  H = Basis/Hardware
+  A = Schutz/Grenzen
+  F = Fan
+  D = Abtauen
+  E = EVI/EEV
+  C = Compressor
+  R = Sollwerte
+  Z = Zone
+  G = Legionellen
+  P = Pumpe
+  SG = SG Ready
+  KG = Timer alt
+- Beim Öffnen des Parameterfensters wird der erste sichtbare/ausgewählte Block automatisch gelesen, sofern die Checkbox „Block automatisch lesen“ aktiv ist.

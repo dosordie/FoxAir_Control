@@ -1,0 +1,16 @@
+Warmlink GUI v21 Erkenntnisse
+============================
+
+Zusammengeführt aus bisherigem Projektkontext, Display-Firmware ASM und DEMONS_V1.3.ASM.
+
+Neu/erweitert:
+- 2034 als Schalter-/Kontakt-Bitfeld mit S01-S16 Decoder.
+- 2019 als Lastausgang-Bitfeld teildecodiert: Bit0/1 Kompressor, Bit9 WW-Dreiwegeventil.
+- 2018 Ein/Aus-Map für elektrischen Wassertankheizer.
+- Fehlerregister 2081-2083 und 2085-2090 als FAULT_BITS.
+- Node-RED bekannte Bitpositionen für fehler1..fehler9 wurden eingetragen.
+- Sichere Klartexte ergänzt: Hochdruckschutz, Niederdruckschutz, Wasserflussschutz, Mischwasser-Auslasswassertemperatur-Sensorfehler sowie ASM-V1.3-Sensorfehler.
+
+Wichtig:
+- Einige Node-RED-Bits sind aktuell nur als „Klartext noch offen“ markiert, weil im vorhandenen Kontext zwar die Bitpositionen, aber nicht alle deutschen Langtexte sichtbar waren.
+- Es wurde bewusst nichts an funktionierendem Code/Schreiblogik geändert.

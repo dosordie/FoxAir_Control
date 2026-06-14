@@ -1,0 +1,16 @@
+FoxAir / Phnix Controll V0.1.37 - Mapping-Korrekturen
+
+- H30 / Register 1036 korrigiert:
+  Hydraulikmodul-Typ / Indoor Unit Type
+  0=None, 1=1st Type, 2=2nd Type, 3=3rd Type
+
+- A35 / Register 1031 korrigiert:
+  Electric Heater Off Temp Diff / E-Heizer AUS Temperaturdifferenz
+  Typ TEMP05: raw / 2 = °C, also 0.5 °C Schritte
+  Standard laut App: 0 °C
+  Falsches Dropdown mit None/Type1/Type2/Type3 entfernt.
+
+- Parameterblock T jetzt mit Kurztext: Temperatur.
+
+Hinweis: Bisher ist nur die erste Bildschirmaufnahme / Parameterblock-Aufnahme vorhanden.
+Ein separates A-Block-Video wurde in diesem Chat noch nicht hochgeladen.

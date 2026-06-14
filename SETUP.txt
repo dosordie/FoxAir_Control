@@ -1,0 +1,106 @@
+FoxAir / Phnix Controll - SETUP
+=================================
+
+Kurzfassung
+-----------
+1. Python 64-Bit installieren
+2. Programm-ZIP entpacken
+3. Im Programmordner: py -m pip install -r requirements.txt
+4. start_gui.bat starten
+
+Installationsschritte
+---------------------
+
++----+------------------------------+-----------------------------------------------+----------------------------------------------+
+| Nr | Schritt                      | Was machen                                    | Hinweis                                      |
++----+------------------------------+-----------------------------------------------+----------------------------------------------+
+| 1  | Python herunterladen         | https://www.python.org/downloads/windows/     | 64-Bit Installer verwenden                   |
+| 2  | Python-Version               | Python 3.11, 3.12 oder 3.13                   | Neueste stabile Version ist normalerweise ok |
+| 3  | Python installieren          | Haken setzen bei "Add python.exe to PATH"     | Sehr wichtig fuer pip/py im CMD              |
+| 4  | ZIP entpacken                | FoxAir_Phnix_Controll_Vx.x.x.zip entpacken    | Nicht direkt aus dem ZIP starten             |
+| 5  | CMD im Programmordner oeffnen| In die Adresszeile "cmd" eingeben + Enter     | Ordner mit foxair_phnix_controll.py                   |
+| 6  | Pakete installieren          | py -m pip install -r requirements.txt         | Installiert PySide6 und pyserial             |
+| 7  | Programm starten             | start_gui.bat doppelklicken                   | Start ohne schwarzes CMD-Fenster             |
+| 8  | Debug-Start bei Problemen    | start_gui_debug_console.bat doppelklicken     | Zeigt Fehlerausgaben im CMD-Fenster          |
++----+------------------------------+-----------------------------------------------+----------------------------------------------+
+
+Benoetigte Python-Pakete
+------------------------
+Die Pakete stehen in requirements.txt:
+
++----------+-------------------------------------------+
+| Paket    | Zweck                                      |
++----------+-------------------------------------------+
+| PySide6  | grafische Oberflaeche / GUI                |
+| pyserial | COM-Port / USB-RS485 fuer Modbus RTU       |
++----------+-------------------------------------------+
+
+Manuelle Installation
+---------------------
+Im entpackten Programmordner ausfuehren:
+
+    py -m pip install -r requirements.txt
+
+Alternativ, falls "py" nicht gefunden wird:
+
+    python -m pip install -r requirements.txt
+
+Falls pip selbst ein Update anbietet, optional:
+
+    py -m pip install --upgrade pip
+
+Kommunikation
+-------------
+
++------------------------+---------------------+------------------+------------------------------+
+| Kommunikationsart      | Typischer Transport | Standardwerte    | Hinweis                      |
++------------------------+---------------------+------------------+------------------------------+
+| Warmlink RAW           | TCP/IP              | Port 2001        | bisheriger Hauptmodus        |
+| Standard Modbus        | TCP/IP oder COM     | Port 10001, Unit 1| bei dir bereits bestaetigt   |
+| Display Modbus / DWIN  | TCP/IP oder COM     | Port 10001, Unit 3| HMI/Register teils +0x2000   |
++------------------------+---------------------+------------------+------------------------------+
+
+USB-RS485 / COM-Port
+--------------------
+Ja, das geht unter Windows ueber einen COM-Port, z. B. COM3, COM4, COM5.
+Dafuer wird pyserial benoetigt.
+
+Typische Einstellungen:
+
++-------------+-------------------------+
+| Einstellung | Typischer Wert           |
++-------------+-------------------------+
+| COM-Port    | COM3 / COM4 / COM5       |
+| Baudrate    | 4800 oder 9600           |
+| Datenbits   | 8                       |
+| Paritaet    | N / E / O                |
+| Stopbits    | 1                       |
+| Unit        | Standard Modbus meist 1  |
++-------------+-------------------------+
+
+Hinweise
+--------
+- Wenn das Programm nicht startet: start_gui_debug_console.bat nutzen.
+- Wenn "ModuleNotFoundError" erscheint: requirements.txt erneut installieren.
+- Wenn kein COM-Port sichtbar ist: USB-RS485 Treiber installieren und im Windows Geraetemanager pruefen.
+- Wenn TCP nicht verbindet: IP, Port und Firewall pruefen.
+
+Oeffentliche Version / GitHub
+----------------------------
+Dieses Tool ist inoffiziell und nicht vom Hersteller freigegeben.
+Vor Schreibzugriffen immer Backup erstellen.
+
+Beim ersten Start ist keine private IP-Adresse vorbelegt.
+Die IP/Host-Adresse wird unter "Kommunikation ..." eingetragen.
+
+EXE/Setup bauen
+---------------
+Auf einem Windows-Rechner:
+
+    py -m pip install -r requirements.txt
+    py -m pip install -r requirements-build.txt
+    build_windows_exe.bat
+
+Optionaler Installer mit Inno Setup 6:
+
+    build_windows_setup.bat

@@ -1,0 +1,4 @@
+V0.2.3
+- SETUP.txt im Hauptverzeichnis ergaenzt.
+- Installationsschritte tabellarisch dokumentiert.
+- Hinweise zu Python, requirements.txt, Start-BAT, Debug-Start und USB-RS485/COM-Port.

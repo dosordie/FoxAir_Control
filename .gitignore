@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+*.spec.bak
+foxair_phnix_settings.json
+foxair_phnix_last_values.json
+foxair_phnix_raw_*.bin
+*.log

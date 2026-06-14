@@ -1,0 +1,21 @@
+FoxAir / Phnix Controll V0.2.12
+Blockkopf-/Paketkopf-Bereiche vereinheitlicht.
+
+Umbenannt/ergänzt:
+- Paket 1: 1001-1010 = Blockkopf/Paketkopf
+- Paket 2: 1091-1100 = Blockkopf/Paketkopf
+- Paket 3: 1181-1190 = Blockkopf/Paketkopf
+- Paket 4: 1271-1280 = Blockkopf/Paketkopf
+- Paket 5: 1361-1370 = Blockkopf/Paketkopf
+- Paket 6: 1451-1460 = Blockkopf/Paketkopf
+- Paket Status 1: 2001-2010 = Blockkopf/Paketkopf
+- Paket Status 2: 2091-2100 = Blockkopf/Paketkopf
+- Paket 7: 1541-1550 = Blockkopf/Paketkopf
+
+Aufteilung je Paketkopf:
+1-6: Kennung WF2210250475
+7-8: Reserve
+9: Marker/Länge (meist 0x0210 / 528)
+10: erstes Blockkopf-Register / Paketbasis
+
+Damit sind alte/falsche Namen wie Endblock, Checksumme, Download-Synchronisation und 7x24 Timer an diesen Kopfstellen entfernt.

@@ -1,0 +1,6 @@
+V0.2.7 - Störungs-/Fehlerdecoder
+
+- Neuer Button "Störungen / Fehler ..." unter Sonderfunktionen.
+- Button wird rot, wenn Lastausgang Register 2019 Bit 10 (Alarm-Ausgang / Sammelstörung) aktiv ist oder Fehlerbits gesetzt sind.
+- Popup zeigt Sammelstörung und aktive Fehlerbits aus 2081-2090 im Klartext.
+- Poll liest 2019 sowie 2081-2090.

@@ -1,0 +1,10 @@
+FoxAir / Phnix Controll V0.2.4
+
+Fix:
+- Serial/COM-Transport prueft Verbindung jetzt ueber is_connected() statt TCP-spezifisch ueber .sock.
+- Warmlink RAW ueber COM-Port kann RTU-Frames jetzt direkt an pyserial senden.
+- Fehler "ModbusSerialClient object has no attribute sock" behoben.
+
+Hinweis:
+- Warmlink RAW Serial sendet denselben RTU-Frame wie Warmlink TCP, nur direkt ueber COM-Port.
+- Fuer Standard/Display Modbus Serial gilt derselbe Serial-Transport.

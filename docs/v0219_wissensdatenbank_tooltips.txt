@@ -1,0 +1,33 @@
+FoxAir / Phnix Controll V0.2.19
+
+Neues Feature: Wissensdatenbank / Beschreibungen zu Datenpunkten
+
+- Parameter-Einstellungen zeigt jetzt ein Beschreibungsfeld unter der Tabelle.
+- Mouse-Over oder Auswahl einer Zeile zeigt Zusatzinfos, wenn sie im Mapping vorhanden sind.
+- Tooltips der Tabellenzellen enthalten ebenfalls die Beschreibung.
+- Unterstuetzte JSON-Felder pro Register:
+  - description: kurze Beschreibung
+  - knowledge oder explanation: laengere Erklaerung / Zusammenhang
+  - notes oder hint: Notizen / Hinweise
+  - default: Defaultwert
+  - source: Quelle
+  - source_app_video: App-Video-Quelle
+
+Beispiel im Mapping:
+{
+  "1344": {
+    "name": "A40 / Nenn-Wasserdurchfluss",
+    "type": "FLOW_M3H_X100",
+    "description": "Rated Water Flow / Nenn-Wasserdurchfluss",
+    "knowledge": "Die App zeigt raw/100; raw 50 = 0,5 m3/h.",
+    "source": "App-Video / Projektanalyse"
+  }
+}
+
+Erste Wissens-Eintraege hinzugefuegt:
+- 1191 Paket-3 Sync-/Gueltigkeitsmarker 0x5AA5
+- 1334 SG Ready Funktion
+- 1338-1341 SG Ready Mode 4 / Elektroheizstab
+- 1344 A40 Nenn-Wasserdurchfluss
+- 2019 Lastausgang Bitfeld / Sammelstoerung
+- 2034 Kontaktbitfeld / SG Kontakte

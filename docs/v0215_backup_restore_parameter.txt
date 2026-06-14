@@ -1,0 +1,20 @@
+V0.2.15 - Backup / Restore Parameter
+
+Neu:
+- Funktion "Backup / Restore ..." im Bereich Funktionen.
+- Backup liest/speichert bekannte Parameterbereiche als JSON.
+- Backup-Datei enthält Kommentar, App-Version, Datum/Zeit, Kommunikationsart und Registerwerte.
+- Restore lädt Backup-Datei, zeigt Diff-Vorschau gegen aktuelle Werte und schreibt erst nach Warnung.
+- BLOCK-Köpfe, HMI-interne Blöcke und Status-/Livewerte werden nicht geschrieben.
+
+Backupbereiche:
+- Paket 1: 1018-1090
+- Paket 2: 1101-1180
+- Paket 3: 1191-1270
+- Paket 4: 1281-1360
+- Paket 5: 1371-1450
+- Paket 6 optional: 1461-1540
+- Paket 7 optional: 1551-1630
+
+Hinweis:
+Restore schreibt nur Werte aus der geladenen Backup-Datei. Vor dem Schreiben wird eine Liste der ersten Register angezeigt und eine Sicherheitsabfrage verlangt.

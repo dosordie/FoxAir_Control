@@ -1,0 +1,17 @@
+V0.2.20 - Wissensdatenbank editierbar
+
+Neu:
+- Separate Datei foxair_phnix_knowledge.json.
+- Die Datei wird beim Start geladen und ueber die technischen Registerdefinitionen gelegt.
+- Bearbeiten ist im Parameter-Einstellfenster und im Offline Register-Browser moeglich.
+- Im Parameter-Einstellfenster zeigt die untere Beschreibungsbox nur noch Beschreibung/Hinweis/Notiz/Default/Quelle, ohne Code- und Namensvorspann.
+- Beim Doppelklick/Wert-setzen-Popup wird Beschreibung und Default kompakt angezeigt.
+- Offline Register-Browser zeigt Beschreibung/Hinweis direkt in der Tabelle und ebenfalls unten in einer Infobox.
+
+Erste Wissenseintraege:
+- P10 / 1205: P10 muss 0 sein, damit die automatische Pumpen-PWM-Regelung aktiv werden kann.
+- A40 / 1344: 10 Minuten nach Kompressorstart Durchfluss > A40 x 1,2; danach Regelung aktiv.
+- D22 / 1127: Mindestdurchflusslogik; D22 = 0 -> A40 x 0,8, D22 != 0 -> D22.
+
+Hinweis:
+- Die Knowledge-Datei ist bewusst getrennt vom Register-Mapping, damit Wissenstexte gepflegt werden koennen, ohne die technische Datenbank jedes Mal direkt zu aendern.

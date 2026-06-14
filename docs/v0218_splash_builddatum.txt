@@ -1,0 +1,4 @@
+V0.2.18
+- Splash-Anzeige von 5 auf 8 Sekunden verlängert.
+- Überspringen jetzt über X-Button statt Hinweistext.
+- Angezeigtes Datum ist das Build-Datum der Version, nicht das aktuelle Startdatum.

@@ -1,0 +1,22 @@
+FoxAir / Phnix Controll V0.2.26
+================================
+
+Public-Prep-Version fuer GitHub.
+
+Geaendert:
+- README.md ergaenzt
+- LICENSE ergaenzt
+- CHANGELOG.md ergaenzt
+- PUBLIC_WARNING.txt ergaenzt
+- neutrale Host/IP-Vorgabe: leer statt privater Anlagen-IP
+- Warnhinweis im Hauptfenster
+- Connect prueft bei TCP auf leeren Host
+- requirements-build.txt ergaenzt
+- build_windows_exe.bat ergaenzt
+- build_windows_setup.bat ergaenzt
+- installer/FoxAir_Phnix_Controll.iss ergaenzt
+- .github/workflows/release.yml fuer automatischen Windows-Release-Build ergaenzt
+
+Hinweis:
+- Windows-EXE/Setup muss auf Windows gebaut werden.
+- GitHub Actions kann das automatisiert beim Tag-Push erledigen.

@@ -1,0 +1,9 @@
+V0.1.35 Erkenntnisse / Änderungen
+
+Parameter-Einstellungen:
+- Block-Kurztexte stehen jetzt direkt unter dem jeweiligen klickbaren Blockbutton.
+
+Value-Maps:
+- P01 / Hauptumwälzpumpe Betriebsmodus: 0=Normal, 1=Economic/Sparbetrieb, 2=Interval/Intervall.
+- P05 / WW-Pumpenbetriebsmodus: 0=Normal, 1=Economic/Sparbetrieb, 2=Interval/Intervall.
+- E01 / EEV-Anpassungsmodus korrigiert: 0=Manuell, 1=Auto, 2=Smart.

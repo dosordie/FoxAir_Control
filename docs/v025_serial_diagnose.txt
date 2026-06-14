@@ -1,0 +1,9 @@
+V0.2.5 - Serial/COM Diagnose
+
+- Version auf 0.2.5 angehoben.
+- Serial/COM RX-Rohdaten werden nun im Log angezeigt, sobald Bytes eintreffen.
+- Nach einer Serial-Sendung wird nach ca. 1,2 s ein RX-Timeout geloggt, wenn keine Antwort empfangen wurde.
+- Bei Warmlink RAW ueber COM erscheint ein Hinweis: am normalen User-Modbus-Anschluss meist Standard Modbus / Unit 1 verwenden.
+
+Hinweis:
+Wenn TX gesendet wird, aber kein SERIAL RX Rohdaten im Log erscheint, liegt es sehr wahrscheinlich an Kommunikationsart/Unit, A/B, Baudrate/Parity, Verdrahtung, Abschluss oder falschem Busanschluss.

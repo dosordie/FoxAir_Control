@@ -1,0 +1,31 @@
+V0.1.38 - App-Video A-Block Auswertung
+Quelle: ScreenRecording_06-13-2026 10-50-12_1.mp4
+
+Übernommen/ergänzt als app_label/app_current_video_value, technische Namen bleiben erhalten.
+
+A03  Shutdown Ambient Temp.                         sichtbar -25.0 °C
+A04  Antifreeze Temp.                               sichtbar 4.0 °C
+A05  Antifreeze Temp. Difference                    sichtbar 3.0 °C
+A06  Exhaust Temp Protect Setup                     sichtbar 110 °C
+A11  Niederspannungsdrucksensor                     sichtbar YES; app_values NO/YES ergänzt
+A21  Ambient/Suction/Coil Sensor                    sichtbar 5K; app_values 5K/2K ergänzt
+A22  Antifreeze Min Temp                            sichtbar 3.0 °C
+A23  Niedrige Wassertemperatur Schutzwert           sichtbar 5.0 °C
+A24  Excess Temp. Diff. Between inlet and Outlet    sichtbar 10.0 °C
+A25  Minimum Evaporation Temp. of Cooling           sichtbar -4.5 °C
+A26  Refrigerant Type                               sichtbar R290; R32/R290 Varianten ergänzt
+A27  Temp Difference A Of Limiting Frequency        sichtbar 7.0 °C
+A28  Temp Difference B Of Limiting Frequency        sichtbar 7.0 °C
+A29  Enable The High Pressure Sensor                sichtbar NO; neues Mapping Nein/Ja
+A30  Min. AT for Cooling                            sichtbar 10.0 °C
+A31  Electric Heater On AT                          sichtbar -8.0 °C
+A32  Electric Heater Delays Comp. On Time           sichtbar 60 min; Typ MINUTES
+A33  Electric Heater Opening Temp. Diff             sichtbar 3.0 °C; Typ TEMP1
+A34  Crank Preheating Time                          sichtbar 5 min; Typ MINUTES
+A35  Electric Heater Off Temp. Diff                 sichtbar 0.0 °C; bleibt TEMP05
+A38  Low Pressure of Limiting Frequency             sichtbar 0.0 bar; Typ BAR_X10
+A39  Max. Current Value                             sichtbar 0.0 A; Typ AMP_X2
+A40  Rated Water Flow                               sichtbar 0.5 m³/h; Typ FLOW_M3H_X10
+
+Neue Anzeige-Typen im Parser:
+BAR_X10, AMP_X2, FLOW_M3H_X10, MINUTES.

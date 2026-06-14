@@ -1,0 +1,15 @@
+V0.1.42
+
+UI-Cleanup/Fixes:
+- Offline Register-Browser: Bugfix fuer App-Name-Umschaltung (QTableWidget owned item crash/hang behoben).
+- Offline Register-Browser: Block und Code zu einer Spalte "Block/Code" zusammengefasst.
+- Registeruebersicht: Spalte "Block" heisst jetzt "Block/Code" und zeigt z. B. H31 statt nur H.
+- Parameter Einstellungen: Block und Code zu "Block/Code" zusammengefasst.
+- Parameter Einstellungen: Block T wird in der Blockleiste ganz hinten einsortiert.
+- Timer 1-6 Editor: Busadresse aus der Oberflaeche entfernt; intern Standardadresse 0x63.
+- Start-Batch: start_gui.bat nutzt pythonw/start und schliesst das CMD-Fenster direkt. Fuer Debug gibt es start_gui_debug_console.bat.
+
+Neu:
+- Lastausgang Decoder als Popup unter Sonderfunktionen.
+- Register 2019 / 0x07E3 wird mit den bekannten Bits 0..15 angezeigt.
+- Poll aktiv + Intervall + jetzt lesen wie beim Kontaktdecoder.

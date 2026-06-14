@@ -1,0 +1,17 @@
+V0.2.8 - Dateinamen auf FoxAir / Phnix Controll umgestellt
+
+Geaendert:
+- warmlink_gui.py  -> foxair_phnix_controll.py
+- warmlink_core.py -> foxair_phnix_core.py
+- warmlink_registers.json -> foxair_phnix_registers.json
+- Einstellungen neu: foxair_phnix_settings.json
+- Wertecache neu: foxair_phnix_last_values.json
+- RAW-Logs neu: foxair_phnix_raw_YYYYMMDD_HHMMSS.bin
+
+Rueckwaertskompatibilitaet:
+- alte foxair_phnix_settings.json wird weiterhin gelesen, falls neue Datei noch fehlt.
+- alter foxair_phnix_last_values.json wird weiterhin gelesen, falls neuer Cache noch fehlt.
+- alte warmlink_registers.json wird weiterhin als Fallback geladen, falls foxair_phnix_registers.json fehlt.
+
+Hinweis:
+- Interne Protokollbezeichnung "Warmlink RAW" bleibt bewusst erhalten, weil das eine Kommunikationsart beschreibt.

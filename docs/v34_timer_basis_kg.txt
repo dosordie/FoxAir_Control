@@ -1,0 +1,4 @@
+V0.1.34
+
+KG wurde von "Timer alt" auf "Timer Basis" geändert.
+Bedeutung: Basis-Timer für WP Ein/Aus und Silent-Modus Ein/Aus.

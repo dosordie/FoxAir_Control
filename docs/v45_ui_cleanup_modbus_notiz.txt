@@ -1,0 +1,5 @@
+V0.1.45
+- Sonderfunktionen umsortiert: Parameter Einstellungen oben, danach Timer, danach SG Ready.
+- Kontaktdecoder-Button wie Lastausgang-Decoder: keine Bit-Kurzinfo mehr daneben.
+- Registeruebersicht: Spalten Signed und Wert schmaler/fixiert.
+- Notiz Standard-Modbus: technisch machbar, sinnvoll als zweiter Backend-Typ neben Warmlink RAW.

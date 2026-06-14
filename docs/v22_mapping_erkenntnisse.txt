@@ -1,0 +1,20 @@
+Warmlink GUI v22 - Mapping-Erkenntnisse
+
+Register 2019 / 0x07E3 = 001 bis 023 / Lastausgänge Bitfeld
+
+Bit0: Kompressor-Ausgang 0-AUS/1-EIN
+Bit1: Reserviert
+Bit2: 003 Lüfter Hochgeschwindigkeitsausgang 0-AUS/1-EIN
+Bit3: Lüfter Niedriggeschwindigkeitsausgang 0-AUS/1-EIN
+Bit4: 005 Wasserpumpen-Ausgang 0-AUS/1-EIN
+Bit5: 006 Warmwasserpumpen-Ausgang 0-AUS/1-EIN
+Bit6: 007 4-Wege-Ventil 1 0-AUS/1-EIN
+Bit7: 008 Elektrische Heizstufe 1 0-AUS/1-EIN
+Bit8: 009 Elektrische Heizstufe 2 0-AUS/1-EIN
+Bit9: 010 3-Wege-Ventil 0-AUS/1-EIN
+Bit10: 011 Alarm-Ausgang 0-AUS/1-EIN
+Bit11: 012 Kurbelgehäuseheizung 0-AUS/1-EIN
+Bit12: 013 Wannenheizung 0-AUS/1-EIN
+Bit13: 021 Heizungswasserpumpe 0-AUS/1-EIN
+Bit14: 022 Hydraulikmodul Wasserkreislauf Elektroheizung 0-AUS/1-EIN
+Bit15: 023 Hydraulikmodul WW-Tank Elektroheizung 0-AUS/1-EIN

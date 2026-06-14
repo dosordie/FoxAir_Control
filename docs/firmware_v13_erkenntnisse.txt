@@ -1,0 +1,106 @@
+Analyse DEMONS_V1.3.ASM für Warmlink GUI v20
+============================================
+
+Quelle: /mnt/data/DEMONS_V1.3.ASM
+Ziel: Nur zusätzliche Erkenntnisse übernehmen, bekannte Namen nicht unnötig überschreiben.
+
+1) Legacy-Parameterpakete / Init-Lesen
+--------------------------------------
+Die ältere V1.3 verwendet andere Parameterpaket-Startadressen als die neuere Firmware:
+
+- Paket 1: 0x03FA / 1018, Länge 73 Register, Kommentar: 1018--1090
+- Paket 2: 0x044D / 1101, Länge 80 Register, Kommentar: 1101--1180
+- Paket 3: 0x04A7 / 1191, Länge 80 Register, Kommentar: 1191--1270
+
+Zusätzlich tauchen optionale/testweise Blöcke auf:
+- 0x05B5 / 1461
+- 0x060F / 1551
+Diese sind in V1.3 kommentiert/teilweise deaktiviert und werden nicht automatisch gelesen.
+
+Umsetzung v20:
+- Checkbox "V1.3" neben Init-Blöcke ergänzt.
+- Diese liest nur die drei klar aktiven Legacy-Blöcke 1018/73, 1101/80, 1191/80.
+- Parser-Wortblockliste erweitert um 0x03FA, 0x044D, 0x04A7, 0x05B5, 0x060F.
+
+2) Neue / besser benannte Register
+----------------------------------
+1001  Download-/Parameter-Synchronisation Zähler/Flag (ASM V1.3)
+1008  7x24 Timer-Stummschaltung Schaltzustand (ASM V1.3), 0=Aus, 1=Ein
+1010  Parameter Upload/Download Statusflag 0x03F2 (ASM V1.3)
+1086  F21 / Timer-Stummschaltung aktivieren (ASM V1.3: 243E), 0=Aus, 1=Ein
+1141  E03-4 / System 2 EVI/Enthalpie vorhanden wenn Wert != 0 (ASM V1.3)
+1193  R40 / Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)
+1194  R41 / Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)
+2056  T? / System 1 Frostschutztemperatur 2 / Coil/Frost Temp 2 (ASM V1.3)
+
+KG1-KG12:
+1256  KG1  Legacy 6-Timer Timer 1 Startzeit
+1257  KG2  Legacy 6-Timer Timer 1 Endzeit
+1258  KG3  Legacy 6-Timer Timer 2 Startzeit
+1259  KG4  Legacy 6-Timer Timer 2 Endzeit
+1260  KG5  Legacy 6-Timer Timer 3 Startzeit
+1261  KG6  Legacy 6-Timer Timer 3 Endzeit
+1262  KG7  Legacy 6-Timer Timer 4 Startzeit
+1263  KG8  Legacy 6-Timer Timer 4 Endzeit
+1264  KG9  Legacy 6-Timer Timer 5 Startzeit
+1265  KG10 Legacy 6-Timer Timer 5 Endzeit
+1266  KG11 Legacy 6-Timer Timer 6 Startzeit
+1267  KG12 Legacy 6-Timer Timer 6 Endzeit
+1268  KG13-KG28 Legacy 6-Timer Sammelblock 1
+1269  KG29-KG44 Legacy 6-Timer Sammelblock 2
+1270  KG45-KG60 Legacy 6-Timer Sammelblock 3
+
+3) Modus-/Status-Value-Maps
+---------------------------
+2012 / 0x07DC:
+- 2 = Abtauen
+- 3 = Sterilisieren / Desinfektion
+Die V1.3 blendet bei diesen Werten den normalen Betriebsmodus aus und zeigt stattdessen den Sonderstatus.
+
+1059 / F01 Lüftertyp, Legacy-Hinweise:
+- 0 = Hochgeschwindigkeits-Lüfter
+- 1 = zweistufiger Lüfter
+- 3 = DC-Lüfter
+- 4 = DC-Lüfter externer Antrieb (aus neuerem Mapping)
+
+4) Fehlerregister / Bitfelder aus Fault_Status_Display
+------------------------------------------------------
+Neu im Core: generischer bit_map/FAULT_BITS Decoder.
+Wenn ein Fehlerregister einen gesetzten Bitwert hat, zeigt die Tabelle die bekannten Bits direkt an.
+
+2085 / Fehler 1:
+- Bit14 = Raumtemperaturfühler / Room Temp Fehler
+
+2089 / Fehler 5:
+- Bit0  = T01 Einlasswassertemperatur Fehler
+- Bit1  = T02 Auslasswassertemperatur Fehler
+- Bit2  = System 1 Coil-/Verdampfertemperatur 1 Fehler
+- Bit3  = Umgebungstemperatur / AT Fehler
+- Bit4  = System 1 Rückgas-/Sauggastemperatur Fehler
+- Bit5  = System 1 Frostschutztemperatur 1 Fehler
+- Bit6  = System 1 Frostschutztemperatur 2 Fehler
+- Bit9  = System 1 EVI-/Enthalpie Eintrittstemperatur Fehler
+- Bit10 = System 1 EVI-/Enthalpie Austrittstemperatur Fehler
+- Bit11 = System 1 Abgastemperatur Fehler
+- Bit13 = System 1 Drucksensor Fehler
+
+2090 / Fehler 6:
+- Bit0  = System 2 Coil-/Verdampfertemperatur Fehler
+- Bit1  = System 2 Rückgas-/Sauggastemperatur Fehler
+- Bit2  = System 2 Frostschutztemperatur 1 Fehler
+- Bit3  = System 2 Frostschutztemperatur 2 Fehler
+- Bit6  = System 2 Abgastemperatur Fehler
+- Bit7  = System 2 Drucksensor Fehler
+- Bit8  = Wassertanktemperatur Fehler
+- Bit9  = System 2 EVI-/Enthalpie Eintrittstemperatur Fehler
+- Bit10 = System 2 EVI-/Enthalpie Austrittstemperatur Fehler
+- Bit11 = DC-Lüfter 1 Fehler
+- Bit12 = DC-Lüfter 2 Fehler
+- Bit13 = E082 Fehler, genaue Bedeutung offen
+- Bit15 = E081 Fehler, genaue Bedeutung offen
+
+5) Nicht blind übernommen
+-------------------------
+- 0x05B5/0x060F sind als Legacy-Wortblock-Typen bekannt, aber nicht in der Init-Checkbox V1.3 enthalten, weil sie in V1.3 kommentiert/teilweise widersprüchlich beschriftet sind.
+- 1074/F10 Lüfteranzahl hat in V1.3 andere Wertekommentare als im aktuellen Mapping; deshalb nicht überschrieben.
+- Bestehende konkrete Handbuch-/Excel-Namen wurden nicht durch ältere ASM-Kommentare ersetzt.

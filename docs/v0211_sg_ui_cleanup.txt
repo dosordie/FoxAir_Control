@@ -1,0 +1,14 @@
+FoxAir / Phnix Controll V0.2.11
+
+UI/SG Cleanup:
+- Bereich "Sonderfunktionen" in "Funktionen" umbenannt.
+- SG Ready Editor: Bus-Adresse aus der Oberfläche entfernt.
+- SG01 Auswahl vereinfacht:
+  0 = Aus
+  1 = Einfach - 1 Kontakt
+  2 = Zweifach - 2 Kontakte
+- SG01 Raw-Auswahl entfernt.
+- SG08 umbenannt: Elektroheizstab Ein/Aus bei Mode4.
+- SG08 auch in der Registertabelle mit Klartext Aus/Ein eingetragen.
+- Dry-Run im SG Ready Editor entfernt.
+- Button "ECHT schreiben" in "Schreiben" umbenannt.

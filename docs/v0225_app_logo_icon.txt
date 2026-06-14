@@ -1,0 +1,10 @@
+FoxAir / Phnix Controll V0.2.25
+
+Geändert:
+- app_icon.png durch hochgeladenes FoxAir/Fuchs-Bild ersetzt
+- app_icon.ico neu aus demselben Bild erzeugt
+- Anwendung nutzt das Icon für Splash, Fenster, Dialoge und Taskleisten-/Window-Icon
+
+Hinweis:
+- PNG bleibt möglichst nahe am hochgeladenen Originalbild.
+- ICO wird quadratisch mit transparentem Rand erzeugt, damit das komplette Bild im Windows-Icon sichtbar bleibt.

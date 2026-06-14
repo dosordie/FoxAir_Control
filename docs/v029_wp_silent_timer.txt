@@ -1,0 +1,19 @@
+V0.2.9
+
+Neu:
+- WP Ein/Aus Timer Editor fuer Register 1256-1270.
+- 6 Timer mit Startzeit, Stopzeit, Aktiv/Inaktiv und Tagen Mo-So.
+- Bitmasken 1268, 1269, 1270:
+  - Low-Byte = erster Timer im Paar
+  - High-Byte = zweiter Timer im Paar
+  - Bit7 = aktiv
+  - Bit0..6 = Mo..So
+
+Neu:
+- Silentmodus Timer Editor fuer Register 1244-1249.
+- Start und Stop koennen getrennt aktiviert werden.
+
+Mapping:
+- Register 1244-1249 sinnvoller als Silentmodus Timer benannt.
+- Register 1256-1270 sinnvoller als WP Ein/Aus Timer benannt.
+- Legacy / ASM V1.3 aus den Anzeigenamen entfernt; Quelle bleibt in info/source.

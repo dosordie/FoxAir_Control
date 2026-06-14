@@ -1,0 +1,15 @@
+V0.1.30 Bereinigung / neue Parameteransicht
+
+Mapping-Bereinigung:
+- Ausgangsbasis fuer technische Namen/value_map ist V0.1.28.
+- Aus V0.1.29 wurden app_label, app_values, source_app_video und app_note uebernommen.
+- Vorhandene technische/deutsche Namen wurden nicht durch englische App-Texte ersetzt.
+- Vorhandene technische value_map wurde nicht durch App-Text ersetzt.
+
+Neue GUI-Funktion:
+- Button: Parameter Einstellungen ...
+- Popup mit Blockauswahl: Alle, H, A, F, D, E, C, R, Z, SG, KG usw.
+- Anzeige je Parameter: Code, Original-App-Name, aktueller Wert, Rohwert, Register, Typ, Info.
+- Option: nur App-Video Parameter.
+- Button: sichtbare lesen.
+- Schreiben erfolgt ueber das bekannte Register-schnell-schreiben-Popup.

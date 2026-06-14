@@ -1,0 +1,10 @@
+FoxAir / Phnix Controll V0.2.14
+
+Änderungen:
+- Register 1191 als „Paket 3 Sync-/Gültigkeitsmarker 0x5AA5“ benannt.
+- Register 200-215 als interner HMI-/Display-Kommunikationsblock ergänzt.
+- 200-215 verwenden Typ BLOCK und werden dadurch kleiner/kursiv/grau dargestellt.
+
+Hinweis:
+- Register 200-215 wurden zyklisch auf Bus 0x63 / Frame 0x00C8 beobachtet.
+- Bedeutung aktuell: vermutlich interner Kennungs-/String-/Logo-/Seitenpuffer, nicht als WP-Parameter verwenden.

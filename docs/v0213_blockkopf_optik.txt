@@ -1,0 +1,6 @@
+V0.2.13 - Blockkopf-Optik
+
+- Register mit Typ BLOCK werden in Tabellen kleiner und kursiv dargestellt.
+- Gilt fuer Haupt-Registerliste, Offline Register-Browser und Parameter-/Einstellungsfenster.
+- Blockkopf-Zeilen werden zusaetzlich etwas niedriger dargestellt.
+- Inhalt/Mapping unveraendert zu V0.2.12.

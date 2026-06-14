@@ -1,0 +1,22 @@
+FoxAir / Phnix Controll V0.1.44
+
+UI-Anpassungen:
+- Offline Register-Browser:
+  - Spaltenkopf "Block/Code" in "Code" umbenannt.
+  - Register linksbuendig.
+  - Code rechtsbuendig.
+  - Register- und Code-Spalte schmaler.
+  - Sortierung nutzt fuer Code eine numerische Code-Sortierung, z. B. H01, H02, H10.
+
+- Parameter Einstellungen:
+  - Spaltenkopf "Block/Code" in "Code" umbenannt.
+  - Register linksbuendig.
+  - Code rechtsbuendig.
+  - Register- und Code-Spalte schmaler.
+  - Beim Oeffnen/Refresh nach Code aufsteigend sortiert.
+
+- Registeruebersicht:
+  - Spaltenkopf "Block/Code" in "Code" umbenannt.
+  - Register linksbuendig.
+  - Code rechtsbuendig.
+  - Register- und Code-Spalte schmaler.

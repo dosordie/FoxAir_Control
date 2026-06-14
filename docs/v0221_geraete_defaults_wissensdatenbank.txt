@@ -1,0 +1,31 @@
+V0.2.21 - Geräteauswahl und Default-Datenbank
+
+Neu:
+- Geräteauswahl im Hauptfenster.
+- Defaultwerte können allgemein oder gerätespezifisch in foxair_phnix_knowledge.json gepflegt werden.
+- Allgemeiner Default gilt für alle Geräte, wenn kein Geräte-Default hinterlegt ist.
+- Geräte-Default überschreibt den allgemeinen Default für das ausgewählte Gerät.
+
+Geräteauswahl:
+- FoxAir Green Line GL9-1
+- FoxAir Green Line GL15-3
+- FoxAir Green Line GL22-3
+- FoxAir Blue Line GL8-1
+- FoxAir Blue Line BL8-1
+- FoxAir Blue Line BL12-3
+- FoxAir Blue Line BL23-3
+
+Hinweis:
+- GL = R290
+- BL = R32
+
+Default-Anzeige:
+- Register ab 2011 zeigen keinen Default mehr an, da es Live-/Statuswerte sind.
+- Das gilt für Tooltips, Infofelder und das Wert-setzen-Popup.
+
+Wissensdatenbank:
+- foxair_phnix_knowledge.json kann jetzt pro Register optional default_by_device enthalten.
+- Der Editor zeigt zusätzlich ein Feld für den Default des aktuell gewählten Geräts.
+
+Backup:
+- Parameter-Backups speichern zusätzlich die gewählte Geräteauswahl mit ab.

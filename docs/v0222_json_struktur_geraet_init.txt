@@ -1,0 +1,43 @@
+V0.2.22
+=======
+
+Geaendert:
+
+1) Geraeteauswahl
+-----------------
+- Die Geraeteauswahl ist aus der Haupt-Toolbar in das Fenster "Kommunikation einstellen" gewandert.
+- Hinweis im Dialog: Die Auswahl ist nur fuer Defaultwerte relevant.
+- Korrektur: FoxAir Blue Line GL8-1 entfernt. Es gibt nur FoxAir Blue Line BL8-1.
+- GL = R290, BL = R32.
+
+2) Init-Bloecke lesen
+---------------------
+- Der Button "Init-Bloecke lesen" liest jetzt immer alles, was vorher ueber Basis + extra + V1.3 erreichbar war.
+- Die extra/V1.3 Checkboxen entfallen.
+- Es wird weiterhin nur gelesen, nicht geschrieben.
+- Pause wird eindeutig als ms angezeigt; Log zeigt zusaetzlich Sekunden an, z. B. 900 ms / 0.9 s.
+
+3) JSON-Struktur Register/Wissen
+--------------------------------
+foxair_phnix_registers.json ist jetzt sauberer getrennt:
+- name  = reiner Klartext ohne A40 / D04 / P10 Vorspann
+- code  = z. B. A40, D04, P10, SG01, KG13-KG28
+- block = z. B. A, D, P, SG, KG
+
+Beispiel neu:
+{
+  "name": "Heißgastemperaturkorrektur für den Abtauzyklus",
+  "code": "D04",
+  "block": "D"
+}
+
+foxair_phnix_knowledge.json enthaelt die Wissensdatenbank:
+- description
+- knowledge / explanation
+- notes / hint
+- source
+- source_app_video
+- default
+- default_by_device
+
+Der Code bleibt rueckwaertskompatibel: alte Mapping-Namen wie "D04 / ..." werden beim Laden weiterhin erkannt und intern normalisiert.

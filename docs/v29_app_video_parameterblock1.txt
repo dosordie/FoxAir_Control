@@ -1,0 +1,42 @@
+FoxAir / Phnix Controll V0.1.29 - App-Video Parameterblock 1
+
+Quelle:
+- ScreenRecording_06-13-2026 10-32-41_1.mp4
+
+Übernommen aus der Bildschirmaufnahme:
+
+H-Parameter:
+1018 H01 = Auto start, Werte NO/YES
+1021 H05 = Cooling Mode, Werte NO/YES
+1023 H07 = Dry Contact, Werte Display Control / Remote Control
+1024 H10 = Unit Address
+1032 H18 = Electric Heater Energy Stage, Werte Stage1/Stage2/Stage3
+1033 H20 = 3-Way Valve Polarity, sichtbar Hot Water-ON
+1029 H21 = Temperature Unit, Werte °C/°F
+1030 H22 = Silence Mode, Werte NO/YES
+1035 H25 = Air Conditioner Tempt. Choice, Werte Outlet Water Temp. / Room Temp. / Buffer Tank Temp. / Inlet Water Temp.
+1027 H27 = EVI Enabled, Werte no EVI / EVI for cooling / EVI for heating
+1028 H28 = Heating/Cooling and Hot Water Function Enabled, Werte NO / YES / Only DHW
+1034 H29 = Mode Running
+1020 H34 = Parameter Code
+1031 A35 = Indoor Unit Type, Werte None / 1st Type / 2nd Type / 3rd Type
+1041 H31 = Pump Type, Werte No Flow Detection / Grundfos(25~75) / Grundfos(25~105) / Grundfos(25~125) / APM25(9~130) / APM25(12~130)
+1045 H32 = Heating and hot water forced switching time
+1019 H33 = Fan Motor Driver and Comp. Driver Integrated, Werte NO/YES
+1236 H36 = Weather Compensation, Werte NO/YES
+1046 H37 = DHW Temp. Sourcing
+1048 H38 = External Pump Selection
+
+E-Parameter:
+1131 E01 = EEV1 EEV Adjust Mode, Werte Auto/Manual vermutet
+1132 E02 = Target Superheat for Heating
+1133 E03 = EEV Initial Steps for Heating
+1137 E07 = Min Initial Steps
+1138 E08 = EEV Initial Steps for Cooling
+1139 E09 = EVI EEV: Adjustment Mode, Werte Auto/Manual vermutet
+1140 E10 = EVI EEV: Initial Steps
+1143 E13 = EVI EEV Target Superheat Degree
+
+Hinweise:
+- OCR/Videoauswertung: einzelne Gegenwerte, die nicht sichtbar waren, sind als Hinweis markiert oder bewusst vorsichtig benannt.
+- Die Auswahltexte sind im Mapping als value_map/app_label hinterlegt. Dadurch erscheinen sie im Rechtsklick-Schreibpopup automatisch als Dropdown.

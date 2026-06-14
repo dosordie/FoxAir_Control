@@ -1,0 +1,56 @@
+V0.1.39
+
+Aus ScreenRecording_06-13-2026 12-47-25_1.mp4 übernommen:
+
+F-Block / Fan:
+- F01 Fan Motor Type
+- F02 Max Cool Coil Temp
+- F03 Min Cool Coil Temp
+- F05 Max Heat Coil Temp
+- F06 Min Heat Coil Temp
+- F10 Quantity
+- F18 Cooling Fan Min Speed
+- F19 Min. Fan Speed in Heating
+- F22 Manual Control Fan Speed
+- F23 DC/AC Fan Rated Speed
+- F25 Cooling Fan Max Speed
+- F26 Heating Fan Max Speed
+- F27 Fan Motor Power Curve
+- F28 CT to Reduce Top Fans in Cooling
+- F29 CT to Stop Single Fan in Cooling
+
+D-Block / Defrost:
+- D01 Ambient Temp. of Starting Defrosting
+- D02 Heating Operation Time Before Defrosting
+- D03 Defrosting Cycle
+- D04 Exhaust Temp. Correction for Defrosting Cycle
+- D05-1 Defrosting Suction Pressure 1
+- D05-2 Defrosting Suction Pressure 2
+- D06 Defrosting Cycle Time Correction
+- D07 Ambient Temp. of Start Sliding Defrosting
+- D08 Suction Temp. of Start Sliding Defrosting
+- D09 Ambient Temp. of Stop Sliding Defrosting
+- D10 Suction Temp. of Stop Sliding Defrosting
+- D11 Min. Inlet Water Temp. of Defrosting
+- D12 Suction Pressure of Forced Defrosting
+- D13 Heating Operation Time Before Forced Defrosting
+- D14 Fan Motor Power Ratio to Extend Defrosting Cycle
+- D15 Fan Motor Power Ratio to Enter Forced Defrosting
+- D16 Max. Fan Motor Power to Enter Forced Defrosting
+- D17 Coil Temp. of Exit Defrosting
+- D18 Distributor Tube Temp. of Exit Defrosting
+- D19 Max. Defrosting Time
+- D20 Defrosting Frequency
+- D21 Enable Electric Heater During Defrosting
+- D22 Water Flow of Defrosting
+- D23 Max. Defrosting Cycle by Fan Motor Power
+- D24 Defrosting Heating Source in Heating / DHW Mode
+- D25 Max. Water Temp. Decrease during Defrosting
+- D26 Enable Defrosting Communication in Cascade
+- D30 Button Heater Delays OFF Time after Defrost
+
+Sonstige Korrekturen:
+- Autoconnect-Checkbox im Hauptfenster; Host/Port/Autoconnect werden gespeichert.
+- Parameter-Einstellungsfenster startet größer/höher.
+- A40 Nenn-Wasserdurchfluss: raw/10 = m³/h, Beispiel raw 5 = 0.5 m³/h.
+- „Forum“ aus Parameternamen entfernt, Quelle bleibt in description/source erhalten.

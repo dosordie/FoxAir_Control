@@ -1,0 +1,14 @@
+V0.1.32 Änderungen
+===================
+
+- Registerübersicht ist jetzt read-only.
+- Doppelklick in der Registerübersicht öffnet den Schnellschreiben-Dialog.
+- Parameter-Einstellungen: neue Checkbox "Block automatisch lesen" (Standard aktiv).
+- Beim Klick auf einen Parameterblock werden die sichtbaren Register automatisch gelesen.
+- Parameter-Einstellungen lesen Register jetzt blockweise per FC03 und lesen kleine Lücken mit.
+  Dadurch weniger Einzelrequests und schnelleres Umschalten zwischen H/A/F/D/E-Blöcken.
+- Schnellschreiben-Dropdown verbessert: value_map, values und app_values werden zusammengeführt.
+- H31 Pumpentyp hat nun technische deutsche value_map.
+- H37 Wassertank-Temperaturquelle hat nun Dropdown:
+  0 = Wärmepumpe / Wassertank-Temperatursensor
+  1 = Modbus / Zentralregler

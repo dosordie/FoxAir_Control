@@ -1,0 +1,63 @@
+name: Build Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          py -m pip install --upgrade pip
+          py -m pip install -r requirements.txt
+          py -m pip install -r requirements-build.txt
+
+      - name: Build portable EXE
+        run: .\build_windows_exe.bat
+
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -eq "") { $tag = "manual" }
+          Compress-Archive -Path dist\FoxAir_Phnix_Controll_Portable\* -DestinationPath "FoxAir_Phnix_Controll_${tag}_Windows_Portable.zip" -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup --yes
+
+      - name: Build installer
+        run: .\build_windows_setup.bat
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            FoxAir_Phnix_Controll_${{ github.ref_name }}_Windows_Portable.zip
+            installer\Output\*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoxAir_Phnix_Controll_Windows
+          path: |
+            FoxAir_Phnix_Controll_*_Windows_Portable.zip
+            installer\Output\*.exe

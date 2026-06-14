@@ -1,0 +1,32 @@
+FoxAir / Phnix Controll V0.2.0
+
+Neu: Kommunikationsart-Auswahl oben in der Hauptleiste.
+
+Backends:
+1) Display Modbus RTU/TCP (DWIN)
+   - Default in V0.2.0
+   - Unit-ID Default: 3
+   - Verbindung weiterhin über TCP/ser2net
+   - FC03 lesen
+   - FC06 schreiben
+   - Option "Display +0x2000": Register 1000..1999 werden auf HMI/VP-Adresse +0x2000 umgesetzt.
+     Beispiel: 1205 / 0x04B5 -> 9397 / 0x24B5
+
+2) Warmlink RAW TCP
+   - bisheriger Modus
+   - Unit/Bus Default: 0x63
+   - FC03 lesen, FC16 Einzelregister schreiben
+
+3) Standard Modbus RTU/TCP
+   - für normalen Controller/User-Modbus über TCP-Seriell-Brücke
+   - Unit-ID einstellbar, Default bei Wechsel: 1
+   - FC03 lesen
+   - FC06 schreiben
+
+Hinweis:
+V0.2.0 ist der erste Backend-Umbau. Direktes USB/COM-Port-Modbus ist noch nicht aktiv,
+aber vorbereitet als späterer vierter Transportweg: Modbus RTU Serial über Windows COM-Port,
+z.B. COM3/COM4 mit Baudrate, Parität, Stopbits.
+
+Mitgeliefert:
+tools/modbus_sniffer_plus.py = alter Modbus-RTU-over-TCP Sniffer/Decoder.

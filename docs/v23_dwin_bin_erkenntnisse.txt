@@ -1,0 +1,34 @@
+v23 DWIN-Binäranalyse
+=====================
+
+Untersuchte Dateien:
+- 14.bin: DWIN-Seitenkonfiguration, 254 Seiten à 4096 Byte
+- 13.bin: Touch-/Eingabeobjekte; bestätigt SG01-SG08 Variablen, liefert aber keinen zusätzlichen Kontaktstatus
+- 22.bin / 23.bin: keine SG-Kontakt-Referenzen gefunden; nur einzelne Status-/Text-/Grafikreferenzen
+- DGUS_V71_MODBUS_SLAVE.BIN: DWIN-OS/Modbus-Slave-Binärdatei; Bytefolgen allein nicht als VP-Referenzen belastbar nutzbar
+
+SG Ready / Kontaktstatus:
+- 1334 / 0x0536 bzw. Display-VP 2536H = SG01 / SG-Modus (Aus, Einfach, Erweitert)
+- Kontaktstatus wird auf den SG-Seiten nicht aus 2536H berechnet.
+- 14.bin zeigt auf den SG-Seiten direkte Bit-Anzeigen aus VP 07F2H:
+  * Seite 237: 07F2H Maske 0x2000
+  * Seite 238: 07F2H Maske 0x1000 und 0x2000
+- Daraus Mapping:
+  * 2034 / 0x07F2 Bit12 = SG Kontakt 1
+  * 2034 / 0x07F2 Bit13 = SG Kontakt 2
+
+Weitere 14.bin-Bitfeld-Hinweise:
+- 07E3H / 2019: Lastausgänge; 14.bin nutzt alle 16 Bitmasken auf Seiten 83-85.
+- 07F2H / 2034: Schalter/Kontakte; 14.bin nutzt Bits 0-6, 9, 12, 13.
+- 0825H/0826H/0829H/082AH: Fehler-/Störungsbitfelder in Status-/Fehlerseiten.
+- 252BH/252CH/252DH: Timer 1+2, 3+4, 5+6 Bitmasken auf Timerseiten 227-232.
+
+Reserve/Lücken:
+- 1353 / 0x0549, 1354 / 0x054A, 1355 / 0x054B: zwischen E21 (1352/0x0548) und H42 (1356/0x054C). In ASM und DWIN-Seitenkonfiguration bisher keine belastbare Verwendung gefunden.
+
+Hinweis zum Schreiben von 07F2H:
+- 07F2H ist eine DWIN-Display-Variable/VP bzw. Statusregister-Anzeige, kein normaler WP-Schreibpunkt über Warmlink 0x63.
+- Testschreiben nur am isolierten Display-Bus, nicht am WP/Controller-Bus.
+- DGUS-Protokoll-Beispiel: Write VP 07F2H = 0x1000 -> 5A A5 05 82 07 F2 10 00
+- Read VP 07F2H -> 5A A5 04 83 07 F2 01
+- Falls das Display als Modbus-Slave läuft, kann je nach OS auch Holding-Register 0x07F2 per FC06/FC16 am Display-Slave funktionieren. Slave-Adresse ist in der Firmware typischerweise 3, muss aber geprüft werden.

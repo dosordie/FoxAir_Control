@@ -1,0 +1,6 @@
+V0.2.6 - A40 und Serial-Defaults
+
+- A40 / Nenn-Wasserdurchfluss korrigiert auf Typ FLOW_M3H_X100.
+- Anzeige: raw 50 = 0.5 m³/h.
+- Serial-/COM-Defaults je Kommunikationsart auf 9600,8N1 gesetzt.
+- pyserial wird mit rtscts=False, dsrdtr=False, xonxoff=False geöffnet.
