@@ -1,4 +1,4 @@
-# FoxAir / Phnix Controll
+# FoxAir / Phnix Control
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
 
@@ -70,7 +70,7 @@ build_windows_exe.bat
 Das portable EXE-Paket liegt danach unter:
 
 ```text
-dist\FoxAir_Phnix_Controll_Portable\
+dist\FoxAir_Phnix_Control_Portable\
 ```
 
 ## Windows-Setup bauen
@@ -98,7 +98,7 @@ Die enthaltene GitHub-Actions-Workflow-Datei kann auf Windows automatisch ein Po
 
 | Datei | Zweck |
 |---|---|
-| `foxair_phnix_controll.py` | GUI |
+| `foxair_phnix_control.py` | GUI |
 | `foxair_phnix_core.py` | Kommunikation/Parser |
 | `foxair_phnix_registers.json` | technische Registerdaten |
 | `foxair_phnix_knowledge.json` | Beschreibungen, Hinweise, Defaults |
@@ -117,6 +117,6 @@ Wenn eine neue Version vorhanden ist, wird ein Download-Link zur Setup-EXE bzw. 
 
 ### Speicherort der Einstellungen
 
-Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Controll\` gespeichert.
+Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Control\` gespeichert.
 Das vermeidet Schreibfehler unter `C:\Program Files`.
 Portable/private Versionen koennen weiterhin alles im Programmordner speichern.

@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll - Warnhinweis
+FoxAir / Phnix Control - Warnhinweis
 =====================================
 
 Dieses Programm ist ein inoffizielles Diagnose- und Parametrierwerkzeug.

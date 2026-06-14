@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll - SETUP
+FoxAir / Phnix Control - SETUP
 =================================
 
 Kurzfassung
@@ -17,8 +17,8 @@ Installationsschritte
 | 1  | Python herunterladen         | https://www.python.org/downloads/windows/     | 64-Bit Installer verwenden                   |
 | 2  | Python-Version               | Python 3.11, 3.12 oder 3.13                   | Neueste stabile Version ist normalerweise ok |
 | 3  | Python installieren          | Haken setzen bei "Add python.exe to PATH"     | Sehr wichtig fuer pip/py im CMD              |
-| 4  | ZIP entpacken                | FoxAir_Phnix_Controll_Vx.x.x.zip entpacken    | Nicht direkt aus dem ZIP starten             |
-| 5  | CMD im Programmordner oeffnen| In die Adresszeile "cmd" eingeben + Enter     | Ordner mit foxair_phnix_controll.py                   |
+| 4  | ZIP entpacken                | FoxAir_Phnix_Control_Vx.x.x.zip entpacken    | Nicht direkt aus dem ZIP starten             |
+| 5  | CMD im Programmordner oeffnen| In die Adresszeile "cmd" eingeben + Enter     | Ordner mit foxair_phnix_control.py                   |
 | 6  | Pakete installieren          | py -m pip install -r requirements.txt         | Installiert PySide6 und pyserial             |
 | 7  | Programm starten             | start_gui.bat doppelklicken                   | Start ohne schwarzes CMD-Fenster             |
 | 8  | Debug-Start bei Problemen    | start_gui_debug_console.bat doppelklicken     | Zeigt Fehlerausgaben im CMD-Fenster          |

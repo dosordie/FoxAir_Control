@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.25
+FoxAir / Phnix Control V0.2.25
 
 Geändert:
 - app_icon.png durch hochgeladenes FoxAir/Fuchs-Bild ersetzt

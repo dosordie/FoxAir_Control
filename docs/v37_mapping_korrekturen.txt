@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.1.37 - Mapping-Korrekturen
+FoxAir / Phnix Control V0.1.37 - Mapping-Korrekturen
 
 - H30 / Register 1036 korrigiert:
   Hydraulikmodul-Typ / Indoor Unit Type

@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.11
+FoxAir / Phnix Control V0.2.11
 
 UI/SG Cleanup:
 - Bereich "Sonderfunktionen" in "Funktionen" umbenannt.

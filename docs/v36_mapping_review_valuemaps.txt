@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.1.36 - Mapping-Review value_map
+FoxAir / Phnix Control V0.1.36 - Mapping-Review value_map
 Quelle: vorhandene Beschreibungen, app_values und bereits bekannte Mappingtexte aus v35.
 Regel: vorhandene value_map nicht überschreiben; nur fehlende Dropdown-/Bitfeldinfos ergänzen.
 

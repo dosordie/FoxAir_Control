@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.14
+FoxAir / Phnix Control V0.2.14
 
 Änderungen:
 - Register 1191 als „Paket 3 Sync-/Gültigkeitsmarker 0x5AA5“ benannt.

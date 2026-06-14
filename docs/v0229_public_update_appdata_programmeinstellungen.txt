@@ -1,10 +1,10 @@
-V0.2.29 PUBLIC
+V0.2.30 PUBLIC
 
 Aenderungen:
 - Public-Version mit neutralen Kommunikationsdefaults.
 - Host ist leer, Autoconnect ist standardmaessig aus.
 - Benutzerdaten werden in der Public/Installer-Version unter AppData gespeichert:
-  %APPDATA%\FoxAir Phnix Controll\
+  %APPDATA%\FoxAir Phnix Control\
 - Dadurch keine Schreibfehler mehr unter C:\Program Files / C:\Program Files (x86).
 - Das bisherige Fenster "Kommunikation" wurde zu "Programm-Einstellungen" erweitert/umbenannt.
 - In den Programm-Einstellungen kann weiterhin die Kommunikation gesetzt werden.

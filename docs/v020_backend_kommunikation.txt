@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.0
+FoxAir / Phnix Control V0.2.0
 
 Neu: Kommunikationsart-Auswahl oben in der Hauptleiste.
 
@@ -18,7 +18,7 @@ Backends:
    - FC03 lesen, FC16 Einzelregister schreiben
 
 3) Standard Modbus RTU/TCP
-   - für normalen Controller/User-Modbus über TCP-Seriell-Brücke
+   - für normalen Controler/User-Modbus über TCP-Seriell-Brücke
    - Unit-ID einstellbar, Default bei Wechsel: 1
    - FC03 lesen
    - FC06 schreiben

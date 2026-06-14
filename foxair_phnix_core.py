@@ -691,9 +691,9 @@ def guess_device_name(slave_addr: int, crc_ok: bool = True) -> str:
     if slave_addr == 0x03:
         return "Display / DWIN-DGUS Modbus"
     if slave_addr == 0x01:
-        return "Standard-Modbus Controller / User-Bus"
+        return "Standard-Modbus Controler / User-Bus"
     if slave_addr == 0x04:
-        return "Standard-Modbus Controller / User-Bus 0x04"
+        return "Standard-Modbus Controler / User-Bus 0x04"
     if 1 <= slave_addr <= 247:
         return "unbekannter Modbus-Teilnehmer"
     return "ungültige Modbus-Adresse"

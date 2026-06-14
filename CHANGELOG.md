@@ -1,9 +1,14 @@
 # Changelog
 
-## V0.2.29 PUBLIC
+## V0.2.30 PUBLIC
 
+- Schreibweise von Controll auf Control korrigiert.
+- GitHub-Update-Check auf dosordie/FoxAir_Control umgestellt.
+- Hauptdatei auf foxair_phnix_control.py umbenannt.
+- Build-/Installer-/Release-Dateinamen auf FoxAir_Phnix_Control umgestellt.
 - Public-Version mit AppData-Speicherort fuer Settings/Cache/Knowledge/Backups/Raw-Logs.
-- Verhindert Schreibfehler bei Installation unter Program Files.
+- Fix: Host/IP und Programmeinstellungen werden in Setup- und Portable-Build korrekt gespeichert.
+- Speichern der Settings erfolgt atomar ueber temporaere Datei.
 - Kommunikation-Dialog zu Programm-Einstellungen umbenannt.
 - Update-Pruefung in Programm-Einstellungen abrufbar.
 - Automatische Update-Pruefung beim Start der Public-Version.

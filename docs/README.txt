@@ -34,7 +34,7 @@ Warmlink GUI Test v15
 
 Start:
   pip install -r requirements.txt
-  python foxair_phnix_controll.py
+  python foxair_phnix_control.py
 
 Default:
   Host: 192.168.10.43
@@ -272,7 +272,7 @@ v24 Änderung:
 
 
 v25 Änderung:
-- Fenstertitel geändert auf: FoxAir / Phnix Controll V25
+- Fenstertitel geändert auf: FoxAir / Phnix Control V25
 
 
 v26 Änderung:
@@ -283,7 +283,7 @@ v26 Änderung:
 
 v27 Änderung:
 - Versionsschema auf V0.1.27 umgestellt.
-- Fenstertitel: FoxAir / Phnix Controll V0.1.27
+- Fenstertitel: FoxAir / Phnix Control V0.1.27
 - Programmicon integriert: app_icon.png und app_icon.ico
 - Qt setzt das Icon für Fenster und Anwendung/Taskleiste.
 - Unter Windows wird zusätzlich eine AppUserModelID gesetzt, damit das Taskleistenicon sauber verwendet wird.
@@ -299,7 +299,7 @@ v28 Änderung:
 V0.1.29
 - Erste Bildschirmaufnahme der Original-App ausgewertet.
 - H-/E-Parameter App-Namen und mehrere Dropdown-Wertelisten ins Mapping übernommen.
-- Fenstertitel auf FoxAir / Phnix Controll V0.1.29 gesetzt.
+- Fenstertitel auf FoxAir / Phnix Control V0.1.29 gesetzt.
 - Details siehe v29_app_video_parameterblock1.txt.
 
 V0.1.30
@@ -350,20 +350,20 @@ V0.1.36:
 - Mapping-Review: Beschreibungen/App-Werte nach bislang ungenutzten Zustandswerten durchsucht.
 - Fehlende value_map-Dropdowns ergänzt, bestehende value_map-Einträge nicht überschrieben; nur fehlende Werte ergänzt.
 - 1016 Manuelle Steuerung als Bitfeld-Beschreibung ergänzt.
-- Fenstertitel auf FoxAir / Phnix Controll V0.1.36 gesetzt.
+- Fenstertitel auf FoxAir / Phnix Control V0.1.36 gesetzt.
 
 V0.1.37:
 - H30 korrigiert: Indoor Unit Type / Hydraulikmodul-Typ mit 0=None, 1=1st Type, 2=2nd Type, 3=3rd Type.
 - A35 / 1031 korrigiert: Electric Heater Off Temp Diff, 0.5 °C Schritte, Standard 0 °C; falsches Indoor-Unit-Dropdown entfernt.
 - Block T im Parameterfenster als Temperatur beschriftet.
-- Fenstertitel auf FoxAir / Phnix Controll V0.1.37 gesetzt.
+- Fenstertitel auf FoxAir / Phnix Control V0.1.37 gesetzt.
 
 V0.1.38:
 - A-Block Video ausgewertet.
 - App-Texte als app_label/app_values ergänzt, bestehende technische Namen geschützt.
 - A29, A38, A39, A40 aus App-Video benannt.
 - Neue Anzeige-Typen: BAR_X10, AMP_X2, FLOW_M3H_X10, MINUTES.
-- Fenstertitel auf FoxAir / Phnix Controll V0.1.38 geändert.
+- Fenstertitel auf FoxAir / Phnix Control V0.1.38 geändert.
 
 V0.1.39:
 - F-Block und D-Block aus App-Video ergänzt (app_label/app_values, technische Namen bleiben erhalten).

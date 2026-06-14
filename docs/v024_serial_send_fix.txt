@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.4
+FoxAir / Phnix Control V0.2.4
 
 Fix:
 - Serial/COM-Transport prueft Verbindung jetzt ueber is_connected() statt TCP-spezifisch ueber .sock.

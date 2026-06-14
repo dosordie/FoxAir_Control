@@ -10,4 +10,4 @@ V0.1.31
   - Bus-Adresse aus dem Dialog entfernt; verwendet die beim Oeffnen uebergebene Adresse.
   - Dropdown nutzt jetzt value_map bevorzugt und app_values als Fallback.
   - Damit erscheinen App-bekannte Wertelisten wie H31 Pump Type auch ohne technische value_map im Dropdown.
-- Fenstertitel auf FoxAir / Phnix Controll V0.1.31 gesetzt.
+- Fenstertitel auf FoxAir / Phnix Control V0.1.31 gesetzt.

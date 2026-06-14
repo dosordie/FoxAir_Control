@@ -11,7 +11,7 @@ py -m PyInstaller ^
   --noconfirm ^
   --clean ^
   --windowed ^
-  --name "FoxAir_Phnix_Controll" ^
+  --name "FoxAir_Phnix_Control" ^
   --icon "app_icon.ico" ^
   --add-data "foxair_phnix_registers.json;." ^
   --add-data "foxair_phnix_knowledge.json;." ^
@@ -19,19 +19,19 @@ py -m PyInstaller ^
   --add-data "app_icon.ico;." ^
   --add-data "docs;docs" ^
   --add-data "tools;tools" ^
-  foxair_phnix_controll.py || goto :err
+  foxair_phnix_control.py || goto :err
 
 echo [3/3] Portable ZIP-Ordner vorbereiten ...
-if exist "dist\FoxAir_Phnix_Controll_Portable" rmdir /s /q "dist\FoxAir_Phnix_Controll_Portable"
-mkdir "dist\FoxAir_Phnix_Controll_Portable"
-xcopy /e /i /y "dist\FoxAir_Phnix_Controll" "dist\FoxAir_Phnix_Controll_Portable\FoxAir_Phnix_Controll" >nul
-copy /y README.md "dist\FoxAir_Phnix_Controll_Portable\" >nul
-copy /y LICENSE "dist\FoxAir_Phnix_Controll_Portable\" >nul
-copy /y PUBLIC_WARNING.txt "dist\FoxAir_Phnix_Controll_Portable\" >nul
-copy /y CHANGELOG.md "dist\FoxAir_Phnix_Controll_Portable\" >nul
+if exist "dist\FoxAir_Phnix_Control_Portable" rmdir /s /q "dist\FoxAir_Phnix_Control_Portable"
+mkdir "dist\FoxAir_Phnix_Control_Portable"
+xcopy /e /i /y "dist\FoxAir_Phnix_Control" "dist\FoxAir_Phnix_Control_Portable\FoxAir_Phnix_Control" >nul
+copy /y README.md "dist\FoxAir_Phnix_Control_Portable\" >nul
+copy /y LICENSE "dist\FoxAir_Phnix_Control_Portable\" >nul
+copy /y PUBLIC_WARNING.txt "dist\FoxAir_Phnix_Control_Portable\" >nul
+copy /y CHANGELOG.md "dist\FoxAir_Phnix_Control_Portable\" >nul
 
 echo.
-echo Fertig: dist\FoxAir_Phnix_Controll_Portable\FoxAir_Phnix_Controll\FoxAir_Phnix_Controll.exe
+echo Fertig: dist\FoxAir_Phnix_Control_Portable\FoxAir_Phnix_Control\FoxAir_Phnix_Control.exe
 goto :eof
 
 :err

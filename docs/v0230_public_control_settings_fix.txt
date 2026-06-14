@@ -1,0 +1,24 @@
+V0.2.30 PUBLIC
+
+- Programmname von "Controll" auf korrektes "Control" umgestellt.
+- Hauptdatei umbenannt:
+  foxair_phnix_controll.py -> foxair_phnix_control.py
+- GitHub-Update-Check umgestellt auf:
+  dosordie/FoxAir_Control
+- Build-/Release-Dateinamen umgestellt auf:
+  FoxAir_Phnix_Control
+- Installername und Startmenueeintraege umgestellt auf:
+  FoxAir Phnix Control
+- AppData-Ordner Public/Installer:
+  %APPDATA%\FoxAir Phnix Control\
+
+Fix Programmeinstellungen / IP speichern:
+
+- Speichern der Programmeinstellungen schreibt jetzt atomar ueber eine temporaere Datei.
+- Werte aus dem Programmeinstellungen-Dialog werden nicht mehr durch alte Hauptfenster-Felder ueberschrieben.
+- apply_communication_settings speichert ohne erneutes Synchronisieren veralteter UI-Felder.
+- Settings bleiben fuer Public/Installer unter AppData.
+
+Hinweis:
+
+- Alte Namen/Ordner wurden bewusst nicht weiter beruecksichtigt, da die Public-Version noch nicht produktiv genutzt wurde.

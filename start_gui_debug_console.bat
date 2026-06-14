@@ -1,4 +1,4 @@
 @echo off
 cd /d %~dp0
-python foxair_phnix_controll.py
+python foxair_phnix_control.py
 pause

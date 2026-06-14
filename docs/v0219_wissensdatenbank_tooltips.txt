@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.19
+FoxAir / Phnix Control V0.2.19
 
 Neues Feature: Wissensdatenbank / Beschreibungen zu Datenpunkten
 

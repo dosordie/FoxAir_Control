@@ -28,7 +28,7 @@ Reserve/Lücken:
 
 Hinweis zum Schreiben von 07F2H:
 - 07F2H ist eine DWIN-Display-Variable/VP bzw. Statusregister-Anzeige, kein normaler WP-Schreibpunkt über Warmlink 0x63.
-- Testschreiben nur am isolierten Display-Bus, nicht am WP/Controller-Bus.
+- Testschreiben nur am isolierten Display-Bus, nicht am WP/Controler-Bus.
 - DGUS-Protokoll-Beispiel: Write VP 07F2H = 0x1000 -> 5A A5 05 82 07 F2 10 00
 - Read VP 07F2H -> 5A A5 04 83 07 F2 01
 - Falls das Display als Modbus-Slave läuft, kann je nach OS auch Holding-Register 0x07F2 per FC06/FC16 am Display-Slave funktionieren. Slave-Adresse ist in der Firmware typischerweise 3, muss aber geprüft werden.

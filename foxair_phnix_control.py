@@ -72,15 +72,15 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.29"
+APP_VERSION = "0.2.30"
 BUILD_DATE = "2026-06-14"
 APP_EDITION = "PUBLIC"
-APP_TITLE = f"FoxAir / Phnix Controll V{APP_VERSION} {APP_EDITION} - by DosOrDie"
+APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION} {APP_EDITION} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = ""
 DEFAULT_PORT = 2001
-UPDATE_REPO = "dosordie/FoxAir_Controll"
+UPDATE_REPO = "dosordie/FoxAir_Control"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
 UPDATE_RELEASES_URL = f"https://github.com/{UPDATE_REPO}/releases/latest"
 
@@ -109,9 +109,9 @@ def app_user_data_dir() -> str:
         return app_program_dir()
     if os.name == "nt":
         root = os.environ.get("APPDATA") or os.path.expanduser("~")
-        return os.path.join(root, "FoxAir Phnix Controll")
+        return os.path.join(root, "FoxAir Phnix Control")
     root = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
-    return os.path.join(root, "FoxAir Phnix Controll")
+    return os.path.join(root, "FoxAir Phnix Control")
 
 def app_resource_dir() -> str:
     """Ordner der mitgelieferten Programmdaten.
@@ -262,7 +262,7 @@ class StartupSplash(QDialog):
             logo_label.setPixmap(pix.scaled(260, 260, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         root.addWidget(logo_label, 0, Qt.AlignCenter)
 
-        title = QLabel("FoxAir / Phnix Controll")
+        title = QLabel("FoxAir / Phnix Control")
         title.setObjectName("title")
         title.setAlignment(Qt.AlignCenter)
         root.addWidget(title)
@@ -274,7 +274,7 @@ class StartupSplash(QDialog):
 
         bottom = QHBoxLayout()
         bottom.addStretch(1)
-        brand = QLabel("FoxAir Controll\nby DosOrDie")
+        brand = QLabel("FoxAir Control\nby DosOrDie")
         brand.setObjectName("brand")
         brand.setAlignment(Qt.AlignRight | Qt.AlignBottom)
         bottom.addWidget(brand, 0, Qt.AlignRight | Qt.AlignBottom)
@@ -381,13 +381,13 @@ def set_windows_app_id() -> None:
     if sys.platform != "win32":
         return
     try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FoxAir.PhnixControll.0.1")
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FoxAir.PhnixControl.0.2.30")
     except Exception:
         pass
 
 
 def parse_version_tuple(text: str) -> tuple[int, ...]:
-    """Versionsvergleich fuer Tags wie v0.2.27 oder 0.2.27."""
+    """Versionsvergleich fuer Tags wie v0.2.30 oder 0.2.30."""
     m = re.search(r"(\d+(?:\.\d+){0,4})", str(text or ""))
     if not m:
         return (0,)
@@ -414,7 +414,7 @@ class UpdateCheckWorker(QObject):
                 UPDATE_API_URL,
                 headers={
                     "Accept": "application/vnd.github+json",
-                    "User-Agent": f"FoxAir-Phnix-Controll/{APP_VERSION}",
+                    "User-Agent": f"FoxAir-Phnix-Control/{APP_VERSION}",
                 },
             )
             with urllib.request.urlopen(req, timeout=12) as resp:
@@ -3301,7 +3301,7 @@ class BackupRestoreDialog(QDialog):
                 "code": self.main_window._code_for_register(reg_no) if hasattr(self.main_window, "_code_for_register") else "",
             })
         return {
-            "format": "FoxAir_Phnix_Controll_Parameter_Backup",
+            "format": "FoxAir_Phnix_Control_Parameter_Backup",
             "format_version": 1,
             "app_version": APP_VERSION,
             "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -3346,7 +3346,7 @@ class BackupRestoreDialog(QDialog):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if not isinstance(data, dict) or data.get("format") != "FoxAir_Phnix_Controll_Parameter_Backup":
+            if not isinstance(data, dict) or data.get("format") != "FoxAir_Phnix_Control_Parameter_Backup":
                 raise ValueError("Keine passende FoxAir/Phnix Backup-Datei.")
             self.loaded_backup = data
             self.refresh_restore_table()
@@ -3678,6 +3678,7 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.main_window.apply_communication_settings(backend)
+        self.main_window._save_settings(sync_main_fields=False)
         super().accept()
 
 
@@ -4206,6 +4207,34 @@ class MainWindow(QMainWindow):
                 pass
         return {}
 
+    def _settings_data_snapshot(self) -> dict:
+        """Erzeugt die persistente Settings-Struktur.
+
+        Wichtig: backend_settings wird direkt aus self.settings genommen. Dadurch
+        werden Werte aus den Programm-Einstellungen nicht versehentlich wieder
+        durch alte Hauptfenster-Felder überschrieben.
+        """
+        return {
+            "backend": self.current_backend_key(),
+            "backend_settings": self.settings.get("backend_settings", {}),
+            "device_model": self.current_device_model(),
+            "autoconnect_on_start": self.autoconnect_cb.isChecked(),
+            "cache_load_on_start": self.cache_load_start_cb.isChecked(),
+            "cache_save_on_exit": self.cache_save_exit_cb.isChecked(),
+            "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
+            "cache_interval_s": int(self.cache_interval_spin.value()),
+            "show_public_warning": bool(self.settings.get("show_public_warning", True)),
+        }
+
+    def _write_settings_file(self):
+        os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+        data = self._settings_data_snapshot()
+        tmp_path = self.settings_path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, self.settings_path)
+        self.settings.update(data)
+
     def current_device_model(self) -> str:
         dev = str(self.settings.get("device_model", DEFAULT_DEVICE_MODEL))
         # alte Testbezeichnung korrigieren: eine BlueLine GL8 gibt es nicht, nur BL8.
@@ -4223,7 +4252,7 @@ class MainWindow(QMainWindow):
         if dev not in DEVICE_MODEL_LABELS:
             dev = DEFAULT_DEVICE_MODEL
         self.settings["device_model"] = dev
-        self._save_settings()
+        self._save_settings(sync_main_fields=False)
         label = DEVICE_MODEL_LABELS.get(dev, dev)
         self._log(f"Geräteauswahl für Defaultwerte: {label} ({DEVICE_MODEL_HINT})")
         if self.parameter_dialog is not None and self.parameter_dialog.isVisible():
@@ -4232,36 +4261,24 @@ class MainWindow(QMainWindow):
             self.offline_dialog.items = self.offline_dialog._collect_items()
             self.offline_dialog.refresh()
 
-    def _save_settings(self):
+    def _save_settings(self, sync_main_fields: bool = True):
         try:
-            cfg = self._backend_settings(self.current_backend_key())
-            self._set_backend_settings(
-                backend=self.current_backend_key(),
-                transport=str(cfg.get("transport", "tcp")),
-                host=self.host_edit.text().strip(),
-                port=int(self.port_edit.value()),
-                unit_id=int(self.unit_spin.value()),
-                display_translate=self.display_translate_cb.isChecked(),
-                serial_port=str(cfg.get("serial_port", "COM3")),
-                baudrate=int(cfg.get("baudrate", 9600)),
-                parity=str(cfg.get("parity", "N")),
-                bytesize=int(cfg.get("bytesize", 8)),
-                stopbits=float(cfg.get("stopbits", 1.0)),
-            )
-            data = {
-                "backend": self.current_backend_key(),
-                "backend_settings": self.settings.get("backend_settings", {}),
-                "device_model": self.current_device_model(),
-                "autoconnect_on_start": self.autoconnect_cb.isChecked(),
-                "cache_load_on_start": self.cache_load_start_cb.isChecked(),
-                "cache_save_on_exit": self.cache_save_exit_cb.isChecked(),
-                "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
-                "cache_interval_s": int(self.cache_interval_spin.value()),
-                "show_public_warning": bool(getattr(self, "public_warning_label", None).isVisible()) if hasattr(self, "public_warning_label") else bool(self.settings.get("show_public_warning", True)),
-            }
-            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
-            with open(self.settings_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            if sync_main_fields:
+                cfg = self._backend_settings(self.current_backend_key())
+                self._set_backend_settings(
+                    backend=self.current_backend_key(),
+                    transport=str(cfg.get("transport", "tcp")),
+                    host=self.host_edit.text().strip(),
+                    port=int(self.port_edit.value()),
+                    unit_id=int(self.unit_spin.value()),
+                    display_translate=self.display_translate_cb.isChecked(),
+                    serial_port=str(cfg.get("serial_port", "COM3")),
+                    baudrate=int(cfg.get("baudrate", 9600)),
+                    parity=str(cfg.get("parity", "N")),
+                    bytesize=int(cfg.get("bytesize", 8)),
+                    stopbits=float(cfg.get("stopbits", 1.0)),
+                )
+            self._write_settings_file()
         except PermissionError as exc:
             self._log(f"SETTINGS speichern fehlgeschlagen: {exc}")
             self._log(f"Hinweis: Einstellungsdatei liegt bei {self.settings_path}. Bitte Schreibrechte für diesen Ordner prüfen.")
@@ -4322,7 +4339,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         self._update_comm_summary()
-        self._save_settings()
+        self._save_settings(sync_main_fields=False)
         self._log(f"Kommunikation eingestellt: {self._communication_summary_text()}")
 
     def open_communication_settings(self):

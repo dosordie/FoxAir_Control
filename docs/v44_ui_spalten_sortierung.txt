@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.1.44
+FoxAir / Phnix Control V0.1.44
 
 UI-Anpassungen:
 - Offline Register-Browser:

@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.26
+FoxAir / Phnix Control V0.2.26
 ================================
 
 Public-Prep-Version fuer GitHub.
@@ -14,7 +14,7 @@ Geaendert:
 - requirements-build.txt ergaenzt
 - build_windows_exe.bat ergaenzt
 - build_windows_setup.bat ergaenzt
-- installer/FoxAir_Phnix_Controll.iss ergaenzt
+- installer/FoxAir_Phnix_Control.iss ergaenzt
 - .github/workflows/release.yml fuer automatischen Windows-Release-Build ergaenzt
 
 Hinweis:

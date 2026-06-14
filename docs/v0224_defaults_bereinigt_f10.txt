@@ -1,4 +1,4 @@
-FoxAir / Phnix Controll V0.2.24
+FoxAir / Phnix Control V0.2.24
 
 Änderungen Defaultwerte:
 

@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-if not exist "dist\FoxAir_Phnix_Controll\FoxAir_Phnix_Controll.exe" (
+if not exist "dist\FoxAir_Phnix_Control\FoxAir_Phnix_Control.exe" (
   echo EXE fehlt. Erst build_windows_exe.bat ausfuehren.
   pause
   exit /b 1
@@ -17,7 +17,7 @@ if not exist %ISCC% (
   exit /b 1
 )
 
-%ISCC% "installer\FoxAir_Phnix_Controll.iss" || goto :err
+%ISCC% "installer\FoxAir_Phnix_Control.iss" || goto :err
 
 echo.
 echo Fertig: installer\Output\

@@ -36,7 +36,7 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           if ($tag -eq "") { $tag = "manual" }
-          Compress-Archive -Path dist\FoxAir_Phnix_Controll_Portable\* -DestinationPath "FoxAir_Phnix_Controll_${tag}_Windows_Portable.zip" -Force
+          Compress-Archive -Path dist\FoxAir_Phnix_Control_Portable\* -DestinationPath "FoxAir_Phnix_Control_${tag}_Windows_Portable.zip" -Force
 
       - name: Install Inno Setup
         run: choco install innosetup --yes
@@ -49,7 +49,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            FoxAir_Phnix_Controll_${{ github.ref_name }}_Windows_Portable.zip
+            FoxAir_Phnix_Control_${{ github.ref_name }}_Windows_Portable.zip
             installer\Output\*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: FoxAir_Phnix_Controll_Windows
+          name: FoxAir_Phnix_Control_Windows
           path: |
-            FoxAir_Phnix_Controll_*_Windows_Portable.zip
+            FoxAir_Phnix_Control_*_Windows_Portable.zip
             installer\Output\*.exe
