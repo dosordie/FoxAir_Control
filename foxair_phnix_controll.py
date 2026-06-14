@@ -11,6 +11,9 @@ import re
 import socket
 import sys
 import time
+import urllib.error
+import urllib.request
+import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
@@ -69,13 +72,56 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.26"
+APP_VERSION = "0.2.29"
 BUILD_DATE = "2026-06-14"
-APP_TITLE = f"FoxAir / Phnix Controll V{APP_VERSION} - by DosOrDie"
+APP_EDITION = "PUBLIC"
+APP_TITLE = f"FoxAir / Phnix Controll V{APP_VERSION} {APP_EDITION} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = ""
 DEFAULT_PORT = 2001
+UPDATE_REPO = "dosordie/FoxAir_Controll"
+UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
+UPDATE_RELEASES_URL = f"https://github.com/{UPDATE_REPO}/releases/latest"
+
+
+def app_program_dir() -> str:
+    """Ordner der EXE bzw. des Scripts.
+
+    Bei PyInstaller liegt __file__ meist unter _internal. Einstellungen sollen aber
+    neben der EXE liegen, damit portable/private Versionen alles in einem Ordner halten.
+    """
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+
+
+def app_user_data_dir() -> str:
+    """Ordner fuer benutzerspezifische Daten.
+
+    Public/Installer-Versionen speichern Settings, Cache, Knowledge, Backups und
+    Logs unter AppData, weil Program Files ohne Adminrechte nicht beschreibbar ist.
+    Private/portable Versionen halten weiterhin alles neben EXE/Script.
+    """
+    if APP_EDITION.upper() == "PRIVATE":
+        return app_program_dir()
+    if os.name == "nt":
+        root = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(root, "FoxAir Phnix Controll")
+    root = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(root, "FoxAir Phnix Controll")
+
+def app_resource_dir() -> str:
+    """Ordner der mitgelieferten Programmdaten.
+
+    Im Python/ZIP-Betrieb identisch mit app_program_dir(), im PyInstaller-Build
+    kann das der _internal/_MEIPASS-Ordner sein.
+    """
+    if hasattr(sys, "_MEIPASS"):
+        return str(sys._MEIPASS)
+    return os.path.dirname(os.path.abspath(__file__))
 
 DEVICE_MODELS = [
     ("foxair_green_gl9_1", "FoxAir Green Line GL9-1"),
@@ -338,6 +384,63 @@ def set_windows_app_id() -> None:
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FoxAir.PhnixControll.0.1")
     except Exception:
         pass
+
+
+def parse_version_tuple(text: str) -> tuple[int, ...]:
+    """Versionsvergleich fuer Tags wie v0.2.27 oder 0.2.27."""
+    m = re.search(r"(\d+(?:\.\d+){0,4})", str(text or ""))
+    if not m:
+        return (0,)
+    parts = []
+    for part in m.group(1).split("."):
+        try:
+            parts.append(int(part))
+        except Exception:
+            parts.append(0)
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts)
+
+
+class UpdateCheckWorker(QObject):
+    result = Signal(dict)
+    error = Signal(str)
+    finished = Signal()
+
+    @Slot()
+    def run(self):
+        try:
+            req = urllib.request.Request(
+                UPDATE_API_URL,
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "User-Agent": f"FoxAir-Phnix-Controll/{APP_VERSION}",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                raw = resp.read().decode("utf-8", "replace")
+            data = json.loads(raw)
+            if not isinstance(data, dict):
+                raise RuntimeError("GitHub-Antwort war kein Objekt")
+            assets = []
+            for asset in data.get("assets", []) or []:
+                if isinstance(asset, dict):
+                    name = str(asset.get("name", "")).strip()
+                    url = str(asset.get("browser_download_url", "")).strip()
+                    if name and url:
+                        assets.append({"name": name, "url": url})
+            self.result.emit({
+                "tag": str(data.get("tag_name", "")).strip(),
+                "name": str(data.get("name", "")).strip(),
+                "html_url": str(data.get("html_url", UPDATE_RELEASES_URL)).strip() or UPDATE_RELEASES_URL,
+                "assets": assets,
+            })
+        except urllib.error.HTTPError as exc:
+            self.error.emit(f"GitHub HTTP-Fehler {exc.code}: {exc.reason}")
+        except Exception as exc:
+            self.error.emit(str(exc))
+        finally:
+            self.finished.emit()
 
 
 class ReaderWorker(QObject):
@@ -3221,7 +3324,7 @@ class BackupRestoreDialog(QDialog):
             QMessageBox.warning(self, "Kein Backup", "Keine Parameterwerte vorhanden. Erst Parameterbereiche lesen.")
             return
         default_name = time.strftime("foxair_phnix_backup_%Y%m%d_%H%M%S.json")
-        path, _ = QFileDialog.getSaveFileName(self, "Backup speichern", os.path.join(self.main_window.base_dir, default_name), "JSON Backup (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Backup speichern", os.path.join(getattr(self.main_window, "user_data_dir", self.main_window.base_dir), default_name), "JSON Backup (*.json)")
         if not path:
             return
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -3237,7 +3340,7 @@ class BackupRestoreDialog(QDialog):
             QApplication.restoreOverrideCursor()
 
     def load_backup_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Backup laden", self.main_window.base_dir, "JSON Backup (*.json);;Alle Dateien (*.*)")
+        path, _ = QFileDialog.getOpenFileName(self, "Backup laden", getattr(self.main_window, "user_data_dir", self.main_window.base_dir), "JSON Backup (*.json);;Alle Dateien (*.*)")
         if not path:
             return
         try:
@@ -3415,9 +3518,9 @@ class CommunicationSettingsDialog(QDialog):
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
         self.main_window = main_window
-        self.setWindowTitle("Kommunikation einstellen")
+        self.setWindowTitle("Programm-Einstellungen")
         self.setWindowIcon(app_icon())
-        self.resize(520, 340)
+        self.resize(560, 420)
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
@@ -3483,6 +3586,15 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow("Gerät:", self.device_combo)
         form.addRow("Hinweis:", self.device_hint_label)
 
+        self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
+        self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
+        self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
+        form.addRow("Anzeige:", self.show_warning_cb)
+
+        self.update_btn = QPushButton("Update jetzt prüfen ...")
+        self.update_btn.setToolTip("Prüft die neueste öffentliche GitHub-Release-Version.")
+        form.addRow("Update:", self.update_btn)
+
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
@@ -3494,6 +3606,7 @@ class CommunicationSettingsDialog(QDialog):
 
         self.backend_combo.currentIndexChanged.connect(lambda _=None: self._backend_changed(load_values=True))
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
+        self.update_btn.clicked.connect(self.main_window.check_for_updates)
         self._backend_changed(load_values=True)
 
     def _backend_settings(self, backend: str) -> dict:
@@ -3559,6 +3672,9 @@ class CommunicationSettingsDialog(QDialog):
 
     def accept(self):
         self._save_current_fields_to_selected_backend()
+        self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
+        if hasattr(self.main_window, "public_warning_label"):
+            self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
         self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.main_window.apply_communication_settings(backend)
@@ -3572,18 +3688,26 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(app_icon())
         self.resize(1400, 900)
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.base_dir = base_dir
-        self.regmap_path = os.path.join(base_dir, "foxair_phnix_registers.json")
+        resource_dir = app_resource_dir()
+        program_dir = app_program_dir()
+        self.base_dir = resource_dir
+        self.program_dir = program_dir
+        self.regmap_path = os.path.join(resource_dir, "foxair_phnix_registers.json")
         # Rueckwaertskompatibel: alte Warmlink-Dateinamen werden beim ersten Start noch gelesen.
-        old_regmap_path = os.path.join(base_dir, "warmlink_registers.json")
+        old_regmap_path = os.path.join(resource_dir, "warmlink_registers.json")
         if not os.path.exists(self.regmap_path) and os.path.exists(old_regmap_path):
             self.regmap_path = old_regmap_path
-        self.cache_file_path = os.path.join(base_dir, "foxair_phnix_last_values.json")
-        self.old_cache_file_path = os.path.join(base_dir, "warmlink_last_values.json")
-        self.settings_path = os.path.join(base_dir, "foxair_phnix_settings.json")
-        self.old_settings_path = os.path.join(base_dir, "warmlink_gui_settings.json")
-        self.knowledge_path = os.path.join(base_dir, "foxair_phnix_knowledge.json")
+
+        # User-/Arbeitsdateien:
+        # PUBLIC/Installer: AppData (Program Files ist ohne Adminrechte nicht beschreibbar).
+        # PRIVATE/Portable: Programmordner.
+        self.user_data_dir = app_user_data_dir()
+        self.cache_file_path = os.path.join(self.user_data_dir, "foxair_phnix_last_values.json")
+        self.old_cache_file_path = os.path.join(self.user_data_dir, "warmlink_last_values.json")
+        self.settings_path = os.path.join(self.user_data_dir, "foxair_phnix_settings.json")
+        self.old_settings_path = os.path.join(self.user_data_dir, "warmlink_gui_settings.json")
+        self.knowledge_path = os.path.join(self.user_data_dir, "foxair_phnix_knowledge.json")
+        self.bundled_knowledge_path = os.path.join(resource_dir, "foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
         self.knowledge_defs = self._load_knowledge_defs()
         self.regmap = RegisterMap(self.regmap_path)
@@ -3623,6 +3747,8 @@ class MainWindow(QMainWindow):
         self.bus_dialog: Optional[BusAddressDialog] = None
         self.offline_dialog: Optional[OfflineRegisterBrowserDialog] = None
         self.backup_restore_dialog: Optional[BackupRestoreDialog] = None
+        self.update_thread: Optional[QThread] = None
+        self.update_worker: Optional[UpdateCheckWorker] = None
         self.register_write_dialogs: Dict[tuple[int, int], RegisterQuickWriteDialog] = {}
         self.last_contact_value: Optional[int] = None
         self.last_load_output_value: Optional[int] = None
@@ -3640,7 +3766,10 @@ class MainWindow(QMainWindow):
         self._log(f"Register-Mapping: {self.regmap_path} ({len(self.regmap)} Einträge)")
         if self.cache_load_start_cb.isChecked():
             self.load_value_cache(silent=False)
+        self._log(f"Benutzerdaten: {self.user_data_dir}")
         QTimer.singleShot(700, self._autoconnect_if_enabled)
+        if APP_EDITION.upper() == "PUBLIC":
+            QTimer.singleShot(2500, self.check_for_updates_on_startup)
 
     def _autoconnect_if_enabled(self):
         if self.autoconnect_cb.isChecked() and not self.connected:
@@ -3649,9 +3778,10 @@ class MainWindow(QMainWindow):
 
     def _load_knowledge_defs(self) -> dict[str, Any]:
         try:
-            if not os.path.exists(self.knowledge_path):
+            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
+            if not os.path.exists(path):
                 return {}
-            with open(self.knowledge_path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
             return raw if isinstance(raw, dict) else {}
         except Exception as exc:
@@ -3710,6 +3840,7 @@ class MainWindow(QMainWindow):
             self.knowledge_defs[reg_key] = clean
         else:
             self.knowledge_defs.pop(reg_key, None)
+        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
         with open(self.knowledge_path, "w", encoding="utf-8") as f:
             json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
         self.register_defs = self._load_register_defs()
@@ -3727,10 +3858,11 @@ class MainWindow(QMainWindow):
         top = QHBoxLayout()
         main_layout.addLayout(top)
 
-        public_warning = QLabel(PUBLIC_WARNING_TEXT)
-        public_warning.setWordWrap(True)
-        public_warning.setStyleSheet("color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 4px; font-weight: bold;")
-        main_layout.addWidget(public_warning)
+        self.public_warning_label = QLabel(PUBLIC_WARNING_TEXT)
+        self.public_warning_label.setWordWrap(True)
+        self.public_warning_label.setStyleSheet("color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 4px; font-weight: bold;")
+        self.public_warning_label.setVisible(bool(self.settings.get("show_public_warning", True)))
+        main_layout.addWidget(self.public_warning_label)
 
         self.backend_combo = QComboBox()
         for key, label in BACKEND_CHOICES:
@@ -3753,7 +3885,7 @@ class MainWindow(QMainWindow):
         self.display_translate_cb = QCheckBox("Display +0x2000")
         self.display_translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als HMI/VP-Adresse +0x2000 gelesen/geschrieben.")
         self.display_translate_cb.setChecked(bool(active_cfg.get("display_translate_0x2000", backend_saved == "display_modbus")))
-        self.comm_settings_btn = QPushButton("Kommunikation ...")
+        self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
 
@@ -3762,7 +3894,7 @@ class MainWindow(QMainWindow):
         self.disconnect_btn.setEnabled(False)
         self.autoconnect_cb = QCheckBox("Autoconnect")
         self.autoconnect_cb.setToolTip("Beim Programmstart automatisch mit letzter IP/Port verbinden.")
-        self.autoconnect_cb.setChecked(bool(self.settings.get("autoconnect_on_start", False)))
+        self.autoconnect_cb.setChecked(bool(self.settings.get("autoconnect_on_start", APP_EDITION == "PRIVATE")))
 
         self.known_only_cb = QCheckBox("nur bekannte Register anzeigen")
         self.known_only_cb.setChecked(False)
@@ -3926,6 +4058,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
+        self.update_check_btn = QPushButton("Update prüfen ...")
         self.contact_value_label.setVisible(False)
         special_layout.addWidget(self.param_settings_btn, 0, 0, 1, 2)
         special_layout.addWidget(self.onoff_timer_btn, 1, 0, 1, 2)
@@ -3937,6 +4070,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.backup_restore_btn, 7, 0, 1, 2)
         special_layout.addWidget(self.offline_browser_btn, 8, 0, 1, 2)
         special_layout.addWidget(self.bus_popup_btn, 9, 0, 1, 2)
+        special_layout.addWidget(self.update_check_btn, 10, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -4048,6 +4182,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
+        self.update_check_btn.clicked.connect(self.check_for_updates)
         self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
         self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
         self.cache_save_btn.clicked.connect(lambda: self.save_value_cache(silent=False))
@@ -4122,9 +4257,14 @@ class MainWindow(QMainWindow):
                 "cache_save_on_exit": self.cache_save_exit_cb.isChecked(),
                 "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
                 "cache_interval_s": int(self.cache_interval_spin.value()),
+                "show_public_warning": bool(getattr(self, "public_warning_label", None).isVisible()) if hasattr(self, "public_warning_label") else bool(self.settings.get("show_public_warning", True)),
             }
+            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
             with open(self.settings_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
+        except PermissionError as exc:
+            self._log(f"SETTINGS speichern fehlgeschlagen: {exc}")
+            self._log(f"Hinweis: Einstellungsdatei liegt bei {self.settings_path}. Bitte Schreibrechte für diesen Ordner prüfen.")
         except Exception as exc:
             self._log(f"SETTINGS speichern fehlgeschlagen: {exc}")
 
@@ -4241,6 +4381,7 @@ class MainWindow(QMainWindow):
                 "port": int(self.port_edit.value()),
                 "registers": [self._snapshot_for_register(reg_no) for reg_no in sorted(self.latest_regs)],
             }
+            os.makedirs(os.path.dirname(self.cache_file_path), exist_ok=True)
             with open(self.cache_file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             if not silent:
@@ -4352,6 +4493,78 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             self._log(f"Werte-Cache laden fehlgeschlagen: {exc}")
 
+    def check_for_updates_on_startup(self):
+        self.check_for_updates(silent_no_update=True)
+
+    def check_for_updates(self, silent_no_update: bool = False):
+        if self.update_thread is not None:
+            if not silent_no_update:
+                QMessageBox.information(self, "Update", "Update-Prüfung läuft bereits.")
+            return
+        self.update_check_silent_no_update = bool(silent_no_update)
+        if hasattr(self, "update_check_btn"):
+            self.update_check_btn.setEnabled(False)
+            self.update_check_btn.setText("prüfe ...")
+        self._log(f"Update-Prüfung: {UPDATE_REPO} Releases ...")
+
+        self.update_thread = QThread(self)
+        self.update_worker = UpdateCheckWorker()
+        self.update_worker.moveToThread(self.update_thread)
+        self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.result.connect(self._update_check_finished)
+        self.update_worker.error.connect(self._update_check_error)
+        self.update_worker.finished.connect(self.update_thread.quit)
+        self.update_worker.finished.connect(self.update_worker.deleteLater)
+        self.update_thread.finished.connect(self._update_check_cleanup)
+        self.update_thread.start()
+
+    @Slot(dict)
+    def _update_check_finished(self, info: dict):
+        tag = str(info.get("tag") or "").strip()
+        url = str(info.get("html_url") or UPDATE_RELEASES_URL).strip()
+        assets = info.get("assets") if isinstance(info.get("assets"), list) else []
+        current = parse_version_tuple(APP_VERSION)
+        latest = parse_version_tuple(tag)
+
+        setup_asset = next((a for a in assets if "setup" in str(a.get("name", "")).lower() and str(a.get("url", "")).strip()), None)
+        portable_asset = next((a for a in assets if "portable" in str(a.get("name", "")).lower() and str(a.get("url", "")).strip()), None)
+        primary_url = str((setup_asset or portable_asset or {}).get("url") or url)
+
+        if latest > current:
+            asset_lines = []
+            for a in assets[:6]:
+                asset_lines.append(f"- {a.get('name')}")
+            asset_text = "\n".join(asset_lines) if asset_lines else "Keine Assets gefunden. Release-Seite öffnen."
+            box = QMessageBox(self)
+            box.setWindowTitle("Update verfügbar")
+            box.setIcon(QMessageBox.Information)
+            box.setText(f"Neue Version verfügbar: {tag}\nAktuell installiert: V{APP_VERSION}")
+            box.setInformativeText(f"Download/Release:\n{asset_text}")
+            open_btn = box.addButton("Download öffnen", QMessageBox.AcceptRole)
+            box.addButton("Später", QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() == open_btn:
+                webbrowser.open(primary_url)
+            self._log(f"Update verfügbar: {tag} ({url})")
+        else:
+            if not getattr(self, "update_check_silent_no_update", False):
+                QMessageBox.information(self, "Update", f"Keine neuere Version gefunden.\nAktuell: V{APP_VERSION}\nGitHub: {tag or 'unbekannt'}")
+            self._log(f"Update-Prüfung: keine neuere Version gefunden ({tag or 'unbekannt'}).")
+
+    @Slot(str)
+    def _update_check_error(self, message: str):
+        if not getattr(self, "update_check_silent_no_update", False):
+            QMessageBox.warning(self, "Update-Prüfung fehlgeschlagen", f"GitHub konnte nicht geprüft werden.\n\n{message}")
+        self._log(f"Update-Prüfung fehlgeschlagen: {message}")
+
+    def _update_check_cleanup(self):
+        self.update_thread = None
+        self.update_worker = None
+        self.update_check_silent_no_update = False
+        if hasattr(self, "update_check_btn"):
+            self.update_check_btn.setEnabled(True)
+            self.update_check_btn.setText("Update prüfen ...")
+
     def _log(self, text: str):
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
@@ -4420,7 +4633,7 @@ class MainWindow(QMainWindow):
         port = int(self.port_edit.value())
         cfg = self._backend_settings(self.current_backend_key())
         if str(cfg.get("transport", "tcp")) == "tcp" and not host:
-            QMessageBox.warning(self, "Kommunikation", "Bitte in Kommunikation ... zuerst Host/IP eintragen.")
+            QMessageBox.warning(self, "Kommunikation", "Bitte in Programm-Einstellungen ... zuerst Host/IP eintragen.")
             return
 
         self.thread = QThread()
@@ -4487,7 +4700,7 @@ class MainWindow(QMainWindow):
     def _open_raw_file(self):
         if self.raw_file:
             return
-        log_dir = os.path.join(self.base_dir, "raw_logs")
+        log_dir = os.path.join(getattr(self, "user_data_dir", self.base_dir), "raw_logs")
         os.makedirs(log_dir, exist_ok=True)
         stamp = time.strftime("%Y%m%d_%H%M%S")
         self.raw_file_path = os.path.join(log_dir, f"foxair_phnix_raw_{stamp}.bin")

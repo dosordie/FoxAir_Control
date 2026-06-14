@@ -1,0 +1,18 @@
+V0.2.29 PUBLIC
+
+Aenderungen:
+- Public-Version mit neutralen Kommunikationsdefaults.
+- Host ist leer, Autoconnect ist standardmaessig aus.
+- Benutzerdaten werden in der Public/Installer-Version unter AppData gespeichert:
+  %APPDATA%\FoxAir Phnix Controll\
+- Dadurch keine Schreibfehler mehr unter C:\Program Files / C:\Program Files (x86).
+- Das bisherige Fenster "Kommunikation" wurde zu "Programm-Einstellungen" erweitert/umbenannt.
+- In den Programm-Einstellungen kann weiterhin die Kommunikation gesetzt werden.
+- Dort kann auch der Hinweis-Banner ein-/ausgeschaltet werden.
+- Dort kann auch manuell nach Updates gesucht werden.
+- Beim Start prueft die Public-Version automatisch im Hintergrund die neueste GitHub-Release-Version.
+- Wenn keine neue Version vorhanden ist, erscheint beim Start keine Meldung, nur ein Logeintrag.
+- Wenn eine neuere Version vorhanden ist, wird ein Dialog mit Download-Link angezeigt.
+
+Hinweis:
+- Private Versionen bleiben standardmaessig portable und speichern weiterhin im Programmordner.

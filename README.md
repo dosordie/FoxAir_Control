@@ -108,3 +108,15 @@ Die enthaltene GitHub-Actions-Workflow-Datei kann auf Windows automatisch ein Po
 ## Haftung
 
 Dieses Tool kann Register schreiben. Falsche Werte können Störungen, Fehlfunktionen oder unerwünschtes Anlagenverhalten verursachen. Nutzung nur, wenn klar ist, was geändert wird. Vor jedem Restore oder Schreiben ein Backup erstellen.
+
+### Updates
+
+Die Public-Version prueft beim Start automatisch die neueste GitHub-Release-Version.
+Manuell geht das ueber **Programm-Einstellungen ... → Update jetzt prüfen ...** oder ueber den Button **Update prüfen ...**.
+Wenn eine neue Version vorhanden ist, wird ein Download-Link zur Setup-EXE bzw. Portable-ZIP angezeigt.
+
+### Speicherort der Einstellungen
+
+Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Controll\` gespeichert.
+Das vermeidet Schreibfehler unter `C:\Program Files`.
+Portable/private Versionen koennen weiterhin alles im Programmordner speichern.

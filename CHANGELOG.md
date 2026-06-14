@@ -1,5 +1,23 @@
 # Changelog
 
+## V0.2.29 PUBLIC
+
+- Public-Version mit AppData-Speicherort fuer Settings/Cache/Knowledge/Backups/Raw-Logs.
+- Verhindert Schreibfehler bei Installation unter Program Files.
+- Kommunikation-Dialog zu Programm-Einstellungen umbenannt.
+- Update-Pruefung in Programm-Einstellungen abrufbar.
+- Automatische Update-Pruefung beim Start der Public-Version.
+- Neutrale Public-Defaults: Host leer, Autoconnect aus.
+
+
+## V0.2.28 PRIVATE
+
+- User-/Arbeitsdateien bevorzugt im Programm-/EXE-Ordner statt im PyInstaller-_internal-Ordner.
+- Backup-Vorschlagsordner und Raw-Logs ebenfalls im Programm-/Arbeitsordner.
+- Hinweis-Banner im Hauptfenster in Kommunikationseinstellungen abschaltbar.
+- Bessere Meldung bei fehlenden Schreibrechten unter Program Files.
+
+
 ## v0.2.26
 
 Public-Prep-Version.
