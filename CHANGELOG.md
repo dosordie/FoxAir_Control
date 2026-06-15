@@ -1,5 +1,14 @@
 # Changelog
 
+## V0.2.33 PUBLIC
+
+- Eigenes App-Theme ergänzt: Standard ist Hell/Fusion, damit Windows-Darkmode keine unleserlichen Tabellen/Popups mehr verursacht; Dunkel ist optional vorbereitet.
+- Programm-Einstellungen erweitert: Auto-Read Init on Startup, Livewerte-Auto-Poll ab 20xx mit Intervall, Parameterblock-Auto-Poll mit Intervall. Einstellungen werden persistent gespeichert.
+- Parameterfenster: T-Block als Diagnose/Live markiert, bleibt aber weiterhin am Ende der Blockreihenfolge H A F D E R P G C Z ... T.
+- Diagnose-/T-Werte ergänzt/korrigiert: 2054 Unit Power = kW /10, 2059 Unit Capacity = kW /10, 2060 COP = /100, 2065 Verdampfung, 2066 Exhaust Superheat, 2067 Suction Superheat, 2077 Durchfluss = m³/h /100.
+- Knowledge Base erweitert: Hinweise zur Ableitung und Diagnosebedeutung von 2065-2067, inkl. Beobachtung 2066 ≈ Heißgas minus WP-Austritt/Kondensator-Referenz.
+- README ergänzt: Standard-Modbus und Warmlink-Modbus sind getestet; HMI-/Display-Modbus ist noch ungetestet. Kaskaden-Hinweis für mögliche mehrere Slave-Adressen am HMI-/Display-Modbus ergänzt.
+
 ## V0.2.32 PUBLIC
 
 - Public-Version aus dem letzten PRIVATE V0.2.32 Stand erstellt.

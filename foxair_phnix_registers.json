@@ -4436,9 +4436,14 @@
   },
   "2054": {
     "function": "16",
-    "mode": "write",
-    "name": "Elektrische Energie / Unit Power",
-    "type": "RAW"
+    "mode": "read",
+    "name": "Elektrische Leistung / Unit Power",
+    "type": "POWER_KW_X10",
+    "block": "T",
+    "code": "T54",
+    "unit": "kW",
+    "description": "Live-/Diagnosewert. Vermutlich signed /10 kW; Beispiel 5 = 0,5 kW = 500 W.",
+    "app_label": "Unit Power"
   },
   "2055": {
     "block": "T",
@@ -4472,9 +4477,14 @@
   },
   "2059": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Wärmeleistung / Unit Capacity",
-    "type": "RAW"
+    "type": "POWER_KW_X10",
+    "block": "T",
+    "code": "T59",
+    "unit": "kW",
+    "description": "Live-/Diagnosewert. Vermutlich signed /10 kW; Beispiel 26 = 2,6 kW.",
+    "app_label": "Unit Capacity"
   },
   "206": {
     "function": "03",
@@ -4484,9 +4494,14 @@
   },
   "2060": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "COP",
-    "type": "TEMP1"
+    "type": "COP_X100",
+    "block": "T",
+    "code": "T60",
+    "unit": "COP",
+    "description": "Live-/Diagnosewert. Vermutlich signed /100; Beispiel 458 = COP 4,58.",
+    "app_label": "COP"
   },
   "2061": {
     "block": "T",
@@ -4522,21 +4537,36 @@
   },
   "2065": {
     "function": "16",
-    "mode": "write",
-    "name": "T? Verdampfungstemperatur / Evaporating Temp (ASM)",
-    "type": "TEMP1"
+    "mode": "read",
+    "name": "Verdampfungstemperatur / Evaporating Temp (ASM)",
+    "type": "TEMP1",
+    "block": "T",
+    "code": "T?1",
+    "unit": "°C",
+    "description": "ASM-Diagnosewert. Vermutlich aus Niederdruck und Kältemittel-Sättigungstabelle berechnete Verdampfungstemperatur.",
+    "app_label": "Evaporating Temp (ASM)"
   },
   "2066": {
     "function": "16",
-    "mode": "write",
-    "name": "T? Abgas-Überhitzung / Exhaust Superheat (ASM)",
-    "type": "TEMP1"
+    "mode": "read",
+    "name": "Abgas-Überhitzung / Exhaust Superheat (ASM)",
+    "type": "TEMP1",
+    "block": "T",
+    "code": "T?2",
+    "unit": "K",
+    "description": "ASM-Diagnosewert. Vermutlich modellierter Wert, da kein Hochdrucksensor vorhanden; Beobachtung: etwa Heißgas minus WP-Austritt/Kondensator-Referenz.",
+    "app_label": "Exhaust Superheat (ASM)"
   },
   "2067": {
     "function": "16",
-    "mode": "write",
-    "name": "T? Rückgas-/Saug-Überhitzung / Suction Superheat (ASM)",
-    "type": "TEMP1"
+    "mode": "read",
+    "name": "Rückgas-/Saug-Überhitzung / Suction Superheat (ASM)",
+    "type": "TEMP1",
+    "block": "T",
+    "code": "T?3",
+    "unit": "K",
+    "description": "Wichtiger EEV-/Saugseiten-Diagnosewert. Vermutlich Sauggastemperatur minus Verdampfungstemperatur.",
+    "app_label": "Suction Superheat (ASM)"
   },
   "2068": {
     "function": "16",
@@ -4616,9 +4646,12 @@
     "block": "T",
     "code": "T39",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Wasserdurchflussrate",
-    "type": "DIGI9"
+    "type": "FLOW_M3H_X100",
+    "unit": "m³/h",
+    "description": "Wasserdurchfluss. Beobachtung: raw 64 entspricht vermutlich 0,64 m³/h.",
+    "app_label": "Water Flow Rate"
   },
   "2078": {
     "function": "16",

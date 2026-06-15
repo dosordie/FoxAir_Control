@@ -318,6 +318,8 @@ def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[in
         return f"{signed / 100.0:.1f} m³/h"
     if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
         return f"{signed / 10.0:.1f} m³/h"
+    if dtype in ("COP_X100", "COP100"):
+        return f"{signed / 100.0:.2f}"
     if dtype in ("MINUTES", "MIN"):
         return f"{signed} min"
     if dtype in ("SECONDS", "SEC"):
@@ -634,7 +636,7 @@ def numeric_value_by_type(raw_value: int, dtype: str) -> float:
         return signed / 2.0
     if dtype in ("DIGI5", "POWER_KW_X10", "KW_X10", "BAR_X10", "PRESSURE_BAR_X10", "FLOW_M3H_X10", "FLOW_X10"):
         return signed / 10.0
-    if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
+    if dtype in ("FLOW_M3H_X100", "FLOW_X100", "COP_X100", "COP100"):
         return signed / 100.0
     if dtype in ("AMP_X2", "CURRENT_A_X2"):
         return signed / 2.0

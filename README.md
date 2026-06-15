@@ -40,6 +40,15 @@ Kurz gesagt:
 - **Display** = der Bus, der zum Display geht.
 - **Warmlink LTE** = nur im Außengerät vorhanden, an den Klemmen am Mainboard / Modem-Bus.
 
+
+### Verbindungsstatus / Teststand
+
+- **Modbus Standart** ist getestet.
+- **Modbus Warmlink LTE** zum LTE-/Warmlink-Modem ist getestet.
+- **Modbus Display / HMI** ist aktuell noch ungetestet und sollte vorsichtig verwendet werden.
+
+Hinweis fuer Kaskaden: Bei Kaskadenanlagen koennten am **HMI-/Display-Modbus** mehrere Geraete mit unterschiedlichen Slave-Adressen haengen. Das ist noch nicht verifiziert, wird aber fuer spaetere Bus-Scan-/Mehrgeraete-Funktionen vorgemerkt.
+
 ## Unterstützte Geräteauswahl für Defaultwerte
 
 Die Geräteauswahl beeinflusst nur die Anzeige und Pflege von Defaultwerten in der Wissensdatenbank.
@@ -106,7 +115,7 @@ Voraussetzung: Inno Setup 6 ist installiert.
 Empfohlener Ablauf:
 
 ```bat
-git tag v0.2.32
+git tag v0.2.33
 git push origin main --tags
 ```
 
@@ -139,6 +148,19 @@ Die Setup-EXE kann später über eine vorhandene Installation drüber installier
 Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Control\` gespeichert.
 Das vermeidet Schreibfehler unter `C:\Program Files`.
 Portable/private Versionen koennen weiterhin alles im Programmordner speichern. Die Public-Version startet mit leerem Host und Standard-Modbus als Vorgabe.
+
+
+### PUBLIC V0.2.33 Hinweise
+
+- Eigenes helles Standard-Theme: Windows-Darkmode erzeugt keine unleserlichen Tabellen/Popups mehr. Optional kann in den Programm-Einstellungen auf Dunkel umgestellt werden.
+- Auto-Funktionen in den Programm-Einstellungen:
+  - Init-Blöcke nach erfolgreicher Verbindung automatisch lesen.
+  - Livewerte ab 20xx zyklisch pollen.
+  - Parameterblock im Einstellfenster zyklisch pollen.
+  Die Einstellungen werden beim Programmende gespeichert.
+- T-Block wird als Diagnose-/Livewert-Block behandelt, nicht mehr pauschal als Temperaturblock. In der Sortierung bleibt T weiter ganz am Schluss.
+- Diagnosewerte ergänzt/korrigiert: 2054 Unit Power kW /10, 2059 Unit Capacity kW /10, 2060 COP /100, 2065 Verdampfung, 2066 Exhaust Superheat, 2067 Suction Superheat, 2077 Durchfluss /100 m³/h.
+- KB-Hinweise zu 2065–2067 ergänzt: 2065 vermutlich aus Niederdruck berechnet, 2067 als wichtiger EEV-/Saugüberhitzungswert, 2066 vermutlich modellierter Wert aus Heißgas minus Kondensator-/WP-Austrittsreferenz.
 
 ### PUBLIC V0.2.32 Hinweise
 

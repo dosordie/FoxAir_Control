@@ -72,8 +72,8 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.32"
-BUILD_DATE = "2026-06-14"
+APP_VERSION = "0.2.33"
+BUILD_DATE = "2026-06-15"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION} {APP_EDITION} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
@@ -153,6 +153,68 @@ def app_icon_pixmap(size: int = 96) -> QPixmap:
     if pix.isNull():
         return QPixmap()
     return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+
+LIGHT_THEME_QSS = """
+QWidget { background: #f2f2f2; color: #111111; }
+QMainWindow, QDialog { background: #f2f2f2; color: #111111; }
+QLabel { color: #111111; }
+QGroupBox { color: #111111; border: 1px solid #c8c8c8; border-radius: 4px; margin-top: 10px; padding-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; background: #f2f2f2; }
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #ffffff; color: #111111; border: 1px solid #b8b8b8; selection-background-color: #2a82da; selection-color: #ffffff; }
+QPushButton { background: #f8f8f8; color: #111111; border: 1px solid #b8b8b8; border-radius: 3px; padding: 3px 8px; }
+QPushButton:hover { background: #e9f2ff; border-color: #7aa7d9; }
+QPushButton:checked { background: #ffd7c2; border-color: #c36a3a; }
+QPushButton:disabled { background: #e4e4e4; color: #777777; }
+QCheckBox { color: #111111; }
+QHeaderView::section { background: #e9e9e9; color: #111111; border: 1px solid #c8c8c8; padding: 3px; }
+QTableWidget, QTableView { background: #fff4a8; alternate-background-color: #fff0c6; color: #111111; gridline-color: #d0c78a; selection-background-color: #2a82da; selection-color: #ffffff; }
+QTableWidget::item, QTableView::item { color: #111111; }
+QTextEdit#log_view { background: #111111; color: #e6e6e6; }
+QScrollArea { background: #f2f2f2; }
+"""
+
+DARK_THEME_QSS = """
+QWidget { background: #202124; color: #eeeeee; }
+QMainWindow, QDialog { background: #202124; color: #eeeeee; }
+QLabel { color: #eeeeee; }
+QGroupBox { color: #eeeeee; border: 1px solid #555555; border-radius: 4px; margin-top: 10px; padding-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; background: #202124; }
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #2b2b2b; color: #eeeeee; border: 1px solid #666666; selection-background-color: #4a6984; selection-color: #ffffff; }
+QPushButton { background: #303134; color: #eeeeee; border: 1px solid #666666; border-radius: 3px; padding: 3px 8px; }
+QPushButton:hover { background: #3a3d41; border-color: #8ab4f8; }
+QPushButton:checked { background: #7a3f2a; border-color: #d98b5f; }
+QPushButton:disabled { background: #2a2a2a; color: #888888; }
+QCheckBox { color: #eeeeee; }
+QHeaderView::section { background: #303134; color: #ffffff; border: 1px solid #555555; padding: 3px; }
+QTableWidget, QTableView { background: #252525; alternate-background-color: #2d2d2d; color: #eeeeee; gridline-color: #444444; selection-background-color: #4a6984; selection-color: #ffffff; }
+QTableWidget::item, QTableView::item { color: #eeeeee; }
+QTextEdit#log_view { background: #111111; color: #e6e6e6; }
+QScrollArea { background: #202124; }
+"""
+
+
+def apply_app_theme(target: Any, theme: str = "light") -> str:
+    """Eigenes App-Theme setzen, damit Windows-Darkmode keine unleserlichen Mischfarben erzeugt."""
+    app = QApplication.instance()
+    selected = (theme or "light").lower()
+    if selected not in ("light", "dark"):
+        selected = "light"
+    if app is not None:
+        try:
+            app.setStyle("Fusion")
+        except Exception:
+            pass
+        app.setProperty("foxair_theme", selected)
+        app.setStyleSheet(DARK_THEME_QSS if selected == "dark" else LIGHT_THEME_QSS)
+    elif hasattr(target, "setStyleSheet"):
+        target.setStyleSheet(DARK_THEME_QSS if selected == "dark" else LIGHT_THEME_QSS)
+    return selected
+
+
+def app_theme_is_dark() -> bool:
+    app = QApplication.instance()
+    return bool(app is not None and str(app.property("foxair_theme") or "light") == "dark")
 
 KNOWLEDGE_FIELDS = ("description", "knowledge", "notes", "hint", "explanation", "default", "default_by_device", "source", "source_app_video")
 
@@ -359,15 +421,16 @@ def code_sort_key(code: str) -> str:
 def apply_block_header_item_style(table: QTableWidget, item: QTableWidgetItem, is_block: bool) -> None:
     """Blockkopf-/Paketkopf-Zeilen optisch kleiner und kursiv darstellen."""
     font = table.font()
+    dark = app_theme_is_dark()
     if is_block:
         font.setItalic(True)
         point_size = font.pointSize()
         if point_size and point_size > 7:
             font.setPointSize(point_size - 1)
-        item.setForeground(QColor(95, 95, 95))
+        item.setForeground(QColor(170, 170, 170) if dark else QColor(95, 95, 95))
     else:
         font.setItalic(False)
-        item.setForeground(QColor(0, 0, 0))
+        item.setForeground(QColor(235, 235, 235) if dark else QColor(0, 0, 0))
     item.setFont(font)
 
 def is_block_dtype(dtype: Any) -> bool:
@@ -2662,7 +2725,7 @@ class ParameterSettingsDialog(QDialog):
         "E": "EVI/EEV",
         "C": "Compressor",
         "R": "Sollwerte",
-        "T": "Temperatur",
+        "T": "Diagnose/Live",
         "Z": "Zone",
         "G": "Legionellen",
         "P": "Pumpe",
@@ -2679,9 +2742,25 @@ class ParameterSettingsDialog(QDialog):
         self._build_ui()
         self.refresh_blocks()
         self.refresh_table()
+        self._apply_tab_poll_state(save=False)
         # Beim Oeffnen direkt den ersten sichtbaren Block laden, so wie die App
         # beim Aufruf einer Parametergruppe sofort Werte anzeigt.
         QTimer.singleShot(250, self._auto_read_initial_block)
+
+    def _apply_tab_poll_state(self, save: bool = False):
+        if save:
+            self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
+            self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+            self.main_window._save_settings(sync_main_fields=False)
+        if self.tab_auto_poll_cb.isChecked():
+            self.tab_poll_timer.start(int(self.tab_poll_interval_spin.value()) * 1000)
+        else:
+            self.tab_poll_timer.stop()
+
+    def closeEvent(self, event):
+        self._apply_tab_poll_state(save=True)
+        self.tab_poll_timer.stop()
+        super().closeEvent(event)
 
     def _auto_read_initial_block(self):
         if self.isVisible() and self.auto_read_block_cb.isChecked() and self._visible_items():
@@ -2772,12 +2851,27 @@ class ParameterSettingsDialog(QDialog):
         self.auto_read_block_cb = QCheckBox("Block automatisch lesen")
         self.auto_read_block_cb.setChecked(True)
         self.auto_read_block_cb.setToolTip("Wenn aktiv, werden beim Klick auf einen Parameterblock die sichtbaren Register blockweise gelesen.")
+        self.tab_auto_poll_cb = QCheckBox("Block Auto-Poll")
+        self.tab_auto_poll_cb.setToolTip("Aktuell geoeffneten Parameterblock im Intervall wiederholt lesen.")
+        self.tab_auto_poll_cb.setChecked(bool(self.main_window.settings.get("tab_auto_poll", False)))
+        self.tab_poll_interval_spin = QSpinBox()
+        self.tab_poll_interval_spin.setRange(2, 3600)
+        self.tab_poll_interval_spin.setSuffix(" s")
+        self.tab_poll_interval_spin.setValue(int(self.main_window.settings.get("tab_poll_interval_s", 30)))
+        self.tab_poll_interval_spin.setMaximumWidth(90)
         top.addWidget(self.app_only_cb)
         top.addWidget(self.app_name_cb)
         top.addWidget(self.live_update_cb)
         top.addWidget(self.auto_read_block_cb)
+        top.addWidget(self.tab_auto_poll_cb)
+        top.addWidget(self.tab_poll_interval_spin)
         top.addStretch(1)
         layout.addLayout(top)
+
+        self.tab_poll_timer = QTimer(self)
+        self.tab_poll_timer.timeout.connect(lambda: self.read_visible_registers(auto=True))
+        self.tab_auto_poll_cb.stateChanged.connect(lambda _=None: self._apply_tab_poll_state(save=True))
+        self.tab_poll_interval_spin.valueChanged.connect(lambda _=None: self._apply_tab_poll_state(save=True))
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(["Register", "Code", "Name", "aktueller Wert", "Rohwert", "Typ", "Info"])
@@ -3635,6 +3729,46 @@ class CommunicationSettingsDialog(QDialog):
         self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
         form.addRow("Anzeige:", self.show_warning_cb)
 
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem("Hell (empfohlen)", "light")
+        self.theme_combo.addItem("Dunkel", "dark")
+        tidx = self.theme_combo.findData(str(main_window.settings.get("theme", "light")))
+        self.theme_combo.setCurrentIndex(tidx if tidx >= 0 else 0)
+        form.addRow("Theme:", self.theme_combo)
+
+        self.auto_read_init_cb = QCheckBox("Init-Blöcke nach Autoconnect/Connect lesen")
+        self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
+        self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
+        form.addRow("Startup:", self.auto_read_init_cb)
+
+        self.live_poll_cb = QCheckBox("Livewerte 20xx zyklisch lesen")
+        self.live_poll_cb.setChecked(bool(main_window.settings.get("auto_poll_live_values", False)))
+        self.live_poll_cb.setToolTip("Liest zyklisch die Live-/Diagnoseblöcke ab 2001/2091.")
+        self.live_poll_interval_spin = QSpinBox()
+        self.live_poll_interval_spin.setRange(5, 3600)
+        self.live_poll_interval_spin.setValue(int(main_window.settings.get("live_poll_interval_s", 30)))
+        self.live_poll_interval_spin.setSuffix(" s")
+        live_poll_row = QWidget()
+        live_poll_layout = QHBoxLayout(live_poll_row)
+        live_poll_layout.setContentsMargins(0, 0, 0, 0)
+        live_poll_layout.addWidget(self.live_poll_cb)
+        live_poll_layout.addWidget(self.live_poll_interval_spin)
+        live_poll_layout.addStretch(1)
+        form.addRow("Auto-Poll:", live_poll_row)
+
+        self.tab_auto_poll_cb = QCheckBox("Parameterblock im Einstellfenster zyklisch lesen")
+        self.tab_auto_poll_cb.setChecked(bool(main_window.settings.get("tab_auto_poll", False)))
+        self.tab_poll_interval_spin = QSpinBox()
+        self.tab_poll_interval_spin.setRange(2, 3600)
+        self.tab_poll_interval_spin.setValue(int(main_window.settings.get("tab_poll_interval_s", 30)))
+        self.tab_poll_interval_spin.setSuffix(" s")
+        tab_poll_row = QWidget()
+        tab_poll_layout = QHBoxLayout(tab_poll_row)
+        tab_poll_layout.setContentsMargins(0, 0, 0, 0)
+        tab_poll_layout.addWidget(self.tab_auto_poll_cb)
+        tab_poll_layout.addWidget(self.tab_poll_interval_spin)
+        tab_poll_layout.addStretch(1)
+        form.addRow("Parameter:", tab_poll_row)
 
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
@@ -3713,11 +3847,19 @@ class CommunicationSettingsDialog(QDialog):
     def accept(self):
         self._save_current_fields_to_selected_backend()
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
+        self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "light")
+        self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
+        self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
+        self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
+        self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
+        self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        apply_app_theme(QApplication.instance(), self.main_window.settings["theme"])
         if hasattr(self.main_window, "public_warning_label"):
             self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
         self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.main_window.apply_communication_settings(backend)
+        self.main_window._apply_live_poll_timer_state()
         self.main_window._save_settings(sync_main_fields=False)
         super().accept()
 
@@ -3809,6 +3951,7 @@ class MainWindow(QMainWindow):
         self.knowledge_path = os.path.join(self.user_data_dir, "foxair_phnix_knowledge.json")
         self.bundled_knowledge_path = os.path.join(resource_dir, "foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
+        apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "light")))
         self.knowledge_defs = self._load_knowledge_defs()
         self.regmap = RegisterMap(self.regmap_path)
         self.register_defs = self._load_register_defs()
@@ -3865,6 +4008,10 @@ class MainWindow(QMainWindow):
         self.cache_timer = QTimer(self)
         self.cache_timer.timeout.connect(lambda: self.save_value_cache(silent=True))
         self._apply_cache_timer_state()
+        self.live_poll_timer = QTimer(self)
+        self.live_poll_timer.timeout.connect(self._live_poll_tick)
+        self.live_poll_step = 0
+        self._apply_live_poll_timer_state()
         self._log(f"Register-Mapping: {self.regmap_path} ({len(self.regmap)} Einträge)")
         if self.cache_load_start_cb.isChecked():
             self.load_value_cache(silent=False)
@@ -4270,6 +4417,7 @@ class MainWindow(QMainWindow):
         side_layout.addStretch(1)
 
         self.log_text = QTextEdit()
+        self.log_text.setObjectName("log_view")
         self.log_text.setReadOnly(True)
         splitter.addWidget(self.log_text)
         splitter.setStretchFactor(0, 3)
@@ -4346,6 +4494,12 @@ class MainWindow(QMainWindow):
             "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
             "cache_interval_s": int(self.cache_interval_spin.value()),
             "show_public_warning": bool(self.settings.get("show_public_warning", True)),
+            "theme": str(self.settings.get("theme", "light")),
+            "auto_read_init_on_startup": bool(self.settings.get("auto_read_init_on_startup", False)),
+            "auto_poll_live_values": bool(self.settings.get("auto_poll_live_values", False)),
+            "live_poll_interval_s": int(self.settings.get("live_poll_interval_s", 30)),
+            "tab_auto_poll": bool(self.settings.get("tab_auto_poll", False)),
+            "tab_poll_interval_s": int(self.settings.get("tab_poll_interval_s", 30)),
         }
 
     def _write_settings_file(self):
@@ -4499,6 +4653,30 @@ class MainWindow(QMainWindow):
             self._log(f"Werte-Cache zyklisch aktiv: alle {int(self.cache_interval_spin.value())} s")
         else:
             self.cache_timer.stop()
+
+    def _apply_live_poll_timer_state(self):
+        if not hasattr(self, "live_poll_timer"):
+            return
+        if bool(self.settings.get("auto_poll_live_values", False)) and self.connected:
+            interval_s = max(5, int(self.settings.get("live_poll_interval_s", 30)))
+            self.live_poll_timer.start(interval_s * 1000)
+            self._log(f"Livewerte-Auto-Poll aktiv: alle {interval_s} s (Registerblöcke 2001/2091)")
+        else:
+            self.live_poll_timer.stop()
+
+    def _live_poll_tick(self):
+        if not self.connected or not self.worker:
+            if hasattr(self, "live_poll_timer"):
+                self.live_poll_timer.stop()
+            return
+        try:
+            slave_addr = self._parse_int_text(self.write_bus_edit.text())
+        except Exception:
+            slave_addr = DEFAULT_BUS_ADDR
+        blocks = [(2001, 90, "Livewerte 2001/0x07D1"), (2091, 90, "Livewerte 2091/0x082B")]
+        addr, qty, label = blocks[int(getattr(self, "live_poll_step", 0)) % len(blocks)]
+        self.live_poll_step = int(getattr(self, "live_poll_step", 0)) + 1
+        self.send_read_request(addr, qty, slave_addr=slave_addr, label=f"Auto-Poll {label}")
 
     def _snapshot_for_register(self, reg_no: int) -> dict:
         reg = self.latest_regs[reg_no]
@@ -4834,6 +5012,9 @@ class MainWindow(QMainWindow):
         self.write_send_btn.setEnabled(True)
         if self.raw_file_cb.isChecked():
             self._open_raw_file()
+        if bool(self.settings.get("auto_read_init_on_startup", False)):
+            QTimer.singleShot(800, self.send_init_reads)
+        self._apply_live_poll_timer_state()
 
     @Slot()
     def on_disconnected(self):
@@ -4842,6 +5023,8 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
         self.write_send_btn.setEnabled(False)
+        if hasattr(self, "live_poll_timer"):
+            self.live_poll_timer.stop()
         self._close_raw_file()
 
     @Slot(str)
@@ -5805,6 +5988,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._save_settings()
+        if hasattr(self, "live_poll_timer"):
+            self.live_poll_timer.stop()
         if self.cache_save_exit_cb.isChecked():
             self.save_value_cache(silent=False)
         self.disconnect_from_device()
@@ -5814,6 +5999,7 @@ class MainWindow(QMainWindow):
 def main():
     set_windows_app_id()
     app = QApplication(sys.argv)
+    apply_app_theme(app, "light")
     icon = app_icon()
     if not icon.isNull():
         app.setWindowIcon(icon)

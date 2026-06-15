@@ -1952,8 +1952,8 @@
     "description": "tatsächlicher Testwert"
   },
   "2054": {
-    "description": "Pendelt zw 17 und 19; Quelle Forum; alter Name: Unit power Elektrische kWh lt Forum",
-    "source": "Forum"
+    "description": "Elektrische Leistung / Unit Power. Vermutung aus Livewert: signed /10 kW; Beispiel raw 5 = 0,5 kW = 500 W.",
+    "source": "Live-Beobachtung / User"
   },
   "2055": {
     "description": "tatsächlicher Testwert"
@@ -1969,16 +1969,16 @@
     "description": "tatsächlicher Testwert"
   },
   "2059": {
-    "description": "41 kommt hin; Quelle Forum; alter Name: Unit capacity Wärmeleistung kW lt Forum",
-    "source": "Forum"
+    "description": "Wärmeleistung / Unit Capacity. Vermutung aus Livewert: signed /10 kW; Beispiel raw 26 = 2,6 kW.",
+    "source": "Live-Beobachtung / User"
   },
   "206": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; aktuell leer/Reserve. Nicht als WP-Parameter verwenden.",
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2060": {
-    "description": "240 kommt hin; Quelle Forum; alter Name: COP lt. Forum",
-    "source": "Forum"
+    "description": "COP. Vermutung aus Livewert: signed /100; Beispiel raw 458 = COP 4,58.",
+    "source": "Live-Beobachtung / User"
   },
   "2061": {
     "description": "tatsächlicher Testwert"
@@ -1993,16 +1993,16 @@
     "description": "tatsächlicher Testwert"
   },
   "2065": {
-    "description": "-136; ASM: 0811H -> 5111H 蒸发温度",
-    "source": "ASM DEMONS.ASM"
+    "description": "Verdampfungstemperatur ASM. Vermutlich aus Niederdrucksensor und Kältemittel-Sättigungstabelle berechnet; hilfreich für Vereisungsneigung, Abtauverhalten und Effizienzdiagnose.",
+    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
   },
   "2066": {
-    "description": "130 bis 220 stetig steigend; ASM: 0812H -> 5113H 排气过热度; 5114H Fehlerflag",
-    "source": "ASM DEMONS.ASM"
+    "description": "Exhaust Superheat ASM / Austrittsüberhitzung. Vermutlich modellierter Diagnosewert, weil die Anlage offenbar keinen Hochdrucksensor besitzt. Beobachtung: Heißgas ca. 51,2 °C, WP-Austritt ca. 39 °C -> Differenz ca. 12 K; Register zeigte ca. 11,3 K. Daher vermutlich Heißgas minus WP-Austritt/Kondensator-Referenztemperatur.",
+    "source": "Live-Beobachtung / Diagnose-Hypothese"
   },
   "2067": {
-    "description": "zw 9 und 11; ASM: 0813H -> 5115H 回气过热度; 5116H Fehlerflag",
-    "source": "ASM DEMONS.ASM"
+    "description": "Suction Superheat ASM / Saugüberhitzung. Wichtiger EEV-/Saugseitenwert; vermutlich Sauggastemperatur minus Verdampfungstemperatur. Niedrige Werte können auf geringe Überhitzung/Flüssigkeitsrisiko deuten, hohe Werte auf EEV/Kältemittel-/Verdampferproblem.",
+    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
   },
   "2068": {
     "description": "0; ASM: 0814H -> Anzeige System2 current",
@@ -2038,7 +2038,8 @@
     "description": "tatsächlicher Testwert"
   },
   "2077": {
-    "description": "tatsächlicher Testwert"
+    "description": "Wasserdurchfluss. Beobachtung: raw 64 entspricht vermutlich 0,64 m³/h, daher /100 m³/h.",
+    "source": "Live-Beobachtung / User"
   },
   "2078": {
     "description": "High 16 kWh"

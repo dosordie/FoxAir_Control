@@ -1,0 +1,8 @@
+V0.2.33 PUBLIC
+
+- Eigenes helles Standard-Theme gegen Windows-Darkmode-Mischfarben.
+- Programm-Einstellungen: Auto-Read Init on Startup, Livewerte-Auto-Poll ab 20xx, Parameterblock-Auto-Poll.
+- T-Block als Diagnose/Livewerte verstanden, nicht nur Temperatur.
+- 2054 Unit Power kW /10, 2059 Unit Capacity kW /10, 2060 COP /100, 2077 Flow /100 m³/h.
+- 2065 Verdampfungstemperatur, 2066 Exhaust Superheat, 2067 Suction Superheat mit KB-Hinweisen ergänzt.
+- README: Standard- und Warmlink-Modbus getestet, HMI-/Display-Modbus ungetestet; Kaskaden-Hinweis für mögliche mehrere Slave-Adressen.
