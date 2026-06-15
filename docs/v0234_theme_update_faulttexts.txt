@@ -1,0 +1,10 @@
+V0.2.34 PUBLIC
+
+- Theme System/Hell/Dunkel, Windows-Appmodus-Erkennung.
+- Haupttabelle im Darkmode korrigiert, Hellmode Log hell.
+- Public-Label nur noch bei Private-Edition sichtbar.
+- Verbindungsstatus ohne Geräte-/Modellinfo.
+- Update-Download unterscheidet Setup/Portable und ignoriert Source.
+- Init-Blöcke lesen -> Alle bekannten Register lesen.
+- Kontaktdecoder/Lastausgangdecoder einheitliche Schreibweise.
+- Fehlerklartexte Register 1-9 übernommen.

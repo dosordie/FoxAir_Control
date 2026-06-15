@@ -115,7 +115,7 @@ Voraussetzung: Inno Setup 6 ist installiert.
 Empfohlener Ablauf:
 
 ```bat
-git tag v0.2.33
+git tag v0.2.34
 git push origin main --tags
 ```
 
@@ -149,6 +149,19 @@ Bei Installation per Setup werden Benutzerdaten unter `%APPDATA%\FoxAir Phnix Co
 Das vermeidet Schreibfehler unter `C:\Program Files`.
 Portable/private Versionen koennen weiterhin alles im Programmordner speichern. Die Public-Version startet mit leerem Host und Standard-Modbus als Vorgabe.
 
+
+
+### PUBLIC V0.2.34 Hinweise
+
+- Theme-Fix: Darstellung kann jetzt **System / Hell / Dunkel** nutzen. Bei System wird unter Windows der App-Modus aus der Registry erkannt. Hell soll wieder wie der frühere helle Standard aussehen; Dunkel nutzt konsequent dunkle Tabellenfarben.
+- Haupt-Registertabelle im Dunkelmodus korrigiert; helle Zeilen mit heller Schrift werden vermieden. Log/Konsole ist im Hellmodus wieder hell.
+- Splash/Startlogo wird separat gestylt und übernimmt keine gemischten Systemfarben mehr.
+- Public wird in Titelleiste/About/Splash nicht mehr angezeigt; nur PRIVATE-Versionen bekommen eine sichtbare PRIVATE-Markierung.
+- Kopfzeile bereinigt: Geräte-/Modellinfo wird nicht mehr neben der aktuellen Verbindung angezeigt, sondern bleibt in den Programm-Einstellungen.
+- Update-Download verbessert: Setup/Installer und Portable werden anhand Release-Asset-Namen bzw. Einstellung **Automatisch / Portable / Setup** ausgewählt; Source-ZIPs werden ignoriert.
+- Button **Init-Blöcke lesen** umbenannt in **Alle bekannten Register lesen** und im Bedienbereich über dem Register-Lesen/Schreiben platziert.
+- Kontaktdecoder und Lastausgangdecoder wurden in Schreibweise/Benennung vereinheitlicht.
+- Störmelde-/Fehlertexte für Fehlerregister 1–9 ergänzt; Schreibweisen geglättet, z. B. Sauggastemperaturfehler sowie Winter-Frostschutz Stufe 1/2.
 
 ### PUBLIC V0.2.33 Hinweise
 

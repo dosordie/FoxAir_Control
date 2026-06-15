@@ -72,10 +72,10 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.33"
+APP_VERSION = "0.2.34"
 BUILD_DATE = "2026-06-15"
 APP_EDITION = "PUBLIC"
-APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION} {APP_EDITION} - by DosOrDie"
+APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = ""
@@ -170,7 +170,7 @@ QCheckBox { color: #111111; }
 QHeaderView::section { background: #e9e9e9; color: #111111; border: 1px solid #c8c8c8; padding: 3px; }
 QTableWidget, QTableView { background: #fff4a8; alternate-background-color: #fff0c6; color: #111111; gridline-color: #d0c78a; selection-background-color: #2a82da; selection-color: #ffffff; }
 QTableWidget::item, QTableView::item { color: #111111; }
-QTextEdit#log_view { background: #111111; color: #e6e6e6; }
+QTextEdit#log_view { background: #ffffff; color: #111111; border: 1px solid #b8b8b8; }
 QScrollArea { background: #f2f2f2; }
 """
 
@@ -194,17 +194,41 @@ QScrollArea { background: #202124; }
 """
 
 
+def windows_apps_use_light_theme() -> Optional[bool]:
+    """Windows-Appmodus erkennen. True=hell, False=dunkel, None=unbekannt/nicht Windows."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import winreg  # type: ignore
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+        return bool(int(value))
+    except Exception:
+        return None
+
+
+def resolve_app_theme(theme: str = "light") -> str:
+    selected = (theme or "light").lower().strip()
+    if selected == "system":
+        detected = windows_apps_use_light_theme()
+        return "light" if detected is not False else "dark"
+    if selected not in ("light", "dark"):
+        return "light"
+    return selected
+
+
 def apply_app_theme(target: Any, theme: str = "light") -> str:
     """Eigenes App-Theme setzen, damit Windows-Darkmode keine unleserlichen Mischfarben erzeugt."""
     app = QApplication.instance()
-    selected = (theme or "light").lower()
-    if selected not in ("light", "dark"):
-        selected = "light"
+    requested = (theme or "light").lower().strip()
+    selected = resolve_app_theme(requested)
     if app is not None:
         try:
             app.setStyle("Fusion")
         except Exception:
             pass
+        app.setProperty("foxair_theme_request", requested)
         app.setProperty("foxair_theme", selected)
         app.setStyleSheet(DARK_THEME_QSS if selected == "dark" else LIGHT_THEME_QSS)
     elif hasattr(target, "setStyleSheet"):
@@ -326,6 +350,7 @@ class StartupSplash(QDialog):
 
         logo_label = QLabel()
         logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setStyleSheet("background: transparent; border: none;")
         pix = QPixmap(resource_path(APP_ICON_FILE))
         if not pix.isNull():
             logo_label.setPixmap(pix.scaled(260, 260, Qt.KeepAspectRatio, Qt.SmoothTransformation))
@@ -777,7 +802,7 @@ class LoadOutputDecoderDialog(QDialog):
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
         self.main_window = parent
-        self.setWindowTitle("Lastausgang Decoder Register 2019 / 0x07E3")
+        self.setWindowTitle("Lastausgangdecoder Register 2019 / 0x07E3")
         self.setWindowIcon(app_icon())
         self.resize(1030, 560)
         layout = QVBoxLayout(self)
@@ -3730,13 +3755,22 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow("Anzeige:", self.show_warning_cb)
 
         self.theme_combo = QComboBox()
-        self.theme_combo.addItem("Hell (empfohlen)", "light")
+        self.theme_combo.addItem("System (Windows übernehmen)", "system")
+        self.theme_combo.addItem("Hell", "light")
         self.theme_combo.addItem("Dunkel", "dark")
-        tidx = self.theme_combo.findData(str(main_window.settings.get("theme", "light")))
+        tidx = self.theme_combo.findData(str(main_window.settings.get("theme", "system")))
         self.theme_combo.setCurrentIndex(tidx if tidx >= 0 else 0)
-        form.addRow("Theme:", self.theme_combo)
+        form.addRow("Darstellung:", self.theme_combo)
 
-        self.auto_read_init_cb = QCheckBox("Init-Blöcke nach Autoconnect/Connect lesen")
+        self.update_asset_combo = QComboBox()
+        self.update_asset_combo.addItem("Automatisch erkennen", "auto")
+        self.update_asset_combo.addItem("Portable-Version bevorzugen", "portable")
+        self.update_asset_combo.addItem("Setup/Installer bevorzugen", "setup")
+        uidx = self.update_asset_combo.findData(str(main_window.settings.get("update_asset_mode", "auto")))
+        self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
+        form.addRow("Update-Download:", self.update_asset_combo)
+
+        self.auto_read_init_cb = QCheckBox("Basisregister nach Autoconnect/Connect lesen")
         self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
         self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
         form.addRow("Startup:", self.auto_read_init_cb)
@@ -3847,7 +3881,8 @@ class CommunicationSettingsDialog(QDialog):
     def accept(self):
         self._save_current_fields_to_selected_backend()
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
-        self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "light")
+        self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
+        self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
         self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
         self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
@@ -3882,7 +3917,7 @@ class AboutDialog(QDialog):
 
         text = QLabel(
             f"<b>FoxAir / Phnix Control</b><br>"
-            f"Version V{APP_VERSION} {APP_EDITION}<br>"
+            f"Version V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''}<br>"
             f"Build: {BUILD_DATE}<br>"
             f"by DosOrDie"
         )
@@ -3951,7 +3986,7 @@ class MainWindow(QMainWindow):
         self.knowledge_path = os.path.join(self.user_data_dir, "foxair_phnix_knowledge.json")
         self.bundled_knowledge_path = os.path.join(resource_dir, "foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
-        apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "light")))
+        apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "system")))
         self.knowledge_defs = self._load_knowledge_defs()
         self.regmap = RegisterMap(self.regmap_path)
         self.register_defs = self._load_register_defs()
@@ -4248,7 +4283,7 @@ class MainWindow(QMainWindow):
         self.read_count_spin.setValue(1)
         self.read_btn = QPushButton("FC03 lesen")
         self.manual_register_btn = QPushButton("Register lesen/schreiben ...")
-        self.init_read_btn = QPushButton("Init-Blöcke lesen")
+        self.init_read_btn = QPushButton("Alle bekannten Register lesen")
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
         self.init_pause_spin.setValue(900)
@@ -4257,10 +4292,10 @@ class MainWindow(QMainWindow):
         self.init_pause_spin.setMaximumWidth(95)
         self.init_pause_spin.setToolTip("Pause zwischen den Init-Leseblöcken. Höher stellen, wenn die WP/Warmlink langsam antwortet.")
 
-        manual_layout.addWidget(self.manual_register_btn, 0, 0, 1, 4)
-        manual_layout.addWidget(self.init_read_btn, 1, 0)
-        manual_layout.addWidget(QLabel("Pause:"), 1, 1)
-        manual_layout.addWidget(self.init_pause_spin, 1, 2)
+        manual_layout.addWidget(self.init_read_btn, 0, 0)
+        manual_layout.addWidget(QLabel("Pause:"), 0, 1)
+        manual_layout.addWidget(self.init_pause_spin, 0, 2)
+        manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
         search_box = QGroupBox("Wertsuche")
@@ -4321,7 +4356,7 @@ class MainWindow(QMainWindow):
         special_layout.setContentsMargins(8, 8, 8, 8)
         self.contact_value_label = QLabel("2034: --")
         self.contact_popup_btn = QPushButton("Kontaktdecoder ...")
-        self.load_output_popup_btn = QPushButton("Lastausgang Decoder ...")
+        self.load_output_popup_btn = QPushButton("Lastausgangdecoder ...")
         self.fault_popup_btn = QPushButton("Störungen / Fehler ...")
         self.sg_popup_btn = QPushButton("SG Ready Editor ...")
         self.timer_editor_btn = QPushButton("Betriebsart Timer 1-6 ...")
@@ -4494,7 +4529,8 @@ class MainWindow(QMainWindow):
             "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
             "cache_interval_s": int(self.cache_interval_spin.value()),
             "show_public_warning": bool(self.settings.get("show_public_warning", True)),
-            "theme": str(self.settings.get("theme", "light")),
+            "theme": str(self.settings.get("theme", "system")),
+            "update_asset_mode": str(self.settings.get("update_asset_mode", "auto")),
             "auto_read_init_on_startup": bool(self.settings.get("auto_read_init_on_startup", False)),
             "auto_poll_live_values": bool(self.settings.get("auto_poll_live_values", False)),
             "live_poll_interval_s": int(self.settings.get("live_poll_interval_s", 30)),
@@ -4637,7 +4673,6 @@ class MainWindow(QMainWindow):
             parts.append(f"Unit {int(self.unit_spin.value())}")
         if backend == "display_modbus" and self.display_translate_cb.isChecked():
             parts.append("+0x2000")
-        parts.append("Gerät: " + DEVICE_MODEL_LABELS.get(self.current_device_model(), self.current_device_model()) + " (nur Defaults)")
         return " | ".join(parts)
 
     def _update_comm_summary(self):
@@ -4847,6 +4882,42 @@ class MainWindow(QMainWindow):
         self.update_thread.finished.connect(self._update_check_cleanup)
         self.update_thread.start()
 
+    def _detect_installation_kind(self) -> str:
+        """Best effort: setup/portable erkennen. Manuell über Einstellungen übersteuerbar."""
+        if getattr(sys, "frozen", False):
+            exe_dir = os.path.abspath(os.path.dirname(sys.executable)).lower()
+            program_files = [os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", ""), os.environ.get("LOCALAPPDATA", "")]
+            for root in program_files:
+                root = os.path.abspath(root).lower() if root else ""
+                if root and exe_dir.startswith(root.lower()):
+                    return "setup"
+        return "portable"
+
+    def _select_update_asset(self, assets: list) -> Optional[dict]:
+        valid = []
+        for a in assets or []:
+            if not isinstance(a, dict):
+                continue
+            name = str(a.get("name", "")).lower()
+            dl = str(a.get("browser_download_url") or a.get("url") or "").strip()
+            if not dl or "source" in name or name.endswith(".txt"):
+                continue
+            valid.append(a)
+        mode = str(self.settings.get("update_asset_mode", "auto")).lower()
+        if mode == "auto":
+            mode = self._detect_installation_kind()
+        def has(asset: dict, word: str) -> bool:
+            return word in str(asset.get("name", "")).lower()
+        if mode == "setup":
+            preferred = next((a for a in valid if has(a, "setup") or has(a, "installer")), None)
+            if preferred:
+                return preferred
+        if mode == "portable":
+            preferred = next((a for a in valid if has(a, "portable")), None)
+            if preferred:
+                return preferred
+        return next((a for a in valid if not has(a, "source")), None)
+
     @Slot(dict)
     def _update_check_finished(self, info: dict):
         tag = str(info.get("tag") or "").strip()
@@ -4855,9 +4926,8 @@ class MainWindow(QMainWindow):
         current = parse_version_tuple(APP_VERSION)
         latest = parse_version_tuple(tag)
 
-        setup_asset = next((a for a in assets if "setup" in str(a.get("name", "")).lower() and str((a.get("browser_download_url") or a.get("url") or "")).strip()), None)
-        portable_asset = next((a for a in assets if "portable" in str(a.get("name", "")).lower() and str((a.get("browser_download_url") or a.get("url") or "")).strip()), None)
-        primary_url = str((setup_asset or portable_asset or {}).get("browser_download_url") or (setup_asset or portable_asset or {}).get("url") or url)
+        primary_asset = self._select_update_asset(assets)
+        primary_url = str((primary_asset or {}).get("browser_download_url") or (primary_asset or {}).get("url") or url)
 
         if latest > current:
             asset_lines = []
@@ -5311,15 +5381,16 @@ class MainWindow(QMainWindow):
         return row
 
     def _background_for_register(self, reg_no: int, changed: bool) -> QColor:
+        dark = app_theme_is_dark()
         if reg_no in self.value_search_matches:
-            return QColor(255, 190, 120)
+            return QColor(105, 75, 40) if dark else QColor(255, 190, 120)
         if reg_no in self.name_search_matches:
-            return QColor(225, 210, 255)
+            return QColor(80, 70, 120) if dark else QColor(225, 210, 255)
         if reg_no in self.cached_regs:
-            return QColor(225, 225, 225)
+            return QColor(55, 55, 55) if dark else QColor(225, 225, 225)
         if changed:
-            return QColor(255, 245, 180)
-        return QColor(255, 255, 255)
+            return QColor(85, 75, 40) if dark else QColor(255, 245, 180)
+        return QColor(37, 37, 37) if dark else QColor(255, 255, 255)
 
     def _upsert_register_row(self, reg, changed: bool):
         self.latest_regs[reg.reg] = reg
@@ -5746,7 +5817,7 @@ class MainWindow(QMainWindow):
         if not self.init_read_queue:
             self.init_read_active = False
             self.init_read_btn.setEnabled(True)
-            self.init_read_btn.setText("Init-Blöcke lesen")
+            self.init_read_btn.setText("Alle bekannten Register lesen")
             self._log("INIT-Lesen fertig / alle Blöcke angefordert.")
             return
 
@@ -5999,7 +6070,7 @@ class MainWindow(QMainWindow):
 def main():
     set_windows_app_id()
     app = QApplication(sys.argv)
-    apply_app_theme(app, "light")
+    apply_app_theme(app, "system")
     icon = app_icon()
     if not icon.isNull():
         app.setWindowIcon(icon)

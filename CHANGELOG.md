@@ -1,5 +1,16 @@
 # Changelog
 
+## V0.2.34 PUBLIC
+
+- Theme-Fix: Darstellung **System / Hell / Dunkel** ergänzt; Windows-Appmodus wird bei System erkannt. Hellmodus wieder näher am alten hellen Layout, Log/Konsole hell. Dunkelmodus mit dunkler Haupt-Registertabelle.
+- Splash/Startlogo separat gestylt, damit keine gemischten Theme-Farben übernommen werden.
+- Public-Zusatz aus Titelleiste/About/Splash entfernt; nur PRIVATE-Versionen werden sichtbar markiert.
+- Geräte-/Modellinfo aus der Verbindungs-Kopfzeile entfernt; Auswahl bleibt in den Programm-Einstellungen.
+- Update-Asset-Auswahl verbessert: Setup/Portable werden anhand Namen und Einstellung gewählt; Source-ZIPs werden ignoriert.
+- Bedienbereich: **Init-Blöcke lesen** in **Alle bekannten Register lesen** umbenannt und über dem Register-Lesen/Schreiben platziert.
+- Kontaktdecoder und Lastausgangdecoder in Schreibweise/Benennung vereinheitlicht.
+- Störmelde-/Fehlertexte für Fehlerregister 1–9 ergänzt und Schreibweisen korrigiert: Sauggastemperaturfehler, Winter-Frostschutz Stufe 1/2.
+
 ## V0.2.33 PUBLIC
 
 - Eigenes App-Theme ergänzt: Standard ist Hell/Fusion, damit Windows-Darkmode keine unleserlichen Tabellen/Popups mehr verursacht; Dunkel ist optional vorbereitet.

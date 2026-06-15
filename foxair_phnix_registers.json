@@ -4541,7 +4541,7 @@
     "name": "Verdampfungstemperatur / Evaporating Temp (ASM)",
     "type": "TEMP1",
     "block": "T",
-    "code": "T?1",
+    "code": "T-Diag1",
     "unit": "°C",
     "description": "ASM-Diagnosewert. Vermutlich aus Niederdruck und Kältemittel-Sättigungstabelle berechnete Verdampfungstemperatur.",
     "app_label": "Evaporating Temp (ASM)"
@@ -4552,7 +4552,7 @@
     "name": "Abgas-Überhitzung / Exhaust Superheat (ASM)",
     "type": "TEMP1",
     "block": "T",
-    "code": "T?2",
+    "code": "T-Diag2",
     "unit": "K",
     "description": "ASM-Diagnosewert. Vermutlich modellierter Wert, da kein Hochdrucksensor vorhanden; Beobachtung: etwa Heißgas minus WP-Austritt/Kondensator-Referenz.",
     "app_label": "Exhaust Superheat (ASM)"
@@ -4563,7 +4563,7 @@
     "name": "Rückgas-/Saug-Überhitzung / Suction Superheat (ASM)",
     "type": "TEMP1",
     "block": "T",
-    "code": "T?3",
+    "code": "T-Diag3",
     "unit": "K",
     "description": "Wichtiger EEV-/Saugseiten-Diagnosewert. Vermutlich Sauggastemperatur minus Verdampfungstemperatur.",
     "app_label": "Suction Superheat (ASM)"
@@ -4679,54 +4679,63 @@
   },
   "2081": {
     "bit_map": {
-      "0": "Node-RED: Fehler7 Bit0 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "1": "Node-RED: Fehler7 Bit1 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "10": "Node-RED: Fehler7 Bit10 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "11": "Node-RED: Fehler7 Bit11 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "12": "Node-RED: Fehler7 Bit12 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "13": "Node-RED: Fehler7 Bit13 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "14": "Node-RED: Fehler7 Bit14 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "15": "Node-RED: Fehler7 Bit15 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "2": "Node-RED: Fehler7 Bit2 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "3": "Node-RED: Fehler7 Bit3 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "4": "Node-RED: Fehler7 Bit4 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "5": "Node-RED: Fehler7 Bit5 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "6": "Node-RED: Fehler7 Bit6 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "7": "Node-RED: Fehler7 Bit7 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "8": "Node-RED: Fehler7 Bit8 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)",
-      "9": "Node-RED: Fehler7 Bit9 / IPM-Kompressor-Bus-Platinenfehler (Klartext noch offen)"
+      "0": "IPM Überhitzung",
+      "1": "Kompressor Startfehler",
+      "2": "Kompressor Überstrom",
+      "3": "Phasenverlust Eingangsspannung",
+      "4": "IPM Stromabtastfehler",
+      "5": "Überhitzungsschutz Antriebsplatine",
+      "6": "Vorladefehler",
+      "7": "DC-Sammelschienen-Überspannung",
+      "8": "DC-Sammelschienen-Unterspannung",
+      "9": "AC-Eingangsspannung Unterspannung",
+      "10": "AC-Eingangs-Überstromabschaltung",
+      "11": "Eingangsspannungs-Abtastfehler",
+      "12": "DSP ↔ PFC Kommunikationsfehler",
+      "13": "Antriebsplatinen-Temperaturfehler",
+      "14": "DSP ↔ Kommunikationsplatine Fehler",
+      "15": "Hauptplatinen-Kommunikationsfehler"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 7 / IPM-Kompressor-Bus-Platinenfehler Bitfeld",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 7 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR07",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2082": {
     "bit_map": {
-      "0": "Node-RED: Fehler8 Bit0 (Klartext noch offen)",
-      "1": "Node-RED: Fehler8 Bit1 (Klartext noch offen)",
-      "15": "Node-RED: Fehler8 Bit15 (Klartext noch offen)",
-      "3": "Node-RED: Fehler8 Bit3 (Klartext noch offen)",
-      "6": "Node-RED: Fehler8 Bit6 (Klartext noch offen)",
-      "7": "Node-RED: Fehler8 Bit7 (Klartext noch offen)"
+      "0": "IPM Überhitzungsstopp",
+      "1": "Kompressor Standardphase",
+      "3": "Eingangsstrom-Abtastfehler",
+      "6": "EEPROM-Fehler",
+      "7": "Eingangsspannung Überbegrenzungsschutz",
+      "15": "Kompressor-Übergeschwindigkeitsschutz"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 8 / Bitfeld (Node-RED teildecodiert)",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 8 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR08",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2083": {
     "bit_map": {
-      "0": "Node-RED: Fehler9 Bit0 (Klartext noch offen)",
-      "1": "Node-RED: Fehler9 Bit1 (Klartext noch offen)",
-      "2": "Node-RED: Fehler9 Bit2 (Klartext noch offen)",
-      "4": "Node-RED: Fehler9 Bit4 (Klartext noch offen)",
-      "5": "Node-RED: Fehler9 Bit5 (Klartext noch offen)"
+      "0": "Stromregelungsfrequenz-Alarm",
+      "1": "Kompressor Magnetschutz-Alarm",
+      "2": "Leistungseinheit Überhitzung",
+      "4": "AC-Eingangsstrom Regelungsalarm",
+      "5": "EEPROM-Fehlerwarnung"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 9 / Bitfeld (Node-RED teildecodiert)",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 9 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR09",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2084": {
     "function": "16",
@@ -4736,81 +4745,96 @@
   },
   "2085": {
     "bit_map": {
-      "10": "Node-RED: Fehler1 Bit10 (Klartext noch offen)",
-      "11": "Node-RED: Fehler1 Bit11 (Klartext noch offen)",
-      "12": "Node-RED: Fehler1 Bit12 (Klartext noch offen)",
-      "14": "Raumtemperaturfühler / Room Temp Fehler",
-      "2": "Node-RED: Fehler1 Bit2 (Klartext noch offen)",
-      "3": "Node-RED: Fehler1 Bit3 (Klartext noch offen)",
+      "2": "Heizungsrücklauftemperatur-Sensorfehler",
+      "3": "Heizungsauslasswassertemperatur-Sensorfehler",
       "4": "Hochdruckschutz",
       "6": "Niederdruckschutz",
-      "8": "Wasserflussschutz / Flow-Schutz",
-      "9": "Node-RED: Fehler1 Bit9 (Klartext noch offen)"
+      "8": "Wasserflussschutz",
+      "9": "Überlastschutz der Elektroheizung",
+      "10": "Winter-Frostschutz Stufe 1",
+      "11": "Winter-Frostschutz Stufe 2",
+      "12": "Frostschutz",
+      "14": "Raumtemperaturfehler"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 1 / Schutz- und Sensorfehler Bitfeld",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 1 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR01",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2086": {
     "bit_map": {
-      "3": "Node-RED: Fehler2 Bit3 (Klartext noch offen)",
-      "4": "Node-RED: Fehler2 Bit4 (Klartext noch offen)",
-      "5": "Node-RED: Fehler2 Bit5 (Klartext noch offen)",
-      "6": "Node-RED: Fehler2 Bit6 (Klartext noch offen)",
+      "3": "Lüfter 1 Überlastungs-Drehzahlbegrenzung",
+      "4": "Lüfter 2 Überlastungs-Drehzahlbegrenzung",
+      "5": "Temp.diff. Ein-/Auslasswasser zu groß",
+      "6": "Auslasswasser überhitzt",
       "7": "Mischwasser-Auslasswassertemperatur-Sensorfehler",
-      "8": "Node-RED: Fehler2 Bit8 (Klartext noch offen)",
-      "9": "Node-RED: Fehler2 Bit9 (Klartext noch offen)"
+      "8": "Warmwasserrücklauftemperatur-Sensorfehler",
+      "9": "Warmwasserauslasswassertemperatur-Sensorfehler"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 2 / Bitfeld (Node-RED teildecodiert)",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 2 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR02",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2087": {
     "bit_map": {
-      "12": "Node-RED: Fehler3 Bit12 (Klartext noch offen)",
-      "4": "Node-RED: Fehler3 Bit4 (Klartext noch offen)",
-      "6": "Node-RED: Fehler3 Bit6 (Klartext noch offen)",
-      "8": "Node-RED: Fehler3 Bit8 (Klartext noch offen)",
-      "9": "Node-RED: Fehler3 Bit9 (Klartext noch offen)"
+      "4": "Hochdruckschutz (3x)",
+      "6": "Niederdruckschutz (3x)",
+      "8": "Wasserflussschutz (3x)",
+      "9": "Elektroheizungsschutz (3x)",
+      "12": "Frostschutz (3x)"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 3 / Bitfeld (Node-RED teildecodiert)",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 3 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR03",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2088": {
     "bit_map": {
-      "2": "Node-RED: Fehler4 Bit2 (Klartext noch offen)",
-      "3": "Node-RED: Fehler4 Bit3 (Klartext noch offen)",
-      "4": "Node-RED: Fehler4 Bit4 (Klartext noch offen)"
+      "2": "Temp.diff. Ein-/Auslasswasser zu groß (3x)",
+      "3": "Auslasswassertemperatur zu niedrig (3x)",
+      "4": "Auslasswasser Übertemperaturschutz (3x)"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 4 / Bitfeld (Node-RED teildecodiert)",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 4 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR04",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2089": {
     "bit_map": {
-      "0": "T01 Einlasswassertemperatur Fehler",
-      "1": "T02 Auslasswassertemperatur Fehler",
-      "10": "System 1 EVI-/Enthalpie Austrittstemperatur Fehler",
-      "11": "System 1 Abgastemperatur Fehler",
-      "13": "System 1 Drucksensor Fehler",
-      "14": "Node-RED: Fehler5 Bit14 (Klartext noch offen)",
-      "15": "Node-RED: Fehler5 Bit15 (Klartext noch offen)",
-      "2": "System 1 Coil-/Verdampfertemperatur 1 Fehler",
-      "3": "Umgebungstemperatur / AT Fehler",
-      "4": "System 1 Rückgas-/Sauggastemperatur Fehler",
-      "5": "System 1 Frostschutztemperatur 1 Fehler",
-      "6": "System 1 Frostschutztemperatur 2 Fehler",
-      "9": "System 1 EVI-/Enthalpie Eintrittstemperatur Fehler"
+      "0": "Einlasswassertemperaturfehler",
+      "1": "Auslasswassertemperaturfehler",
+      "2": "Spulentemperaturfehler",
+      "3": "Umgebungstemperaturfehler",
+      "4": "Sauggastemperaturfehler",
+      "5": "Frostschutztemperaturfehler",
+      "6": "Spulenauslasswassertemperatur-Sensorfehler",
+      "9": "EVI Einlasstemperaturfehler",
+      "10": "EVI Auslasstemperaturfehler",
+      "11": "Abgastemperaturfehler",
+      "13": "System 1 Drucksensorfehler",
+      "14": "Niedrige Umgebungstemperaturfehler",
+      "15": "Auslasstemperatur zu niedriger Schutz"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 5 / Sensorfehler System 1 Bitfeld",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 5 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR05",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "209": {
     "function": "03",
@@ -4820,24 +4844,19 @@
   },
   "2090": {
     "bit_map": {
-      "0": "System 2 Coil-/Verdampfertemperatur Fehler",
-      "1": "System 2 Rückgas-/Sauggastemperatur Fehler",
-      "10": "System 2 EVI-/Enthalpie Austrittstemperatur Fehler",
-      "11": "DC-Lüfter 1 Fehler",
-      "12": "DC-Lüfter 2 Fehler",
-      "13": "E082 Fehler (ASM V1.3, Bezeichnung offen)",
-      "15": "E081 Fehler (ASM V1.3, Bezeichnung offen)",
-      "2": "System 2 Frostschutztemperatur 1 Fehler",
-      "3": "System 2 Frostschutztemperatur 2 Fehler",
-      "6": "System 2 Abgastemperatur Fehler",
-      "7": "System 2 Drucksensor Fehler",
-      "8": "Wassertanktemperatur Fehler",
-      "9": "System 2 EVI-/Enthalpie Eintrittstemperatur Fehler"
+      "8": "Warmwassertemperaturfehler",
+      "11": "Lüfter 1 Fehler",
+      "12": "Lüfter 2 Fehler",
+      "13": "Kommunikationsfehler Hauptplatine ↔ Lüfter 1",
+      "15": "Kommunikationsfehler Hauptplatine ↔ Lüfter 2"
     },
     "function": "16",
-    "mode": "write",
-    "name": "Fehler 6 / Sensorfehler System 2 und Lüfter Bitfeld",
-    "type": "FAULT_BITS"
+    "mode": "read",
+    "name": "Fehler 6 / Störmeldebits",
+    "type": "BITFIELD",
+    "block": "ERR",
+    "code": "ERR06",
+    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
   "2091": {
     "function": "03",
