@@ -1,0 +1,10 @@
+V0.2.35 PRIVATE Fix1
+
+- WP-Steuerung liest beim Öffnen automatisch 1011-1016, 1157-1159, 2011-2014, 2045-2048 und 2077.
+- Status/Livewerte lesen aktualisiert die Anzeige zusätzlich direkt und nochmals verzögert nach Eintreffen der Antworten.
+- Autorefresh für WP-Steuerung ergänzt.
+- Wärmepumpe Ein/Aus klar benannt.
+- WW-Sollwert 1157 bei Kombimodi zusätzlich editierbar.
+- AT-Kompensation liest beim Öffnen automatisch 1234-1236, 2014 und 2048.
+- Autorefresh für AT-Kompensation ergänzt.
+- Kurve wird zusätzlich per Qt-Canvas grafisch dargestellt.

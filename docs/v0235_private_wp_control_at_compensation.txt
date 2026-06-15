@@ -1,0 +1,12 @@
+V0.2.35 PRIVATE
+
+Neue Popups:
+- WP-Steuerung: 1011 Ein/Aus schreiben, 2011 Status anzeigen, 1012 Einstellmodus, 2012 aktueller Betriebsstatus, 1016 Bit 1 Silent per Read-Modify-Write, Livewerte und Solltemp.
+- AT-Kompensation: 1236/H36 Aktiv-Schalter, 1234 Slope, 1235 Offset, Kurventabelle nach App-Screenshot.
+
+Registerkorrekturen:
+- 2043 = Volt
+- 2062 = Volt
+- 2063 = Grad Celsius / TEMP1
+
+README um Windows-SmartScreen-Hinweis ergänzt.

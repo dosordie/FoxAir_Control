@@ -151,6 +151,42 @@ Portable/private Versionen koennen weiterhin alles im Programmordner speichern. 
 
 
 
+
+
+### PUBLIC V0.2.35 Hinweise
+
+- Public-Version aus dem letzten PRIVATE V0.2.35 Fix1 Stand.
+- Enthält WP-Steuerung-Popup, AT-Kompensations-Popup mit Kurvengrafik, Silent-Steuerung über 1016 Bit 1 und die Fix1-Aktualisierungen.
+- Public wird in der Oberfläche nicht extra markiert; nur PRIVATE-Versionen tragen den PRIVATE-Zusatz.
+- Hinweis für Releases: Source-ZIP und EXE/Setup sind getrennte Assets. Wenn nur das Source-ZIP aktualisiert wird, bleibt eine vorhandene EXE im GitHub-Release unverändert. Für Updates der EXE muss die EXE/Setup-Datei aus diesem Source-Stand neu gebaut und als Release-Asset hochgeladen werden.
+
+### PRIVATE V0.2.35 Fix1 Hinweise
+
+- Die Popups **WP-Steuerung ...** und **AT-Kompensation ...** laden beim Öffnen automatisch die benötigten Register.
+- Beide Popups besitzen eine optionale **Autorefresh**-Funktion.
+- Im WP-Steuerung-Popup aktualisiert **Status/Livewerte lesen** die Anzeige automatisch, sobald Werte eingehen.
+- Bei Kombimodi mit Warmwasser ist zusätzlich der **WW-Sollwert Register 1157** editierbar.
+- Die AT-Kompensationskurve wird zusätzlich grafisch angezeigt.
+
+### PRIVATE V0.2.35 Hinweise
+
+- Neue Popups: **WP-Steuerung ...** und **AT-Kompensation ...**.
+- WP-Steuerung trennt klar zwischen **1012 Modus setzen** und **2012 aktuellem Betriebsstatus**.
+- Silent Mode wird über **1016 Bit 1 / Maske 0x0002** gelesen und per Read-Modify-Write geschrieben.
+- AT-Kompensation nutzt **1236 / H36** als Aktiv-Schalter, **1234** als Slope und **1235** als Offset. Die Kurve wird nach der aus der App abgeleiteten Formel `Ziel = Offset - Slope × AT` mit Mindestbegrenzung angezeigt.
+- Korrekturen: **2043 = V**, **2062 = V**, **2063 = °C**.
+
+### Windows SmartScreen Hinweis
+
+Da FoxAir / Phnix Control aktuell nicht digital signiert ist, kann Windows beim ersten Start eine SmartScreen-Warnung anzeigen, z. B. **"Der Computer wurde durch Windows geschützt"**.
+
+Zum Starten:
+
+1. **Weitere Informationen** anklicken.
+2. **Trotzdem ausführen** auswählen.
+
+Die Warnung erscheint typischerweise bei unbekannten bzw. nicht signierten EXE-Dateien. Sie bedeutet nicht automatisch, dass die Datei gefährlich ist. Bitte Releases nur aus dem offiziellen GitHub-Release herunterladen.
+
 ### PUBLIC V0.2.34 Hinweise
 
 - Theme-Fix: Darstellung kann jetzt **System / Hell / Dunkel** nutzen. Bei System wird unter Windows der App-Modus aus der Registry erkannt. Hell soll wieder wie der frühere helle Standard aussehen; Dunkel nutzt konsequent dunkle Tabellenfarben.

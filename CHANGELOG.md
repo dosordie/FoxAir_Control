@@ -1,5 +1,29 @@
 # Changelog
 
+## V0.2.35 PUBLIC
+- Public-Version aus dem letzten PRIVATE V0.2.35 Fix1 Stand erstellt.
+- Edition auf PUBLIC gesetzt; Public wird in der UI nicht sichtbar markiert.
+- Hinweis: EXE-/Installer-Assets müssen im GitHub-Release separat aus diesem Source-Stand neu gebaut/hochgeladen werden; ein Source-ZIP aktualisiert keine bestehende EXE automatisch.
+
+## V0.2.35 PRIVATE Fix1
+
+- WP-Steuerung-Popup liest beim Öffnen automatisch die benötigten Werte.
+- WP-Steuerung-Popup: Autorefresh-Checkbox mit einstellbarem Intervall ergänzt.
+- Button **Status/Livewerte lesen** übernimmt anschließend automatisch die gelesenen Livewerte in die Anzeige.
+- Bereich **Wärmepumpe Ein / Aus** klarer benannt.
+- In Kombimodi **Warmwasser + Heizen** und **Warmwasser + Kühlen** kann der zusätzliche WW-Sollwert über Register 1157 angezeigt und geschrieben werden.
+- AT-Kompensation-Popup liest beim Öffnen automatisch die benötigten Werte und hat ebenfalls Autorefresh.
+- AT-Kompensation zeigt die Kurve zusätzlich als einfache Grafik/Canvas an; Tabelle bleibt zur Kontrolle erhalten.
+
+## V0.2.35 PRIVATE
+
+- Private-Version auf Basis von V0.2.34 erstellt.
+- Neue Funktion **WP-Steuerung ...**: Ein/Aus, Modus setzen, Betriebsstatus anzeigen, wichtige Temperaturen/Livewerte, passende Solltemperatur je Modus schreiben und Silent Mode über 1016 Bit 1 per Read-Modify-Write schalten.
+- Neue Funktion **AT-Kompensation ...**: H36/1236 aktivieren/deaktivieren, Slope 1234 und Offset 1235 lesen/schreiben, aktuelle Außentemperatur/kompensierte Solltemperatur anzeigen und Kurventabelle aus App-Formel darstellen.
+- Register-/KB-Korrekturen: 2043 und 2062 als Voltwerte, 2063 als °C/TEMP1; 1012 sauber als Einstellmodus, 2012 als aktueller Betriebsstatus dokumentiert.
+- Splash weiter gegen Theme-Mischfarben abgesichert.
+- README um SmartScreen-Hinweis ergänzt.
+
 ## V0.2.34 PUBLIC
 
 - Theme-Fix: Darstellung **System / Hell / Dunkel** ergänzt; Windows-Appmodus wird bei System erkannt. Hellmodus wieder näher am alten hellen Layout, Log/Konsole hell. Dunkelmodus mit dunkler Haupt-Registertabelle.

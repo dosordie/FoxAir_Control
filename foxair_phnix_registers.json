@@ -72,7 +72,7 @@
   "1012": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Modus",
+    "name": "Modus setzen",
     "type": "MODE_0_4",
     "value_map": {
       "0": "Warmwasser",
@@ -80,7 +80,8 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen"
-    }
+    },
+    "description": "Soll-/Einstellmodus. Nicht identisch mit aktuellem Betriebsstatus 2012."
   },
   "1013": {
     "function": "06",
@@ -107,13 +108,14 @@
   "1016": {
     "bit_map": {
       "0": "Manuelles Abtauen",
-      "1": "Silent-Flag",
+      "1": "Silent Mode / Silent Status",
       "2": "Eine Taste manuelle Heizung"
     },
     "function": "03/16",
     "mode": "r/w",
-    "name": "Manuelle Steuerung",
-    "type": "DIGI1"
+    "name": "Manuelle Steuerung / Silent Status",
+    "type": "DIGI1",
+    "description": "Bit 1 (0x0002) ist Silent Mode. Derselbe Wert ist auch der Status; per Read-Modify-Write ändern."
   },
   "1017": {
     "function": "03/06",
@@ -1838,7 +1840,8 @@
     "mode": "r/w",
     "name": "Warmwasser-Solltemperatur",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "notes": "Warmwasser-Solltemperatur für WP-Steuerung"
   },
   "1158": {
     "app_current_video_value": "35.0 °C",
@@ -1850,7 +1853,8 @@
     "mode": "r/w",
     "name": "Heizungssolltemperatur",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "notes": "Heizungssolltemperatur für WP-Steuerung"
   },
   "1159": {
     "app_current_video_value": "14.9 °C",
@@ -1862,7 +1866,8 @@
     "mode": "r/w",
     "name": "Kühlsolltemperatur",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "notes": "Kühlsolltemperatur für WP-Steuerung"
   },
   "1160": {
     "app_current_video_value": "3.0 °C",
@@ -2676,14 +2681,18 @@
   "1234": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Wetterkompensationssteigung",
-    "type": "DIGI5"
+    "name": "AT-Kompensation Slope / Steigung",
+    "type": "DIGI5",
+    "unit": "",
+    "description": "Slope der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
   },
   "1235": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Wetterkompensationsversatz",
-    "type": "TEMP1"
+    "name": "AT-Kompensation Offset / Versatz",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Offset der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
   },
   "1236": {
     "app_label": "Enable AT Compensation Curve Zone 1",
@@ -2705,7 +2714,8 @@
     "value_map": {
       "0": "Nein",
       "1": "Ja"
-    }
+    },
+    "description": "H36: AT-Kompensationskurve Zone 1 aktivieren. 0=Aus, 1=Ein. Selbst getestet: 1236 ist H36."
   },
   "1237": {
     "app_current_video_value": "43.0 °C",
@@ -4077,12 +4087,16 @@
   "2012": {
     "function": "16",
     "mode": "write",
-    "name": "Gerätemodus",
+    "name": "Aktueller Betriebsstatus",
     "type": "DIGI1",
     "value_map": {
+      "0": "Kühlen",
+      "1": "Heizen",
       "2": "Abtauen",
-      "3": "Sterilisieren / Desinfektion"
-    }
+      "3": "Sterilisieren",
+      "4": "Warmwasser"
+    },
+    "description": "Aktueller Lauf-/Ist-Modus der WP."
   },
   "2013": {
     "function": "16",
@@ -4346,7 +4360,9 @@
     "function": "16",
     "mode": "write",
     "name": "DC-Power-Bus-Spannung",
-    "type": "DIGI1"
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "User confirmed unit V/Volt in v0.2.35"
   },
   "2044": {
     "block": "T",
@@ -4517,7 +4533,9 @@
     "function": "16",
     "mode": "write",
     "name": "AC-Eingangsspannung",
-    "type": "TEMP1"
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "User confirmed unit V/Volt in v0.2.35"
   },
   "2063": {
     "block": "T",
@@ -4525,7 +4543,9 @@
     "function": "16",
     "mode": "write",
     "name": "EVI-Einlasstemperatur",
-    "type": "DIGI1"
+    "type": "TEMP1",
+    "unit": "°C",
+    "notes": "User confirmed unit °C in v0.2.35"
   },
   "2064": {
     "block": "T",

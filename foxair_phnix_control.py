@@ -17,7 +17,7 @@ import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
-from PySide6.QtGui import QAction, QColor, QIcon, QPixmap
+from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -72,13 +72,13 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.34"
+APP_VERSION = "0.2.35"
 BUILD_DATE = "2026-06-15"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
-DEFAULT_HOST = ""
+DEFAULT_HOST = "192.168.10.43"
 DEFAULT_PORT = 2001
 UPDATE_REPO = "dosordie/FoxAir_Control"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
@@ -316,12 +316,14 @@ class StartupSplash(QDialog):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.SplashScreen)
         self.setModal(False)
         self.setAttribute(Qt.WA_DeleteOnClose, False)
+        self.setObjectName("StartupSplash")
         self.setStyleSheet("""
-            QDialog { background: #111820; border: 1px solid #2d3b48; }
-            QLabel#title { color: white; font-size: 24px; font-weight: bold; }
-            QLabel#version { color: #d7e6f5; font-size: 14px; }
-            QLabel#hint { color: #9fb2c4; font-size: 11px; }
-            QLabel#brand { color: #d7e6f5; font-size: 13px; font-weight: bold; }
+            QDialog#StartupSplash { background: #111820; border: 1px solid #2d3b48; }
+            QDialog#StartupSplash QLabel { background: transparent; border: none; }
+            QDialog#StartupSplash QLabel#title { color: #ffffff; font-size: 24px; font-weight: bold; background: transparent; }
+            QDialog#StartupSplash QLabel#version { color: #d7e6f5; font-size: 14px; background: transparent; }
+            QDialog#StartupSplash QLabel#hint { color: #9fb2c4; font-size: 11px; background: transparent; }
+            QDialog#StartupSplash QLabel#brand { color: #d7e6f5; font-size: 13px; font-weight: bold; background: transparent; }
         """)
 
         root = QVBoxLayout(self)
@@ -359,11 +361,13 @@ class StartupSplash(QDialog):
         title = QLabel("FoxAir / Phnix Control")
         title.setObjectName("title")
         title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("background: transparent; color: #ffffff; font-size: 24px; font-weight: bold;")
         root.addWidget(title)
 
         version = QLabel(f"Version V{APP_VERSION}  •  {BUILD_DATE}")
         version.setObjectName("version")
         version.setAlignment(Qt.AlignCenter)
+        version.setStyleSheet("background: transparent; color: #d7e6f5; font-size: 14px;")
         root.addWidget(version)
 
         bottom = QHBoxLayout()
@@ -371,6 +375,7 @@ class StartupSplash(QDialog):
         brand = QLabel("FoxAir Control\nby DosOrDie")
         brand.setObjectName("brand")
         brand.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        brand.setStyleSheet("background: transparent; color: #d7e6f5; font-size: 13px; font-weight: bold;")
         bottom.addWidget(brand, 0, Qt.AlignRight | Qt.AlignBottom)
         root.addLayout(bottom)
 
@@ -3958,6 +3963,541 @@ class AboutDialog(QDialog):
         close_btn.clicked.connect(self.accept)
 
 
+class WPControlDialog(QDialog):
+    """Einfache WP-Steuerung ähnlich Warmlink-App. Schreiben nur mit Bestätigung."""
+    SET_MODE_MAP = {
+        0: "Warmwasser",
+        1: "Heizen",
+        2: "Kühlen",
+        3: "Warmwasser + Heizen",
+        4: "Warmwasser + Kühlen",
+    }
+    RUN_MODE_MAP = {
+        0: "Kühlen",
+        1: "Heizen",
+        2: "Abtauen",
+        3: "Sterilisieren",
+        4: "Warmwasser",
+    }
+    TARGET_REG_BY_SET_MODE = {
+        0: (1157, "Warmwasser-Solltemperatur"),
+        1: (1158, "Heizungssolltemperatur"),
+        2: (1159, "Kühlsolltemperatur"),
+        3: (1158, "Heizungssolltemperatur"),
+        4: (1159, "Kühlsolltemperatur"),
+    }
+    TEMP_REGS = [
+        (2048, "Außentemperatur"),
+        (2045, "Einlass / Rücklauf"),
+        (2046, "Auslass / Vorlauf"),
+        (2047, "WW-Tank"),
+        (2077, "Durchfluss"),
+        (2013, "Solltemp. begrenzt"),
+        (2014, "Solltemp. AT-Komp."),
+    ]
+
+    def __init__(self, main_window: "MainWindow"):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self.setWindowTitle("WP-Steuerung")
+        self.setMinimumWidth(760)
+        self.auto_refresh_timer = QTimer(self)
+        self.auto_refresh_timer.timeout.connect(self.read_from_wp)
+        self._build_ui()
+        self.refresh_from_live()
+        QTimer.singleShot(250, self.read_from_wp)
+
+    def _raw(self, reg_no: int, default: Optional[int] = None) -> Optional[int]:
+        try:
+            if reg_no in self.main_window.latest_regs:
+                return int(self.main_window.latest_regs[reg_no].raw_value) & 0xFFFF
+            if reg_no in self.main_window.last_values:
+                return int(self.main_window.last_values[reg_no]) & 0xFFFF
+        except Exception:
+            pass
+        return default
+
+    def _fmt(self, reg_no: int, raw: Optional[int]) -> str:
+        if raw is None:
+            return "--"
+        info = self.main_window.regmap.get(int(reg_no))
+        dtype = info.dtype if info and info.dtype else "RAW"
+        return format_value_by_type(int(raw), dtype)
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        hint = QLabel("Einfache Steuerung wie in der App. Schreibbefehle werden erst nach Bestätigung gesendet.")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        status_box = QGroupBox("Status")
+        layout.addWidget(status_box)
+        status = QGridLayout(status_box)
+        self.power_state_label = QLabel("--")
+        self.set_mode_label = QLabel("--")
+        self.run_mode_label = QLabel("--")
+        self.silent_state_label = QLabel("--")
+        status.addWidget(QLabel("Ein/Aus Status (2011):"), 0, 0)
+        status.addWidget(self.power_state_label, 0, 1)
+        status.addWidget(QLabel("Eingestellter Modus (1012):"), 1, 0)
+        status.addWidget(self.set_mode_label, 1, 1)
+        status.addWidget(QLabel("Aktueller Betrieb (2012):"), 2, 0)
+        status.addWidget(self.run_mode_label, 2, 1)
+        status.addWidget(QLabel("Silent (1016 Bit 1):"), 3, 0)
+        status.addWidget(self.silent_state_label, 3, 1)
+
+        live_box = QGroupBox("Wichtige Livewerte")
+        layout.addWidget(live_box)
+        live = QGridLayout(live_box)
+        self.temp_labels: dict[int, QLabel] = {}
+        for idx, (reg_no, label) in enumerate(self.TEMP_REGS):
+            r = idx // 2
+            c = (idx % 2) * 2
+            live.addWidget(QLabel(f"{label} ({reg_no}):"), r, c)
+            val = QLabel("--")
+            self.temp_labels[reg_no] = val
+            live.addWidget(val, r, c + 1)
+
+        control_box = QGroupBox("Wärmepumpe Ein / Aus und Sollwerte")
+        layout.addWidget(control_box)
+        controls = QGridLayout(control_box)
+
+        self.power_combo = QComboBox()
+        self.power_combo.addItem("Aus", 0)
+        self.power_combo.addItem("Ein", 1)
+        self.power_write_btn = QPushButton("Wärmepumpe Ein/Aus schreiben (1011)")
+        controls.addWidget(QLabel("Wärmepumpe Ein / Aus:"), 0, 0)
+        controls.addWidget(self.power_combo, 0, 1)
+        controls.addWidget(self.power_write_btn, 0, 2)
+
+        self.mode_combo = QComboBox()
+        for raw, text in self.SET_MODE_MAP.items():
+            self.mode_combo.addItem(text, raw)
+        self.mode_write_btn = QPushButton("Modus schreiben (1012)")
+        controls.addWidget(QLabel("Modus setzen:"), 1, 0)
+        controls.addWidget(self.mode_combo, 1, 1)
+        controls.addWidget(self.mode_write_btn, 1, 2)
+
+        self.target_label = QLabel("--")
+        self.target_spin = QDoubleSpinBox()
+        self.target_spin.setRange(0.0, 90.0)
+        self.target_spin.setDecimals(1)
+        self.target_spin.setSingleStep(0.5)
+        self.target_write_btn = QPushButton("passende Solltemp. schreiben")
+        controls.addWidget(QLabel("aktuelle Solltemp. 2013/2014:"), 2, 0)
+        controls.addWidget(self.target_label, 2, 1)
+        controls.addWidget(QLabel("neue Solltemp.:"), 3, 0)
+        controls.addWidget(self.target_spin, 3, 1)
+        controls.addWidget(self.target_write_btn, 3, 2)
+
+        self.ww_target_label_caption = QLabel("WW-Sollwert (1157):")
+        self.ww_target_label = QLabel("--")
+        self.ww_target_spin = QDoubleSpinBox()
+        self.ww_target_spin.setRange(0.0, 90.0)
+        self.ww_target_spin.setDecimals(1)
+        self.ww_target_spin.setSingleStep(0.5)
+        self.ww_target_write_btn = QPushButton("WW-Solltemp. schreiben (1157)")
+        controls.addWidget(self.ww_target_label_caption, 4, 0)
+        controls.addWidget(self.ww_target_label, 4, 1)
+        controls.addWidget(self.ww_target_spin, 5, 1)
+        controls.addWidget(self.ww_target_write_btn, 5, 2)
+
+        self.silent_combo = QComboBox()
+        self.silent_combo.addItem("Silent aus", 0)
+        self.silent_combo.addItem("Silent ein", 1)
+        self.silent_write_btn = QPushButton("Silent schreiben (1016 Bit 1)")
+        controls.addWidget(QLabel("Silent:"), 6, 0)
+        controls.addWidget(self.silent_combo, 6, 1)
+        controls.addWidget(self.silent_write_btn, 6, 2)
+
+        buttons = QHBoxLayout()
+        self.read_btn = QPushButton("Status/Livewerte lesen")
+        self.refresh_btn = QPushButton("aus Live-Werten aktualisieren")
+        self.auto_refresh_cb = QCheckBox("Autorefresh")
+        self.auto_refresh_interval = QSpinBox()
+        self.auto_refresh_interval.setRange(2, 3600)
+        self.auto_refresh_interval.setValue(10)
+        self.auto_refresh_interval.setSuffix(" s")
+        self.close_btn = QPushButton("Schließen")
+        buttons.addWidget(self.read_btn)
+        buttons.addWidget(self.refresh_btn)
+        buttons.addSpacing(12)
+        buttons.addWidget(self.auto_refresh_cb)
+        buttons.addWidget(self.auto_refresh_interval)
+        buttons.addStretch(1)
+        buttons.addWidget(self.close_btn)
+        layout.addLayout(buttons)
+
+        self.power_write_btn.clicked.connect(self.write_power)
+        self.mode_write_btn.clicked.connect(self.write_mode)
+        self.mode_combo.currentIndexChanged.connect(lambda _=None: self._update_ww_target_visibility())
+        self.target_write_btn.clicked.connect(self.write_target)
+        self.ww_target_write_btn.clicked.connect(self.write_ww_target)
+        self.silent_write_btn.clicked.connect(self.write_silent)
+        self.read_btn.clicked.connect(self.read_from_wp)
+        self.refresh_btn.clicked.connect(self.refresh_from_live)
+        self.auto_refresh_cb.toggled.connect(self._toggle_auto_refresh)
+        self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
+        self.close_btn.clicked.connect(self.close)
+
+    def update_from_live_register(self, reg):
+        if int(getattr(reg, "reg", -1)) in {1011, 1012, 1016, 2011, 2012, 2013, 2014, 2045, 2046, 2047, 2048, 2077, 1157, 1158, 1159}:
+            self.refresh_from_live()
+
+    def refresh_from_live(self):
+        power = self._raw(2011)
+        self.power_state_label.setText("Ein" if power == 1 else "Aus" if power == 0 else "--")
+        pset = self._raw(1011, power)
+        if pset is not None:
+            self.power_combo.setCurrentIndex(1 if pset == 1 else 0)
+
+        set_mode = self._raw(1012)
+        self.set_mode_label.setText(f"{set_mode} = {self.SET_MODE_MAP.get(set_mode, '--')}" if set_mode is not None else "--")
+        if set_mode in self.SET_MODE_MAP:
+            idx = self.mode_combo.findData(set_mode)
+            if idx >= 0:
+                self.mode_combo.setCurrentIndex(idx)
+
+        run_mode = self._raw(2012)
+        self.run_mode_label.setText(f"{run_mode} = {self.RUN_MODE_MAP.get(run_mode, '--')}" if run_mode is not None else "--")
+
+        silent_raw = self._raw(1016)
+        silent_on = bool((silent_raw or 0) & 0x0002) if silent_raw is not None else None
+        self.silent_state_label.setText("Ein" if silent_on else "Aus" if silent_on is not None else "--")
+        if silent_on is not None:
+            self.silent_combo.setCurrentIndex(1 if silent_on else 0)
+
+        vals = []
+        for reg_no, label in self.TEMP_REGS:
+            raw = self._raw(reg_no)
+            text = self._fmt(reg_no, raw)
+            self.temp_labels[reg_no].setText(text)
+            if reg_no in (2013, 2014) and raw is not None:
+                vals.append(text)
+        self.target_label.setText(" / ".join(vals) if vals else "--")
+        active_target = self._raw(2014) if self._raw(1236, 0) == 1 else self._raw(2013)
+        if active_target is None:
+            active_target = self._raw(2013) or self._raw(2014)
+        if active_target is not None:
+            self.target_spin.setValue(numeric_value_by_type(active_target, "TEMP1"))
+
+        ww_raw = self._raw(1157)
+        if ww_raw is not None:
+            ww_val = numeric_value_by_type(ww_raw, "TEMP1")
+            self.ww_target_label.setText(f"{ww_val:.1f} °C")
+            self.ww_target_spin.setValue(ww_val)
+        else:
+            self.ww_target_label.setText("--")
+        self._update_ww_target_visibility()
+
+    def _update_ww_target_visibility(self):
+        mode = self._raw(1012)
+        if mode is None:
+            mode = int(self.mode_combo.currentData()) if self.mode_combo.currentData() is not None else None
+        show_ww_extra = mode in (3, 4)
+        for widget in (self.ww_target_label_caption, self.ww_target_label, self.ww_target_spin, self.ww_target_write_btn):
+            widget.setVisible(show_ww_extra)
+
+    def _toggle_auto_refresh(self, enabled: bool):
+        if enabled:
+            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000)
+            self.read_from_wp()
+        else:
+            self.auto_refresh_timer.stop()
+
+    def _confirm_write(self, title: str, text: str) -> bool:
+        return QMessageBox.question(self, title, text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No) == QMessageBox.StandardButton.Yes
+
+    def write_power(self):
+        value = int(self.power_combo.currentData())
+        if self._confirm_write("Ein/Aus schreiben", f"Register 1011 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
+            self.main_window.send_register_write(1011, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Ein/Aus")
+
+    def write_mode(self):
+        value = int(self.mode_combo.currentData())
+        if self._confirm_write("Modus schreiben", f"Register 1012 wirklich auf {value} ({self.SET_MODE_MAP.get(value)}) schreiben?"):
+            self.main_window.send_register_write(1012, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Modus")
+
+    def write_target(self):
+        mode = self._raw(1012)
+        reg_no, label = self.TARGET_REG_BY_SET_MODE.get(mode if mode is not None else int(self.mode_combo.currentData()), (1158, "Heizungssolltemperatur"))
+        raw = int(round(float(self.target_spin.value()) * 10.0)) & 0xFFFF
+        text = f"{label}: Register {reg_no} wirklich auf {self.target_spin.value():.1f} °C (raw {raw}) schreiben?"
+        if self._confirm_write("Solltemperatur schreiben", text):
+            self.main_window.send_register_write(reg_no, raw, DEFAULT_BUS_ADDR, label=f"WP-Steuerung {label}")
+
+    def write_ww_target(self):
+        raw = int(round(float(self.ww_target_spin.value()) * 10.0)) & 0xFFFF
+        text = f"Warmwasser-Solltemperatur: Register 1157 wirklich auf {self.ww_target_spin.value():.1f} °C (raw {raw}) schreiben?"
+        if self._confirm_write("WW-Solltemperatur schreiben", text):
+            self.main_window.send_register_write(1157, raw, DEFAULT_BUS_ADDR, label="WP-Steuerung Warmwasser-Solltemperatur")
+
+    def write_silent(self):
+        current = self._raw(1016, 0) or 0
+        bit = int(self.silent_combo.currentData())
+        new_value = (current | 0x0002) if bit else (current & ~0x0002)
+        text = f"Register 1016 Bit 1 wirklich {'setzen' if bit else 'löschen'}?\nAktuell: {current}/0x{current:04X}\nNeu: {new_value}/0x{new_value:04X}"
+        if self._confirm_write("Silent schreiben", text):
+            self.main_window.send_register_write(1016, new_value, DEFAULT_BUS_ADDR, label="WP-Steuerung Silent Bit 1")
+
+    def read_from_wp(self):
+        for addr, qty, label in [
+            (1011, 6, "WP-Steuerung Soll/Flags 1011-1016"),
+            (1157, 3, "WP-Steuerung Solltemperaturen R01-R03"),
+            (2011, 4, "WP-Steuerung Status 2011-2014"),
+            (2045, 4, "WP-Steuerung Temperaturen 2045-2048"),
+            (2077, 1, "WP-Steuerung Durchfluss 2077"),
+        ]:
+            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        self.refresh_from_live()
+        QTimer.singleShot(1500, self.refresh_from_live)
+
+
+class CurveCanvas(QWidget):
+    """Kleine Canvas-Grafik fuer die AT-Kompensationskurve ohne externe Abhaengigkeiten."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.points: list[tuple[float, float, bool]] = []
+        self.setMinimumHeight(260)
+
+    def set_points(self, points: list[tuple[float, float, bool]]):
+        self.points = points
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        rect = self.rect().adjusted(45, 15, -20, -35)
+        if rect.width() <= 10 or rect.height() <= 10:
+            return
+
+        bg = self.palette().color(self.backgroundRole())
+        fg = self.palette().color(self.foregroundRole())
+        grid = QColor(160, 160, 160, 95)
+        line = QColor(0, 160, 180)
+        clip = QColor(220, 140, 0)
+
+        painter.fillRect(self.rect(), bg)
+        painter.setPen(QPen(grid, 1))
+        for i in range(5):
+            y = rect.top() + int(rect.height() * i / 4)
+            painter.drawLine(rect.left(), y, rect.right(), y)
+        for i in range(6):
+            x = rect.left() + int(rect.width() * i / 5)
+            painter.drawLine(x, rect.top(), x, rect.bottom())
+
+        painter.setPen(QPen(fg, 1))
+        painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
+        painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())
+        painter.drawText(rect.left(), self.rect().top() + 12, "Zieltemp. °C")
+        painter.drawText(rect.right() - 80, self.rect().bottom() - 5, "AT °C")
+
+        if not self.points:
+            painter.drawText(rect.center(), "Keine Kurvendaten")
+            return
+
+        xs = [p[0] for p in self.points]
+        ys = [p[1] for p in self.points]
+        min_x, max_x = min(xs), max(xs)
+        min_y = min(ys + [10.0])
+        max_y = max(ys + [55.0])
+        if max_y - min_y < 1:
+            max_y = min_y + 1
+
+        def sx(x):
+            return rect.left() + (float(x) - min_x) / (max_x - min_x) * rect.width()
+        def sy(y):
+            return rect.bottom() - (float(y) - min_y) / (max_y - min_y) * rect.height()
+
+        qpoints = [(sx(x), sy(y), clipped) for x, y, clipped in self.points]
+        painter.setPen(QPen(line, 3))
+        for (x1, y1, _), (x2, y2, _) in zip(qpoints, qpoints[1:]):
+            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+        for (x, y, clipped), (at, target, _) in zip(qpoints, self.points):
+            painter.setPen(QPen(clip if clipped else line, 2))
+            painter.setBrush(clip if clipped else line)
+            painter.drawEllipse(int(x) - 5, int(y) - 5, 10, 10)
+            painter.setPen(QPen(fg, 1))
+            painter.drawText(int(x) - 14, int(y) - 10, f"{target:.0f}")
+            painter.drawText(int(x) - 18, rect.bottom() + 20, f"{at:.0f}")
+
+
+class ATCompensationDialog(QDialog):
+    """AT-Kompensationskurve Zone 1: H36/1236, Slope 1234, Offset 1235."""
+    CURVE_AT_POINTS = [-30, -20, -10, 0, 10, 20]
+
+    def __init__(self, main_window: "MainWindow"):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self.setWindowTitle("AT-Kompensation")
+        self.setMinimumWidth(820)
+        self.auto_refresh_timer = QTimer(self)
+        self.auto_refresh_timer.timeout.connect(self.read_from_wp)
+        self._build_ui()
+        self.refresh_from_live()
+        QTimer.singleShot(250, self.read_from_wp)
+
+    def _raw(self, reg_no: int, default: Optional[int] = None) -> Optional[int]:
+        try:
+            if reg_no in self.main_window.latest_regs:
+                return int(self.main_window.latest_regs[reg_no].raw_value) & 0xFFFF
+            if reg_no in self.main_window.last_values:
+                return int(self.main_window.last_values[reg_no]) & 0xFFFF
+        except Exception:
+            pass
+        return default
+
+    def _temp(self, reg_no: int) -> Optional[float]:
+        raw = self._raw(reg_no)
+        if raw is None:
+            return None
+        return numeric_value_by_type(raw, "TEMP1")
+
+    def _slope(self) -> float:
+        raw = self._raw(1234)
+        return numeric_value_by_type(raw, "DIGI5") if raw is not None else float(self.slope_spin.value())
+
+    def _offset(self) -> float:
+        raw = self._raw(1235)
+        return numeric_value_by_type(raw, "TEMP1") if raw is not None else float(self.offset_spin.value())
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        self.enable_cb = QCheckBox("AT-Kompensationskurve Zone 1 aktivieren (H36 / Register 1236)")
+        layout.addWidget(self.enable_cb)
+
+        status_box = QGroupBox("Aktueller Status")
+        layout.addWidget(status_box)
+        status = QGridLayout(status_box)
+        self.current_at_label = QLabel("--")
+        self.current_target_label = QLabel("--")
+        self.formula_label = QLabel("vermutlich: Ziel = Offset - Slope × AT, mit Mindestbegrenzung")
+        self.formula_label.setWordWrap(True)
+        status.addWidget(QLabel("Außentemperatur (2048):"), 0, 0)
+        status.addWidget(self.current_at_label, 0, 1)
+        status.addWidget(QLabel("aktuelle kompensierte Solltemp. (2014):"), 1, 0)
+        status.addWidget(self.current_target_label, 1, 1)
+        status.addWidget(self.formula_label, 2, 0, 1, 2)
+
+        edit_box = QGroupBox("Kurvenparameter")
+        layout.addWidget(edit_box)
+        edit = QGridLayout(edit_box)
+        self.slope_spin = QDoubleSpinBox(); self.slope_spin.setRange(0.0, 3.5); self.slope_spin.setDecimals(1); self.slope_spin.setSingleStep(0.1)
+        self.offset_spin = QDoubleSpinBox(); self.offset_spin.setRange(0.0, 85.0); self.offset_spin.setDecimals(1); self.offset_spin.setSingleStep(0.5)
+        self.min_target_spin = QDoubleSpinBox(); self.min_target_spin.setRange(0.0, 60.0); self.min_target_spin.setDecimals(1); self.min_target_spin.setSingleStep(0.5); self.min_target_spin.setValue(15.0)
+        edit.addWidget(QLabel("Slope 1234:"), 0, 0); edit.addWidget(self.slope_spin, 0, 1)
+        edit.addWidget(QLabel("Offset 1235:"), 0, 2); edit.addWidget(self.offset_spin, 0, 3)
+        edit.addWidget(QLabel("Mindestwert Anzeige:"), 1, 0); edit.addWidget(self.min_target_spin, 1, 1)
+        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.min_target_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+
+        self.curve_canvas = CurveCanvas(self)
+        layout.addWidget(self.curve_canvas)
+
+        self.curve_table = QTableWidget(0, 3)
+        self.curve_table.setHorizontalHeaderLabels(["AT °C", "berechnete Zieltemp. °C", "Hinweis"])
+        self.curve_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.curve_table.verticalHeader().setVisible(False)
+        self.curve_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        layout.addWidget(self.curve_table)
+
+        buttons = QHBoxLayout()
+        self.read_btn = QPushButton("von WP lesen")
+        self.apply_live_btn = QPushButton("aus Live-Werten laden")
+        self.write_enable_btn = QPushButton("H36 schreiben")
+        self.write_params_btn = QPushButton("Slope/Offset schreiben")
+        self.auto_refresh_cb = QCheckBox("Autorefresh")
+        self.auto_refresh_interval = QSpinBox()
+        self.auto_refresh_interval.setRange(2, 3600)
+        self.auto_refresh_interval.setValue(10)
+        self.auto_refresh_interval.setSuffix(" s")
+        self.close_btn = QPushButton("Schließen")
+        for w in (self.read_btn, self.apply_live_btn, self.write_enable_btn, self.write_params_btn):
+            buttons.addWidget(w)
+        buttons.addSpacing(12)
+        buttons.addWidget(self.auto_refresh_cb)
+        buttons.addWidget(self.auto_refresh_interval)
+        buttons.addStretch(1); buttons.addWidget(self.close_btn)
+        layout.addLayout(buttons)
+
+        self.read_btn.clicked.connect(self.read_from_wp)
+        self.apply_live_btn.clicked.connect(self.refresh_from_live)
+        self.auto_refresh_cb.toggled.connect(self._toggle_auto_refresh)
+        self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
+        self.write_enable_btn.clicked.connect(self.write_enable)
+        self.write_params_btn.clicked.connect(self.write_params)
+        self.close_btn.clicked.connect(self.close)
+
+    def update_from_live_register(self, reg):
+        if int(getattr(reg, "reg", -1)) in {1234, 1235, 1236, 2014, 2048}:
+            self.refresh_from_live()
+
+    def refresh_from_live(self):
+        enabled = self._raw(1236)
+        if enabled is not None:
+            self.enable_cb.setChecked(bool(enabled))
+        slope = self._raw(1234)
+        if slope is not None:
+            self.slope_spin.setValue(numeric_value_by_type(slope, "DIGI5"))
+        offset = self._raw(1235)
+        if offset is not None:
+            self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
+        at = self._temp(2048)
+        target = self._temp(2014)
+        self.current_at_label.setText("--" if at is None else f"{at:.1f} °C")
+        self.current_target_label.setText("--" if target is None else f"{target:.1f} °C")
+        self.update_curve_table()
+
+    def update_curve_table(self):
+        slope = float(self.slope_spin.value())
+        offset = float(self.offset_spin.value())
+        min_target = float(self.min_target_spin.value())
+        curve_points: list[tuple[float, float, bool]] = []
+        self.curve_table.setRowCount(len(self.CURVE_AT_POINTS))
+        for row, at in enumerate(self.CURVE_AT_POINTS):
+            raw_target = offset - slope * float(at)
+            target = max(min_target, raw_target)
+            was_clipped = target != raw_target
+            curve_points.append((float(at), float(target), was_clipped))
+            clipped = "Mindestwert" if was_clipped else ""
+            for col, text in enumerate((f"{at:.1f}", f"{target:.1f}", clipped)):
+                item = QTableWidgetItem(text)
+                self.curve_table.setItem(row, col, item)
+        if hasattr(self, "curve_canvas"):
+            self.curve_canvas.set_points(curve_points)
+
+    def _toggle_auto_refresh(self, enabled: bool):
+        if enabled:
+            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000)
+            self.read_from_wp()
+        else:
+            self.auto_refresh_timer.stop()
+
+    def _confirm_write(self, title: str, text: str) -> bool:
+        return QMessageBox.question(self, title, text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No) == QMessageBox.StandardButton.Yes
+
+    def write_enable(self):
+        value = 1 if self.enable_cb.isChecked() else 0
+        if self._confirm_write("AT-Kompensation schreiben", f"Register 1236 / H36 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
+            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36")
+
+    def write_params(self):
+        slope_raw = int(round(float(self.slope_spin.value()) * 10.0)) & 0xFFFF
+        offset_raw = int(round(float(self.offset_spin.value()) * 10.0)) & 0xFFFF
+        text = f"Slope 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
+        if self._confirm_write("AT-Kurvenparameter schreiben", text):
+            self.main_window.send_register_write(1234, slope_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Slope")
+            self.main_window.send_register_write(1235, offset_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Offset", delay_ms=350)
+
+    def read_from_wp(self):
+        for addr, qty, label in [(1234, 3, "AT-Kompensation 1234-1236"), (2014, 1, "AT-Kompensation aktuelle Solltemp. 2014"), (2048, 1, "AT-Kompensation Außentemperatur 2048")]:
+            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        self.refresh_from_live()
+        QTimer.singleShot(1500, self.refresh_from_live)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -4020,6 +4560,8 @@ class MainWindow(QMainWindow):
         self.onoff_timer_dialog: Optional[OnOffTimerEditorDialog] = None
         self.silent_timer_dialog: Optional[SilentTimerDialog] = None
         self.sg_dialog: Optional[SGReadyEditorDialog] = None
+        self.wp_control_dialog: Optional[WPControlDialog] = None
+        self.at_comp_dialog: Optional[ATCompensationDialog] = None
         self.parameter_dialog: Optional[ParameterSettingsDialog] = None
         self.manual_register_dialog: Optional[ManualRegisterDialog] = None
         self.bus_dialog: Optional[BusAddressDialog] = None
@@ -4365,17 +4907,21 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
+        self.wp_control_btn = QPushButton("WP-Steuerung ...")
+        self.at_comp_btn = QPushButton("AT-Kompensation ...")
         self.contact_value_label.setVisible(False)
-        special_layout.addWidget(self.param_settings_btn, 0, 0, 1, 2)
-        special_layout.addWidget(self.onoff_timer_btn, 1, 0, 1, 2)
-        special_layout.addWidget(self.timer_editor_btn, 2, 0, 1, 2)
-        special_layout.addWidget(self.sg_popup_btn, 3, 0, 1, 2)
-        special_layout.addWidget(self.contact_popup_btn, 4, 0, 1, 2)
-        special_layout.addWidget(self.load_output_popup_btn, 5, 0, 1, 2)
-        special_layout.addWidget(self.fault_popup_btn, 6, 0, 1, 2)
-        special_layout.addWidget(self.backup_restore_btn, 7, 0, 1, 2)
-        special_layout.addWidget(self.offline_browser_btn, 8, 0, 1, 2)
-        special_layout.addWidget(self.bus_popup_btn, 9, 0, 1, 2)
+        special_layout.addWidget(self.wp_control_btn, 0, 0, 1, 2)
+        special_layout.addWidget(self.at_comp_btn, 1, 0, 1, 2)
+        special_layout.addWidget(self.param_settings_btn, 2, 0, 1, 2)
+        special_layout.addWidget(self.onoff_timer_btn, 3, 0, 1, 2)
+        special_layout.addWidget(self.timer_editor_btn, 4, 0, 1, 2)
+        special_layout.addWidget(self.sg_popup_btn, 5, 0, 1, 2)
+        special_layout.addWidget(self.contact_popup_btn, 6, 0, 1, 2)
+        special_layout.addWidget(self.load_output_popup_btn, 7, 0, 1, 2)
+        special_layout.addWidget(self.fault_popup_btn, 8, 0, 1, 2)
+        special_layout.addWidget(self.backup_restore_btn, 9, 0, 1, 2)
+        special_layout.addWidget(self.offline_browser_btn, 10, 0, 1, 2)
+        special_layout.addWidget(self.bus_popup_btn, 11, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -4485,6 +5031,8 @@ class MainWindow(QMainWindow):
         self.load_output_popup_btn.clicked.connect(self.open_load_output_decoder)
         self.fault_popup_btn.clicked.connect(self.open_fault_decoder)
         self.sg_popup_btn.clicked.connect(self.open_sg_editor)
+        self.wp_control_btn.clicked.connect(self.open_wp_control)
+        self.at_comp_btn.clicked.connect(self.open_at_compensation)
         self.param_settings_btn.clicked.connect(self.open_parameter_settings)
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
@@ -6009,6 +6557,26 @@ class MainWindow(QMainWindow):
             self.sg_dialog.raise_()
             self.sg_dialog.activateWindow()
 
+
+    def open_wp_control(self):
+        if self.wp_control_dialog is None or not self.wp_control_dialog.isVisible():
+            self.wp_control_dialog = WPControlDialog(self)
+            self.wp_control_dialog.finished.connect(lambda _=None: setattr(self, "wp_control_dialog", None))
+            self.wp_control_dialog.show()
+        else:
+            self.wp_control_dialog.refresh_from_live()
+            self.wp_control_dialog.raise_()
+            self.wp_control_dialog.activateWindow()
+
+    def open_at_compensation(self):
+        if self.at_comp_dialog is None or not self.at_comp_dialog.isVisible():
+            self.at_comp_dialog = ATCompensationDialog(self)
+            self.at_comp_dialog.finished.connect(lambda _=None: setattr(self, "at_comp_dialog", None))
+            self.at_comp_dialog.show()
+        else:
+            self.at_comp_dialog.refresh_from_live()
+            self.at_comp_dialog.raise_()
+            self.at_comp_dialog.activateWindow()
 
     def open_parameter_settings(self):
         if self.parameter_dialog is None or not self.parameter_dialog.isVisible():

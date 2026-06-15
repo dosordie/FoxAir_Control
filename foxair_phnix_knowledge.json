@@ -44,7 +44,7 @@
     "source": "ASM DEMONS.ASM"
   },
   "1012": {
-    "description": "H05=1: 0-Warmwasser/1-Heizung/2-Kühlung/3-Warmwasser+Heizung/4-Warmwasser+Kühlung",
+    "description": "Modus setzen: 0=Warmwasser, 1=Heizen, 2=Kühlen, 3=Warmwasser + Heizen, 4=Warmwasser + Kühlen. Das ist der Soll-/Einstellmodus.",
     "source": "Display-FW ASM Modus"
   },
   "1013": {
@@ -56,7 +56,7 @@
   },
   "1015": {},
   "1016": {
-    "description": "Bit0: Manuelles Abtauen (0-aus 1-ein) Bit1: Silent-Flag-Bit (0-aus 1-ein) Bit2: Eine Taste manuelle Heizung (0-aus 1-ein)",
+    "description": "Manuelle Steuerung / Silent Status: Bit 1 (Maske 0x0002) ist Silent Mode. Derselbe Registerwert ist auch der Status. Beim Schreiben nur Bit 1 per Read-Modify-Write ändern.",
     "source": "v36 Beschreibung/App-Review"
   },
   "1017": {},
@@ -1117,14 +1117,14 @@
     "description": "0 bis 60°C"
   },
   "1234": {
-    "description": "0 bis 3,5"
+    "description": "AT-Kompensation Slope / Steigung. Vermutete Formel aus App-Screenshot: Ziel = Offset - Slope × Außentemperatur, mit Mindestbegrenzung."
   },
   "1235": {
-    "description": "0 bis 85"
+    "description": "AT-Kompensation Offset / Versatz in °C. Vermutete Formel aus App-Screenshot: Ziel = Offset - Slope × Außentemperatur, mit Mindestbegrenzung."
   },
   "1236": {
     "default": "NO",
-    "description": "H36 / Enable AT Compensation Curve Zone 1 / AT-Kompensationskurve Zone 1 aktivieren. Selbst getestet: Register 1236 ist H36, nicht Z16. App setzt Z16 offenbar nicht.",
+    "description": "H36 / AT-Kompensationskurve Zone 1 aktivieren. 0=Aus, 1=Ein. Selbst getestet: Register 1236 = H36.",
     "source": "User-Test 2026-06-14 + ASM-Hinweis H36 Parameter bei 1236",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1",
     "source_user_test": "H36 = Register 1236 selbst getestet"
@@ -1811,7 +1811,7 @@
     "source": "v36 Beschreibung/App-Review"
   },
   "2012": {
-    "description": "0-Kühlung/1-Heizung/2-Abtauen/3-Sterilisieren/4-Warmwasser; ASM: 07DCH Sonderstatus 2=Abtauen, 3=Sterilisieren",
+    "description": "Aktueller Betriebsstatus: 0=Kühlen, 1=Heizen, 2=Abtauen, 3=Sterilisieren, 4=Warmwasser. Nicht identisch mit Modus-Setzregister 1012.",
     "source": "ASM DEMONS.ASM"
   },
   "2013": {},
@@ -1915,7 +1915,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2043": {
-    "description": "tatsächlicher Testwert"
+    "description": "DC-Power-Bus-Spannung. Einheit vom User bestätigt: V / Volt."
   },
   "2044": {
     "description": "tatsächlicher Testwert"
@@ -1984,10 +1984,10 @@
     "description": "tatsächlicher Testwert"
   },
   "2062": {
-    "description": "tatsächlicher Testwert"
+    "description": "AC-Eingangsspannung. Einheit vom User bestätigt: V / Volt, nicht °C."
   },
   "2063": {
-    "description": "tatsächlicher Testwert"
+    "description": "EVI-Einlasstemperatur. Einheit vom User bestätigt: °C; Skalierung als TEMP1 (/10) plausibel."
   },
   "2064": {
     "description": "tatsächlicher Testwert"
