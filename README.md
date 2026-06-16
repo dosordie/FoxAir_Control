@@ -1,3 +1,9 @@
+## PUBLIC V0.2.38 Hinweis
+
+Diese Public-Version basiert auf dem internen/private Stand **V0.2.38 fix2** und ist zum Testen durch andere Nutzer gedacht.
+
+**Wichtig zum Display-Bus:** Lesen/Diagnose und passives Mithören über **Modbus Display / HMI** sind enthalten, aber **Schreiben über den Display-Bus funktioniert aktuell noch nicht bzw. ist nicht freigegeben**. Parameteränderungen/Restore bitte weiterhin nur über die getesteten Wege **Modbus Standart** oder **Modbus Warmlink LTE** durchführen, wenn klar ist, was geschrieben wird.
+
 # FoxAir / Phnix Control
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
@@ -7,13 +13,13 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 ## Funktionen
 
 - Live-Registeranzeige mit bekannten FoxAir/Phnix-Datenpunkten
-- Lesen und Schreiben per Modbus Standart, Modbus Display und Modbus Warmlink LTE
+- Lesen und Schreiben per Modbus Standart und Modbus Warmlink LTE; Modbus Display / HMI aktuell nur Diagnose/Lesen, Schreiben noch nicht freigegeben
 - TCP/IP/ser2net oder USB-RS485/COM-Port
 - F1 Hilfe/About mit Version, GitHub-Link und Update-Prüfung
 - Parameter-Einstellfenster mit Beschreibungen/Wissensdatenbank
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
-- Offline Register-Browser mit editierbarer Wissensdatenbank
+- Offline Register-Browser mit Umschaltung zwischen Warmlink/WP- und Display/DWIN-Mapping
 
 ## Installation / Download
 
@@ -31,7 +37,7 @@ Python-Start ist weiterhin möglich, aber eher für Entwicklung/Tests gedacht.
 | Modus | Transport | Was ist das? | Typisch |
 |---|---|---|---|
 | Modbus Standart | TCP/IP oder COM/RS485 | Offizielle Modbus-Klemmen am Gerät | Unit 1, Port 10001 bei TCP-Gateway |
-| Modbus Display | TCP/IP oder COM/RS485 | Bus, der zum Display / DWIN-HMI geht | meist Unit 3, optional +0x2000 für Parameter |
+| Modbus Display | TCP/IP oder COM/RS485 | Bus, der zum Display / DWIN-HMI geht | 4800 8N1 laut Display-CONFIG, meist Unit 3, optional +0x2000 für DWIN-Speicher |
 | Modbus Warmlink LTE | TCP/IP/ser2net oder COM/RS485 | Modem-/Warmlink-Bus im Außengerät, an den Klemmen am Mainboard | Bus 0x63, RAW-Protokoll |
 
 Kurz gesagt:
@@ -45,7 +51,31 @@ Kurz gesagt:
 
 - **Modbus Standart** ist getestet.
 - **Modbus Warmlink LTE** zum LTE-/Warmlink-Modem ist getestet.
-- **Modbus Display / HMI** ist aktuell noch ungetestet und sollte vorsichtig verwendet werden.
+- **Modbus Display / HMI** wurde inzwischen passiv mitgeschnitten. Baudrate/Format: sehr wahrscheinlich **4800 8N1**. Der Bus enthält mehrere Teilnehmer/Platinen und ist für aktives Steuern deutlich schwieriger als Warmlink. **Schreiben über den Display-Bus geht aktuell noch nicht bzw. ist nicht freigegeben.** Für aktives Lesen/Schreiben bleibt Warmlink aktuell die bevorzugte Variante.
+
+Aktueller DWIN-Diagnosestand:
+
+- Warmlink/WP-Register und Display/DWIN-Adressen sind getrennt. Der normale Registerbrowser bleibt Warmlink/WP; im Offline-Registerbrowser kann auf Display/DWIN-Mapping umgeschaltet werden.
+- Display-Bus-Parameterpakete von Unit `0x03` werden als `DREG ...` separat geloggt und überschreiben nicht die normale Hauptliste.
+- `3021` / `0x0BCD` im Block `0x03 / 3001ff` ist ein Kandidat für Display-Istmodus / Anzeige-Icon-Code. Der Wert wird bewusst **nicht** automatisch als `2012` übernommen.
+- `3013` wurde als Display-Softwareversion bestätigt/beobachtet: `17` = V1.7.
+- Für sichtbare Display-Temperaturen wie T1/T2/T4 gibt es im manuellen Register-Popup jetzt die Buttons **DWIN Temp-Suche** und **DWIN Status-Suche**. Diese lesen Anzeigeadressen auf Unit `0x03`, z. B. `0x1270`, `0x127C`, `0x1800`, `0x1880`, `0x1A00`, `0x11C0`, `0x1720`, `0x1730`.
+- Ziel der Temp-Suche: Werte wie `206`, `210`, `170` oder ggf. direkt `20`, `21`, `17` finden, wenn das Display T1/T2/T4 anzeigt.
+
+Aktuelle Display-/HMI-Bus-Vermutungen aus Mitschnitten:
+
+| Adresse | Vermutung | Beobachtet |
+|---|---|---|
+| 0x01 | Live-/Status-Teilnehmer | 1999/2099, FC03/FC16 |
+| 0x02 | DWIN-/Display-Speicher Teilnehmer | 3001ff Reads |
+| 0x03 | Display / DWIN-DGUS Speicher | 3001ff, +0x2000 relevant |
+| 0x04 | Parameterblock-Poller | 1011ff Reads |
+| 0x05 | interner Parameter-/Liveblock | 2000ff Reads, 1001-1090 Writes |
+| 0x06 | Testadresse | bisher keine gesicherte Rolle |
+
+Wichtig: Auf dem Display-/HMI-Bus werden passive Frames und manuelle DWIN-Lesungen **nicht mehr automatisch in die Haupt-Registerliste übernommen**. Die Hauptliste bleibt Warmlink/WP-Mapping. Display-/DWIN-Adressen werden getrennt über `foxair_phnix_display_registers.json` nur für Popup/Log-Diagnose beschriftet. Damit überschreiben Rohblöcke wie `0x01/2099ff` keine bekannten Warmlink-Register ab 2101 mehr.
+
+Hinweis zu **1999/2001 / 20xx** im Display-/HMI-Modbus: diese Blöcke sind noch nicht sauber verifiziert. FC16-ACKs und unklare 1999/2001-Frames werden deshalb nur noch geloggt, aber nicht in die Hauptliste übernommen. **2012** wird im Display-Modbus nicht mehr aus 1012 gespiegelt, weil 1012 Sollmodus und 2012 Ist-/Betriebsstatus mit unterschiedlicher Codetabelle sind. Für echte/saubere Istwerte bleibt Warmlink die bessere Quelle.
 
 Hinweis fuer Kaskaden: Bei Kaskadenanlagen koennten am **HMI-/Display-Modbus** mehrere Geraete mit unterschiedlichen Slave-Adressen haengen. Das ist noch nicht verifiziert, wird aber fuer spaetere Bus-Scan-/Mehrgeraete-Funktionen vorgemerkt.
 
@@ -153,12 +183,11 @@ Portable/private Versionen koennen weiterhin alles im Programmordner speichern. 
 
 
 
-### PUBLIC V0.2.35 Hinweise
+### PRIVATE V0.2.37 Fix2 Hinweise
 
-- Public-Version aus dem letzten PRIVATE V0.2.35 Fix1 Stand.
-- Enthält WP-Steuerung-Popup, AT-Kompensations-Popup mit Kurvengrafik, Silent-Steuerung über 1016 Bit 1 und die Fix1-Aktualisierungen.
-- Public wird in der Oberfläche nicht extra markiert; nur PRIVATE-Versionen tragen den PRIVATE-Zusatz.
-- Hinweis für Releases: Source-ZIP und EXE/Setup sind getrennte Assets. Wenn nur das Source-ZIP aktualisiert wird, bleibt eine vorhandene EXE im GitHub-Release unverändert. Für Updates der EXE muss die EXE/Setup-Datei aus diesem Source-Stand neu gebaut und als Release-Asset hochgeladen werden.
+Display-/HMI-Modbus übernimmt zusätzlich den Statusblock `Addr 0x01 / 1999ff`.
+Dadurch können Werte wie `2011` und `2012` aus den passiven Statuspaketen sichtbar werden.
+Parameterpakete von `Addr 0x03 / 1001ff` bleiben weiterhin aktiv, damit `1012` beim Umschalten am Display mitläuft.
 
 ### PRIVATE V0.2.35 Fix1 Hinweise
 
@@ -227,3 +256,19 @@ Der Z-Block wurde anhand des Warmlink-App-Videos ergänzt. Die App-Reihenfolge i
 
 
 Hinweis V0.2.32: H36 ist Register 1236, H37 ist Register 1046. Register 1048 ist nicht mehr als H37 gekennzeichnet.
+
+
+## V0.2.37 Fix21
+
+- Display-Paketblock-Test erweitert: testet sequenziell jetzt auch Unit `0x02` und `0x05` zusätzlich zu `0x03`, `0x01`, `0x04`.
+- Unit `0x00` wird in der Busübersicht nicht mehr als ungültige Adresse bezeichnet, sondern als Modbus-Broadcast/System-Adresse.
+- Unit `0x00` wird bewusst nicht aktiv gepollt, weil Broadcast-Reads keine normale Antwort erwarten lassen. Passive Broadcast-Paketblöcke `2001ff`/`2091ff` bleiben unverändert validiert und übernommen.
+
+
+## V0.2.37 Fix31
+
+- Warmlink/LTE-Init-Lesen in `workers/warmlink_worker.py` ausgelagert.
+- Neuer `WarmlinkInitReadController`: sendet die Init-Blöcke sequenziell und wartet auf Antwort oder Timeout.
+- Fix für Warmlink-Timing: späte Antworten der letzten Statusblöcke können nicht mehr so leicht dem falschen Pending-Read zugeordnet werden.
+- DisplayWorker-Timing verbessert: vor aktiven Display-Paketreads wird jetzt auf eine Buslücke gewartet; Timeout leicht erhöht.
+- Warmlink/Standard-Lesepfad und DisplayWorker bleiben funktional getrennt.

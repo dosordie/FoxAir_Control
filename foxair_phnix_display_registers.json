@@ -1,0 +1,1345 @@
+{
+  "1025": {
+    "block": "H",
+    "code": "H38",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1061": {
+    "app_label": "Fan Motor Power Curve",
+    "block": "F",
+    "code": "F27",
+    "function": "03/16",
+    "last_review": "v39",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1345": {
+    "block": "H",
+    "code": "H40",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1348": {
+    "block": "C",
+    "code": "C13",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1349": {
+    "block": "C",
+    "code": "C14",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1350": {
+    "block": "C",
+    "code": "C15",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1351": {
+    "block": "E",
+    "code": "E20",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1352": {
+    "block": "E",
+    "code": "E21",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Display-Firmware Parameter (ASM)",
+    "type": "RAW"
+  },
+  "1353": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1353]",
+    "type": "RAW"
+  },
+  "1354": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1354]",
+    "type": "RAW"
+  },
+  "1355": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355]",
+    "type": "RAW"
+  },
+  "2099": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 1 (Bedeutung unklar)",
+    "type": "BLOCK"
+  },
+  "2100": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 2 (Bedeutung unklar)",
+    "type": "BLOCK"
+  },
+  "2101": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 3 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2102": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 4 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2103": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 5 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2105": {
+    "function": "16",
+    "mode": "r/w",
+    "name": "DWIN/Display Rohstatusblock Wort 7 (wechselt 228/229; Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2106": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 8 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2108": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock Wort 10 (wechselt 310..313; Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2109": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 11 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2110": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 12 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2111": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 13 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2112": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 14 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2113": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 15 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2114": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 16 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2116": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 18 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2117": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 19 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2118": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 20 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2119": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 21 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2120": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 22 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2121": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 23 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2122": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 24 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2123": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 25 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2124": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 26 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2125": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 27 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2126": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 28 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2127": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 29 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2128": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 30 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2129": {
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 31 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2130": {
+    "block": "T",
+    "code": "T46",
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 32 (Bedeutung unklar)",
+    "type": "DIGI5"
+  },
+  "2131": {
+    "block": "T",
+    "code": "T47",
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 33 (Bedeutung unklar)",
+    "type": "DIGI1"
+  },
+  "2132": {
+    "block": "T",
+    "code": "T48",
+    "function": "16",
+    "mode": "write",
+    "name": "DWIN/Display Rohstatusblock 2099ff Wort 34 (Bedeutung unklar)",
+    "type": "DIGI6"
+  },
+  "3012": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Display Softwarecode / Anzeige Softwarecode (beobachtet im 3001ff-Block)",
+    "type": "RAW"
+  },
+  "3013": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Display Softwareversion (V1.7 beobachtet)",
+    "type": "RAW",
+    "value_map": {
+      "17": "V1.7 Display-Software"
+    }
+  },
+  "3021": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Anzeige-/Icon-/Seiten-Code 3021 (Kandidat; nicht direkt 2012)",
+    "type": "RAW",
+    "value_map": {
+      "0": "Code 0 - noch nicht zugeordnet",
+      "1": "Code 1 - noch nicht zugeordnet",
+      "2": "Code 2 - noch nicht zugeordnet",
+      "3": "Code 3 - noch nicht zugeordnet",
+      "4": "Code 4 - noch nicht zugeordnet",
+      "5": "Code 5 - noch nicht zugeordnet",
+      "6": "Code 6 - noch nicht zugeordnet",
+      "7": "Code 7 - noch nicht zugeordnet",
+      "8": "Code 8 - noch nicht zugeordnet",
+      "9": "Code 9 - noch nicht zugeordnet",
+      "10": "Code 10 - noch nicht zugeordnet",
+      "11": "Code 11 - noch nicht zugeordnet",
+      "12": "Code 12 - noch nicht zugeordnet",
+      "13": "Code 13 - noch nicht zugeordnet",
+      "14": "Code 14 - noch nicht zugeordnet",
+      "15": "Code 15 - noch nicht zugeordnet",
+      "16": "Code 16 - noch nicht zugeordnet",
+      "17": "Code 17 - noch nicht zugeordnet",
+      "18": "Code 18 - noch nicht zugeordnet",
+      "19": "Code 19 - noch nicht zugeordnet",
+      "20": "Code 20 - noch nicht zugeordnet"
+    },
+    "note": "Merker V0.2.38: beobachtet 55→56 bzw. verschiedene Werte; Anzeige/Icon/Seitenstatus-Kandidat, nicht direkt WP-Modus."
+  },
+  "4544": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 11C0 Abtau-/Status-Icon (ASM-Kandidat)",
+    "type": "RAW"
+  },
+  "4720": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1270 Temperatur-/Anzeige-Kandidatenblock",
+    "type": "RAW"
+  },
+  "4722": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1272 WW-Tanktemperatur Anzeige (Korrelation zu WREG 2047)",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4732": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x127C Heiz-Soll / berechneter Heiz-Sollwert Anzeige",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "5920": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1720 Modus-Anzeige / Textpointer-Kandidat",
+    "type": "RAW"
+  },
+  "5936": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1730 Betriebsstatus-Anzeige / Textpointer-Kandidat",
+    "type": "RAW"
+  },
+  "6144": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1800 Anzeigeobjekt-/Layoutblock (kein Warmlink-Register)",
+    "type": "RAW"
+  },
+  "6272": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1880 Anzeige-/Temperatur-Kandidatenblock",
+    "type": "RAW"
+  },
+  "6656": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock",
+    "type": "RAW"
+  },
+  "6145": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1801 Anzeigeobjekt-/Layoutparameter",
+    "type": "RAW"
+  },
+  "6146": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1802 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
+    "type": "RAW"
+  },
+  "6176": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1820 Anzeigeobjekt-/Layoutblock (kein Temperatur-Rohwert)",
+    "type": "RAW"
+  },
+  "6177": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1821 Anzeigeobjekt-/Layoutparameter",
+    "type": "RAW"
+  },
+  "6178": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1822 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
+    "type": "RAW"
+  },
+  "4721": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1271 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4723": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1273 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4724": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1274 Einlasswassertemperatur Anzeige (Korrelation zu WREG 2045)",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4725": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1275 Auslasswassertemperatur Anzeige (Kandidat, Korrelation zu WREG 2046)",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4726": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1276 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4727": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1277 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4728": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1278 Anzeige-Sollwert/Kandidat 45.0",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4729": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1279 Anzeige-Sollwert/Grenzwert Kandidat 35.0",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4730": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x127A Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4731": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x127B Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4733": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x127D Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4734": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x127E Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4735": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x127F Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4736": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1280 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4737": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1281 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4738": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1282 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4739": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1283 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4740": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1284 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4741": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1285 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4742": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1286 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4743": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1287 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4744": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1288 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4745": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1289 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4746": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128A Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4747": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128B Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4748": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128C Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4749": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128D Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4750": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128E Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4751": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x128F Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4752": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1290 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4753": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1291 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4754": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1292 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4755": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1293 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4756": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1294 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4757": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1295 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4758": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1296 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4759": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1297 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4760": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1298 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4761": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x1299 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4762": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129A Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4763": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129B Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4764": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129C Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4765": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129D Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4766": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129E Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4767": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x129F Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4768": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12A0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4769": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12A1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4770": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12A2 WW-Tanktemperatur Anzeige Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4771": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12A3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4772": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12A4 Einlasswassertemperatur Anzeige Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4773": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12A5 Auslasswassertemperatur Anzeige Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4774": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12A6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4775": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12A7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4776": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12A8 Anzeige-Sollwert/Kandidat 45.0 Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4777": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12A9 Anzeige-Sollwert/Grenzwert Kandidat 35.0 Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4778": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12AA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4779": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12AB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4780": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x12AC Heiz-Soll / berechneter Heiz-Sollwert Spiegelblock",
+    "type": "TEMP1",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+  },
+  "4781": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12AD Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4782": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12AE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4783": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12AF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4784": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4785": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4786": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B2 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4787": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4788": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B4 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4789": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B5 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4790": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4791": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4792": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B8 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4793": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12B9 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4794": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4795": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4796": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BC Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4797": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BD Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4798": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4799": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12BF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4800": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4801": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4802": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C2 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4803": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4804": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C4 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4805": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C5 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4806": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4807": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4808": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C8 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4809": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12C9 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4810": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4811": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4812": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CC Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4813": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CD Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4814": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4815": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12CF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4816": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4817": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4818": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D2 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4819": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4820": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D4 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4821": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D5 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4822": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4823": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4824": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D8 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4825": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12D9 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4826": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4827": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4828": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DC Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4829": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DD Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4830": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4831": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12DF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4832": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4833": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4834": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E2 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4835": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4836": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E4 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4837": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E5 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4838": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4839": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4840": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E8 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4841": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12E9 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4842": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12EA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4843": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12EB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4844": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12EC Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4845": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12ED Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4846": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12EE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4847": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12EF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4848": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F0 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4849": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F1 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4850": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F2 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4851": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F3 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4852": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F4 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4853": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F5 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4854": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F6 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4855": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F7 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4856": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F8 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4857": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12F9 Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4858": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FA Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4859": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FB Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4860": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FC Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4861": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FD Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4862": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FE Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "4863": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN Wertebereich 0x12FF Temperatur-/Anzeige-Kandidat",
+    "type": "RAW"
+  },
+  "2104": {
+    "name": "Displaybus 2099ff Rohwort 6 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2107": {
+    "name": "Displaybus 2099ff Rohwort 9 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2115": {
+    "name": "Displaybus 2099ff Rohwort 17 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2133": {
+    "name": "Displaybus 2099ff Rohwort 35 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2134": {
+    "name": "Displaybus 2099ff Rohwort 36 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2135": {
+    "name": "Displaybus 2099ff Rohwort 37 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2136": {
+    "name": "Displaybus 2099ff Rohwort 38 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2137": {
+    "name": "Displaybus 2099ff Rohwort 39 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2138": {
+    "name": "Displaybus 2099ff Rohwort 40 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2139": {
+    "name": "Displaybus 2099ff Rohwort 41 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2140": {
+    "name": "Displaybus 2099ff Rohwort 42 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2141": {
+    "name": "Displaybus 2099ff Rohwort 43 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2142": {
+    "name": "Displaybus 2099ff Rohwort 44 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2143": {
+    "name": "Displaybus 2099ff Rohwort 45 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2144": {
+    "name": "Displaybus 2099ff Rohwort 46 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2145": {
+    "name": "Displaybus 2099ff Rohwort 47 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2146": {
+    "name": "Displaybus 2099ff Rohwort 48 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2147": {
+    "name": "Displaybus 2099ff Rohwort 49 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2148": {
+    "name": "Displaybus 2099ff Rohwort 50 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2149": {
+    "name": "Displaybus 2099ff Rohwort 51 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  }
+}

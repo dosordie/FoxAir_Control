@@ -1,4 +1,100 @@
 {
+  "200": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1",
+    "type": "BLOCK"
+  },
+  "201": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2",
+    "type": "BLOCK"
+  },
+  "202": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3",
+    "type": "BLOCK"
+  },
+  "203": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4",
+    "type": "BLOCK"
+  },
+  "204": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5",
+    "type": "BLOCK"
+  },
+  "205": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6",
+    "type": "BLOCK"
+  },
+  "206": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "207": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "208": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "209": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "210": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "211": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "212": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "213": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "214": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
+  "215": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner HMI-Kommunikationsblock / Reserve",
+    "type": "BLOCK"
+  },
   "1001": {
     "function": "03",
     "mode": "read",
@@ -4002,12 +4098,6 @@
     "name": "Blockkopf Paket 7 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
-  "200": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1",
-    "type": "BLOCK"
-  },
   "2001": {
     "function": "03",
     "mode": "read",
@@ -4060,12 +4150,6 @@
     "function": "03",
     "mode": "read",
     "name": "Blockkopf Paket Status 1 / Marker-Länge",
-    "type": "BLOCK"
-  },
-  "201": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2",
     "type": "BLOCK"
   },
   "2010": {
@@ -4166,12 +4250,6 @@
     "name": "001 bis 023 / Lastausgänge Bitfeld (vollständig decodiert)",
     "type": "BITFIELD"
   },
-  "202": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3",
-    "type": "BLOCK"
-  },
   "2020": {
     "function": "16",
     "mode": "write",
@@ -4231,12 +4309,6 @@
     "mode": "write",
     "name": "Eingangsstrom 1",
     "type": "DIGI5"
-  },
-  "203": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4",
-    "type": "BLOCK"
   },
   "2030": {
     "function": "16",
@@ -4328,12 +4400,6 @@
     "name": "WW-Vorlauftemperatur",
     "type": "TEMP1"
   },
-  "204": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5",
-    "type": "BLOCK"
-  },
   "2040": {
     "function": "16",
     "mode": "write",
@@ -4412,12 +4478,6 @@
     "name": "Verdampfertemperatur",
     "type": "TEMP1"
   },
-  "205": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6",
-    "type": "BLOCK"
-  },
   "2050": {
     "block": "T",
     "code": "T14",
@@ -4477,11 +4537,12 @@
   },
   "2057": {
     "block": "T",
-    "code": "T35",
+    "code": "T34",
     "function": "16",
     "mode": "write",
-    "name": "AC-Eingangsstrom",
-    "type": "DIGI5"
+    "name": "AC-Spannung / AC Voltage (App T34, V)",
+    "type": "DIGI1",
+    "note": "Korrektur V0.2.38: laut App/Tests T34 = AC Spannung in V, nicht Temperatur/Strom."
   },
   "2058": {
     "block": "T",
@@ -4501,12 +4562,6 @@
     "unit": "kW",
     "description": "Live-/Diagnosewert. Vermutlich signed /10 kW; Beispiel 26 = 2,6 kW.",
     "app_label": "Unit Capacity"
-  },
-  "206": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
   },
   "2060": {
     "function": "16",
@@ -4602,12 +4657,6 @@
     "name": "Niederdruck",
     "type": "DIGI5"
   },
-  "207": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
   "2070": {
     "function": "16",
     "mode": "write",
@@ -4684,12 +4733,6 @@
     "mode": "write",
     "name": "Leistung",
     "type": "DIGI1"
-  },
-  "208": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
   },
   "2080": {
     "function": "16",
@@ -4856,12 +4899,6 @@
     "code": "ERR05",
     "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
   },
-  "209": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
   "2090": {
     "bit_map": {
       "8": "Warmwassertemperaturfehler",
@@ -4932,12 +4969,6 @@
     "name": "Blockkopf Paket Status 2 / Marker-Länge",
     "type": "BLOCK"
   },
-  "210": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
   "2100": {
     "function": "03",
     "mode": "read",
@@ -4983,8 +5014,9 @@
   "2107": {
     "function": "16",
     "mode": "write",
-    "name": "Kommunikations-Heartbeat 0x5AA5 / Protokoll OK (ASM)",
-    "type": "RAW"
+    "name": "Kommunikations-Heartbeat / WP-Paket gültig 0x5AA5 (Merker Display-Init)",
+    "type": "RAW",
+    "note": "Merker V0.2.38: In validierten Broadcast-Paketblöcken 2091ff steht hier 0x5AA5; aktive Display-/HMI-Readpfade können 0 liefern. Für Display-Init/Neustart später beobachten."
   },
   "2108": {
     "function": "16",
@@ -4997,12 +5029,6 @@
     "mode": "write",
     "name": "Reserviert",
     "type": "RAW"
-  },
-  "211": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
   },
   "2110": {
     "function": "16",
@@ -5043,8 +5069,9 @@
   "2116": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Merker 2116: unbestätigter Wert / evtl. Spreizung-Kandidat",
+    "type": "RAW",
+    "note": "Passte nicht sauber zur Einlass-Auslass-Spreizung; beobachtet 30/28/26 bei real ca. 3.3/3.7/3.5 K. Nicht als gesichert anzeigen."
   },
   "2117": {
     "function": "16",
@@ -5055,8 +5082,9 @@
   "2118": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Merker 2118: unbestätigter Zähler / Laufzeit-Kandidat",
+    "type": "RAW",
+    "note": "Beobachtet 4578→4579→4580 während WP-Lauf. Bedeutung/Skalierung offen."
   },
   "2119": {
     "function": "16",
@@ -5064,17 +5092,12 @@
     "name": "Reserviert",
     "type": "RAW"
   },
-  "212": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
   "2120": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Merker 2120: unbestätigter Zähler / Laufzeit-Kandidat",
+    "type": "RAW",
+    "note": "Beobachtet 7630→7631→7632 während WP-Lauf. Bedeutung/Skalierung offen."
   },
   "2121": {
     "function": "16",
@@ -5130,12 +5153,6 @@
     "name": "Reserviert",
     "type": "RAW"
   },
-  "213": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
   "2130": {
     "block": "T",
     "code": "T46",
@@ -5159,17 +5176,5 @@
     "mode": "write",
     "name": "Strom des externen Lüftermotorantriebs.",
     "type": "DIGI6"
-  },
-  "214": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
-  },
-  "215": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
   }
 }

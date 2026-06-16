@@ -1,0 +1,58 @@
+V0.2.38 PRIVATE - Cleanup / Merker / nächste Tests
+===================================================
+
+Code-Aufräumen
+--------------
+- Alter GUI-interner Init-Timerpfad entfernt.
+- Display-Init läuft nur noch über workers/display_worker.py / DisplayKnownReadController.
+- Warmlink-Init läuft nur noch über workers/warmlink_worker.py.
+- Standard-Modbus-Init läuft nur noch über workers/standard_modbus_worker.py.
+- Dual-Bus Diagnose läuft über workers/dual_logger_worker.py als eigener Coordinator.
+- Alte "DISPLAY-INIT via Dual" Fallbacklogik entfernt.
+- TEMP-/Altlast-Kommentare im DualLogger bereinigt.
+
+Display-Bus Priorität
+---------------------
+- Hauptfensterwerte vom Display-Bus kommen bevorzugt/gezielt aus validierten Broadcast-Paketblöcken:
+  - Unit 0x00 / Start 2001 / 90 Worte
+  - Unit 0x00 / Start 2091 / 90 Worte
+- Aktive Display-Paketreads sind Diagnose und überschreiben das Hauptfenster nicht mehr.
+  Hintergrund: Ein aktiver 0x03/2091-Read lieferte zwar einen gültigen Paketkopf, hatte aber 2107=0 und überschreibt sonst den Broadcast-Wert 2107=0x5AA5.
+
+Merker Register
+---------------
+- 2107 Kommunikations-Heartbeat / WP-Paket gültig 0x5AA5:
+  - In validierten Broadcast-Paketblöcken 2091ff steht 0x5AA5.
+  - In manchen aktiven Display-/HMI-Readpfaden steht 0.
+  - Für Display-Init/Neustart später beobachten.
+
+- 2057 / T34:
+  - App-Merker: AC Spannung in V, nicht Temperatur und nicht Strom.
+  - Mapping in V0.2.38 entsprechend korrigiert.
+
+- 3021 Display/DWIN:
+  - Anzeige-/Icon-/Seiten-Code Kandidat.
+  - Nicht direkt als WP-Betriebsstatus 2012 verwenden.
+
+- 2116:
+  - Unbestätigter Wert, früher Spreizung-Kandidat.
+  - Passt nicht sauber zur Einlass-Auslass-Spreizung.
+
+- 2118 / 2120:
+  - Unbestätigte Zähler-/Laufzeit-Kandidaten.
+  - Beobachtet: 2118 4578→4579→4580; 2120 7630→7631→7632.
+
+Späterer Display-Neustart-Test
+------------------------------
+Empfehlung:
+1. Dual-Bus Logger öffnen.
+2. Display Passiv-Analyzer aktiv lassen.
+3. Aktive Display-Scans AUS lassen.
+4. Optional Display RAW-Datenstrom in .bin + .hex.txt EIN.
+5. Display neu starten.
+6. Beobachten, welche Frames zuerst kommen:
+   - 0x01/2099
+   - 0x03/3001
+   - 0x05/1001
+   - 0x00/2001 und 0x00/2091 Broadcast
+7. Besonders Register 2107 im 2091ff-Broadcast beobachten.

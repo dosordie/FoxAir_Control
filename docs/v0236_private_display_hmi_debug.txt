@@ -1,0 +1,21 @@
+V0.2.36 PRIVATE - Display/HMI-Modbus Diagnose
+
+Erkenntnisse aus Mitschnitten am Display-Modbus:
+- Display-CONFIG: R1=02 -> 4800 Baud. Praktisch 4800 8N1 testen.
+- WP/Anlage hat mindestens zwei Platinen, die intern per Modbus kommunizieren.
+- Am HMI-/Display-Bus sind mehrere Adressen aktiv.
+- Warmlink-Modbus funktioniert für aktives Lesen/Schreiben weiterhin sauberer.
+
+Adressvermutungen:
+- 0x01: Live-/Status-Teilnehmer, beobachtet mit 1999/2099.
+- 0x02: Teilnehmer mit Reads auf 3001ff / DWIN-Speicher.
+- 0x03: Display/DWIN-DGUS-Speicher, plausibel für +0x2000-Übersetzung. Direkte Reads auf echte 1012 bekamen keine Antwort.
+- 0x04: Teilnehmer/Poller für Parameterblock 1011ff.
+- 0x05: Teilnehmer mit Reads 2000ff und Writes 1001-1090.
+- 0x06: Testadresse, bisher keine gesicherte Rolle.
+
+Softwareänderungen:
+- Nur für Display-Modbus: manuelle Busadresse aus dem Lesen/Schreiben-Feld wird respektiert, wenn sie von der Standardadresse 0x63 abweicht. Damit werden Tests auf 4/5/6 nicht mehr trotz Eingabe an Unit 3 gesendet.
+- Nur für Display-Modbus: passive Registerwerte fremder Adressen werden nicht mehr in die Haupt-Registerliste übernommen. Sie bleiben im Log sichtbar.
+- Log-Vermutungen angepasst.
+- Clear-Log-Button ergänzt.

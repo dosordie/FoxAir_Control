@@ -49,6 +49,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from workers.display_worker import DisplayKnownReadController
+from workers.warmlink_worker import WarmlinkInitReadController
+from workers.standard_modbus_worker import StandardModbusInitReadController
+from workers.dual_logger_worker import DualLoggerWorkerController
+
 from foxair_phnix_core import (
     DEFAULT_BUS_ADDR,
     DecodedRegister,
@@ -72,13 +77,13 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.35"
-BUILD_DATE = "2026-06-15"
+APP_VERSION = "0.2.38"
+BUILD_DATE = "2026-06-16"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
-DEFAULT_HOST = "192.168.10.43"
+DEFAULT_HOST = ""
 DEFAULT_PORT = 2001
 UPDATE_REPO = "dosordie/FoxAir_Control"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
@@ -146,6 +151,19 @@ def app_icon() -> QIcon:
     icon_path = resource_path(APP_ICON_FILE)
     icon = QIcon(icon_path)
     return icon
+
+
+def ask_yes_no(parent, title: str, text: str, default_yes: bool = False) -> bool:
+    """Deutsche Ja/Nein-Bestätigung statt Qt-Standard Yes/No."""
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setWindowTitle(str(title))
+    box.setText(str(text))
+    yes_btn = box.addButton("Ja", QMessageBox.ButtonRole.YesRole)
+    no_btn = box.addButton("Nein", QMessageBox.ButtonRole.NoRole)
+    box.setDefaultButton(yes_btn if default_yes else no_btn)
+    box.exec()
+    return box.clickedButton() is yes_btn
 
 
 def app_icon_pixmap(size: int = 96) -> QPixmap:
@@ -2563,11 +2581,16 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.items = self._collect_items()
         layout = QVBoxLayout(self)
         top = QHBoxLayout()
+        self.source_combo = QComboBox()
+        self.source_combo.addItem("Warmlink/WP", "warmlink")
+        self.source_combo.addItem("Display/DWIN", "display")
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("nach Name/App-Name/Beschreibung suchen ...")
         self.regex_cb = QCheckBox("Regex")
         self.app_name_cb = QCheckBox("App-Name anzeigen")
         self.count_label = QLabel("0 Register")
+        top.addWidget(QLabel("Mapping:"))
+        top.addWidget(self.source_combo)
         top.addWidget(QLabel("Suche:"))
         top.addWidget(self.search_edit, 1)
         top.addWidget(self.regex_cb)
@@ -2605,6 +2628,7 @@ class OfflineRegisterBrowserDialog(QDialog):
         buttons.addStretch(1)
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+        self.source_combo.currentIndexChanged.connect(lambda _=None: self._switch_source())
         self.search_edit.textChanged.connect(lambda _=None: self.refresh())
         self.regex_cb.stateChanged.connect(lambda _=None: self.refresh())
         self.app_name_cb.stateChanged.connect(lambda _=None: self.refresh())
@@ -2616,8 +2640,39 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.close_btn.clicked.connect(self.close)
         self.refresh()
 
+    def _current_source(self) -> str:
+        if hasattr(self, "source_combo"):
+            return str(self.source_combo.currentData() or "warmlink")
+        return "warmlink"
+
+    def _switch_source(self):
+        self.items = self._collect_items()
+        self.refresh()
+        self._show_selected_description()
+
     def _collect_items(self) -> list[dict[str, Any]]:
         out = []
+        source = self._current_source()
+        if source == "display":
+            # Display-/DWIN-Mapping ist absichtlich getrennt. Es nutzt aktuell nur
+            # Namen/Typen aus foxair_phnix_display_registers.json und keine
+            # editierbare Knowledge-Datenbank.
+            for reg, info in sorted(getattr(self.main_window.display_regmap, "items", {}).items()):
+                name = str(getattr(info, "name", "") or "")
+                dtype = str(getattr(info, "dtype", "RAW") or "RAW")
+                out.append({
+                    "reg": int(reg),
+                    "block": "DWIN",
+                    "code": f"0x{int(reg):04X}",
+                    "name": name or f"Display/DWIN {int(reg)}",
+                    "app_label": "",
+                    "dtype": dtype,
+                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
+                    "detail": "Display-/DWIN-Diagnosemapping. Diese Adressen dürfen die normale Warmlink-Registerliste nicht überschreiben.",
+                    "has_extra": True,
+                })
+            return sorted(out, key=lambda x: x["reg"])
+
         for key, data in getattr(self.main_window, "register_defs", {}).items():
             try:
                 reg = int(key, 0) if isinstance(key, str) else int(key)
@@ -2731,12 +2786,15 @@ class OfflineRegisterBrowserDialog(QDialog):
     def write_selected(self):
         reg = self._selected_reg()
         if reg is not None:
-            self.main_window.open_register_quick_write(reg, DEFAULT_BUS_ADDR)
+            bus = 0x03 if self._current_source() == "display" else DEFAULT_BUS_ADDR
+            self.main_window.open_register_quick_write(reg, bus)
 
     def read_selected(self):
         reg = self._selected_reg()
         if reg is not None:
-            self.main_window.send_read_request(reg, 1, slave_addr=DEFAULT_BUS_ADDR, label="Offline-Browser")
+            bus = 0x03 if self._current_source() == "display" else DEFAULT_BUS_ADDR
+            label = "Offline-Browser Display/DWIN" if self._current_source() == "display" else "Offline-Browser"
+            self.main_window.send_read_request(reg, 1, slave_addr=bus, label=label)
 
 class ParameterSettingsDialog(QDialog):
     """App-nahe Parameteransicht nach Funktionsblöcken.
@@ -3653,6 +3711,1203 @@ class BackupRestoreDialog(QDialog):
 
 
 
+
+class DualBusLoggerDialog(QDialog):
+    """Dual-Bus Diagnose-Logger für Display- und Warmlink-Bus.
+
+    Absichtlich als eigener Dialog gekapselt, damit die Funktion später leicht
+    wieder entfernt werden kann. Die beiden Streams füllen keine Hauptliste und
+    verändern keine Registerwerte; sie loggen nur Zeit, Bus, Rohframes und
+    Änderungen. Auf dem Warmlink-Bus kann aktiv gepollt werden, weil dort passiv
+    oft wenig Verkehr anliegt.
+    """
+
+    WARMLINK_POLL_BLOCKS = [
+        (1011, 6, "Soll/Flags 1011-1016"),
+        (1157, 3, "Solltemperaturen 1157-1159"),
+        (2011, 4, "Status 2011-2014"),
+        (2019, 1, "Lastausgang 2019"),
+        (2045, 4, "Temperaturen 2045-2048"),
+        (2077, 1, "Durchfluss 2077"),
+        (2081, 10, "Fehler 2081-2090"),
+    ]
+
+    # Diagnose: bewusst begrenzter Display/DWIN-Scan fuer Reverse Engineering.
+    # Kein Vollscan ueber den gesamten DWIN-Speicher, damit der Display-Bus nicht zugemüllt wird.
+    DISPLAY_DWIN_SCAN_BLOCKS = [
+        (3001, 21, "DWIN 3001ff zyklischer Anzeige-/Iconblock"),
+        (4544, 4, "DWIN 11C0 Defrost/Icon-Kandidaten"),
+        (4720, 16, "DWIN 1270 Wertebereich"),
+        (4736, 16, "DWIN 1280 Wertebereich"),
+        (4752, 16, "DWIN 1290 Wertebereich"),
+        (4768, 16, "DWIN 12A0 Wertebereich"),
+        (4784, 16, "DWIN 12B0 Wertebereich"),
+        (4800, 16, "DWIN 12C0 Wertebereich"),
+        (4816, 16, "DWIN 12D0 Wertebereich"),
+        (4832, 16, "DWIN 12E0 Wertebereich"),
+        (4848, 16, "DWIN 12F0 Wertebereich"),
+        (5920, 8, "DWIN 1720 Present-Mode Text/Pointer"),
+        (5936, 8, "DWIN 1730 Operating-Status Text/Pointer"),
+    ]
+
+    # Diagnose: Display-Bus Teilnehmer 0x01 aktiv pollen.
+    # Ziel: prüfen, ob die Istwerte auf dem Display-Bus von Unit 0x01 kommen
+    # und mit den bekannten Warmlink-Registern korrelieren.
+    DISPLAY_UNIT1_SCAN_BLOCKS = [
+        (2011, 4, "Display Unit 0x01 Status 2011-2014"),
+        (2019, 1, "Display Unit 0x01 Lastausgang 2019"),
+        (2045, 4, "Display Unit 0x01 Temperaturen 2045-2048"),
+        (2077, 1, "Display Unit 0x01 Durchfluss 2077"),
+        (2099, 51, "Display Unit 0x01 Rohstatus 2099ff"),
+    ]
+
+    # Fix19/Fix20: Aktiver Paketblock-Test auf dem Display-Bus.
+    # Historisch kamen die WP/Display-Daten paketweise in 90-Register-Bloecken.
+    # Fix20 sendet diese Tests sequenziell (1 Read -> Antwort/Timeout -> naechster Read),
+    # damit langsame Antworten nicht mehr dem falschen Startblock zugeordnet werden.
+    DISPLAY_PACKET_SCAN_STARTS = [1001, 1091, 1181, 1271, 1361, 1451, 1541, 2001, 2091]
+    # Unit 0x03 zuerst: im Test bestaetigt fuer 1001/1091. Danach Vergleichseinheiten.
+    # Fix21: 0x02 und 0x05 ebenfalls testweise aufnehmen, weil sie auf dem
+    # Display-Bus als echte Teilnehmer erscheinen. 0x00 wird NICHT aktiv
+    # gelesen: das ist Modbus-Broadcast/System-Adresse; bei Reads ist keine
+    # Antwort zu erwarten.
+    DISPLAY_PACKET_SCAN_UNITS = [0x03, 0x01, 0x04, 0x02, 0x05]
+
+    # Fix20: gleicher Paketblock-Test auf dem Warmlink-/WP-Bus. Damit pruefen wir,
+    # ob die 10xx-/Parameterpakete auch direkt von einer WP-Adresse lieferbar sind
+    # und nicht nur von der Display-Unit 0x03. Getestet wird die eingestellte
+    # Warmlink Unit plus Unit 0x01 als Vergleich, falls abweichend.
+    WARMLINK_PACKET_SCAN_STARTS = DISPLAY_PACKET_SCAN_STARTS
+
+    # Alias fuer alte interne Referenzen; absichtlich nicht extern genutzt.
+    DISPLAY_SCAN_BLOCKS = DISPLAY_DWIN_SCAN_BLOCKS
+
+    def __init__(self, main_window: "MainWindow"):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self.setWindowTitle("Dual-Bus Logger (Diagnose)")
+        self.setWindowIcon(app_icon())
+        self.resize(980, 680)
+
+        self.display_thread: Optional[QThread] = None
+        self.display_worker: Optional[ReaderWorker] = None
+        self.warmlink_thread: Optional[QThread] = None
+        self.warmlink_worker: Optional[ReaderWorker] = None
+        self.display_last: Dict[tuple[int, int], int] = {}
+        self.warmlink_last: Dict[tuple[int, int], int] = {}
+        self.warmlink_pending_reads: list[dict[str, Any]] = []
+        self.display_pending_reads: list[dict[str, Any]] = []
+        self.display_passive_pending_reads: list[dict[str, Any]] = []
+        self.display_passive_seen: Dict[tuple[Any, ...], float] = {}
+        self.known_warmlink_values: Dict[int, dict[str, Any]] = {}
+        self.display_correlation_seen: set[tuple[int, int, int, int]] = set()
+        self._stopping = False
+        self.display_frames = 0
+        self.warmlink_frames = 0
+        self.display_last_frame_monotonic = 0.0
+        self.display_raw_bin: Optional[BinaryIO] = None
+        self.display_raw_hex: Optional[BinaryIO] = None
+        self.display_raw_start_monotonic = 0.0
+        self.display_raw_file_path = ""
+        self.display_raw_hex_path = ""
+        self.display_raw_bytes = 0
+        self.display_raw_chunks = 0
+        self.display_packet_scan_index = 0
+        self.warmlink_packet_scan_index = 0
+        self.dual_worker_controller = DualLoggerWorkerController(self, ReaderWorker)
+
+        layout = QVBoxLayout(self)
+        info = QLabel(
+            "Dual-Bus Diagnose-Logger: Display-Bus passiv/aktiv mithören und Warmlink-Bus aktiv pollen. "
+            "Verifizierte Broadcast-Paketblöcke Unit 0x00 werden ins Hauptfenster übernommen; aktive Display-Reads bleiben Diagnose; "
+            "unsichere DWIN-/Fremdblöcke bleiben Diagnose. V0.2.38: DualLogger ist getrennt; aktive Display-Pakettests bleiben Diagnose, Broadcast 0x00 hat Priorität fürs Hauptfenster."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        grid = QGridLayout()
+        layout.addLayout(grid)
+
+        host_default = str(getattr(main_window, "host_edit", QLineEdit(DEFAULT_HOST)).text() or DEFAULT_HOST)
+        self.display_host_edit = QLineEdit(host_default)
+        self.display_port_spin = QSpinBox(); self.display_port_spin.setRange(1, 65535); self.display_port_spin.setValue(2002)
+        self.display_unit_spin = QSpinBox(); self.display_unit_spin.setRange(1, 247); self.display_unit_spin.setValue(3)
+
+        self.warmlink_host_edit = QLineEdit(host_default)
+        self.warmlink_port_spin = QSpinBox(); self.warmlink_port_spin.setRange(1, 65535); self.warmlink_port_spin.setValue(2001)
+        self.warmlink_unit_spin = QSpinBox(); self.warmlink_unit_spin.setRange(1, 247); self.warmlink_unit_spin.setValue(DEFAULT_BUS_ADDR)
+        self.warmlink_poll_cb = QCheckBox("Warmlink aktiv pollen")
+        self.warmlink_poll_cb.setChecked(True)
+        self.warmlink_poll_interval_spin = QSpinBox(); self.warmlink_poll_interval_spin.setRange(2, 3600); self.warmlink_poll_interval_spin.setValue(10); self.warmlink_poll_interval_spin.setSuffix(" s")
+        self.display_passive_analyzer_cb = QCheckBox("Display Passiv-Analyzer / Rohframes + Korrelation")
+        self.display_passive_analyzer_cb.setChecked(True)
+        self.display_raw_file_cb = QCheckBox("Display RAW-Datenstrom in .bin + .hex.txt mitschreiben")
+        self.display_raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
+        self.display_scan_cb = QCheckBox("Display/DWIN Unit 0x03 Kandidaten aktiv scannen")
+        self.display_scan_cb.setChecked(False)
+        self.display_unit1_scan_cb = QCheckBox("Display Unit 0x01 Livewerte aktiv pollen")
+        self.display_unit1_scan_cb.setChecked(False)
+        self.display_packet_scan_cb = QCheckBox("Display Paketblock-Test aktiv (sequenziell, Unit 3/1/4/2/5, 1001ff..2091ff, Qty 90)")
+        self.display_packet_scan_cb.setChecked(False)
+        self.display_packet_scan_cb.setToolTip("Nur Diagnose: liest ganze 90er-Paketbloecke sequenziell auf Unit 0x03/0x01/0x04/0x02/0x05. Antworten werden nur diagnostisch geloggt; Hauptfenster nutzt Broadcast Unit 0x00. Unit 0x00 ist Broadcast/System und wird nicht aktiv gelesen.")
+        self.warmlink_packet_scan_cb = QCheckBox("Warmlink/WP Paketblock-Test aktiv (sequenziell, Warmlink Unit + 0x01, Qty 90)")
+        self.warmlink_packet_scan_cb.setChecked(False)
+        self.warmlink_packet_scan_cb.setToolTip("Nur Diagnose: prueft, ob 1001ff..2091ff auch direkt ueber den Warmlink-/WP-Bus kommen. Getestet wird die eingestellte Warmlink Unit und zusaetzlich Unit 0x01.")
+        self.display_scan_interval_spin = QSpinBox(); self.display_scan_interval_spin.setRange(5, 3600); self.display_scan_interval_spin.setValue(20); self.display_scan_interval_spin.setSuffix(" s")
+
+        grid.addWidget(QLabel("Display Host:"), 0, 0); grid.addWidget(self.display_host_edit, 0, 1)
+        grid.addWidget(QLabel("Display Port:"), 0, 2); grid.addWidget(self.display_port_spin, 0, 3)
+        grid.addWidget(QLabel("Display Unit:"), 0, 4); grid.addWidget(self.display_unit_spin, 0, 5)
+        grid.addWidget(QLabel("Warmlink Host:"), 1, 0); grid.addWidget(self.warmlink_host_edit, 1, 1)
+        grid.addWidget(QLabel("Warmlink Port:"), 1, 2); grid.addWidget(self.warmlink_port_spin, 1, 3)
+        grid.addWidget(QLabel("Warmlink Unit:"), 1, 4); grid.addWidget(self.warmlink_unit_spin, 1, 5)
+        grid.addWidget(self.warmlink_poll_cb, 2, 0, 1, 2)
+        grid.addWidget(QLabel("Warmlink Poll-Intervall:"), 2, 2); grid.addWidget(self.warmlink_poll_interval_spin, 2, 3)
+        grid.addWidget(self.display_passive_analyzer_cb, 3, 0, 1, 3)
+        grid.addWidget(self.display_raw_file_cb, 3, 3, 1, 3)
+        grid.addWidget(self.display_scan_cb, 4, 0, 1, 2)
+        grid.addWidget(self.display_unit1_scan_cb, 4, 2, 1, 2)
+        grid.addWidget(self.display_packet_scan_cb, 5, 0, 1, 6)
+        grid.addWidget(self.warmlink_packet_scan_cb, 6, 0, 1, 6)
+        grid.addWidget(QLabel("Aktiv-Scan-Intervall:"), 7, 0); grid.addWidget(self.display_scan_interval_spin, 7, 1)
+
+        buttons = QHBoxLayout()
+        self.start_btn = QPushButton("Start Dual-Log")
+        self.stop_btn = QPushButton("Stop")
+        self.stop_btn.setEnabled(False)
+        self.poll_now_btn = QPushButton("Warmlink jetzt pollen")
+        self.display_scan_now_btn = QPushButton("Display jetzt scannen")
+        self.clear_btn = QPushButton("Log leeren")
+        buttons.addWidget(self.start_btn)
+        buttons.addWidget(self.stop_btn)
+        buttons.addWidget(self.poll_now_btn)
+        buttons.addWidget(self.display_scan_now_btn)
+        buttons.addStretch(1)
+        buttons.addWidget(self.clear_btn)
+        layout.addLayout(buttons)
+
+        self.status_label = QLabel("bereit")
+        layout.addWidget(self.status_label)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        layout.addWidget(self.log_text, 1)
+
+        self.poll_timer = QTimer(self)
+        self.poll_timer.timeout.connect(self.poll_warmlink_once)
+        self.display_scan_timer = QTimer(self)
+        self.display_scan_timer.timeout.connect(self.poll_display_once)
+        self.display_packet_step_timer = QTimer(self)
+        self.display_packet_step_timer.setInterval(800)
+        self.display_packet_step_timer.timeout.connect(self._display_packet_scan_step)
+        self.warmlink_packet_step_timer = QTimer(self)
+        self.warmlink_packet_step_timer.setInterval(900)
+        self.warmlink_packet_step_timer.timeout.connect(self._warmlink_packet_scan_step)
+        self.start_btn.clicked.connect(self.start)
+        self.stop_btn.clicked.connect(self.stop)
+        self.poll_now_btn.clicked.connect(self.poll_warmlink_once)
+        self.display_scan_now_btn.clicked.connect(self.poll_display_once)
+        self.clear_btn.clicked.connect(self.log_text.clear)
+
+    def _log(self, text: str):
+        # Beim Stoppen laufen aus den Worker-Threads manchmal noch queued Log-Signale ein.
+        # Diese Queue-Meldungen sind dann nicht mehr hilfreich und haben das Log geflutet.
+        if self._stopping and ("READ in Sendewarteschlange" in text or "WRITE in Sendewarteschlange" in text):
+            return
+        stamp = time.strftime("%H:%M:%S")
+        self.log_text.append(f"[{stamp}] {text}")
+        # Zusaetzlich im Hauptlog markieren, damit der normale Log-Export reicht.
+        # Wenn dieser Dialog nur als ausgelagerter DisplayWorker fuer das Hauptfenster
+        # verwendet wird, nicht mehr mit DUAL verwirren. DUAL bleibt nur fuer das
+        # wirklich geoeffnete Dual-Logger-Fenster.
+        prefix = "DUAL"
+        try:
+            if bool(getattr(self.main_window, "display_aux_takeover_active", False)) and not self.isVisible():
+                if str(text).startswith("Warmlink") or str(text).startswith("WARMLINK"):
+                    prefix = "WARMLINK"
+                else:
+                    prefix = "DISPLAY"
+        except Exception:
+            prefix = "DUAL"
+        self.main_window._log(f"{prefix}: {text}")
+
+    def start(self, display_only: bool = False):
+        """Startet den Logger.
+
+        display_only=True wird vom ausgelagerten DisplayWorker fuer
+        "Alle bekannten Register lesen" genutzt. In diesem Modus darf NUR
+        der Display-Bus geoeffnet werden; der Warmlink-Bus bleibt unberuehrt.
+        Das vollstaendige Dual-Logger-Fenster startet weiterhin beide Busse.
+        """
+        if display_only:
+            if self.display_thread:
+                return
+        elif self.display_thread or self.warmlink_thread:
+            return
+        self.display_only_mode = bool(display_only)
+        self.display_last.clear(); self.warmlink_last.clear(); self.warmlink_pending_reads.clear(); self.display_pending_reads.clear()
+        self.display_passive_pending_reads.clear(); self.display_passive_seen.clear()
+        self.known_warmlink_values.clear(); self.display_correlation_seen.clear(); self._stopping = False
+        self.display_frames = 0; self.warmlink_frames = 0
+        self.display_raw_bytes = 0; self.display_raw_chunks = 0
+        self.display_packet_scan_index = 0; self.warmlink_packet_scan_index = 0
+        self._open_display_raw_files()
+        self._start_display_worker()
+        if not display_only:
+            self._start_warmlink_worker()
+        self.start_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        if (not display_only) and self.warmlink_poll_cb.isChecked():
+            self.poll_timer.start(int(self.warmlink_poll_interval_spin.value()) * 1000)
+            QTimer.singleShot(1200, self.poll_warmlink_once)
+        if (not display_only) and self.warmlink_packet_scan_cb.isChecked():
+            self.warmlink_packet_step_timer.start()
+            QTimer.singleShot(2200, self._warmlink_packet_scan_step)
+        if (not display_only) and (self.display_scan_cb.isChecked() or self.display_unit1_scan_cb.isChecked()):
+            self.display_scan_timer.start(int(self.display_scan_interval_spin.value()) * 1000)
+            QTimer.singleShot(3500, self.poll_display_once)
+        if (not display_only) and self.display_packet_scan_cb.isChecked():
+            self.display_packet_step_timer.start()
+            QTimer.singleShot(3500, self._display_packet_scan_step)
+        if display_only:
+            self._log("DisplayWorker gestartet: nur Display-Bus aktiv, kein Warmlink-Bus, kein Dual-Logger-Polling.")
+        else:
+            self._log("Dual-Bus Logger gestartet. Display passiv analysieren aktiv, aktive Display-Scans standardmäßig AUS, Warmlink Polling optional aktiv, Display RAW-Datei optional aktiv.")
+
+    def stop(self):
+        self._stopping = True
+        self.poll_timer.stop()
+        self.display_scan_timer.stop()
+        self.display_packet_step_timer.stop()
+        self.warmlink_packet_step_timer.stop()
+        self.warmlink_pending_reads.clear()
+        self.display_pending_reads.clear()
+        self.display_passive_pending_reads.clear()
+        try:
+            if self.warmlink_worker:
+                while True:
+                    self.warmlink_worker.write_queue.get_nowait()
+        except Exception:
+            pass
+        try:
+            if self.display_worker:
+                while True:
+                    self.display_worker.write_queue.get_nowait()
+        except Exception:
+            pass
+        if getattr(self, "dual_worker_controller", None) is not None:
+            self.dual_worker_controller.stop()
+        else:
+            if self.display_worker:
+                self.display_worker.stop()
+            if self.warmlink_worker:
+                self.warmlink_worker.stop()
+        self.start_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self._close_display_raw_files()
+        if bool(getattr(self, "display_only_mode", False)):
+            self._log("DisplayWorker Stop angefordert; Display-Pending/Queue geleert.")
+        else:
+            self._log("Dual-Bus Logger Stop angefordert; Pending/Queues geleert.")
+        self.display_only_mode = False
+
+    def closeEvent(self, event):
+        self.stop()
+        super().closeEvent(event)
+
+    def _raw_log_dir(self) -> str:
+        base = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+        path = os.path.join(base, "logs")
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    def _open_display_raw_files(self):
+        self._close_display_raw_files(log_close=False)
+        self.display_raw_file_path = ""
+        self.display_raw_hex_path = ""
+        self.display_raw_start_monotonic = time.monotonic()
+        self.display_raw_bytes = 0
+        self.display_raw_chunks = 0
+        if not getattr(self, "display_raw_file_cb", None) or not self.display_raw_file_cb.isChecked():
+            return
+        stamp = time.strftime("%Y%m%d_%H%M%S")
+        base = os.path.join(self._raw_log_dir(), f"display_raw_{stamp}")
+        self.display_raw_file_path = base + ".bin"
+        self.display_raw_hex_path = base + ".hex.txt"
+        try:
+            self.display_raw_bin = open(self.display_raw_file_path, "wb")
+            self.display_raw_hex = open(self.display_raw_hex_path, "w", encoding="utf-8", buffering=1)
+            self.display_raw_hex.write("# FoxAir/Phnix Display-Bus RAW Mitschnitt\n")
+            self.display_raw_hex.write(f"# Start: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            self.display_raw_hex.write(f"# Host: {self.display_host_edit.text().strip()} Port: {int(self.display_port_spin.value())}\n")
+            self.display_raw_hex.write("# Format: +Sekunden.millis  Richtung  Byteanzahl  HEX\n")
+            self._log(f"Display RAW-Dateien geöffnet: {self.display_raw_file_path} und {self.display_raw_hex_path}")
+        except Exception as exc:
+            self.display_raw_bin = None
+            self.display_raw_hex = None
+            self._log(f"Display RAW-Dateien konnten nicht geöffnet werden: {exc}")
+
+    def _close_display_raw_files(self, log_close: bool = True):
+        path = self.display_raw_file_path
+        hex_path = self.display_raw_hex_path
+        try:
+            if self.display_raw_hex:
+                self.display_raw_hex.write(f"# Ende: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                self.display_raw_hex.write(f"# Chunks: {self.display_raw_chunks}, Bytes: {self.display_raw_bytes}\n")
+        except Exception:
+            pass
+        try:
+            if self.display_raw_bin:
+                self.display_raw_bin.close()
+        except Exception:
+            pass
+        try:
+            if self.display_raw_hex:
+                self.display_raw_hex.close()
+        except Exception:
+            pass
+        self.display_raw_bin = None
+        self.display_raw_hex = None
+        if log_close and path:
+            self._log(f"Display RAW-Dateien geschlossen: {path} und {hex_path} ({self.display_raw_bytes} Byte in {self.display_raw_chunks} Chunks)")
+
+    @Slot(bytes)
+    def on_display_raw_chunk(self, chunk: bytes):
+        if self._stopping or not chunk:
+            return
+        self.display_raw_chunks += 1
+        self.display_raw_bytes += len(chunk)
+        if not self.display_raw_bin and not self.display_raw_hex:
+            return
+        rel = time.monotonic() - (self.display_raw_start_monotonic or time.monotonic())
+        try:
+            if self.display_raw_bin:
+                self.display_raw_bin.write(chunk)
+                self.display_raw_bin.flush()
+        except Exception as exc:
+            self._log(f"Display RAW-BIN Schreibfehler: {exc}")
+            try:
+                if self.display_raw_bin:
+                    self.display_raw_bin.close()
+            except Exception:
+                pass
+            self.display_raw_bin = None
+        try:
+            if self.display_raw_hex:
+                self.display_raw_hex.write(f"+{rel:010.3f}s RX {len(chunk):04d} {hexdump(chunk, -1)}\n")
+        except Exception as exc:
+            self._log(f"Display RAW-HEX Schreibfehler: {exc}")
+            try:
+                if self.display_raw_hex:
+                    self.display_raw_hex.close()
+            except Exception:
+                pass
+            self.display_raw_hex = None
+
+    def _start_display_worker(self):
+        label = "Display-Modbus" if bool(getattr(self, "display_only_mode", False)) else "DUAL Display-Modbus"
+        self.dual_worker_controller.start_display_worker(label)
+
+    def _start_warmlink_worker(self):
+        self.dual_worker_controller.start_warmlink_worker("DUAL Warmlink-Modbus")
+
+    def _clear_display_refs(self):
+        self.display_thread = None
+        self.display_worker = None
+
+    def _clear_warmlink_refs(self):
+        self.warmlink_thread = None
+        self.warmlink_worker = None
+
+    def _find_pending_read(self, pending: list[dict[str, Any]], kind: str) -> tuple[Optional[int], Optional[dict[str, Any]]]:
+        for idx, item in enumerate(pending):
+            if str(item.get("active_scan_kind", "")) == kind:
+                return idx, item
+        return None, None
+
+    def _display_packet_scan_sequence(self) -> list[tuple[int, int]]:
+        return [(int(unit), int(start)) for unit in self.DISPLAY_PACKET_SCAN_UNITS for start in self.DISPLAY_PACKET_SCAN_STARTS]
+
+    def _warmlink_packet_scan_sequence(self) -> list[tuple[int, int]]:
+        primary = int(self.warmlink_unit_spin.value())
+        units: list[int] = []
+        for unit in (primary, 0x01):
+            if 1 <= int(unit) <= 247 and int(unit) not in units:
+                units.append(int(unit))
+        return [(unit, int(start)) for unit in units for start in self.WARMLINK_PACKET_SCAN_STARTS]
+
+    def _display_packet_scan_step(self):
+        if self._stopping or not self.display_packet_scan_cb.isChecked():
+            self.display_packet_step_timer.stop()
+            return
+        if not self.display_worker:
+            return
+        now = time.monotonic()
+        idx, item = self._find_pending_read(self.display_pending_reads, "display_packet")
+        if item is not None:
+            age = now - float(item.get("queued_at", now))
+            if age < 2.8:
+                return
+            try:
+                self.display_pending_reads.pop(idx)  # type: ignore[arg-type]
+            except Exception:
+                pass
+            self._log(
+                f"DISPLAY AKTIV Pakettest TIMEOUT: Unit 0x{int(item.get('slave', 0)):02X}, "
+                f"start={int(item.get('addr', 0))}/0x{int(item.get('addr', 0)):04X}, qty={int(item.get('qty', 0))}; naechster Block."
+            )
+        seq = self._display_packet_scan_sequence()
+        if not seq:
+            return
+        slave, addr = seq[self.display_packet_scan_index % len(seq)]
+        self.display_packet_scan_index += 1
+        label = f"Display Pakettest SEQ Unit 0x{slave:02X} {addr}/0x{addr:04X} qty90"
+        self.display_pending_reads.append({
+            "slave": slave,
+            "addr": addr,
+            "qty": 90,
+            "label": label,
+            "map": "warmlink",
+            "packet_test": True,
+            "active_scan_kind": "display_packet",
+            "queued_at": now,
+        })
+        self.display_worker.enqueue_read(addr, 90, slave_addr=slave, post_delay_ms=0)
+        self._log(f"DISPLAY AKTIV Pakettest gesendet (sequenziell): Unit 0x{slave:02X}, start={addr}/0x{addr:04X}, qty=90")
+
+    def _warmlink_packet_scan_step(self):
+        if self._stopping or not self.warmlink_packet_scan_cb.isChecked():
+            self.warmlink_packet_step_timer.stop()
+            return
+        if not self.warmlink_worker:
+            return
+        now = time.monotonic()
+        idx, item = self._find_pending_read(self.warmlink_pending_reads, "warmlink_packet")
+        if item is not None:
+            age = now - float(item.get("queued_at", now))
+            if age < 3.2:
+                return
+            try:
+                self.warmlink_pending_reads.pop(idx)  # type: ignore[arg-type]
+            except Exception:
+                pass
+            self._log(
+                f"WARMLINK/WP Pakettest TIMEOUT: Unit 0x{int(item.get('slave', 0)):02X}, "
+                f"start={int(item.get('addr', 0))}/0x{int(item.get('addr', 0)):04X}, qty={int(item.get('qty', 0))}; naechster Block."
+            )
+        seq = self._warmlink_packet_scan_sequence()
+        if not seq:
+            return
+        slave, addr = seq[self.warmlink_packet_scan_index % len(seq)]
+        self.warmlink_packet_scan_index += 1
+        label = f"Warmlink/WP Pakettest SEQ Unit 0x{slave:02X} {addr}/0x{addr:04X} qty90"
+        self.warmlink_pending_reads.append({
+            "slave": slave,
+            "addr": addr,
+            "qty": 90,
+            "label": label,
+            "packet_test": True,
+            "active_scan_kind": "warmlink_packet",
+            "queued_at": now,
+        })
+        self.warmlink_worker.enqueue_read(addr, 90, slave_addr=slave, post_delay_ms=0)
+        self._log(f"WARMLINK/WP Pakettest gesendet (sequenziell): Unit 0x{slave:02X}, start={addr}/0x{addr:04X}, qty=90")
+
+
+    def run_known_display_packet_reads_once(self, pause_ms: int = 900) -> None:
+        """Vom Hauptfenster-Button "Alle bekannten Register lesen" nutzbar.
+
+        Fix29: Die Ablaufsteuerung fuer Display-INIT liegt nicht mehr direkt im
+        Hauptfenster, sondern im ausgelagerten DisplayKnownReadController. Der
+        Controller nutzt weiterhin den bewaehrten Display-Worker-Pfad aus dem
+        Dual-Bus-Logger, damit Fix29 eine Strukturänderung ohne neues
+        Kommunikationsverhalten bleibt.
+        """
+        try:
+            controller = getattr(self, "_display_known_read_controller", None)
+            if controller is None:
+                controller = DisplayKnownReadController(self)
+                self._display_known_read_controller = controller
+            self._log(
+                "DISPLAY-INIT: 'Alle bekannten Register lesen' läuft über "
+                "den ausgelagerten DisplayWorker-Controller; Warmlink/Standard bleiben unverändert."
+            )
+            controller.start(pause_ms=pause_ms)
+        except Exception as e:
+            self._log(f"DISPLAY-INIT Fehler im DisplayWorker-Controller: {e}")
+
+    # V0.2.38: alter Display-INIT-Fallback im Dialog entfernt; Ablauf liegt vollständig in workers/display_worker.py.
+
+    def poll_display_once(self):
+        if self._stopping:
+            return
+        if not self.display_worker:
+            self._log("Display Scan nicht gesendet: Display-Worker nicht verbunden/gestartet.")
+            return
+        delay = 450
+        now = time.monotonic()
+        queued = 0
+
+        # 1) Display-Bus Unit 0x01 aktiv pollen. Diese Werte werden mit dem
+        # normalen Warmlink-Mapping decodiert, aber NICHT in den Registerbrowser geschrieben.
+        # So pruefen wir, ob die echten Istwerte auf dem Display-Bus von Unit 0x01 kommen.
+        if self.display_unit1_scan_cb.isChecked():
+            for addr, qty, label in self.DISPLAY_UNIT1_SCAN_BLOCKS:
+                if self._stopping:
+                    return
+                self.display_pending_reads.append({
+                    "slave": 0x01,
+                    "addr": int(addr),
+                    "qty": int(qty),
+                    "label": str(label),
+                    "map": "warmlink",
+                    "queued_at": now,
+                })
+                self.display_worker.enqueue_read(addr, qty, slave_addr=0x01, post_delay_ms=delay)
+                queued += 1
+
+        # 2) Fix20: Paketblock-Test laeuft NICHT mehr als Massenscan hier,
+        # sondern sequenziell ueber _display_packet_scan_step(). Damit werden
+        # langsame Antworten nicht dem falschen Startblock zugeordnet.
+        if self.display_packet_scan_cb.isChecked() and not self.display_packet_step_timer.isActive():
+            self.display_packet_step_timer.start()
+
+        # 3) DWIN/Display-Speicher Unit 0x03 scannen. Diese Werte haben eine eigene
+        # Display-Mapping-Tabelle und bleiben Diagnosewerte.
+        if self.display_scan_cb.isChecked():
+            slave = int(self.display_unit_spin.value())
+            for addr, qty, label in self.DISPLAY_DWIN_SCAN_BLOCKS:
+                if self._stopping:
+                    return
+                self.display_pending_reads.append({
+                    "slave": slave,
+                    "addr": int(addr),
+                    "qty": int(qty),
+                    "label": str(label),
+                    "map": "display",
+                    "queued_at": now,
+                })
+                self.display_worker.enqueue_read(addr, qty, slave_addr=slave, post_delay_ms=delay)
+                queued += 1
+
+        if len(self.display_pending_reads) > 220:
+            dropped = len(self.display_pending_reads) - 220
+            del self.display_pending_reads[:dropped]
+            self._log(f"DISPLAY WARN: {dropped} alte Pending-Reads verworfen (keine/zu spaete Antwort).")
+        self._log(
+            f"Display Scan gesendet: {queued} Blöcke "
+            f"(Unit 0x01={'ein' if self.display_unit1_scan_cb.isChecked() else 'aus'}, "
+            f"Pakettest={'sequenziell' if self.display_packet_scan_cb.isChecked() else 'aus'}, "
+            f"DWIN Unit 0x{int(self.display_unit_spin.value()):02X}={'ein' if self.display_scan_cb.isChecked() else 'aus'})."
+        )
+
+    def _associate_display_read_response(self, frame) -> bool:
+        if getattr(frame, "mode", "") != "read-response":
+            return False
+        byte_count = int(getattr(frame, "length_field", 0) or 0)
+        if byte_count <= 0 or byte_count % 2 != 0:
+            return False
+        qty = byte_count // 2
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+        match_idx = None
+        for idx, item in enumerate(self.display_pending_reads):
+            if int(item.get("slave", -1)) == slave and int(item.get("qty", -1)) == qty:
+                match_idx = idx
+                break
+        if match_idx is None:
+            return False
+        item = self.display_pending_reads.pop(match_idx)
+        start = int(item.get("addr", 0))
+        label = str(item.get("label", ""))
+        map_key = str(item.get("map", "display"))
+        decode_map = self.main_window.regmap if map_key == "warmlink" else self.main_window.display_regmap
+        regs = decode_read_response_registers(frame, start, decode_map)
+        try:
+            frame.typ = start
+            frame.length_field = qty
+            frame.registers = regs
+        except Exception:
+            pass
+        vals = "; ".join(f"{r.reg}={r.raw_value}({r.display_value})" for r in regs[:8])
+        self._log(f"DISPLAY RX zugeordnet: {label}: bus=0x{slave:02X}, start={start}/0x{start:04X}, words={qty}: {vals}{' ...' if len(regs) > 8 else ''}")
+
+        # Fix19: Aktive Read-Responses von Paketblock-Tests ebenfalls nur dann
+        # vertrauenswuerdig ins Hauptfenster uebernehmen, wenn der interne
+        # WP-Paketkopf passt. Damit koennen 10xx/Timer-Bloecke testweise aktiv
+        # von Unit 0x01/0x03/0x04 gelesen werden, ohne Roh-/Fremdwerte zu mischen.
+        packet_info = self._validated_packet_info_from_regs(start, regs)
+        if bool(item.get("packet_test", False)) or packet_info:
+            if packet_info:
+                end = int(packet_info.get("end", start + len(regs) - 1))
+                marker = int(packet_info.get("marker", 0))
+                active_kind = str(item.get("active_scan_kind", ""))
+                self._log(
+                    f"DISPLAY AKTIV VALIDIERTER WP-PAKETBLOCK Unit 0x{slave:02X}: "
+                    f"start={start}/0x{start:04X}, ende={end}/0x{end:04X}, "
+                    f"words={len(regs)}, marker=0x{marker:04X}, CRC OK, interner Start passt; "
+                    "wird fuer Display-Init wieder ins Hauptfenster übernommen."
+                )
+                # V0.2.38 fix2: Auf Wunsch bleiben aktive Display-Init-Paketreads
+                # vorerst sichtbar/nutzbar im Hauptfenster. Die Broadcasts 0x00/2001
+                # und 0x00/2091 aktualisieren weiterhin zyklisch und koennen diese
+                # Werte spaeter wieder ueberschreiben, sind aber nicht mehr die einzige
+                # Quelle fuer das Hauptfenster.
+                self._apply_regs_to_main_window(
+                    regs,
+                    f"aktiv gelesener Display-Init-Paketblock Unit 0x{slave:02X} {start}-{end}",
+                )
+                if active_kind == "display_init_button":
+                    try:
+                        ok_items = list(getattr(self, "display_known_init_ok_items", []) or [])
+                        if not any(int(x[1]) == int(start) for x in ok_items):
+                            ok_items.append((int(slave), int(start), int(qty), str(label)))
+                        self.display_known_init_ok_items = ok_items
+                        total = 5
+                        done = len({int(x[1]) for x in ok_items})
+                        self._log(
+                            f"DISPLAY-INIT STATUS: OK {done}/{total} - "
+                            f"Block {start}/0x{start:04X} erfolgreich gelesen; "
+                            "Werte wurden ins Hauptfenster uebernommen."
+                        )
+                        main_window = getattr(self, "main_window", None)
+                        if main_window is not None:
+                            try:
+                                main_window.init_read_btn.setText(f"Display-Init: {done}/{total} OK")
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+            else:
+                internal_hint = ""
+                try:
+                    raw_words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in regs]
+                    if len(raw_words) >= 10 and tuple(raw_words[:6]) == self._display_packet_signature_words():
+                        internal_hint = f"; Signatur OK, Marker=0x{raw_words[8]&0xFFFF:04X}, interner Start={raw_words[9]&0xFFFF}"
+                except Exception:
+                    internal_hint = ""
+                self._log(
+                    f"DISPLAY AKTIV Pakettest ohne gueltigen WP-Paketkopf: "
+                    f"Unit 0x{slave:02X}, start={start}/0x{start:04X}, words={qty}; nicht uebernommen{internal_hint}."
+                )
+                if str(item.get("active_scan_kind", "")) == "display_init_button":
+                    try:
+                        fail_items = list(getattr(self, "display_known_init_fail_items", []) or [])
+                        fail_items.append((int(slave), int(start), int(qty), str(label)))
+                        self.display_known_init_fail_items = fail_items
+                        self._log(f"DISPLAY-INIT STATUS: ungueltige Antwort fuer Block {start}/0x{start:04X}; wird nur diagnostisch gezaehlt.")
+                    except Exception:
+                        pass
+            active_kind = str(item.get("active_scan_kind", ""))
+            if active_kind == "display_packet" and self.display_packet_step_timer.isActive():
+                QTimer.singleShot(250, self._display_packet_scan_step)
+            elif active_kind == "display_init_button":
+                controller = getattr(self, "_display_known_read_controller", None)
+                if controller is not None and hasattr(controller, "step"):
+                    QTimer.singleShot(max(500, int(getattr(self, "display_known_init_pause_ms", 900))), controller.step)
+        return True
+
+    def poll_warmlink_once(self):
+        if self._stopping:
+            return
+        if not self.warmlink_worker:
+            self._log("Warmlink Poll nicht gesendet: Warmlink-Worker nicht verbunden/gestartet.")
+            return
+        if getattr(self, "display_known_init_active", False):
+            self._log("Warmlink Poll pausiert: Display-INIT/Alle bekannten Display-Paketreads läuft gerade.")
+            return
+        slave = int(self.warmlink_unit_spin.value())
+        # Etwas langsamer als vorher: ser2net/Warmlink antwortet zuverlaessiger,
+        # und die Antworten bleiben leichter der Pending-Liste zuordenbar.
+        delay = 700
+        now = time.monotonic()
+        for addr, qty, label in self.WARMLINK_POLL_BLOCKS:
+            if self._stopping:
+                return
+            self.warmlink_pending_reads.append({
+                "slave": slave,
+                "addr": int(addr),
+                "qty": int(qty),
+                "label": str(label),
+                "queued_at": now,
+            })
+            self.warmlink_worker.enqueue_read(addr, qty, slave_addr=slave, post_delay_ms=delay)
+        # Alte offene Zuordnungen begrenzen, falls mal keine Antwort kam.
+        if len(self.warmlink_pending_reads) > 80:
+            dropped = len(self.warmlink_pending_reads) - 80
+            del self.warmlink_pending_reads[:dropped]
+            self._log(f"WARMLINK WARN: {dropped} alte Pending-Reads verworfen (keine/zu spaete Antwort).")
+        self._log(f"Warmlink Poll gesendet: {len(self.WARMLINK_POLL_BLOCKS)} Blöcke auf Unit 0x{slave:02X}.")
+
+    def _associate_warmlink_read_response(self, frame) -> bool:
+        """FC03-Responses im Dual-Logger lokal einer gesendeten Warmlink-Anfrage zuordnen.
+
+        Der normale Programmteil macht diese Zuordnung bereits ueber seine eigene
+        Pending-Read-Liste. Im Dual-Logger laufen aber eigene Worker, deshalb
+        brauchen wir hier eine kleine, leicht entfern­bare lokale Zuordnung.
+        Ohne diese Zuordnung haben FC03-Responses keine Startadresse und blieben
+        im Log scheinbar leer.
+        """
+        if getattr(frame, "mode", "") != "read-response":
+            return False
+        byte_count = int(getattr(frame, "length_field", 0) or 0)
+        if byte_count <= 0 or byte_count % 2 != 0:
+            self._log(f"WARMLINK RX read-response ohne gueltige Wortanzahl: byte_count={byte_count}, RAW={hexdump(getattr(frame, 'raw', b''), -1)}")
+            return False
+        qty = byte_count // 2
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+
+        match_idx = None
+        for idx, item in enumerate(self.warmlink_pending_reads):
+            if int(item.get("slave", -1)) == slave and int(item.get("qty", -1)) == qty:
+                match_idx = idx
+                break
+        if match_idx is None and self.warmlink_pending_reads:
+            # Fallback: in Reihenfolge zuordnen. Das ist bei sauberem Request/Response-Ablauf
+            # oft besser als gar keine Werte zu sehen; wird im Log als Fallback markiert.
+            match_idx = 0
+            fallback = True
+        else:
+            fallback = False
+
+        if match_idx is None:
+            self._log(f"WARMLINK RX read-response nicht zuordenbar: bus=0x{slave:02X}, words={qty}, RAW={hexdump(getattr(frame, 'raw', b''), -1)}")
+            return False
+
+        item = self.warmlink_pending_reads.pop(match_idx)
+        start = int(item.get("addr", 0))
+        label = str(item.get("label", ""))
+        regs = decode_read_response_registers(frame, start, self.main_window.regmap)
+        try:
+            frame.typ = start
+            frame.length_field = qty
+            frame.registers = regs
+        except Exception:
+            pass
+        mark = " Fallback-Zuordnung" if fallback else ""
+        vals = "; ".join(f"{r.reg}={r.raw_value}({r.display_value})" for r in regs[:8])
+        self._log(f"WARMLINK RX zugeordnet:{mark} {label}: start={start}/0x{start:04X}, words={qty}: {vals}{' ...' if len(regs) > 8 else ''}")
+
+        packet_info = self._validated_packet_info_from_regs(start, regs)
+        if bool(item.get("packet_test", False)) or packet_info:
+            if packet_info:
+                end = int(packet_info.get("end", start + len(regs) - 1))
+                marker = int(packet_info.get("marker", 0))
+                self._log(
+                    f"WARMLINK/WP VALIDIERTER WP-PAKETBLOCK Unit 0x{slave:02X}: "
+                    f"start={start}/0x{start:04X}, ende={end}/0x{end:04X}, "
+                    f"words={len(regs)}, marker=0x{marker:04X}, CRC OK, interner Start passt"
+                )
+                self._apply_regs_to_main_window(regs, f"direkt vom Warmlink/WP-Bus validierter Paketblock Unit 0x{slave:02X} {start}-{end}")
+            else:
+                internal_hint = ""
+                try:
+                    raw_words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in regs]
+                    if len(raw_words) >= 10 and tuple(raw_words[:6]) == self._display_packet_signature_words():
+                        internal_hint = f"; Signatur OK, Marker=0x{raw_words[8]&0xFFFF:04X}, interner Start={raw_words[9]&0xFFFF}"
+                except Exception:
+                    internal_hint = ""
+                self._log(
+                    f"WARMLINK/WP Pakettest ohne gueltigen WP-Paketkopf: "
+                    f"Unit 0x{slave:02X}, start={start}/0x{start:04X}, words={qty}; nicht uebernommen{internal_hint}."
+                )
+            if str(item.get("active_scan_kind", "")) == "warmlink_packet" and self.warmlink_packet_step_timer.isActive():
+                QTimer.singleShot(300, self._warmlink_packet_scan_step)
+        return True
+
+    def _remember_warmlink_values(self, frame):
+        if not getattr(frame, "crc_ok", False):
+            return
+        if getattr(frame, "mode", "") == "read-request":
+            return
+        for reg in list(getattr(frame, "registers", []) or []):
+            raw = int(getattr(reg, "raw_value", 0) or 0) & 0xFFFF
+            # 0/1 erzeugt zu viele falsche Treffer; fuer Korrelation vorerst ignorieren.
+            if raw in (0, 1):
+                continue
+            self.known_warmlink_values[raw] = {
+                "reg": int(getattr(reg, "reg", 0) or 0),
+                "name": str(getattr(reg, "name", "") or ""),
+                "display": str(getattr(reg, "display_value", raw)),
+                "seen_at": time.monotonic(),
+            }
+
+    def _display_warmlink_correlations(self, frame, regs):
+        if not self.known_warmlink_values:
+            return
+        hits = []
+        now = time.monotonic()
+        for reg in regs:
+            raw = int(getattr(reg, "raw_value", 0) or 0) & 0xFFFF
+            if raw in (0, 1):
+                continue
+            info = self.known_warmlink_values.get(raw)
+            if not info:
+                continue
+            # Nur die ersten Wiederholungen loggen, damit zyklische Frames nicht nerven.
+            key = (int(getattr(frame, "slave_addr", 0) or 0), int(getattr(reg, "reg", 0) or 0), raw, int(info.get("reg", 0)))
+            if key in self.display_correlation_seen:
+                continue
+            self.display_correlation_seen.add(key)
+            age = now - float(info.get("seen_at", now) or now)
+            hits.append(
+                f"DREG {int(getattr(reg, 'reg', 0) or 0)}={raw} ({getattr(reg, 'display_value', raw)}) "
+                f"== WREG {info.get('reg')} {info.get('name','')} ({info.get('display')}, vor {age:.1f}s)"
+            )
+        if hits:
+            self._log("DISPLAY/WARMLINK KORRELATION: " + "; ".join(hits[:10]) + (f" ... (+{len(hits)-10})" if len(hits) > 10 else ""))
+
+    def _frame_summary(self, prefix: str, frame, last: Dict[tuple[int, int], int], max_changes: int = 18):
+        if not getattr(frame, "crc_ok", False):
+            return
+        if frame.mode == "read-request":
+            return
+        regs = list(getattr(frame, "registers", []) or [])
+        changes = []
+        for reg in regs:
+            key = (int(frame.slave_addr), int(reg.reg))
+            raw = int(reg.raw_value) & 0xFFFF
+            old = last.get(key)
+            if old != raw:
+                last[key] = raw
+                name = f" {getattr(reg, 'name', '')}" if getattr(reg, "name", "") else ""
+                changes.append(f"{reg.reg}{name}: {'--' if old is None else old} -> {raw} ({getattr(reg, 'display_value', raw)})")
+        if changes:
+            self._log(
+                f"{prefix} DIFF bus=0x{int(frame.slave_addr):02X} start={int(frame.typ)}/0x{int(frame.typ):04X} "
+                f"mode={frame.mode}: " + "; ".join(changes[:max_changes]) +
+                (f" ... (+{len(changes)-max_changes})" if len(changes) > max_changes else "")
+            )
+        elif frame.mode in {"read-response", "word-frame", "write-request"} and regs:
+            # Nur sehr knapp, damit das Log nicht explodiert.
+            vals = "; ".join(f"{r.reg}={r.raw_value}" for r in regs[:8])
+            self._log(f"{prefix} FRAME bus=0x{int(frame.slave_addr):02X} start={int(frame.typ)} mode={frame.mode}: {vals}{' ...' if len(regs)>8 else ''}")
+
+
+    def _should_log_passive_frame(self, key: tuple[Any, ...], min_interval_s: float = 8.0) -> bool:
+        now = time.monotonic()
+        last = self.display_passive_seen.get(key)
+        if last is not None and (now - last) < min_interval_s:
+            return False
+        self.display_passive_seen[key] = now
+        if len(self.display_passive_seen) > 1000:
+            # Einfaches Begrenzen; der Analyzer ist nur TEMP/Diagnose.
+            for old_key in list(self.display_passive_seen.keys())[:250]:
+                self.display_passive_seen.pop(old_key, None)
+        return True
+
+    def _display_map_for_passive(self, slave: int, start: int):
+        # Unit 0x00 Broadcast sowie Unit 0x01 auf dem Display-Bus nutzen bei
+        # bekannten WP-Bereichen meist das normale WP/Warmlink-Mapping.
+        # DWIN/Anzeige-Speicher bleibt getrennt.
+        if slave == 0x00 and start in {2001, 2091}:
+            return self.main_window.regmap
+        if slave == 0x01 and (1000 <= start <= 2300 or start in {1999, 2001, 2099}):
+            return self.main_window.regmap
+        return self.main_window.display_regmap
+
+    @staticmethod
+    def _display_packet_signature_words() -> tuple[int, ...]:
+        # ASCII "WF2210250475" als 6 Big-Endian Register-Worte.
+        return (0x5746, 0x3232, 0x3130, 0x3235, 0x3034, 0x3735)
+
+    def _validated_packet_info_from_words(self, start: int, words: list[int]) -> Optional[dict[str, int]]:
+        """Prueft die WP-Paketkopf-Regel aus den Display-Bus-RAW-Analysen.
+
+        Gültige WP-Kopie auf dem Display-Bus:
+        - Register start..start+5 enthalten die Signatur "WF2210250475"
+        - Register start+8 enthält den Paketmarker 0x0210 / 528
+        - Register start+9 enthält nochmal die interne Startadresse
+        - interne Startadresse muss zur Modbus-Startadresse passen
+
+        Nur solche Pakete werden automatisch in die Hauptliste übernommen.
+        """
+        if len(words) < 10:
+            return None
+        sig = self._display_packet_signature_words()
+        head = tuple((int(v) & 0xFFFF) for v in words[:6])
+        if head != sig:
+            return None
+        marker = int(words[8]) & 0xFFFF
+        internal_start = int(words[9]) & 0xFFFF
+        if marker != 0x0210:
+            return None
+        if internal_start != int(start):
+            return None
+        return {
+            "marker": marker,
+            "internal_start": internal_start,
+            "end": int(start) + len(words) - 1,
+        }
+
+    def _validated_packet_info_from_regs(self, start: int, regs) -> Optional[dict[str, int]]:
+        words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in list(regs or [])]
+        return self._validated_packet_info_from_words(start, words)
+
+    def _passive_decode_read_response(self, frame) -> bool:
+        byte_count = int(getattr(frame, "length_field", 0) or 0)
+        if byte_count <= 0 or byte_count % 2 != 0:
+            return False
+        qty = byte_count // 2
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+        match_idx = None
+        for idx, item in enumerate(self.display_passive_pending_reads):
+            if int(item.get("slave", -1)) == slave and int(item.get("qty", -1)) == qty:
+                match_idx = idx
+                break
+        if match_idx is None:
+            if self._should_log_passive_frame(("rsp-unknown", slave, qty, hexdump(getattr(frame, "raw", b""), 32)), 12.0):
+                self._log(
+                    f"DISPLAY PASSIV READ-RSP ohne bekannte Startadresse: "
+                    f"unit=0x{slave:02X}, words={qty}, raw={hexdump(getattr(frame, 'raw', b''), -1)}"
+                )
+            return False
+        item = self.display_passive_pending_reads.pop(match_idx)
+        start = int(item.get("addr", 0))
+        regmap = self._display_map_for_passive(slave, start)
+        regs = decode_read_response_registers(frame, start, regmap)
+        try:
+            frame.typ = start
+            frame.length_field = qty
+            frame.registers = regs
+        except Exception:
+            pass
+        vals = "; ".join(f"{r.reg}={r.raw_value}({r.display_value})" for r in regs[:10])
+        age = time.monotonic() - float(item.get("seen_at", time.monotonic()) or time.monotonic())
+        self._log(
+            f"DISPLAY PASSIV READ-RSP unit=0x{slave:02X} -> Master, "
+            f"zu READ start={start}/0x{start:04X}, words={qty}, nach {age:.1f}s: "
+            f"{vals}{' ...' if len(regs) > 10 else ''}, raw={hexdump(getattr(frame, 'raw', b''), -1)}"
+        )
+        return True
+
+
+    def _decode_display_frame_with_regmap(self, frame, regmap: RegisterMap):
+        """Bestehende Frame-Worte mit einem anderen Mapping neu beschriften.
+
+        Der Display-Worker dekodiert zuerst mit dem Display/DWIN-Mapping.
+        Broadcast-Bloecke 0x00/2001ff und 0x00/2091ff enthalten aber echte
+        WP-/Warmlink-Register und sollen deshalb im Hauptfenster mit dem
+        normalen WP-Mapping erscheinen.
+        """
+        start = int(getattr(frame, "typ", 0) or 0)
+        regs = []
+        for idx, old_reg in enumerate(list(getattr(frame, "registers", []) or [])):
+            raw = int(getattr(old_reg, "raw_value", 0) or 0) & 0xFFFF
+            reg_no = start + idx
+            info = regmap.get(reg_no)
+            regs.append(DecodedRegister(
+                slave_addr=int(getattr(frame, "slave_addr", 0) or 0),
+                reg=reg_no,
+                index=idx,
+                frame_type=start,
+                raw_value=raw,
+                signed_value=s16(raw),
+                display_value=format_value_by_type(raw, info.dtype, info.value_map, info.bit_map),
+                name=info.name,
+                dtype=info.dtype,
+                timestamp=time.time(),
+            ))
+        return regs
+
+    def _apply_regs_to_main_window(self, regs, source_label: str, max_log: int = 18) -> None:
+        """Uebernimmt sichere Display-Passivwerte in die Haupt-Registerliste.
+
+        Das ist bewusst nur fuer verifizierte Quellen gedacht:
+        - Unit 0x00 FC16 Broadcast 2001/2091 (echte WP-Live-/Statusbloecke)
+        - ggf. spaeter sauber zugeordnete 10xx-Parameterbloecke
+        """
+        mw = self.main_window
+        changed = []
+        old_updates = mw.register_table.updatesEnabled()
+        bulk = len(regs) > 20
+        if bulk:
+            mw._suppress_name_resize = True
+            mw.register_table.setUpdatesEnabled(False)
+        try:
+            for reg in regs:
+                reg_no = int(reg.reg)
+                raw = int(reg.raw_value) & 0xFFFF
+                old = mw.last_values.get(reg_no)
+                was_cached = reg_no in mw.cached_regs
+                if was_cached:
+                    mw.cached_regs.discard(reg_no)
+                if old != raw:
+                    if old is None:
+                        mw.previous_value_texts.setdefault(reg_no, "--")
+                    else:
+                        mw.previous_value_texts[reg_no] = f"{old} / 0x{old:04X}"
+                    changed.append(f"{reg_no}: {'--' if old is None else old} -> {raw} ({reg.display_value})")
+                mw.last_values[reg_no] = raw
+                if old != raw or was_cached or reg_no not in mw.table_rows:
+                    mw._upsert_register_row(reg, old != raw)
+                if reg_no == 2034:
+                    mw._update_contact_table(raw)
+                if reg_no == 2019:
+                    mw._update_load_output_decoder(raw)
+                    mw._update_fault_decoder()
+                if reg_no in (2081, 2082, 2083, 2085, 2086, 2087, 2088, 2089, 2090):
+                    mw._update_fault_decoder()
+                # offene Dialoge ebenfalls mitziehen, wie beim normalen Live-Update
+                for dlg in (mw.timer_dialog, mw.onoff_timer_dialog, mw.silent_timer_dialog, mw.sg_dialog, mw.parameter_dialog):
+                    if dlg is not None and dlg.isVisible():
+                        try:
+                            dlg.update_from_live_register(reg)
+                        except Exception:
+                            pass
+                for dlg in list(mw.register_write_dialogs.values()):
+                    if dlg.isVisible():
+                        try:
+                            dlg.update_from_live_register(reg)
+                        except Exception:
+                            pass
+        finally:
+            if bulk:
+                mw._suppress_name_resize = False
+                mw.register_table.setUpdatesEnabled(old_updates)
+                mw._resize_name_column()
+            mw.reg_count_label.setText(str(len(mw.last_values)))
+
+        if changed:
+            self._log(
+                f"HAUPTFENSTER Update aus {source_label}: {len(changed)} Wert(e) geändert: "
+                + "; ".join(changed[:max_log])
+                + (f" ... (+{len(changed) - max_log})" if len(changed) > max_log else "")
+            )
+
+    def _handle_display_broadcast_or_safe_main_values(self, frame) -> None:
+        if not getattr(frame, "crc_ok", False) or not getattr(frame, "registers", None):
+            return
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+        start = int(getattr(frame, "typ", 0) or 0)
+        mode = str(getattr(frame, "mode", ""))
+        func = int(getattr(frame, "func", 0) or 0)
+
+        # Fix18: generische Vertrauensregel fuer Display-Bus-Paketbloecke.
+        # Wenn der FC16-Write einen gueltigen internen WP-Paketkopf traegt
+        # (Signatur WF2210250475, Marker 0x0210, interner Start == Modbus-Start),
+        # wird der komplette Block als echte WP-Datenkopie ins Hauptfenster uebernommen.
+        if func == 0x10 and mode in {"word-frame", "write-request"}:
+            packet_info = self._validated_packet_info_from_regs(start, getattr(frame, "registers", []) or [])
+            if packet_info:
+                regs = self._decode_display_frame_with_regmap(frame, self.main_window.regmap)
+                frame.registers = regs
+                end = int(packet_info.get("end", start + len(regs) - 1))
+                marker = int(packet_info.get("marker", 0))
+                source_kind = "Broadcast" if slave == 0x00 else f"Write an Unit 0x{slave:02X}"
+                label = f"validierter Display-Paketblock {source_kind} {start}-{end}"
+                vals = "; ".join(f"{r.reg}={r.raw_value}({r.display_value})" for r in regs[:12])
+                key = ("valid-packet-main", slave, start, tuple(int(r.raw_value) & 0xFFFF for r in regs[:12]))
+                if self._should_log_passive_frame(key, 4.0):
+                    self._log(
+                        f"DISPLAY VALIDIERTER WP-PAKETBLOCK {source_kind}: "
+                        f"start={start}/0x{start:04X}, ende={end}/0x{end:04X}, "
+                        f"words={len(regs)}, marker=0x{marker:04X}, CRC OK, interner Start passt; "
+                        f"{vals}{' ...' if len(regs) > 12 else ''}"
+                    )
+                self._apply_regs_to_main_window(regs, label)
+                return
+
+    def _display_passive_analyzer(self, frame, active_response: bool = False):
+        if not self.display_passive_analyzer_cb.isChecked() or not getattr(frame, "crc_ok", False):
+            return
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+        mode = str(getattr(frame, "mode", ""))
+        func = int(getattr(frame, "func", 0) or 0)
+        start = int(getattr(frame, "typ", 0) or 0)
+        length = int(getattr(frame, "length_field", 0) or 0)
+        raw_hex = hexdump(getattr(frame, "raw", b""), -1)
+
+        if mode == "read-request":
+            # Modbus-Adresse ist hier das Ziel. Der Master ist der andere Teilnehmer.
+            self.display_passive_pending_reads.append({
+                "slave": slave,
+                "addr": start,
+                "qty": length,
+                "seen_at": time.monotonic(),
+            })
+            if len(self.display_passive_pending_reads) > 80:
+                del self.display_passive_pending_reads[:len(self.display_passive_pending_reads)-80]
+            key = ("read-req", slave, start, length)
+            if self._should_log_passive_frame(key, 4.0):
+                self._log(
+                    f"DISPLAY PASSIV READ-REQ Master -> Unit 0x{slave:02X}: "
+                    f"start={start}/0x{start:04X}, qty={length}, raw={raw_hex}"
+                )
+            return
+
+        if mode == "read-response":
+            if active_response:
+                return
+            self._passive_decode_read_response(frame)
+            return
+
+        if mode in {"write-request", "word-frame", "short-write", "write-single"}:
+            regs = list(getattr(frame, "registers", []) or [])
+            vals = "; ".join(f"{r.reg}={r.raw_value}" for r in regs[:14])
+            packet_info = None
+            if func == 0x10:
+                packet_info = self._validated_packet_info_from_regs(start, regs)
+            if packet_info:
+                end = int(packet_info.get("end", start + len(regs) - 1))
+                source_kind = "Broadcast Unit 0x00" if slave == 0x00 else f"Master -> Unit 0x{slave:02X}"
+                key = ("valid-packet-write", slave, start, tuple(int(getattr(r, "raw_value", 0) or 0) for r in regs[:12]))
+                if self._should_log_passive_frame(key, 4.0):
+                    self._log(
+                        f"DISPLAY PASSIV VALIDIERTER WP-PAKETBLOCK {source_kind}: "
+                        f"start={start}/0x{start:04X}, ende={end}/0x{end:04X}, qty={length}, "
+                        f"Signatur OK, interner Start passt, werte={vals}{' ...' if len(regs) > 14 else ''}, raw={raw_hex}"
+                    )
+                return
+            key = ("write", slave, start, length, tuple(int(getattr(r, "raw_value", 0) or 0) for r in regs[:8]))
+            if self._should_log_passive_frame(key, 4.0):
+                self._log(
+                    f"DISPLAY PASSIV WRITE Master -> Unit 0x{slave:02X}: "
+                    f"fc=0x{func:02X}, start={start}/0x{start:04X}, qty={length}, "
+                    f"werte={vals}{' ...' if len(regs) > 14 else ''}, raw={raw_hex}"
+                )
+            return
+
+        if mode == "write-response":
+            key = ("write-ack", slave, start, length)
+            if self._should_log_passive_frame(key, 8.0):
+                self._log(
+                    f"DISPLAY PASSIV WRITE-ACK Unit 0x{slave:02X} -> Master: "
+                    f"start={start}/0x{start:04X}, qty={length}, raw={raw_hex}"
+                )
+            return
+
+        key = ("other", slave, func, mode, start, length)
+        if self._should_log_passive_frame(key, 8.0):
+            self._log(
+                f"DISPLAY PASSIV FRAME unit=0x{slave:02X}, fc=0x{func:02X}, mode={mode}, "
+                f"start={start}/0x{start:04X}, len={length}, raw={raw_hex}"
+            )
+
+    @Slot(object)
+    def on_display_frame(self, frame):
+        self.display_frames += 1
+        self.display_last_frame_monotonic = time.monotonic()
+        active_response = False
+        if getattr(frame, "mode", "") == "read-response":
+            active_response = self._associate_display_read_response(frame)
+        self._handle_display_broadcast_or_safe_main_values(frame)
+        self._display_passive_analyzer(frame, active_response=active_response)
+        self._frame_summary("DISPLAY", frame, self.display_last)
+        self._display_warmlink_correlations(frame, list(getattr(frame, "registers", []) or []))
+        self._update_status()
+
+    @Slot(object)
+    def on_warmlink_frame(self, frame):
+        self.warmlink_frames += 1
+        if getattr(frame, "mode", "") == "read-response":
+            self._associate_warmlink_read_response(frame)
+        self._remember_warmlink_values(frame)
+        self._frame_summary("WARMLINK", frame, self.warmlink_last)
+        self._update_status()
+
+    def _update_status(self):
+        self.status_label.setText(f"Frames Display: {self.display_frames} | Warmlink: {self.warmlink_frames}")
+
+
 BACKEND_CHOICES = [
     ("warmlink_raw", "Modbus Warmlink LTE"),
     ("standard_modbus", "Modbus Standart"),
@@ -3676,7 +4931,7 @@ BACKEND_DEFAULTS = {
     },
     "display_modbus": {
         "transport": "tcp", "host": DEFAULT_HOST, "port": 10001,
-        "serial_port": "COM3", "baudrate": 9600, "parity": "N", "bytesize": 8, "stopbits": 1.0,
+        "serial_port": "COM3", "baudrate": 4800, "parity": "N", "bytesize": 8, "stopbits": 1.0,
         "unit_id": 3, "display_translate_0x2000": True,
     },
 }
@@ -3721,7 +4976,7 @@ class CommunicationSettingsDialog(QDialog):
         self.stopbits_combo.addItem("2", 2.0)
         self.unit_spin = QSpinBox(); self.unit_spin.setRange(1, 247)
         self.translate_cb = QCheckBox("Parameterregister +0x2000 übersetzen")
-        self.translate_cb.setToolTip("Nur Display-Modbus: z. B. 1205 / 0x04B5 -> 9397 / 0x24B5")
+        self.translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als DWIN/HMI-Speicher +0x2000 gelesen/geschrieben. Beispiel: 1012 -> 3012 / 0x0BC4.")
 
         self.device_combo = QComboBox()
         for dev_key, dev_label in DEVICE_MODELS:
@@ -3872,7 +5127,7 @@ class CommunicationSettingsDialog(QDialog):
         elif backend == "standard_modbus":
             self.info_label.setText("Modbus Standart: offizielle Modbus-Klemmen am Gerät, typ. Unit 1. Nutzt FC03 lesen und FC06 schreiben.")
         else:
-            self.info_label.setText("Modbus Display: Bus zum Display / DWIN-HMI, typ. Unit 3. Optional werden Parameterregister 1000–1999 auf +0x2000 übersetzt.")
+            self.info_label.setText("Modbus Display/HMI: 4800 8N1 laut Display-CONFIG. Der Bus enthält mehrere Teilnehmer/Platinen. Aktuelle Vermutung: Unit 3 = Display/DWIN-Speicher 3001ff, 3021 = Anzeige-/Icon-Code; Unit 5 = interner Parameter-/Liveblock; Unit 1 = Live-/Statusblock. Aktive Steuerung besser über Warmlink.")
 
     def _transport_changed(self):
         is_serial = str(self.transport_combo.currentData() or "tcp") == "serial"
@@ -4206,7 +5461,7 @@ class WPControlDialog(QDialog):
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title: str, text: str) -> bool:
-        return QMessageBox.question(self, title, text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No) == QMessageBox.StandardButton.Yes
+        return ask_yes_no(self, title, text, default_yes=False)
 
     def write_power(self):
         value = int(self.power_combo.currentData())
@@ -4477,7 +5732,7 @@ class ATCompensationDialog(QDialog):
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title: str, text: str) -> bool:
-        return QMessageBox.question(self, title, text, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No) == QMessageBox.StandardButton.Yes
+        return ask_yes_no(self, title, text, default_yes=False)
 
     def write_enable(self):
         value = 1 if self.enable_cb.isChecked() else 0
@@ -4510,6 +5765,7 @@ class MainWindow(QMainWindow):
         self.base_dir = resource_dir
         self.program_dir = program_dir
         self.regmap_path = os.path.join(resource_dir, "foxair_phnix_registers.json")
+        self.display_regmap_path = os.path.join(resource_dir, "foxair_phnix_display_registers.json")
         # Rueckwaertskompatibel: alte Warmlink-Dateinamen werden beim ersten Start noch gelesen.
         old_regmap_path = os.path.join(resource_dir, "warmlink_registers.json")
         if not os.path.exists(self.regmap_path) and os.path.exists(old_regmap_path):
@@ -4529,6 +5785,9 @@ class MainWindow(QMainWindow):
         apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "system")))
         self.knowledge_defs = self._load_knowledge_defs()
         self.regmap = RegisterMap(self.regmap_path)
+        # Display-/DWIN-Adressen bekommen bewusst ein eigenes Diagnose-Mapping.
+        # Sie duerfen die normale Warmlink/WP-Registertabelle nicht ueberschreiben.
+        self.display_regmap = RegisterMap(self.display_regmap_path) if os.path.exists(self.display_regmap_path) else RegisterMap("")
         self.register_defs = self._load_register_defs()
 
         self.thread: Optional[QThread] = None
@@ -4538,6 +5797,10 @@ class MainWindow(QMainWindow):
         self.latest_regs: Dict[int, object] = {}
         self.last_values: Dict[int, int] = {}
         self.previous_value_texts: Dict[int, str] = {}
+        # Display-/DWIN-Diagnosewerte strikt getrennt von der Warmlink-Hauptliste.
+        self.display_latest_regs: Dict[int, object] = {}
+        self.display_last_values: Dict[int, int] = {}
+        self.display_previous_value_texts: Dict[int, str] = {}
         self.raw_dump = bytearray()
         self.connected = False
         self.foreign_frame_count = 0
@@ -4547,6 +5810,17 @@ class MainWindow(QMainWindow):
         self.raw_file_path: Optional[str] = None
         self.cached_regs: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
+        self.display_last_frame_monotonic = 0.0
+        self.display_init_retry_items: list[tuple[int, int, str, int, int]] = []
+        self.display_init_retry_round = False
+        self.display_init_waiting_since = 0.0
+        self.display_init_timeout_s = 8.0
+        self.display_init_bus_idle_ms = 450
+        self.observed_display_read_requests: list[dict[str, Any]] = []
+        # Display-/HMI-Diagnose: Rohblock-Snapshots fuer Kandidatensuche.
+        # Diese Werte werden bewusst getrennt von der Haupt-Registerliste gehalten.
+        self.display_hmi_block_snapshots: Dict[tuple[int, int, str], list[int]] = {}
+        self.display_hmi_no_response_requests: list[dict[str, Any]] = []
         self.value_search_target: Optional[float] = None
         self.value_search_tolerance: float = 0.0
         self.value_search_mode: str = "raw"
@@ -4567,6 +5841,7 @@ class MainWindow(QMainWindow):
         self.bus_dialog: Optional[BusAddressDialog] = None
         self.offline_dialog: Optional[OfflineRegisterBrowserDialog] = None
         self.backup_restore_dialog: Optional[BackupRestoreDialog] = None
+        self.dual_logger_dialog: Optional[DualBusLoggerDialog] = None
         self.about_dialog: Optional[AboutDialog] = None
         self.update_thread: Optional[QThread] = None
         self.update_worker: Optional[UpdateCheckWorker] = None
@@ -4575,13 +5850,19 @@ class MainWindow(QMainWindow):
         self.last_load_output_value: Optional[int] = None
         self.init_read_queue: list[tuple[int, int, str, int]] = []
         self.init_read_active = False
+        self.warmlink_init_controller = WarmlinkInitReadController(self)
+        self.standard_modbus_init_controller = StandardModbusInitReadController(self)
+        # Fix24: Display-Init liest 90er-WP-Paketblöcke sequenziell.
+        # Nicht mehr nach fixer Pause alles raushauen, sondern Antwort/Timeout abwarten.
+        self.init_display_packet_mode = False
+        self.init_waiting_for_display_packet = False
         self._suppress_name_resize = False
 
         self._build_ui()
         self._setup_help_actions()
-        self.init_read_timer = QTimer(self)
-        self.init_read_timer.setSingleShot(True)
-        self.init_read_timer.timeout.connect(self._send_next_init_read)
+        # V0.2.38: alter GUI-Init-Timer entfernt.
+        # Init-Lesen wird jetzt je Backend durch eigene Controller gesteuert.
+        self.init_read_timer = None
         self.cache_timer = QTimer(self)
         self.cache_timer.timeout.connect(lambda: self.save_value_cache(silent=True))
         self._apply_cache_timer_state()
@@ -4590,6 +5871,8 @@ class MainWindow(QMainWindow):
         self.live_poll_step = 0
         self._apply_live_poll_timer_state()
         self._log(f"Register-Mapping: {self.regmap_path} ({len(self.regmap)} Einträge)")
+        if os.path.exists(self.display_regmap_path):
+            self._log(f"Display-Diagnose-Mapping: {self.display_regmap_path} ({len(self.display_regmap)} Einträge, getrennt von Warmlink)")
         if self.cache_load_start_cb.isChecked():
             self.load_value_cache(silent=False)
         self._log(f"Benutzerdaten: {self.user_data_dir}")
@@ -4727,7 +6010,7 @@ class MainWindow(QMainWindow):
         self.unit_spin.setValue(int(active_cfg.get("unit_id", DEFAULT_BUS_ADDR)))
         self.unit_spin.setMaximumWidth(70)
         self.display_translate_cb = QCheckBox("Display +0x2000")
-        self.display_translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als HMI/VP-Adresse +0x2000 gelesen/geschrieben.")
+        self.display_translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als DWIN/HMI-Speicher +0x2000 gelesen/geschrieben. Beispiel: 1012 -> 3012 / 0x0BC4. Ohne Übersetzung wird das echte Register 1012 angefragt.")
         self.display_translate_cb.setChecked(bool(active_cfg.get("display_translate_0x2000", backend_saved == "display_modbus")))
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
         self.comm_summary_label = QLabel("")
@@ -4747,6 +6030,10 @@ class MainWindow(QMainWindow):
         self.raw_log_cb = QCheckBox("Raw anzeigen")
         self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
         self.raw_ascii_cb = QCheckBox("Raw ASCII-Vorschau")
+        self.clear_log_btn = QPushButton("Log leeren")
+        self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.")
+        self.clear_main_btn = QPushButton("Hauptfenster leeren")
+        self.clear_main_btn.setToolTip("Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.")
 
         self.about_btn = QPushButton("About")
         self.about_btn.setMaximumWidth(72)
@@ -4762,6 +6049,8 @@ class MainWindow(QMainWindow):
         top.addWidget(self.raw_log_cb)
         top.addWidget(self.raw_file_cb)
         top.addWidget(self.raw_ascii_cb)
+        top.addWidget(self.clear_log_btn)
+        top.addWidget(self.clear_main_btn)
         top.addStretch(1)
         top.addWidget(self.about_btn)
 
@@ -4906,6 +6195,7 @@ class MainWindow(QMainWindow):
         self.param_settings_btn = QPushButton("Parameter Einstellungen ...")
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
+        self.dual_logger_btn = QPushButton("Dual-Bus Logger (Diagnose) ...")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
         self.wp_control_btn = QPushButton("WP-Steuerung ...")
         self.at_comp_btn = QPushButton("AT-Kompensation ...")
@@ -4922,6 +6212,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.backup_restore_btn, 9, 0, 1, 2)
         special_layout.addWidget(self.offline_browser_btn, 10, 0, 1, 2)
         special_layout.addWidget(self.bus_popup_btn, 11, 0, 1, 2)
+        special_layout.addWidget(self.dual_logger_btn, 12, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -5027,6 +6318,8 @@ class MainWindow(QMainWindow):
         self.name_search_edit.returnPressed.connect(self.search_name_now)
         self.known_only_cb.stateChanged.connect(lambda _=None: self.rebuild_table_filter())
         self.raw_file_cb.stateChanged.connect(lambda _=None: self.on_raw_file_checkbox_changed())
+        self.clear_log_btn.clicked.connect(self.clear_log)
+        self.clear_main_btn.clicked.connect(self.clear_main_window_values)
         self.contact_popup_btn.clicked.connect(self.open_contact_decoder)
         self.load_output_popup_btn.clicked.connect(self.open_load_output_decoder)
         self.fault_popup_btn.clicked.connect(self.open_fault_decoder)
@@ -5036,6 +6329,7 @@ class MainWindow(QMainWindow):
         self.param_settings_btn.clicked.connect(self.open_parameter_settings)
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
+        self.dual_logger_btn.clicked.connect(self.open_dual_logger_dialog)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
         self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
         self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
@@ -5516,6 +6810,37 @@ class MainWindow(QMainWindow):
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
 
+    def clear_log(self):
+        self.log_text.clear()
+        self._log("Log geleert. Raw-Datei/Registerwerte unverändert.")
+
+    def clear_main_window_values(self):
+        """Nur die Haupt-Registeransicht leeren, ohne Log/Verbindung/Cache-Datei anzufassen."""
+        old_count = len(self.last_values)
+        self.register_table.setSortingEnabled(False)
+        self.register_table.setUpdatesEnabled(False)
+        try:
+            self.register_table.setRowCount(0)
+            self.table_rows.clear()
+            self.latest_regs.clear()
+            self.last_values.clear()
+            self.previous_value_texts.clear()
+            self.cached_regs.clear()
+            self.last_contact_value = None
+            self.last_load_output_value = None
+            self._update_contact_table(None)
+            self._update_load_output_decoder(None)
+            self._update_fault_button_style()
+            if self.value_search_target is not None:
+                self.value_search_matches = []
+                self._refresh_search_highlights()
+            if self.name_search_edit.text().strip():
+                self.name_search_matches = []
+            self.reg_count_label.setText("0")
+        finally:
+            self.register_table.setUpdatesEnabled(True)
+        self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log, Raw-Datei und Cache-Datei unverändert.")
+
     def _parse_int_text(self, text: str) -> int:
         text = text.strip()
         if not text:
@@ -5547,7 +6872,16 @@ class MainWindow(QMainWindow):
 
     def _wire_slave_addr(self, requested: Optional[int] = None) -> int:
         backend = self.current_backend_key()
-        if backend in ("display_modbus", "standard_modbus"):
+        if backend == "display_modbus":
+            # Display/HMI-Bus: Standard ist die Unit aus den Einstellungen (meist 3).
+            # Für manuelle Diagnose im Lesen/Schreiben-Feld muss eine abweichende
+            # Busadresse aber wirklich verwendet werden. Bisher wurde hier immer
+            # die Einstellungs-Unit genommen, dadurch gingen Tests auf 4/5/6
+            # trotzdem an 3. Andere Backends bleiben unverändert.
+            if requested is not None and int(requested) != DEFAULT_BUS_ADDR:
+                return int(requested)
+            return self.current_unit_id()
+        if backend == "standard_modbus":
             return self.current_unit_id()
         return int(requested if requested is not None else DEFAULT_BUS_ADDR)
 
@@ -5570,7 +6904,40 @@ class MainWindow(QMainWindow):
         # Kompatibilitätsmethode für alte Signalpfade; Werte werden jetzt über das Kommunikations-Popup gesetzt.
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
+        # Fix34: Beim Wechsel von Display auf Warmlink/Standard darf ein alter
+        # Display-INIT/DisplayWorker-Zustand den Init-Button nicht dauerhaft sperren.
+        if self.current_backend_key() != "display_modbus" and bool(getattr(self, "display_aux_takeover_active", False)):
+            try:
+                dlg = getattr(self, "dual_logger_dialog", None)
+                if dlg is not None:
+                    dlg.stop()
+            except Exception as exc:
+                self._log(f"DisplayWorker Stop bei Backendwechsel fehlgeschlagen: {exc}")
+            self.display_aux_takeover_active = False
+        self._update_init_read_button_state()
         self._update_comm_summary()
+
+    def _update_init_read_button_state(self):
+        if not hasattr(self, "init_read_btn"):
+            return
+        display_active = False
+        try:
+            dlg = getattr(self, "dual_logger_dialog", None)
+            display_active = bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
+        except Exception:
+            display_active = False
+        warmlink_active = bool(getattr(getattr(self, "warmlink_init_controller", None), "active", False))
+        standard_active = bool(getattr(getattr(self, "standard_modbus_init_controller", None), "active", False))
+        generic_active = bool(getattr(self, "init_read_active", False)) and (display_active or warmlink_active or standard_active)
+        if display_active:
+            self.init_read_btn.setEnabled(False)
+            self.init_read_btn.setText("Display-Init läuft ...")
+        elif warmlink_active or standard_active or generic_active:
+            self.init_read_btn.setEnabled(False)
+            self.init_read_btn.setText("Init läuft ...")
+        else:
+            self.init_read_btn.setEnabled(True)
+            self.init_read_btn.setText("Alle bekannten Register lesen")
 
     def connect_to_device(self):
         if self.thread:
@@ -5612,6 +6979,28 @@ class MainWindow(QMainWindow):
         self.thread.start()
 
     def disconnect_from_device(self):
+        # Wenn Display-INIT den ausgelagerten DisplayWorker benutzt, ist die
+        # normale Hauptverbindung eventuell schon per EOF weg. Disconnect soll
+        # dann trotzdem den noch laufenden Display-/Warmlink-Hilfsworker stoppen.
+        if bool(getattr(self, "display_aux_takeover_active", False)):
+            dlg = getattr(self, "dual_logger_dialog", None)
+            if dlg is not None:
+                try:
+                    dlg.stop()
+                except Exception as exc:
+                    self._log(f"DisplayWorker Stop-Fehler: {exc}")
+            self.display_aux_takeover_active = False
+            self.connected = False
+            self.status_label.setText("getrennt")
+            self.connect_btn.setEnabled(True)
+            self.disconnect_btn.setEnabled(False)
+            self.write_send_btn.setEnabled(False)
+            if hasattr(self, "live_poll_timer"):
+                self.live_poll_timer.stop()
+            self._close_raw_file()
+            self._log("DisplayWorker/Display-INIT Verbindung gestoppt.")
+            return
+
         if self.worker:
             self.worker.stop()
         self._close_raw_file()
@@ -5628,6 +7017,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
+        self._update_init_read_button_state()
         if self.raw_file_cb.isChecked():
             self._open_raw_file()
         if bool(self.settings.get("auto_read_init_on_startup", False)):
@@ -5636,11 +7026,32 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_disconnected(self):
+        # Beim Backend "Modbus Display" wird fuer "Alle bekannten Register lesen"
+        # absichtlich der robuste DisplayWorker-Pfad benutzt. Dadurch trennt die
+        # urspruengliche Hauptverbindung auf Port 2002 (EOF), waehrend der
+        # DisplayWorker weiter laeuft und Werte ins Hauptfenster liefert. Das darf
+        # die Haupt-UI nicht auf "getrennt" setzen, sonst wirkt die App kaputt
+        # und ein zweiter Init-Lauf wird unnoetig blockiert.
+        if bool(getattr(self, "display_aux_takeover_active", False)):
+            self.connected = True
+            self.status_label.setText("DisplayWorker aktiv")
+            self.connect_btn.setEnabled(False)
+            self.disconnect_btn.setEnabled(True)
+            # Schreiben ueber den alten Hauptworker ist in diesem Uebergangszustand
+            # nicht sicher verfuegbar; normales Display-Mithoeren/Init bleibt aktiv.
+            self.write_send_btn.setEnabled(False)
+            if hasattr(self, "live_poll_timer"):
+                self.live_poll_timer.stop()
+            self._close_raw_file()
+            self._log("Display-Hauptverbindung wurde vom DisplayWorker abgeloest; UI bleibt verbunden, Disconnect stoppt den DisplayWorker.")
+            return
+
         self.connected = False
         self.status_label.setText("getrennt")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
         self.write_send_btn.setEnabled(False)
+        self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         self._close_raw_file()
@@ -5769,6 +7180,8 @@ class MainWindow(QMainWindow):
     def on_frame_decoded(self, frame):
         self.frame_count += 1
         self.frame_count_label.setText(str(self.frame_count))
+        if self.current_backend_key() == "display_modbus":
+            self.display_last_frame_monotonic = time.monotonic()
         self.last_crc_label.setText(
             f"0x{frame.crc_got:04X} / calc 0x{frame.crc_calc:04X} / {'OK' if frame.crc_ok else 'BAD'}"
         )
@@ -5776,7 +7189,10 @@ class MainWindow(QMainWindow):
         self.last_bus_label.setText(f"0x{frame.slave_addr:02X}")
         self.direction_label.setText(direction)
         self._update_bus_table(frame)
-        self._apply_pending_read_response(frame)
+        matched_pending_read = self._apply_pending_read_response(frame)
+        matched_passive_read = False
+        if self.current_backend_key() == "display_modbus" and not matched_pending_read:
+            matched_passive_read = self._apply_observed_display_read_response(frame)
 
         expected_slave = self._wire_slave_addr(DEFAULT_BUS_ADDR)
         if frame.slave_addr != expected_slave:
@@ -5794,6 +7210,7 @@ class MainWindow(QMainWindow):
                 f"READ/Request gesehen: bus=0x{frame.slave_addr:02X}, "
                 f"addr={frame.typ} / 0x{frame.typ:04X}, anzahl={frame.length_field}"
             )
+            self._remember_display_read_request(frame)
         elif frame.mode == "read-response":
             if frame.registers:
                 self._log(
@@ -5812,20 +7229,40 @@ class MainWindow(QMainWindow):
                 f"WRITE/Echo gesehen: bus=0x{frame.slave_addr:02X}, addr={frame.typ} / 0x{frame.typ:04X}, "
                 f"value={write_value} / 0x{write_value:04X}"
             )
+            if self.current_backend_key() == "display_modbus" and int(frame.typ) == 3011:
+                self._log(
+                    "DISPLAY-HMI: 3011/0x0BC3 gesehen = DWIN/Parameter-Sync-Flag, "
+                    "nicht als normales WP-Register werten."
+                )
         elif frame.mode == "write-response":
             self._log(
                 f"WRITE/ACK gesehen: bus=0x{frame.slave_addr:02X}, "
                 f"addr={frame.typ} / 0x{frame.typ:04X}, anzahl={frame.length_field}"
             )
 
+
+        if self.current_backend_key() == "display_modbus":
+            self._display_hmi_log_block_diff(frame)
+            self._display_hmi_log_safe_display_values(frame, matched_pending_read=matched_pending_read)
+
+        apply_register_values = True
+        if self.current_backend_key() == "display_modbus":
+            apply_register_values = self._display_hmi_should_apply_registers(
+                frame, expected_slave=expected_slave, matched_pending_read=matched_pending_read,
+                matched_passive_read=matched_passive_read
+            )
+
         changed_regs_for_live_search: list[int] = []
-        bulk_table_update = len(frame.registers) > 10
+        bulk_table_update = apply_register_values and len(frame.registers) > 10
         old_table_updates = self.register_table.updatesEnabled()
         if bulk_table_update:
             self._suppress_name_resize = True
             self.register_table.setUpdatesEnabled(False)
 
-        for reg in frame.registers:
+        display_hmi_1012_fallback_value = None
+        display_hmi_frame_had_true_2012 = False
+
+        for reg in (frame.registers if apply_register_values else []):
             if self.known_only_cb.isChecked() and not reg.name:
                 continue
 
@@ -5841,6 +7278,12 @@ class MainWindow(QMainWindow):
                 else:
                     self.previous_value_texts[reg.reg] = f"{old_value} / 0x{old_value:04X}"
             self.last_values[reg.reg] = reg.raw_value
+
+            if self.current_backend_key() == "display_modbus":
+                if int(reg.reg) == 1012 and changed:
+                    display_hmi_1012_fallback_value = int(reg.raw_value) & 0xFFFF
+                elif int(reg.reg) == 2012:
+                    display_hmi_frame_had_true_2012 = True
 
             if changed or was_cached or reg.reg not in self.table_rows:
                 self._upsert_register_row(reg, changed)
@@ -5879,6 +7322,20 @@ class MainWindow(QMainWindow):
                     f"{reg.raw_value} ({reg.display_value})"
                 )
 
+        # Display-HMI: 1012 (Sollmodus) und 2012 (Ist-/Betriebsstatus) verwenden
+        # unterschiedliche Codetabellen. Ein früherer Diagnose-Fallback 1012 -> 2012
+        # hat dadurch falsche Werte erzeugt und wird bewusst nicht mehr angewendet.
+        # 2012 wird im Display-Modbus nur noch aus echten 2012-Datenframes aktualisiert.
+        if (
+            self.current_backend_key() == "display_modbus"
+            and display_hmi_1012_fallback_value is not None
+            and not display_hmi_frame_had_true_2012
+        ):
+            self._log(
+                "DISPLAY-HMI: 1012 geändert, 2012 aber nicht nachgeführt "
+                "(1012=Sollmodus, 2012=Iststatus; unterschiedliche Codetabelle)."
+            )
+
         if bulk_table_update:
             self._suppress_name_resize = False
             self.register_table.setUpdatesEnabled(old_table_updates)
@@ -5901,6 +7358,55 @@ class MainWindow(QMainWindow):
                     f"{len(hits)} Register(n): {hit_text}{changed_text}"
                 )
 
+        self.reg_count_label.setText(str(len(self.last_values)))
+
+    def _display_hmi_apply_2012_fallback_from_1012(self, raw_value: int) -> None:
+        """Display-HMI-Fallback: 2012 anhand 1012 nachführen.
+
+        Auf dem Displaybus sehen wir die 1012-Änderung zuverlässig im
+        Addr-0x03/1001ff-Parameterpaket. Der echte 2012-Statusblock kommt auf
+        diesem Bus bisher nur initial bzw. nicht zyklisch als Nutzdaten. Für die
+        Übersicht im Display-Diagnosemodus spiegeln wir daher 1012 nach 2012,
+        aber nur mit eindeutiger Logmeldung.
+        """
+        raw_value = int(raw_value) & 0xFFFF
+        info = self.regmap.get(2012)
+        old_value = self.last_values.get(2012)
+        changed = old_value != raw_value
+        was_cached = 2012 in self.cached_regs
+        if was_cached:
+            self.cached_regs.discard(2012)
+        if changed:
+            if old_value is None:
+                self.previous_value_texts.setdefault(2012, "--")
+            else:
+                self.previous_value_texts[2012] = f"{old_value} / 0x{old_value:04X}"
+        reg = DecodedRegister(
+            slave_addr=0x03,
+            reg=2012,
+            index=11,
+            frame_type=0x03E9,
+            raw_value=raw_value,
+            signed_value=s16(raw_value),
+            display_value=format_value_by_type(raw_value, info.dtype, info.value_map, info.bit_map),
+            name=info.name,
+            dtype=info.dtype,
+            timestamp=time.time(),
+        )
+        self.last_values[2012] = raw_value
+        if changed or was_cached or 2012 not in self.table_rows:
+            self._upsert_register_row(reg, changed)
+        if changed:
+            self._log(
+                "DISPLAY-HMI Fallback: 2012 aus 1012 nachgeführt, "
+                f"weil kein zyklischer echter 2012-Statusblock kam: "
+                f"{old_value if old_value is not None else '--'} -> {raw_value} ({reg.display_value})"
+            )
+        if self.parameter_dialog is not None and self.parameter_dialog.isVisible():
+            self.parameter_dialog.update_from_live_register(reg)
+        for dialog in list(self.register_write_dialogs.values()):
+            if dialog.isVisible():
+                dialog.update_from_live_register(reg)
         self.reg_count_label.setText(str(len(self.last_values)))
 
     def _resize_name_column(self):
@@ -6063,6 +7569,15 @@ class MainWindow(QMainWindow):
             self.offline_dialog.refresh()
             self.offline_dialog.raise_()
             self.offline_dialog.activateWindow()
+
+    def open_dual_logger_dialog(self):
+        if self.dual_logger_dialog is None or not self.dual_logger_dialog.isVisible():
+            self.dual_logger_dialog = DualBusLoggerDialog(self)
+            self.dual_logger_dialog.finished.connect(lambda _=None: setattr(self, "dual_logger_dialog", None))
+            self.dual_logger_dialog.show()
+        else:
+            self.dual_logger_dialog.raise_()
+            self.dual_logger_dialog.activateWindow()
 
     def open_contact_decoder(self):
         if self.contact_dialog is None or not self.contact_dialog.isVisible():
@@ -6270,9 +7785,347 @@ class MainWindow(QMainWindow):
         got_text = ", ".join(f"0x{v:04X}" for v in got)
         self._log(f"WARNUNG: Blocksignatur bei {start_addr}/0x{start_addr:04X} unerwartet: {got_text}")
 
-    def _apply_pending_read_response(self, frame):
-        if frame.mode != "read-response":
+    def _remember_display_read_request(self, frame) -> None:
+        """Merkt passive Display/HMI-Read-Requests, damit die folgende Response
+        einem Startregister zugeordnet werden kann. Das ist nur fuer Display-Modbus
+        aktiv; Warmlink/Standard-Modbus bleiben unverändert.
+        """
+        if self.current_backend_key() != "display_modbus":
             return
+        if frame.mode != "read-request" or not frame.crc_ok:
+            return
+        if int(frame.length_field) <= 0:
+            return
+        now = time.time()
+        self.observed_display_read_requests = [
+            r for r in self.observed_display_read_requests
+            if now - float(r.get("time", now)) < 8.0
+        ]
+        self.observed_display_read_requests.append({
+            "slave_addr": int(frame.slave_addr),
+            "addr": int(frame.typ),
+            "quantity": int(frame.length_field),
+            "time": now,
+        })
+
+    def _apply_observed_display_read_response(self, frame) -> bool:
+        """Ordnet passive Display/HMI-Read-Responses dem vorher gesehenen
+        Read-Request gleicher Adresse/Laenge zu und dekodiert so die Register.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return False
+        if frame.mode != "read-response" or not frame.crc_ok:
+            return False
+        now = time.time()
+        self.observed_display_read_requests = [
+            r for r in self.observed_display_read_requests
+            if now - float(r.get("time", now)) < 8.0
+        ]
+        for req in list(self.observed_display_read_requests):
+            if int(req["slave_addr"]) != int(frame.slave_addr):
+                continue
+            quantity = int(req["quantity"])
+            if len(frame.payload) != quantity * 2:
+                continue
+            start_addr = int(req["addr"])
+            frame.typ = start_addr
+            frame.length_field = quantity
+            # Label am Frame merken, damit Display-Backend gezielte Init-WP-Paketreads
+            # anders behandeln kann als manuelle/DWIN-Diagnose-Reads.
+            req_label = str(req.get("label", ""))
+            try:
+                frame.pending_read_label = req_label
+            except Exception:
+                pass
+            # Im Display-Modbus-Modus getrennt dekodieren: DWIN-/Display-Adressen
+            # bekommen Diagnose-Namen, ohne das normale Warmlink-Mapping zu veraendern.
+            # Ausnahme: gezielte WP-Paketblock-Reads auf Display Unit 0x03 sollen mit dem
+            # normalen Warmlink/WP-Mapping dekodiert und ins Hauptfenster übernommen werden.
+            force_wp_map = "WP-Paketblock" in req_label or "Display Init Paketblock" in req_label
+            use_display_map = (
+                self.current_backend_key() == "display_modbus"
+                and not force_wp_map
+                and (
+                    "DWIN" in req_label
+                    or "Display" in req_label
+                    or int(frame.slave_addr) in {0x02, 0x03, 0x05}
+                    or int(start_addr) >= 3000
+                    or 0x1200 <= int(start_addr) <= 0x1AFF
+                )
+            )
+            decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
+            self._check_endblock_signature(frame, start_addr)
+            self.observed_display_read_requests.remove(req)
+            self._log(
+                f"DISPLAY-HMI passive Response zugeordnet: bus=0x{frame.slave_addr:02X}, "
+                f"addr={start_addr} / 0x{start_addr:04X}, {quantity} Register"
+            )
+            if frame.registers:
+                value_lines = []
+                for reg in frame.registers[:8]:
+                    name = f" {reg.name}" if reg.name else ""
+                    value_lines.append(f"{reg.reg}={reg.raw_value}/0x{reg.raw_value:04X} ({reg.display_value}){name}")
+                more = "" if len(frame.registers) <= 8 else f" ... (+{len(frame.registers) - 8})"
+                self._log("DISPLAY-HMI passive Werte: " + "; ".join(value_lines) + more)
+            return True
+        return False
+
+    def _display_hmi_log_block_diff(self, frame) -> None:
+        """Display-/HMI-Diagnose: Rohwerte bestimmter Blöcke vergleichen.
+
+        Ziel ist die Suche nach dem echten Ist-/Betriebsstatus, der am Display
+        angezeigt wird, aber bisher nicht als normales Register 2012 im
+        Display-Mitschnitt auftaucht. Die Ausgabe ist reine Diagnose und ändert
+        keine Registerwerte in der Hauptliste.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return
+        if not getattr(frame, "crc_ok", False) or not getattr(frame, "registers", None):
+            return
+
+        slave = int(frame.slave_addr)
+        start = int(frame.typ)
+        mode = str(frame.mode)
+
+        tracked = False
+        label = ""
+        # Roh-/Statusblock der Hauptplatine: gesperrt, aber vollständig beobachten.
+        if slave == 0x01 and start in {1999, 2001} and mode in {"word-frame", "write-request"}:
+            tracked = True
+            label = "0x01/1999ff Rohstatus"
+        # Sauber zuordenbarer 2099ff-Block: Kandidaten fuer Iststatus/Icons/Zähler.
+        elif slave == 0x01 and start == 2099 and mode == "read-response":
+            tracked = True
+            label = "0x01/2099ff Live-/Status"
+        # DWIN-Anzeigeblock: kann Icons/Display-Seiten enthalten.
+        elif slave in {0x02, 0x03} and start == 3001 and mode == "read-response":
+            tracked = True
+            label = f"0x{slave:02X}/3001ff DWIN-Anzeige"
+        # HMI-Parameterpaket: hier sehen wir 1012 als Soll-/Auswahlmodus.
+        elif slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451, 1541} and mode in {"word-frame", "read-response"}:
+            tracked = True
+            label = f"0x03/{start}ff Parameter"
+        # 0x05 schreibt bisher meist Nullblöcke; trotzdem als Fremdblock beobachten.
+        elif slave == 0x05 and start in {1001, 2000} and mode in {"word-frame", "read-response"}:
+            tracked = True
+            label = f"0x05/{start}ff Fremdblock"
+
+        if not tracked:
+            return
+
+        words = [int(r.raw_value) & 0xFFFF for r in frame.registers]
+        key = (slave, start, mode)
+        old_words = self.display_hmi_block_snapshots.get(key)
+        self.display_hmi_block_snapshots[key] = words
+
+        def reg_label(index: int) -> str:
+            return f"{start + index}/W{index + 1}"
+
+        def fmt_word(index: int, value: int) -> str:
+            return f"{reg_label(index)}={value}/0x{value:04X}"
+
+        if old_words is None:
+            # Erste Sichtung: bei kleinen/unklaren Blöcken vollständig, bei langen
+            # Blöcken Anfang + wichtige Verdachtswörter loggen.
+            if len(words) <= 24:
+                preview = ", ".join(fmt_word(i, v) for i, v in enumerate(words))
+            else:
+                head = [fmt_word(i, words[i]) for i in range(min(12, len(words)))]
+                suspects = []
+                for reg_no in (1012, 2012, 2105, 2108, 2110, 2115, 2116, 2118, 2120):
+                    idx = reg_no - start
+                    if 0 <= idx < len(words):
+                        suspects.append(fmt_word(idx, words[idx]))
+                tail = [fmt_word(len(words) - 1, words[-1])] if words else []
+                preview = ", ".join(dict.fromkeys(head + suspects + tail))
+            self._log(
+                f"DISPLAY-HMI SNAPSHOT {label} ({len(words)} Wörter, mode={mode}): {preview}"
+            )
+            return
+
+        changes = []
+        max_len = max(len(old_words), len(words))
+        for i in range(max_len):
+            old = old_words[i] if i < len(old_words) else None
+            new = words[i] if i < len(words) else None
+            if old == new:
+                continue
+            if old is None:
+                changes.append(f"{reg_label(i)}: -- -> {new}/0x{new:04X}")
+            elif new is None:
+                changes.append(f"{reg_label(i)}: {old}/0x{old:04X} -> --")
+            else:
+                changes.append(f"{reg_label(i)}: {old}/0x{old:04X} -> {new}/0x{new:04X}")
+
+        if not changes:
+            return
+
+        # Bei Display-Diagnose nicht jeden Refresh überladen, aber genug zeigen,
+        # um Kandidaten für den Istmodus zu finden.
+        shown = changes[:18]
+        more = "" if len(changes) <= len(shown) else f" ... (+{len(changes) - len(shown)} weitere)"
+        self._log(f"DISPLAY-HMI DIFF {label}: " + "; ".join(shown) + more)
+
+        # Zusatzhinweis, wenn sich in einem Block genau kleine 0..4-Werte ändern:
+        # Das sind interessante Kandidaten für Betriebsmodus/Icon/Seitenstatus.
+        candidates = []
+        for i, (old, new) in enumerate(zip(old_words, words)):
+            if old != new and 0 <= int(new) <= 4:
+                candidates.append(f"{reg_label(i)}={new}")
+        if candidates:
+            self._log(
+                "DISPLAY-HMI KANDIDAT Istmodus/Icon kleiner Code: "
+                + ", ".join(candidates[:12])
+                + (" ..." if len(candidates) > 12 else "")
+            )
+
+    def _display_hmi_log_safe_display_values(self, frame, matched_pending_read: bool = False) -> None:
+        """Loggt sichere Display-Bus-Werte separat, ohne die Warmlink-Hauptliste zu ändern.
+
+        Fix9: Fix8 war zu hart und hat auch die bekannten 10xx-Parameterpakete
+        aus dem Display-Mitschnitt komplett "stumm" gemacht. Diese Werte sind für
+        die Diagnose nützlich, dürfen aber nicht in latest_regs/last_values landen,
+        weil sonst Warmlink-Register wie 2101ff überschrieben/verfälscht werden.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return
+        if matched_pending_read:
+            return
+        if not getattr(frame, "crc_ok", False) or not getattr(frame, "registers", None):
+            return
+
+        slave = int(frame.slave_addr)
+        start = int(frame.typ)
+        mode = str(frame.mode)
+
+        safe_param_starts = {1001, 1091, 1181, 1271, 1361, 1451, 1541}
+        should_log = False
+        label = ""
+
+        # Von der Display-/DWIN-Unit 0x03 kommende Parameterpakete sind bekannte
+        # 10xx/11xx/12xx... Einstellwerte. Wir loggen sie als DREG separat.
+        if slave == 0x03 and start in safe_param_starts and mode in {"word-frame", "read-response"}:
+            should_log = True
+            label = f"Display-Parameterpaket 0x03/{start}ff"
+
+        if not should_log:
+            return
+
+        changes = []
+        for reg in frame.registers:
+            reg_no = int(reg.reg)
+            raw = int(reg.raw_value) & 0xFFFF
+            old = self.display_last_values.get(reg_no)
+            self.display_latest_regs[reg_no] = reg
+            if old == raw:
+                continue
+            self.display_last_values[reg_no] = raw
+            name = f" {reg.name}" if getattr(reg, "name", "") else ""
+            changes.append(f"DREG {reg_no}{name}: {'--' if old is None else old} -> {raw} ({reg.display_value})")
+
+        if changes:
+            self._log(f"DISPLAY-HMI {label}: {len(changes)} getrennte Diagnosewerte geändert (nicht Hauptliste).")
+            for line in changes[:80]:
+                self._log(line)
+            if len(changes) > 80:
+                self._log(f"DISPLAY-HMI {label}: ... (+{len(changes) - 80} weitere DREG-Änderungen)")
+
+    def _display_hmi_should_apply_registers(self, frame, expected_slave: int, matched_pending_read: bool, matched_passive_read: bool) -> bool:
+        """Entscheidet, welche Display/HMI-Register in die Hauptliste dürfen.
+
+        Fix8: Display-/DWIN-Bus bleibt grundsaetzlich Diagnose. Die Hauptliste nutzt
+        normalerweise das Warmlink/WP-Mapping und nur vertrauenswuerdige Quellen.
+        V0.2.38 fix2: validierte aktive Display-Init-WP-Paketbloecke 0x03/10xx
+        duerfen vorerst wieder ins Hauptfenster, bis ein besserer Init-Weg gefunden ist.
+        """
+        if matched_pending_read:
+            pending_label = str(getattr(frame, "pending_read_label", ""))
+            if (
+                "WP-Paketblock" in pending_label
+                and int(frame.slave_addr) == 0x03
+                and int(frame.typ) in {1001, 1091, 1181, 1271, 1361, 1451, 1541, 2001, 2091}
+            ):
+                info = self._validated_packet_info_from_regs(int(frame.typ), frame.registers)
+                if info:
+                    self._log(
+                        f"DISPLAY-HMI: aktiver WP-Paketblock 0x03/{frame.typ}ff validiert; "
+                        "wird vorerst wieder in die Hauptliste uebernommen."
+                    )
+                    return True
+                else:
+                    self._log(
+                        f"DISPLAY-HMI: aktiver WP-Paketblock 0x03/{frame.typ}ff ohne gültigen Paketkopf; "
+                        "nicht übernommen."
+                    )
+                return False
+            self._log(
+                f"DISPLAY-HMI: manuelle Antwort addr {frame.typ}/0x{frame.typ:04X} "
+                "nur im Popup/Log ausgewertet; nicht in Haupt-Registerliste übernommen."
+            )
+            return False
+
+        # Hauptdaten vom Display-Bus: die WP schreibt diese Bloecke als
+        # Broadcast auf den Bus. Das sind echte Warmlink/WP-Register und duerfen
+        # daher wieder in die Hauptliste.
+        if int(frame.slave_addr) == 0x00 and int(frame.typ) in {2001, 2091} and frame.mode in {"word-frame", "write-request"}:
+            self._log(
+                f"DISPLAY-HMI: Broadcast 0x00/{frame.typ}ff als echte WP-Livewerte "
+                "in Hauptliste übernommen."
+            )
+            return True
+
+        # 0x01 / 1999ff bzw. 2001ff erscheint auf dem Displaybus häufig als
+        # FC16-ACK bzw. unklarer Statuspfad. Nur Diagnose, keine Hauptliste.
+        if int(frame.slave_addr) == 0x01 and int(frame.typ) in {1999, 2001}:
+            if frame.mode == "write-response":
+                self._log(
+                    f"DISPLAY-HMI DEBUG: Addr 0x01 / {frame.typ}ff FC16-ACK ohne Nutzdaten "
+                    "gesehen; 1999/2001-Statusblock nicht übernommen."
+                )
+                return False
+            if frame.mode in {"word-frame", "write-request"}:
+                preview = ""
+                if frame.registers:
+                    pairs = [f"{r.reg}={r.raw_value}/0x{r.raw_value:04X}" for r in frame.registers[:8]]
+                    preview = "; Wertevorschau: " + ", ".join(pairs)
+                    if len(frame.registers) > 8:
+                        preview += f", ... (+{len(frame.registers) - 8})"
+                self._log(
+                    f"DISPLAY-HMI DEBUG: Addr 0x01 / {frame.typ}ff {frame.mode} "
+                    f"mit {len(frame.registers)} dekodierten Worten gesperrt; "
+                    "20xx/2012 daraus aktuell nicht vertrauenswürdig" + preview
+                )
+                return False
+
+        # 0x01 / 2099ff und 0x03 / 1001ff sind auf dem Displaybus nützlich für
+        # Diagnose/Snapshots, aber dürfen NICHT die normale Warmlink-Liste füllen.
+        if int(frame.slave_addr) == 0x01 and int(frame.typ) == 2099:
+            if frame.registers and matched_passive_read:
+                self._log(
+                    "DISPLAY-HMI: 0x01/2099ff Rohstatus nur Diagnose; "
+                    "nicht in Hauptliste übernommen (Warmlink-Mapping bleibt unverändert)."
+                )
+            return False
+
+        if int(frame.slave_addr) == 0x03 and int(frame.typ) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}:
+            self._log(
+                f"DISPLAY-HMI: bekanntes 10xx/Parameterpaket 0x03/{frame.typ}ff "
+                "wieder in Hauptliste übernommen."
+            )
+            return True
+
+        if frame.registers:
+            self._log(
+                f"DISPLAY-HMI: Registerwerte von Bus 0x{frame.slave_addr:02X}, "
+                f"Quelle {frame.typ}/0x{frame.typ:04X}, mode={frame.mode} "
+                "nicht in Hauptliste übernommen."
+            )
+        return False
+
+    def _apply_pending_read_response(self, frame) -> bool:
+        if frame.mode != "read-response":
+            return False
         now = time.time()
         self.pending_read_requests = [r for r in self.pending_read_requests if now - float(r.get("time", now)) < 15.0]
         for req in list(self.pending_read_requests):
@@ -6284,7 +8137,42 @@ class MainWindow(QMainWindow):
             start_addr = int(req["addr"])
             frame.typ = start_addr
             frame.length_field = quantity
-            frame.registers = decode_read_response_registers(frame, start_addr, self.regmap)
+            # Im Display-Modbus-Modus getrennt dekodieren: DWIN-/Display-Adressen
+            # bekommen Diagnose-Namen, ohne das normale Warmlink-Mapping zu veraendern.
+            req_label = str(req.get("label", ""))
+            try:
+                frame.pending_read_label = req_label
+            except Exception:
+                pass
+            force_wp_map = "WP-Paketblock" in req_label or "Display Init Paketblock" in req_label
+            use_display_map = (
+                self.current_backend_key() == "display_modbus"
+                and not force_wp_map
+                and (
+                    "DWIN" in req_label
+                    or "Display" in req_label
+                    or int(frame.slave_addr) in {0x02, 0x03, 0x05}
+                    or int(start_addr) >= 3000
+                    or 0x1200 <= int(start_addr) <= 0x1AFF
+                )
+            )
+            decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
+            # Falls mehrere Display-Reads doch einmal überlappen: WP-Paketkopf enthält
+            # den echten internen Start im Wort 10. Dann nach internem Start neu dekodieren.
+            if force_wp_map:
+                info = self._validated_packet_info_from_regs(start_addr, frame.registers)
+                if not info and len(getattr(frame, "registers", []) or []) >= 10:
+                    internal_start = int(frame.registers[9].raw_value) & 0xFFFF
+                    if internal_start in {1001, 1091, 1181, 1271, 1361, 1451, 1541, 2001, 2091}:
+                        frame.typ = internal_start
+                        start_addr = internal_start
+                        frame.registers = decode_read_response_registers(frame, start_addr, self.regmap)
+                        self._log(
+                            f"DISPLAY-INIT: Antwort per internem Paketstart neu zugeordnet: "
+                            f"{int(req.get('addr', start_addr))}/0x{int(req.get('addr', start_addr)):04X} -> "
+                            f"{start_addr}/0x{start_addr:04X}"
+                        )
             self._check_endblock_signature(frame, start_addr)
             self.pending_read_requests.remove(req)
             label = f" ({req.get('label')})" if req.get("label") else ""
@@ -6296,9 +8184,18 @@ class MainWindow(QMainWindow):
                     value_lines.append(f"{reg.reg}={reg.raw_value}/0x{reg.raw_value:04X} ({reg.display_value}){name}")
                 more = "" if len(frame.registers) <= 12 else f" ... (+{len(frame.registers) - 12})"
                 self._log("READ Werte: " + "; ".join(value_lines) + more)
-            if req.get("label") == "manuelles Popup" and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
+            if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
-            return
+            if self.current_backend_key() != "display_modbus":
+                for controller_name in ("warmlink_init_controller", "standard_modbus_init_controller"):
+                    controller = getattr(self, controller_name, None)
+                    if controller is not None and getattr(controller, "active", False):
+                        try:
+                            controller.notify_response(start_addr, quantity, int(frame.slave_addr))
+                        except Exception:
+                            pass
+            return True
+        return False
 
     def send_read_from_fields(self):
         try:
@@ -6312,6 +8209,8 @@ class MainWindow(QMainWindow):
     def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
         frame, wire_addr, wire_slave, note = self._build_read_frame_for_backend(addr, quantity, slave_addr)
         note_text = f", {note}" if note else ""
+        if self.current_backend_key() == "display_modbus" and int(slave_addr) != int(wire_slave):
+            note_text += f", Display-Unit aus Einstellungen verwendet: Eingabe 0x{int(slave_addr):02X} -> TX 0x{wire_slave:02X}"
         self._log(
             f"READ wird GESENDET [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
             f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
@@ -6330,53 +8229,53 @@ class MainWindow(QMainWindow):
             return
         self.worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
 
+    # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
+
     def send_init_reads(self):
         try:
             slave_addr = self._parse_int_text(self.write_bus_edit.text())
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
-        # Der Button liest jetzt bewusst alles, was frueher ueber Basis + extra + V1.3 erreichbar war.
-        # Nur Lesen, kein Schreiben. Mehr Daten haben sich in der Praxis nicht nachteilig gezeigt.
-        blocks = [
-            (1001, 90, "Init Extra Paketkopf/Block 1001/0x03E9"),
-            (1018, 73, "Init V1.3 Paket 1 Nutzdaten 1018/0x03FA"),
-            (1091, 90, "Init Extra Paketkopf/Block 1091/0x0443"),
-            (1101, 80, "Init V1.3 Paket 2 Nutzdaten 1101/0x044D"),
-            (1181, 90, "Init Extra Paketkopf/Block 1181/0x049D"),
-            (1191, 80, "Init V1.3 Paket 3 Nutzdaten 1191/0x04A7"),
-            (1271, 90, "Init Parameterblock 1271/0x04F7"),
-            (1361, 90, "Init Extra-Block 1361/0x0551"),
-            (1451, 90, "Init Extra-Block 1451/0x05AB"),
-            (1541, 90, "Init Extra-Block 1541/0x0605"),
-            (2001, 90, "Init Statusblock 2001/0x07D1"),
-            (2091, 90, "Init Statusblock 2091/0x082B"),
-        ]
 
-        pause_ms = int(self.init_pause_spin.value()) if getattr(self, "init_pause_spin", None) is not None else 900
-        self.init_read_queue = [(addr, quantity, label, slave_addr) for addr, quantity, label in blocks]
-        self.init_read_active = True
-        self.init_read_btn.setEnabled(False)
-        self.init_read_btn.setText("Init läuft ...")
-        text = ", ".join(f"{addr}/{qty}" for addr, qty, _ in blocks)
-        self._log(f"INIT-Lesen gestartet: {len(blocks)} Blöcke, Pause {pause_ms} ms / {pause_ms/1000:.1f} s: {text}")
-        self._send_next_init_read()
-
-    def _send_next_init_read(self):
-        if not self.init_read_queue:
-            self.init_read_active = False
-            self.init_read_btn.setEnabled(True)
-            self.init_read_btn.setText("Alle bekannten Register lesen")
-            self._log("INIT-Lesen fertig / alle Blöcke angefordert.")
+        backend = self.current_backend_key()
+        backend_label = self.current_backend_label()
+        # Fix23: Erkennung bewusst doppelt absichern. In Fix22 konnte trotz sichtbarem
+        # Label "Modbus Display" der alte Standard-Initpfad genutzt werden. Zusätzlich
+        # darf hier NICHT die UI-Unit (oft 0x01) verwendet werden: die bislang erfolgreichen
+        # aktiven Display-Paketreads antworten auf Unit 0x03.
+        is_display_backend = (backend == "display_modbus") or ("display" in str(backend_label).lower())
+        if is_display_backend:
+            # Fix28: Der Hauptworker kann zwar senden, bekommt auf Dominiks Display-Bus
+            # aber keine 0x03/10xx-Antworten. Der bewährte Dual-Display-Worker dagegen
+            # liefert diese Paketblöcke. Deshalb wird der Display-Init wieder gezielt
+            # über diesen Pfad gestartet. Warmlink/Standard-Modbus bleiben unverändert.
+            pause_ms = int(self.init_pause_spin.value()) if getattr(self, "init_pause_spin", None) is not None else 900
+            if self.dual_logger_dialog is None:
+                self.dual_logger_dialog = DualBusLoggerDialog(self)
+                self.dual_logger_dialog.finished.connect(lambda _=None: setattr(self, "dual_logger_dialog", None))
+            self.display_aux_takeover_active = True
+            self.init_read_btn.setEnabled(False)
+            self.init_read_btn.setText("Display-Init läuft ...")
+            self.connect_btn.setEnabled(False)
+            self.disconnect_btn.setEnabled(True)
+            self._log(
+                "DISPLAY-INIT: 'Alle bekannten Register lesen' wird über den ausgelagerten DisplayWorker ausgeführt; "
+                "die normale Display-Hauptverbindung darf dabei auf den DisplayWorker wechseln."
+            )
+            self.dual_logger_dialog.run_known_display_packet_reads_once(pause_ms=pause_ms)
             return
 
-        total_left = len(self.init_read_queue)
-        addr, quantity, label, slave_addr = self.init_read_queue.pop(0)
-        already_sent = "?"
-        self._log(f"INIT-Lesen Block: {label} ({addr}/{quantity}), verbleibend danach: {total_left - 1}")
-        self.send_read_request(addr, quantity, slave_addr=slave_addr, label=label, delay_ms=0)
-
+        # Fix33: Warmlink und Standard-Modbus sind nun getrennte Init-Controller.
+        # Beide nutzen den bestehenden Haupt-Reader, aber Ablauf/Logging/Pending-Handling
+        # liegen in getrennten Worker-Hilfsdateien.
         pause_ms = int(self.init_pause_spin.value()) if getattr(self, "init_pause_spin", None) is not None else 900
-        self.init_read_timer.start(pause_ms)
+        if backend == "standard_modbus":
+            self.standard_modbus_init_controller.start(slave_addr=slave_addr, pause_ms=pause_ms)
+        else:
+            self.warmlink_init_controller.start(slave_addr=slave_addr, pause_ms=pause_ms)
+        return
+
+    # V0.2.38: alter generischer Init-Timerpfad entfernt. Warmlink/Standard/Display nutzen eigene Controller.
 
     def open_register_quick_write_from_table_item(self, item):
         if item is None:
@@ -6497,15 +8396,7 @@ class MainWindow(QMainWindow):
                 f"{known}"
             )
 
-            answer = QMessageBox.question(
-                self,
-                "ECHTEN Write senden?",
-                question,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-
-            if answer != QMessageBox.StandardButton.Yes:
+            if not ask_yes_no(self, "ECHTEN Write senden?", question, default_yes=False):
                 self._log("WRITE abgebrochen: nicht gesendet.")
                 return
 
@@ -6599,14 +8490,7 @@ class MainWindow(QMainWindow):
             note_text = f" ({note})" if note else ""
             lines.append(f"{label}: Reg {addr}/0x{addr:04X} -> wire {wire_addr}/0x{wire_addr:04X} = {value}/0x{value:04X} {fc_text} TX={hexdump(frame, -1)}{note_text}")
 
-        answer = QMessageBox.question(
-            self,
-            f"{title} schreiben?",
-            f"Diese {title}-Register schreiben?\n\n" + "\n".join(lines),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+        if not ask_yes_no(self, f"{title} schreiben?", f"Diese {title}-Register schreiben?\n\n" + "\n".join(lines), default_yes=False):
             self._log("TIMER Write abgebrochen: nicht gesendet.")
             return
 

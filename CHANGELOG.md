@@ -1,9 +1,110 @@
+## V0.2.38 PUBLIC
+
+- Public-Release aus dem internen/private Stand V0.2.38 fix2.
+- App-Edition auf PUBLIC gesetzt; PRIVATE-Markierung in Titel/About/Splash entfällt.
+- Public-Default-Host geleert, damit keine private Test-IP vorbelegt ist.
+- README/Release-Hinweis ergänzt: Schreiben über den Modbus Display-/HMI-Bus funktioniert aktuell noch nicht bzw. ist nicht freigegeben.
+- Display-/HMI-Bus bleibt in dieser Version Diagnose-/Lesepfad; Parameteränderungen/Restore nur über die bewusst getesteten Wege verwenden.
+
+## V0.2.38 fix2
+- Display-Init-Paketreads werden vorerst wieder ins Hauptfenster übernommen, wenn der WP-Paketkopf gültig ist.
+- Broadcast 0x00/2001 und 0x00/2091 bleiben weiterhin gültige zyklische Display-Livewertquellen und können die Werte später aktualisieren.
+- Hintergrund: Bis ein besseres Display-Init-Timing/Quelle gefunden ist, sollen die aktiv vom Display gelesenen Init-Werte sichtbar im Hauptfenster stehen.
+
+
+
+## V0.2.37 Fix31
+
+- Warmlink/LTE-Init-Lesen in `workers/warmlink_worker.py` ausgelagert.
+- Neuer `WarmlinkInitReadController`: sendet die Init-Blöcke sequenziell und wartet auf Antwort oder Timeout.
+- Fix für Warmlink-Timing: späte Antworten der letzten Statusblöcke können nicht mehr so leicht dem falschen Pending-Read zugeordnet werden.
+- DisplayWorker-Timing verbessert: vor aktiven Display-Paketreads wird jetzt auf eine Buslücke gewartet; Timeout leicht erhöht.
+- Warmlink/Standard-Lesepfad und DisplayWorker bleiben funktional getrennt.
+# V0.2.37 Fix23
+
+- Fix für „Alle bekannten Register lesen“ am Backend „Modbus Display“: Der Display-Sonderpfad wird nun zusätzlich über das sichtbare Backend-Label erkannt.
+- Die bekannten Display-Paketreads werden fest an Unit 0x03 gesendet; die UI-Unit wird hierfür bewusst ignoriert, weil Unit 0x01 keine gültigen 90er-Paketblöcke liefert.
+- Der Display-Init nutzt weiterhin nur die bisher bestätigten Paketblöcke 1001/90, 1091/90, 1181/90 und 1361/90 ohne +0x2000-Übersetzung.
+
+# V0.2.37 PRIVATE Fix12 (ohne Versionsanhebung)
+
+- Dual-Bus Logger: Warmlink-FC03-Responses werden jetzt lokal den gesendeten Polls zugeordnet.
+- Dadurch erscheinen Warmlink-Poll-Antworten wieder als `WARMLINK RX zugeordnet` / `WARMLINK DIFF` im Dual-Log.
+- Warmlink-Polling im Dual-Logger verlangsamt (700 ms Abstand), damit ser2net/Warmlink sauberer antwortet.
+- Keine Änderung am normalen Registerbrowser und keine Übernahme von Dual-Logger-Werten in Hauptwerte.
+
 # Changelog
 
-## V0.2.35 PUBLIC
-- Public-Version aus dem letzten PRIVATE V0.2.35 Fix1 Stand erstellt.
-- Edition auf PUBLIC gesetzt; Public wird in der UI nicht sichtbar markiert.
-- Hinweis: EXE-/Installer-Assets müssen im GitHub-Release separat aus diesem Source-Stand neu gebaut/hochgeladen werden; ein Source-ZIP aktualisiert keine bestehende EXE automatisch.
+## V0.2.37 PRIVATE Fix9 (ohne Versionsanhebung)
+
+- Display-Bus bleibt weiter strikt von der Warmlink-Hauptliste getrennt.
+- Fix8-Korrektur verfeinert: bekannte Display-Parameterpakete von Unit `0x03` (`1001ff`, `1091ff`, `1181ff`, `1271ff`, `1361ff`, `1451ff`, `1541ff`) werden wieder als getrennte Diagnosewerte geloggt.
+- Neue getrennte Display-Wertelisten intern: `display_last_values` / `display_latest_regs`; Logausgabe mit Prefix `DREG ...`. Dadurch sieht man die sicheren 10xx-Werte wieder, ohne `last_values` / Registerbrowser / Warmlink-Mapping zu überschreiben.
+- Offline-Registerbrowser kann jetzt zwischen `Warmlink/WP` und `Display/DWIN` umgeschaltet werden. Display/DWIN nutzt `foxair_phnix_display_registers.json`.
+- Aus dem Display-Browser gelesene Register werden automatisch auf Unit `0x03` gelesen.
+
+## V0.2.37 PRIVATE Fix8 (ohne Versionsanhebung)
+
+- Kritischer Rollback: normales `foxair_phnix_registers.json` wieder auf Warmlink/WP-Mapping zurückgesetzt; Display/DWIN-Diagnose überschreibt keine bekannten Register ab 2101 mehr.
+- Neues getrenntes Diagnose-Mapping `foxair_phnix_display_registers.json` ergänzt. DWIN-/Display-Adressen werden nur für Popup/Log-Diagnose benutzt.
+- Display-Modbus: passive Blöcke wie `0x01/2099ff` und `0x03/1001ff` werden nicht mehr in die Haupt-Registerliste übernommen, sondern nur noch als Snapshot/Diff geloggt.
+- Manuelle DWIN-Lesungen werden im Popup angezeigt, aber nicht mehr in `last_values`/Haupttabelle geschrieben.
+- `4732/0x127C` wieder auf Kandidat zurückgestuft; kein bestätigtes Warmlink-Register.
+
+## V0.2.37 PRIVATE Fix6 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: manuelles Register-Popup um schnelle DWIN-Probelesungen erweitert. Neue Buttons: „DWIN Temp-Suche“ und „DWIN Status-Suche“.
+- DWIN-Probelesungen lesen gezielt Anzeigeadressen wie 0x1270, 0x127C, 0x11C0, 0x1720, 0x1730, 0x1800, 0x1880 und 0x1A00 auf Unit 0x03, um sichtbare Display-Werte wie T1/T2/T4 und Status-/Iconfelder zu finden.
+- Register-Mapping um DWIN-Diagnoseadressen ergänzt: 3012/3013 Display-Software, 3021 Display-Istmodus/Icon-Code-Kandidat sowie mehrere Temperatur-/Anzeige-Kandidatenblöcke.
+- 3013 ist als beobachtete Display-Softwareversion V1.7 dokumentiert.
+- Keine Änderung an 2012: 2012 wird weiterhin nicht aus 1012 oder 3021 überschrieben.
+
+## V0.2.37 PRIVATE Fix5 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: Rohblock-Diagnose mit Snapshots und Diffs für 0x01/1999ff, 0x01/2099ff, 0x03/3001ff, 0x03/1001ff und 0x05/1001ff ergänzt.
+- Kleine wechselnde Codes 0..4 werden als Kandidaten für Istmodus/Icon/Anzeigezustand markiert.
+- In den Tests wurde 3021/W21 im DWIN-Anzeigeblock als starker Kandidat für einen Display-Istmodus-/Icon-Code sichtbar.
+
+## V0.2.37 PRIVATE Fix4 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: 1012→2012-Fallback wieder entfernt. 1012 ist Sollmodus, 2012 ist Ist-/Betriebsstatus mit anderer Codetabelle; ein Spiegeln erzeugt falsche Werte.
+- Display-/HMI-Modbus: Addr 0x01 / 1999ff bzw. 2001ff wird nicht mehr in die Hauptliste übernommen, solange der Block nicht eindeutig als vollständiger Nutzdatenblock verifiziert ist.
+- Display-/HMI-Modbus: zusätzliche Debug-Logs für gesperrte 1999/2001-Frames und FC16-ACKs ergänzt. Damit können die 20xx-Blöcke weiter untersucht werden, ohne 2012/2001-2010 zu verfälschen.
+- Addr 0x03 / 1001ff Parameterpakete bleiben aktiv; 1012 läuft beim Umschalten am Display weiter mit.
+
+## V0.2.37 PRIVATE Fix3 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: 1999/2001-Statusblöcke von Addr 0x01 werden jetzt auch als FC16-Write-Request übernommen, falls Nutzdaten statt nur ACK sichtbar sind.
+- Display-/HMI-Modbus: Fallback ergänzt, der 2012 in der Anzeige aus 1012 nachführt, wenn der Display-Bus keinen zyklischen echten 2012-Statusblock liefert. Der Log kennzeichnet diesen Wert ausdrücklich als Fallback.
+- Warmlink/Standard-Modbus bleiben unverändert; der Fallback gilt nur für Display-/HMI-Diagnose.
+
+## V0.2.37 PRIVATE Fix2 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: Statusblock von Addr 0x01 / 1999ff wird nun zusätzlich in die Hauptliste übernommen.
+- Damit können Statuswerte wie 2011/2012 aus dem Display-Bus mitlaufen, wenn die Hauptplatine den 1999ff-Block sendet.
+- Fix1 bleibt unverändert: Addr 0x03 / 1001ff Parameterpakete werden weiter für 1012 übernommen; Fremdadressen wie 0x05 bleiben gesperrt.
+
+## V0.2.37 PRIVATE Fix1 (ohne Versionsanhebung)
+
+- Display-/HMI-Modbus: Parameterpakete von Addr 0x03 / 1001ff, 1091ff, 1181ff, 1271ff, 1361ff, 1451ff werden nun unabhängig von der aktuell eingestellten manuellen Unit in die Hauptliste übernommen.
+- Damit bleiben bei Diagnose-Unit 0x01 die sicheren Live-/Statuswerte 2099ff sichtbar und zusätzlich die HMI-Parameterpakete von 0x03, z. B. Register 1012 beim Umschalten am Display.
+- Aktive Unit wird weiterhin für manuelles Lesen/Schreiben verwendet; Fremdadressen wie 0x05 werden weiterhin nicht blind übernommen.
+
+## V0.2.37 PRIVATE
+
+- Display-/HMI-Modbus Diagnose weiter verbessert: passive Read-Requests werden gemerkt und die folgenden Responses dadurch dem Startregister zugeordnet.
+- Sichere passive Live-/Statuswerte von Addr 0x01 / 2099ff können in die Hauptliste übernommen werden.
+- Werte von der aktiven Display-Unit werden als Display-HMI-Quelle geloggt; Fremdadressen werden weiterhin nicht blind übernommen.
+- DWIN-/Parameter-Sync-Flag 3011 / 0x0BC3 wird im Log als solches benannt.
+- Adress-Vermutungen für Display-/HMI-Bus aktualisiert.
+
+## V0.2.36 PRIVATE
+
+- Display-/HMI-Modbus Diagnose verbessert: manuelle Busadresse im Lesen/Schreiben-Feld wird jetzt beim Display-Modbus wirklich verwendet. Damit können 4/5/6 getestet werden, auch wenn in den Programmeinstellungen Unit 3 steht. Andere Modbus-Modi bleiben unverändert.
+- Display-/HMI-Modbus: passive Registerwerte fremder Slave-Adressen werden nicht mehr global in die Haupt-Registerliste übernommen. Das verhindert, dass z. B. Register 1012 durch Fremdframes scheinbar wieder auf WW springt.
+- Log-Vermutungen für Display-/HMI-Adressen nach den aktuellen Mitschnitten ergänzt: 0x01 Live-/Statusbereich 1999/2099, 0x02/0x03 DWIN-Speicher 3001ff, 0x04 Parameterblock 1011ff, 0x05 Live-/Parameterblock 2000ff/1001-1090.
+- Display-Modbus Default-Baudrate auf 4800 gesetzt, passend zur Display-CONFIG (`R1=02`).
+- Button **Log löschen** ergänzt; leert nur das sichtbare Logfenster, Raw-Datei und Registerwerte bleiben erhalten.
 
 ## V0.2.35 PRIVATE Fix1
 
@@ -180,3 +281,9 @@ Public-Prep-Version.
 ## v0.2.15
 
 - Backup/Restore für Parameterbereiche ergänzt
+
+## V0.2.37 Fix21
+
+- Display-Paketblock-Test erweitert: testet sequenziell jetzt auch Unit `0x02` und `0x05` zusätzlich zu `0x03`, `0x01`, `0x04`.
+- Unit `0x00` wird in der Busübersicht nicht mehr als ungültige Adresse bezeichnet, sondern als Modbus-Broadcast/System-Adresse.
+- Unit `0x00` wird bewusst nicht aktiv gepollt, weil Broadcast-Reads keine normale Antwort erwarten lassen. Passive Broadcast-Paketblöcke `2001ff`/`2091ff` bleiben unverändert validiert und übernommen.

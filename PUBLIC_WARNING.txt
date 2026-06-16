@@ -10,3 +10,7 @@ Betriebsparameter verändern und zu Störungen oder Fehlfunktionen führen.
 Vor Änderungen immer ein Backup erstellen.
 Restore/Schreiben nur verwenden, wenn die Bedeutung der Register bekannt ist.
 Nutzung auf eigene Verantwortung.
+
+Hinweis Display-Bus:
+Schreiben über Modbus Display / HMI funktioniert aktuell noch nicht bzw. ist nicht freigegeben.
+Display-Bus-Funktionen bitte nur für Diagnose/Lesen/passives Mithören verwenden.

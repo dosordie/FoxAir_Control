@@ -357,9 +357,12 @@ def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[in
 
 def is_possible_bus_addr(value: int) -> bool:
     # Modbus-RTU normale Slave-Adressen: 1..247.
+    # 0 ist Broadcast. Auf dem Display-Bus werden die grossen zyklischen
+    # Hauptdatenbloecke als FC16-Broadcast (Unit 0x00) gesendet; die muessen
+    # fuer den Passiv-Logger sichtbar bleiben.
     # Warmlink nutzt hier bisher 0x63, wir lassen aber bewusst alle gueltigen
     # Adressen zu, damit andere Teilnehmer/Warmlink-Frames sichtbar werden.
-    return 1 <= value <= 247
+    return 0 <= value <= 247
 
 
 def is_frame_header_at(buf: bytearray, pos: int) -> bool:
@@ -696,18 +699,24 @@ def decode_contact_bits(value: int) -> List[Tuple[int, int, str, str, str]]:
 
 
 def guess_device_name(slave_addr: int, crc_ok: bool = True) -> str:
+    if slave_addr == 0x00:
+        return "Modbus-Broadcast/System-Adresse 0x00; WP-Paket-Broadcast 2001ff/2091ff, keine normale Read-Antwort erwartet"
     if slave_addr == DEFAULT_BUS_ADDR:
         return "Wärmepumpe / Regler 0x63"
+    if slave_addr == 0x01:
+        return "Display/HMI-Bus: vermutlich WP-Hauptplatine/Kopf; Live-/Status 1999/2099ff"
     if slave_addr == 0x02:
         if not crc_ok:
             return "wahrscheinlich eingebetteter Marker / Resync, kein echtes Gerät"
-        return "evtl. Warmlink/Display oder Teilnehmer 0x02"
+        return "Display/HMI-Bus: DWIN/HMI-Pfad 0x02; 3001ff/Parameterpakete, Rolle unklar"
     if slave_addr == 0x03:
-        return "Display / DWIN-DGUS Modbus"
-    if slave_addr == 0x01:
-        return "Standard-Modbus Controler / User-Bus"
+        return "Display/HMI-Bus: vermutlich Display/DWIN-HMI; Parameterpakete 1001ff und DWIN 3001ff"
     if slave_addr == 0x04:
-        return "Standard-Modbus Controler / User-Bus 0x04"
+        return "Display/HMI-Bus: interner Teilnehmer 0x04; fragt 1011ff, evtl. Leistungs-/Hydraulikpfad"
+    if slave_addr == 0x05:
+        return "Display/HMI-Bus: interner Teilnehmer 0x05; liest 2000ff/schreibt 1001ff, evtl. Leistungselektronik"
+    if slave_addr == 0x06:
+        return "Display/HMI-Bus: Testadresse 0x06, bisher keine gesicherte Rolle"
     if 1 <= slave_addr <= 247:
         return "unbekannter Modbus-Teilnehmer"
     return "ungültige Modbus-Adresse"
