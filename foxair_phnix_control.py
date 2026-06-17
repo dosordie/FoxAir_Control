@@ -62,6 +62,7 @@ from foxair_phnix_core import (
     ModbusSerialClient,
     build_read_frame,
     build_write_frame,
+    build_write_registers_frame,
     build_write_single_frame,
     decode_contact_bits,
     decode_frame,
@@ -77,13 +78,13 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.38"
+APP_VERSION = "0.2.39"
 BUILD_DATE = "2026-06-16"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
-DEFAULT_HOST = ""
+DEFAULT_HOST = "192.168.10.43"
 DEFAULT_PORT = 2001
 UPDATE_REPO = "dosordie/FoxAir_Control"
 UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
@@ -657,6 +658,18 @@ class ReaderWorker(QObject):
             f"addr={addr} / 0x{addr:04X}, value={value} / 0x{value:04X}{delay_text}"
         )
 
+    def enqueue_write_block(self, addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
+        vals = [int(v) & 0xFFFF for v in values]
+        self.write_queue.put(("write_block", slave_addr, addr, vals, post_delay_ms, False))
+        delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
+        preview_vals = ", ".join(f"{addr + i}={v}/0x{v:04X}" for i, v in enumerate(vals[:8]))
+        more = "" if len(vals) <= 8 else f" ... (+{len(vals) - 8})"
+        self.log.emit(
+            f"WRITE-Block in Sendewarteschlange: bus=0x{slave_addr:02X}, "
+            f"start={addr} / 0x{addr:04X}, qty={len(vals)}{delay_text}; "
+            f"{preview_vals}{more}"
+        )
+
     def enqueue_read(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
         self.write_queue.put(("read", slave_addr, addr, quantity, post_delay_ms, False))
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
@@ -683,6 +696,16 @@ class ReaderWorker(QObject):
                         f"READ gesendet: bus=0x{slave_addr:02X}, "
                         f"addr={addr} / 0x{addr:04X}, anzahl={value_or_quantity}, "
                         f"TX={hexdump(frame, -1)}"
+                    )
+                elif kind == "write_block":
+                    vals = [int(v) & 0xFFFF for v in value_or_quantity]
+                    frame = build_write_registers_frame(addr, vals, slave_addr=slave_addr)
+                    preview_vals = ", ".join(f"{addr + i}={v}/0x{v:04X}" for i, v in enumerate(vals[:8]))
+                    more = "" if len(vals) <= 8 else f" ... (+{len(vals) - 8})"
+                    action = (
+                        f"WRITE Block gesendet (FC16): bus=0x{slave_addr:02X}, "
+                        f"start={addr} / 0x{addr:04X}, qty={len(vals)}, "
+                        f"TX={hexdump(frame, -1)}; {preview_vals}{more}"
                     )
                 else:
                     if use_single_write:
@@ -2349,11 +2372,9 @@ class ManualRegisterDialog(QDialog):
 
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("FC03 lesen")
-        self.dry_btn = QPushButton("Dry-Run")
         self.send_btn = QPushButton("ECHT senden")
-        self.send_btn.setEnabled(False)
+        self.send_btn.setEnabled(True)
         buttons.addWidget(self.read_btn)
-        buttons.addWidget(self.dry_btn)
         buttons.addWidget(self.send_btn)
         layout.addLayout(buttons)
 
@@ -2364,7 +2385,6 @@ class ManualRegisterDialog(QDialog):
         layout.addWidget(self.result_box)
 
         self.read_btn.clicked.connect(self.read_registers)
-        self.dry_btn.clicked.connect(self.show_write_frame)
         self.send_btn.clicked.connect(self.send_write_frame)
 
     def _bus(self) -> int:
@@ -4932,7 +4952,7 @@ BACKEND_DEFAULTS = {
     "display_modbus": {
         "transport": "tcp", "host": DEFAULT_HOST, "port": 10001,
         "serial_port": "COM3", "baudrate": 4800, "parity": "N", "bytesize": 8, "stopbits": 1.0,
-        "unit_id": 3, "display_translate_0x2000": True,
+        "unit_id": 3, "display_translate_0x2000": False,
     },
 }
 
@@ -4976,7 +4996,20 @@ class CommunicationSettingsDialog(QDialog):
         self.stopbits_combo.addItem("2", 2.0)
         self.unit_spin = QSpinBox(); self.unit_spin.setRange(1, 247)
         self.translate_cb = QCheckBox("Parameterregister +0x2000 übersetzen")
-        self.translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als DWIN/HMI-Speicher +0x2000 gelesen/geschrieben. Beispiel: 1012 -> 3012 / 0x0BC4.")
+        self.translate_cb.setToolTip("Entfernt: Display-Modbus schreibt/liest Register jetzt ohne automatische +0x2000-Übersetzung.")
+        self.translate_cb.setVisible(False)
+
+        self.display_write_mode_combo = QComboBox()
+        self.display_write_mode_combo.addItem("FC16 Single Register (Test für Display/XRAM)", "fc16")
+        self.display_write_mode_combo.addItem("FC06 Single Register", "fc06")
+        mode = str(main_window.settings.get("display_write_mode", "fc16")).lower()
+        midx = self.display_write_mode_combo.findData(mode)
+        self.display_write_mode_combo.setCurrentIndex(midx if midx >= 0 else 0)
+        self.display_write_mode_combo.setToolTip(
+            "Nur für Modbus Display: Umschaltung der Schreibfunktion. "
+            "FC16 Single Register sendet 03 10 ... 00 01 02 ... und ist für 0BC3/Display-XRAM der nächste Test."
+        )
+        self.display_write_mode_label = QLabel("Display schreiben:")
 
         self.device_combo = QComboBox()
         for dev_key, dev_label in DEVICE_MODELS:
@@ -5005,7 +5038,7 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow(self.bytesize_label, self.bytesize_combo)
         form.addRow(self.stopbits_label, self.stopbits_combo)
         form.addRow(self.unit_label, self.unit_spin)
-        form.addRow("Display:", self.translate_cb)
+        form.addRow(self.display_write_mode_label, self.display_write_mode_combo)
         form.addRow("Gerät:", self.device_combo)
         form.addRow("Hinweis:", self.device_hint_label)
 
@@ -5095,7 +5128,7 @@ class CommunicationSettingsDialog(QDialog):
         sidx = self.stopbits_combo.findData(float(cfg.get("stopbits", 1.0)))
         self.stopbits_combo.setCurrentIndex(sidx if sidx >= 0 else 0)
         self.unit_spin.setValue(int(cfg.get("unit_id", BACKEND_DEFAULTS.get(backend, {}).get("unit_id", 1))))
-        self.translate_cb.setChecked(bool(cfg.get("display_translate_0x2000", backend == "display_modbus")))
+        self.translate_cb.setChecked(False)
 
     def _save_current_fields_to_selected_backend(self):
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
@@ -5105,7 +5138,7 @@ class CommunicationSettingsDialog(QDialog):
             host=self.host_edit.text().strip(),
             port=int(self.port_spin.value()),
             unit_id=int(self.unit_spin.value()),
-            display_translate=self.translate_cb.isChecked(),
+            display_translate=False,
             serial_port=self.serial_port_edit.text().strip(),
             baudrate=int(self.baud_spin.value()),
             parity=str(self.parity_combo.currentData() or "N"),
@@ -5118,9 +5151,11 @@ class CommunicationSettingsDialog(QDialog):
         cfg = self._backend_settings(backend)
         if load_values:
             self._load_cfg_to_fields(cfg, backend)
-        self.translate_cb.setVisible(backend == "display_modbus")
+        self.translate_cb.setVisible(False)
         self.unit_label.setVisible(backend in ("display_modbus", "standard_modbus"))
         self.unit_spin.setVisible(backend in ("display_modbus", "standard_modbus"))
+        self.display_write_mode_label.setVisible(backend == "display_modbus")
+        self.display_write_mode_combo.setVisible(backend == "display_modbus")
         self._transport_changed()
         if backend == "warmlink_raw":
             self.info_label.setText("Modbus Warmlink LTE: Bus/Modem im Außengerät am Mainboard. WP-Busadresse bleibt intern 0x63.")
@@ -5148,6 +5183,7 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        self.main_window.settings["display_write_mode"] = str(self.display_write_mode_combo.currentData() or "fc16")
         apply_app_theme(QApplication.instance(), self.main_window.settings["theme"])
         if hasattr(self.main_window, "public_warning_label"):
             self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
@@ -5820,6 +5856,21 @@ class MainWindow(QMainWindow):
         # Display-/HMI-Diagnose: Rohblock-Snapshots fuer Kandidatensuche.
         # Diese Werte werden bewusst getrennt von der Haupt-Registerliste gehalten.
         self.display_hmi_block_snapshots: Dict[tuple[int, int, str], list[int]] = {}
+        self.display_hmi_block_snapshot_times: Dict[tuple[int, int, str], float] = {}
+        # PRIVATE Display-Tests: ACK-Zeitstempel fuer aktiv injizierte FC16-Schreibbefehle.
+        # Key: (slave, start_addr, qty). Wichtig, weil die bisherigen Tests fast immer
+        # nur dann wirken, wenn das Display Unit 0x03 den Write wirklich quittiert.
+        self.display_write_ack_times: Dict[tuple[int, int, int], float] = {}
+        self.display_fake_reboot_state: dict[str, Any] = {}
+        # fix11: Display-Reboot-Fake ist am Display-Bus die Standard-Snapshot-Methode
+        # fuer "Alle Register lesen" und Popup-Aktualisierungen. Cooldown verhindert,
+        # dass mehrere Popup-Reads denselben Reboot-Snapshot mehrfach starten.
+        self.display_fake_reboot_last_success_time: float = 0.0
+        self.display_fake_reboot_last_source: str = ""
+        self.display_user_value_state: dict[str, Any] = {}
+        # fix9: normale Display-Parameterwrites (Rechtsklick/Popups) laufen
+        # nacheinander ACK-gesteuert ueber den 23xx-Bedienwertpfad.
+        self.display_user_value_queue: list[dict[str, Any]] = []
         self.display_hmi_no_response_requests: list[dict[str, Any]] = []
         self.value_search_target: Optional[float] = None
         self.value_search_tolerance: float = 0.0
@@ -6010,8 +6061,9 @@ class MainWindow(QMainWindow):
         self.unit_spin.setValue(int(active_cfg.get("unit_id", DEFAULT_BUS_ADDR)))
         self.unit_spin.setMaximumWidth(70)
         self.display_translate_cb = QCheckBox("Display +0x2000")
-        self.display_translate_cb.setToolTip("Nur Display-Modbus: Parameterregister 1000–1999 werden als DWIN/HMI-Speicher +0x2000 gelesen/geschrieben. Beispiel: 1012 -> 3012 / 0x0BC4. Ohne Übersetzung wird das echte Register 1012 angefragt.")
-        self.display_translate_cb.setChecked(bool(active_cfg.get("display_translate_0x2000", backend_saved == "display_modbus")))
+        self.display_translate_cb.setToolTip("Entfernt: Display-Modbus schreibt/liest Register jetzt ohne automatische +0x2000-Übersetzung.")
+        self.display_translate_cb.setChecked(False)
+        self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
@@ -6106,7 +6158,7 @@ class MainWindow(QMainWindow):
         self.write_bus_edit = QLineEdit(f"0x{DEFAULT_BUS_ADDR:02X}")
         self.write_addr_edit = QLineEdit("1334")
         self.write_value_edit = QLineEdit("0")
-        self.write_dry_btn = QPushButton("Dry-Run / Frame anzeigen")
+        self.write_dry_btn = QPushButton("Frame anzeigen")
         self.write_send_btn = QPushButton("ECHT senden")
         self.write_send_btn.setEnabled(False)
         self.read_count_spin = QSpinBox()
@@ -6128,6 +6180,49 @@ class MainWindow(QMainWindow):
         manual_layout.addWidget(self.init_pause_spin, 0, 2)
         manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
+
+        display_exp_box = QGroupBox("Display-Experimente PRIVATE")
+        # fix11: Der PRIVATE Display-Testbereich bleibt im Code vorhanden,
+        # wird aber in der normalen UI ausgeblendet. Bei Bedarf kann er zum
+        # Debuggen sehr schnell wieder sichtbar gemacht werden.
+        self.display_exp_box = display_exp_box
+        side_layout.addWidget(display_exp_box)
+        display_exp_box.setVisible(False)
+        display_exp_layout = QGridLayout(display_exp_box)
+        display_exp_layout.setContentsMargins(8, 8, 8, 8)
+        display_exp_layout.setHorizontalSpacing(6)
+        display_exp_layout.setVerticalSpacing(4)
+        self.display_fake_reboot_btn = QPushButton("Display Reboot Fake")
+        self.display_fake_reboot_btn.setToolTip("fix9: ACK-gesteuert. Erst 5112H=0 mit ACK, dann 0BC3H=8000 mit ACK/Retry. Der echte Master sollte danach die Parameterpakete 1001/1091/... an Unit 3 schreiben.")
+        self.display_sim_reg_edit = QLineEdit("1012")
+        self.display_sim_reg_edit.setMaximumWidth(82)
+        self.display_sim_value_edit = QLineEdit("1")
+        self.display_sim_value_edit.setMaximumWidth(82)
+        self.display_sim_variant_combo = QComboBox()
+        self.display_sim_variant_combo.addItem("A: nur Benutzerwert", "A")
+        self.display_sim_variant_combo.addItem("B: Benutzerwert + 0BC3", "B")
+        self.display_sim_variant_combo.addItem("C: Paketwert + Benutzerwert + 0BC3", "C")
+        self.display_sim_variant_combo.setCurrentIndex(0)
+        self.display_sim_variant_combo.setToolTip(
+            "PRIVATE Testmatrix fuer Display-Bedienung. fix9-Default ist A: nur Register+0x2000. "
+            "Das Display soll 0BC3 selbst setzen. B/C bleiben als Fallback-/Diagnosevarianten."
+        )
+        self.display_sim_user_change_btn = QPushButton("Display-Wert testen")
+        self.display_sim_heat_btn = QPushButton("Heizen")
+        self.display_sim_cool_btn = QPushButton("Kühlen")
+        self.display_sim_ww_btn = QPushButton("WW")
+        self.display_sim_ww_btn.setToolTip("Setzt Modus-Register 1012 auf 0 = Warmwasser (laut MODE_0_4 Mapping).")
+        display_exp_layout.addWidget(self.display_fake_reboot_btn, 0, 0, 1, 4)
+        display_exp_layout.addWidget(QLabel("Reg:"), 1, 0)
+        display_exp_layout.addWidget(self.display_sim_reg_edit, 1, 1)
+        display_exp_layout.addWidget(QLabel("Wert:"), 1, 2)
+        display_exp_layout.addWidget(self.display_sim_value_edit, 1, 3)
+        display_exp_layout.addWidget(QLabel("Variante:"), 2, 0)
+        display_exp_layout.addWidget(self.display_sim_variant_combo, 2, 1, 1, 3)
+        display_exp_layout.addWidget(self.display_sim_user_change_btn, 3, 0, 1, 4)
+        display_exp_layout.addWidget(self.display_sim_heat_btn, 4, 0, 1, 1)
+        display_exp_layout.addWidget(self.display_sim_cool_btn, 4, 1, 1, 1)
+        display_exp_layout.addWidget(self.display_sim_ww_btn, 4, 2, 1, 2)
 
         search_box = QGroupBox("Wertsuche")
         side_layout.addWidget(search_box)
@@ -6305,6 +6400,11 @@ class MainWindow(QMainWindow):
         self.write_send_btn.clicked.connect(self.send_write_frame)
         self.read_btn.clicked.connect(self.send_read_from_fields)
         self.manual_register_btn.clicked.connect(self.open_manual_register_dialog)
+        self.display_fake_reboot_btn.clicked.connect(self.send_display_fake_reboot)
+        self.display_sim_user_change_btn.clicked.connect(self.send_display_simulated_user_value_from_fields)
+        self.display_sim_heat_btn.clicked.connect(lambda: self.send_display_simulated_mode(1))
+        self.display_sim_cool_btn.clicked.connect(lambda: self.send_display_simulated_mode(2))
+        self.display_sim_ww_btn.clicked.connect(lambda: self.send_display_simulated_mode(0))
         self.timer_editor_btn.clicked.connect(self.open_timer_editor)
         self.onoff_timer_btn.clicked.connect(self.open_onoff_timer_editor)
         self.init_read_btn.clicked.connect(self.send_init_reads)
@@ -6378,6 +6478,7 @@ class MainWindow(QMainWindow):
             "live_poll_interval_s": int(self.settings.get("live_poll_interval_s", 30)),
             "tab_auto_poll": bool(self.settings.get("tab_auto_poll", False)),
             "tab_poll_interval_s": int(self.settings.get("tab_poll_interval_s", 30)),
+            "display_write_mode": str(self.settings.get("display_write_mode", "fc16")),
         }
 
     def _write_settings_file(self):
@@ -6425,7 +6526,7 @@ class MainWindow(QMainWindow):
                     host=self.host_edit.text().strip(),
                     port=int(self.port_edit.value()),
                     unit_id=int(self.unit_spin.value()),
-                    display_translate=self.display_translate_cb.isChecked(),
+                    display_translate=False,
                     serial_port=str(cfg.get("serial_port", "COM3")),
                     baudrate=int(cfg.get("baudrate", 9600)),
                     parity=str(cfg.get("parity", "N")),
@@ -6461,6 +6562,8 @@ class MainWindow(QMainWindow):
                 "display_translate_0x2000": self.settings.get("display_translate_0x2000", defaults.get("display_translate_0x2000")),
             }
         defaults.update(saved)
+        if backend == "display_modbus":
+            defaults["display_translate_0x2000"] = False
         return defaults
 
     def _set_backend_settings(self, backend: str, transport: str, host: str, port: int, unit_id: int, display_translate: bool,
@@ -6477,7 +6580,7 @@ class MainWindow(QMainWindow):
             "bytesize": int(bytesize),
             "stopbits": float(stopbits),
             "unit_id": int(unit_id),
-            "display_translate_0x2000": bool(display_translate),
+            "display_translate_0x2000": False,
         }
 
     def apply_communication_settings(self, backend: str):
@@ -6489,7 +6592,7 @@ class MainWindow(QMainWindow):
         self.host_edit.setText(str(cfg.get("host", DEFAULT_HOST)))
         self.port_edit.setValue(int(cfg.get("port", DEFAULT_PORT)))
         self.unit_spin.setValue(int(cfg.get("unit_id", DEFAULT_BUS_ADDR)))
-        self.display_translate_cb.setChecked(bool(cfg.get("display_translate_0x2000", backend == "display_modbus")))
+        self.display_translate_cb.setChecked(False)
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         self._update_comm_summary()
@@ -6513,8 +6616,8 @@ class MainWindow(QMainWindow):
             parts.append(f"{self.host_edit.text().strip()}:{int(self.port_edit.value())}")
         if backend in ("display_modbus", "standard_modbus"):
             parts.append(f"Unit {int(self.unit_spin.value())}")
-        if backend == "display_modbus" and self.display_translate_cb.isChecked():
-            parts.append("+0x2000")
+        if backend == "display_modbus":
+            parts.append(str(self.settings.get("display_write_mode", "fc16")).upper())
         return " | ".join(parts)
 
     def _update_comm_summary(self):
@@ -6842,10 +6945,24 @@ class MainWindow(QMainWindow):
         self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log, Raw-Datei und Cache-Datei unverändert.")
 
     def _parse_int_text(self, text: str) -> int:
-        text = text.strip()
+        text = str(text).strip().replace("_", "")
         if not text:
             raise ValueError("Leere Eingabe")
-        return int(text, 0)
+        # Erlaubt neben Dezimal und 0x... auch DWIN/ASM-Schreibweise wie 0BC3H oder 5112H.
+        # Wichtig fuer Display-Diagnose: 5112H ist 0x5112 / dez. 20754, nicht dezimal 5112.
+        sign = 1
+        if text[0] in "+-":
+            if text[0] == "-":
+                sign = -1
+            text = text[1:].strip()
+        lower = text.lower()
+        if lower.endswith("h"):
+            return sign * int(text[:-1], 16)
+        if lower.startswith("0x"):
+            return sign * int(text, 16)
+        if any(c in "abcdefABCDEF" for c in text):
+            return sign * int(text, 16)
+        return sign * int(text, 10)
 
     def current_backend_key(self) -> str:
         if hasattr(self, "backend_combo"):
@@ -6864,10 +6981,8 @@ class MainWindow(QMainWindow):
             return DEFAULT_BUS_ADDR
 
     def _translate_register_for_backend(self, addr: int) -> tuple[int, str]:
-        backend = self.current_backend_key()
-        if backend == "display_modbus" and self.display_translate_cb.isChecked() and 1000 <= int(addr) <= 1999:
-            wire = int(addr) + 0x2000
-            return wire, f"Display-Übersetzung: {addr}/0x{addr:04X} -> {wire}/0x{wire:04X}"
+        # Display-Modbus: keine automatische +0x2000-Übersetzung mehr.
+        # DWIN/XRAM-Adressen bitte direkt eingeben, z.B. 0x0BC3 oder 0x5112.
         return int(addr), ""
 
     def _wire_slave_addr(self, requested: Optional[int] = None) -> int:
@@ -6885,8 +7000,15 @@ class MainWindow(QMainWindow):
             return self.current_unit_id()
         return int(requested if requested is not None else DEFAULT_BUS_ADDR)
 
+    def _display_write_mode(self) -> str:
+        mode = str(self.settings.get("display_write_mode", "fc16")).lower().strip()
+        return mode if mode in ("fc06", "fc16") else "fc16"
+
     def _write_single_for_backend(self) -> bool:
-        return self.current_backend_key() in ("display_modbus", "standard_modbus")
+        backend = self.current_backend_key()
+        if backend == "display_modbus":
+            return self._display_write_mode() == "fc06"
+        return backend == "standard_modbus"
 
     def _build_write_frame_for_backend(self, addr: int, value: int, slave_addr: int) -> tuple[bytes, int, int, str, str]:
         wire_slave = self._wire_slave_addr(slave_addr)
@@ -7037,9 +7159,8 @@ class MainWindow(QMainWindow):
             self.status_label.setText("DisplayWorker aktiv")
             self.connect_btn.setEnabled(False)
             self.disconnect_btn.setEnabled(True)
-            # Schreiben ueber den alten Hauptworker ist in diesem Uebergangszustand
-            # nicht sicher verfuegbar; normales Display-Mithoeren/Init bleibt aktiv.
-            self.write_send_btn.setEnabled(False)
+            # Schreiben/Lesen läuft in diesem Zustand über den aktiven DisplayWorker.
+            self.write_send_btn.setEnabled(True)
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
             self._close_raw_file()
@@ -7239,6 +7360,7 @@ class MainWindow(QMainWindow):
                 f"WRITE/ACK gesehen: bus=0x{frame.slave_addr:02X}, "
                 f"addr={frame.typ} / 0x{frame.typ:04X}, anzahl={frame.length_field}"
             )
+            self._remember_display_write_ack(frame)
 
 
         if self.current_backend_key() == "display_modbus":
@@ -7841,7 +7963,19 @@ class MainWindow(QMainWindow):
             # bekommen Diagnose-Namen, ohne das normale Warmlink-Mapping zu veraendern.
             # Ausnahme: gezielte WP-Paketblock-Reads auf Display Unit 0x03 sollen mit dem
             # normalen Warmlink/WP-Mapping dekodiert und ins Hauptfenster übernommen werden.
-            force_wp_map = "WP-Paketblock" in req_label or "Display Init Paketblock" in req_label
+            # Fix10: 0x03/1001ff..1541ff sind echte WP-Parameterpakete im
+            # Display-Speicher. Auch wenn sie passiv vom Display-Bus kommen,
+            # muessen sie mit dem normalen WP-/Warmlink-Mapping dekodiert werden,
+            # sonst fehlen Value-Maps/Klartexte wie 1012: 0=WW, 1=Heizen, 2=Kuehlen.
+            is_display_wp_param_packet = (
+                int(frame.slave_addr) == 0x03
+                and int(start_addr) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}
+            )
+            force_wp_map = (
+                "WP-Paketblock" in req_label
+                or "Display Init Paketblock" in req_label
+                or is_display_wp_param_packet
+            )
             use_display_map = (
                 self.current_backend_key() == "display_modbus"
                 and not force_wp_map
@@ -7918,6 +8052,7 @@ class MainWindow(QMainWindow):
         key = (slave, start, mode)
         old_words = self.display_hmi_block_snapshots.get(key)
         self.display_hmi_block_snapshots[key] = words
+        self.display_hmi_block_snapshot_times[key] = time.monotonic()
 
         def reg_label(index: int) -> str:
             return f"{start + index}/W{index + 1}"
@@ -8144,7 +8279,19 @@ class MainWindow(QMainWindow):
                 frame.pending_read_label = req_label
             except Exception:
                 pass
-            force_wp_map = "WP-Paketblock" in req_label or "Display Init Paketblock" in req_label
+            # Fix10: passive/aktive 0x03/1001ff..1541ff-Paketantworten sind
+            # WP-Parameterpakete, keine DWIN-Diagnosewerte. Mit WP-Mapping bleiben
+            # Klartexte/Value-Maps wie 1012=Heizen/Kuehlen/WW auch nach einem
+            # Bedienwert-Write sichtbar.
+            is_display_wp_param_packet = (
+                int(frame.slave_addr) == 0x03
+                and int(start_addr) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}
+            )
+            force_wp_map = (
+                "WP-Paketblock" in req_label
+                or "Display Init Paketblock" in req_label
+                or is_display_wp_param_packet
+            )
             use_display_map = (
                 self.current_backend_key() == "display_modbus"
                 and not force_wp_map
@@ -8197,6 +8344,23 @@ class MainWindow(QMainWindow):
             return True
         return False
 
+    def _active_io_worker(self):
+        """Liefert den Worker, auf den manuell gelesen/geschrieben werden soll.
+
+        Beim Display-Init übernimmt der ausgelagerte DisplayWorker den Bus. Die
+        alte Hauptverbindung kann dann bereits EOF sein, obwohl Display-Mithören
+        und aktives Senden über den DisplayWorker noch funktionieren. Manuelle
+        Display-Reads/Writes müssen dann genau diesen Worker benutzen.
+        """
+        if self.current_backend_key() == "display_modbus":
+            dlg = getattr(self, "dual_logger_dialog", None)
+            aux_worker = getattr(dlg, "display_worker", None) if dlg is not None else None
+            if aux_worker is not None:
+                return aux_worker
+        if self.connected and self.worker:
+            return self.worker
+        return None
+
     def send_read_from_fields(self):
         try:
             slave_addr = self._parse_int_text(self.write_bus_edit.text())
@@ -8207,6 +8371,18 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
     def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
+        # normale FC03-Reads absetzen. Stattdessen den bewährten Reboot-Snapshot
+        # anstoßen. Manuelle FC03-Reads bleiben absichtlich direkt möglich, damit
+        # wir den gestern gefundenen Qty90-Direktlese-Pfad weiter testen können.
+        if self._display_should_redirect_read_to_reboot_snapshot(addr, quantity, slave_addr, label):
+            self._log(
+                f"DISPLAY-SNAPSHOT fix11: Leseanforderung '{label or 'ohne Label'}' "
+                f"{int(addr)}/0x{int(addr):04X}, qty={int(quantity)} wird nicht direkt gelesen, "
+                "sondern über Display Reboot Fake aktualisiert."
+            )
+            self._start_display_reboot_snapshot(source_label=(label or f"Read {addr}/{quantity}"), force=False)
+            return
         frame, wire_addr, wire_slave, note = self._build_read_frame_for_backend(addr, quantity, slave_addr)
         note_text = f", {note}" if note else ""
         if self.current_backend_key() == "display_modbus" and int(slave_addr) != int(wire_slave):
@@ -8216,18 +8392,46 @@ class MainWindow(QMainWindow):
             f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
             f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}"
         )
-        self.pending_read_requests.append({
-            "slave_addr": wire_slave,
-            "addr": addr,
-            "wire_addr": wire_addr,
-            "quantity": quantity,
-            "label": label,
-            "time": time.time(),
-        })
-        if not self.connected or not self.worker:
-            self._log("READ nicht gesendet: keine aktive Verbindung.")
+        io_worker = self._active_io_worker()
+        if io_worker is None:
+            self._log("READ nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
-        self.worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
+
+        # Wenn der DisplayWorker den Bus übernommen hat, landen die Antworten im
+        # DualBusLoggerDialog und nicht mehr im normalen MainWindow-Framepfad.
+        # Dann muss auch die Pending-Zuordnung dort eingetragen werden, sonst
+        # erscheinen kurze Antworten wie 03 03 02 00 00 nur als "ohne bekannte Startadresse".
+        routed_to_aux_display = False
+        if self.current_backend_key() == "display_modbus":
+            dlg = getattr(self, "dual_logger_dialog", None)
+            aux_worker = getattr(dlg, "display_worker", None) if dlg is not None else None
+            if aux_worker is not None and io_worker is aux_worker:
+                routed_to_aux_display = True
+                try:
+                    map_key = "display" if (int(wire_addr) >= 3000 or int(wire_slave) in {0x02, 0x03, 0x05}) else "warmlink"
+                    dlg.display_pending_reads.append({
+                        "slave": int(wire_slave),
+                        "addr": int(wire_addr),
+                        "qty": int(quantity),
+                        "label": str(label or "manuell"),
+                        "map": map_key,
+                        "queued_at": time.monotonic(),
+                    })
+                    if len(dlg.display_pending_reads) > 220:
+                        del dlg.display_pending_reads[:len(dlg.display_pending_reads) - 220]
+                except Exception as exc:
+                    self._log(f"DISPLAY WARN: Pending-Read im DisplayWorker konnte nicht eingetragen werden: {exc}")
+
+        if not routed_to_aux_display:
+            self.pending_read_requests.append({
+                "slave_addr": wire_slave,
+                "addr": addr,
+                "wire_addr": wire_addr,
+                "quantity": quantity,
+                "label": label,
+                "time": time.time(),
+            })
+        io_worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
 
     # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
 
@@ -8245,24 +8449,16 @@ class MainWindow(QMainWindow):
         # aktiven Display-Paketreads antworten auf Unit 0x03.
         is_display_backend = (backend == "display_modbus") or ("display" in str(backend_label).lower())
         if is_display_backend:
-            # Fix28: Der Hauptworker kann zwar senden, bekommt auf Dominiks Display-Bus
-            # aber keine 0x03/10xx-Antworten. Der bewährte Dual-Display-Worker dagegen
-            # liefert diese Paketblöcke. Deshalb wird der Display-Init wieder gezielt
-            # über diesen Pfad gestartet. Warmlink/Standard-Modbus bleiben unverändert.
-            pause_ms = int(self.init_pause_spin.value()) if getattr(self, "init_pause_spin", None) is not None else 900
-            if self.dual_logger_dialog is None:
-                self.dual_logger_dialog = DualBusLoggerDialog(self)
-                self.dual_logger_dialog.finished.connect(lambda _=None: setattr(self, "dual_logger_dialog", None))
-            self.display_aux_takeover_active = True
-            self.init_read_btn.setEnabled(False)
-            self.init_read_btn.setText("Display-Init läuft ...")
-            self.connect_btn.setEnabled(False)
-            self.disconnect_btn.setEnabled(True)
+            # fix11: Am Display-Bus ist der Reboot-Fake vorerst die stabilste
+            # Snapshot-/Abfrage-Methode: das Display setzt 0BC3=8000 und der echte
+            # Master lädt die Parameterpakete 1001/1091/... erneut in Unit 0x03.
+            # Die alte aktive Qty90-Display-Read-Logik bleibt im Code/DualLogger
+            # erhalten, ist aber NICHT mehr der Standard für diesen Button.
             self._log(
-                "DISPLAY-INIT: 'Alle bekannten Register lesen' wird über den ausgelagerten DisplayWorker ausgeführt; "
-                "die normale Display-Hauptverbindung darf dabei auf den DisplayWorker wechseln."
+                "DISPLAY-SNAPSHOT fix11: 'Alle bekannten Register lesen' nutzt jetzt Display Reboot Fake "
+                "statt aktiver Qty90-Reads. Warmlink/Standard-Modbus bleiben unverändert."
             )
-            self.dual_logger_dialog.run_known_display_packet_reads_once(pause_ms=pause_ms)
+            self._start_display_reboot_snapshot(source_label="Alle bekannten Register lesen", force=True)
             return
 
         # Fix33: Warmlink und Standard-Modbus sind nun getrennte Init-Controller.
@@ -8342,7 +8538,925 @@ class MainWindow(QMainWindow):
             dialog.raise_()
             dialog.activateWindow()
 
+    def _display_param_mask_for_block_start(self, start_addr: int) -> int:
+        masks = {
+            1001: 0x0002,
+            1091: 0x0004,
+            1181: 0x0008,
+            1271: 0x0010,
+            1361: 0x0020,
+            1451: 0x0040,
+            1541: 0x0080,
+        }
+        if int(start_addr) not in masks:
+            raise ValueError(f"Kein 0BC3-Maskenbit für Paketstart {start_addr}")
+        return masks[int(start_addr)]
+
+    def _display_param_block_start_for_reg(self, reg_no: int) -> int:
+        reg_no = int(reg_no)
+        for start in (1001, 1091, 1181, 1271, 1361, 1451, 1541):
+            if start <= reg_no <= start + 89:
+                return start
+        raise ValueError("Display-Paketwert aktuell nur für Paketblöcke 1001..1540 unterstützt")
+
+    def _display_user_variable_for_param_reg(self, reg_no: int) -> tuple[int, int, int]:
+        """Mappt einen normalen Paket-/Kommunikationswert auf die DWIN-Benutzervariable.
+
+        Beobachtung/ASM Four_Variable_Communication:
+          03F3H/03F4H... = Kommunikationswerte im 1001er Paket
+          23F3H/23F4H... = Benutzer-/Displaywerte
+          33F3H...       = Benutzer-Cache
+          13F3H...       = Kommunikations-Cache
+
+        Für Bedien-Simulation schreiben wir deshalb NICHT den Cache und NICHT
+        den kompletten 90er Block, sondern nur die 23xx-Benutzervariable und
+        danach das passende 0BC3-Modified-Flag.
+        """
+        reg_no = int(reg_no)
+        block_start = self._display_param_block_start_for_reg(reg_no)
+        if reg_no < block_start + 10:
+            raise ValueError(
+                f"Register {reg_no} liegt im Paketkopf {block_start}-{block_start + 9}. "
+                "Für Display-Bedienung bitte einen Nutzwert ab +10 wählen, z.B. 1012."
+            )
+        return reg_no + 0x2000, block_start, self._display_param_mask_for_block_start(block_start)
+
+    def _display_user_write_variant(self) -> str:
+        combo = getattr(self, "display_sim_variant_combo", None)
+        if combo is None:
+            return "A"
+        try:
+            variant = str(combo.currentData() or "A").strip().upper()
+        except Exception:
+            variant = "A"
+        return variant if variant in {"A", "B", "C"} else "A"
+
+    @staticmethod
+    def _display_user_write_variant_text(variant: str) -> str:
+        variant = str(variant or "A").strip().upper()
+        if variant == "A":
+            return "A: nur Benutzerwert (Register + 0x2000), Display soll 0BC3 selbst setzen"
+        if variant == "C":
+            return "C: Paketwert + Benutzerwert + 0BC3-Flag"
+        return "B: Benutzerwert + 0BC3-Flag"
+
+    def _display_user_write_plan(
+        self,
+        variant: str,
+        target_reg: int,
+        user_addr: int,
+        target_value: int,
+        block_start: int,
+        mask: int,
+    ) -> list[dict[str, Any]]:
+        """Erzeugt die PRIVATE-Testvarianten für simulierte Display-Bedienung.
+
+        A: nur 23xx-Benutzervariable schreiben. Damit testen wir, ob die echte
+           Display-Logik das Modified-Flag selbst setzt.
+        B: 23xx-Benutzervariable + 0BC3-Maske. Nur noch Fallback, falls
+           das Display das Modified-Flag nicht selbst setzt.
+        C: zusätzlich den 03xx/Paket-Kommunikationswert schreiben. Damit testen
+           wir, ob der Master beim 1001-Read nur diesen Wert ausliest.
+        """
+        variant = str(variant or "A").strip().upper()
+        target_reg = int(target_reg)
+        user_addr = int(user_addr)
+        target_value = int(target_value) & 0xFFFF
+        block_start = int(block_start)
+        mask = int(mask) & 0xFFFF
+        steps: list[dict[str, Any]] = []
+        if variant == "C":
+            steps.append({
+                "addr": target_reg,
+                "value": target_value,
+                "delay": 500,
+                "label": f"Variante C Paketwert: Reg {target_reg}=0x{target_value:04X}",
+            })
+        steps.append({
+            "addr": user_addr,
+            "value": target_value,
+            "delay": 700 if variant in {"B", "C"} else 0,
+            "label": f"Variante {variant} Benutzerwert: User 0x{user_addr:04X}=0x{target_value:04X}",
+        })
+        if variant in {"B", "C"}:
+            steps.append({
+                "addr": 0x0BC3,
+                "value": mask,
+                "delay": 0,
+                "label": f"Variante {variant} Änderungsflag Paket {block_start}: 0BC3=0x{mask:04X}",
+            })
+        return steps
+
+    def _display_cached_param_block_words(self, start_addr: int, quantity: int = 90) -> tuple[Optional[list[int]], str]:
+        start_addr = int(start_addr)
+        quantity = int(quantity)
+
+        # Beste Quelle: Roh-Snapshots direkt vom Display-Bus Unit 0x03. Diese wurden
+        # beim echten Display-Reboot bzw. bei Display-Bedienung beobachtet.
+        for mode in ("read-response", "word-frame"):
+            words = self.display_hmi_block_snapshots.get((0x03, start_addr, mode))
+            if words and len(words) >= quantity:
+                return [int(v) & 0xFFFF for v in words[:quantity]], f"Display-Snapshot Unit 0x03/{start_addr}ff ({mode})"
+
+        # Fallback: Hauptliste, falls die bekannten 10xx-Pakete bereits übernommen wurden.
+        missing = []
+        vals = []
+        for reg_no in range(start_addr, start_addr + quantity):
+            reg = self.latest_regs.get(reg_no)
+            if reg is None:
+                missing.append(reg_no)
+                continue
+            vals.append(int(reg.raw_value) & 0xFFFF)
+        if not missing and len(vals) == quantity:
+            return vals, f"Hauptliste {start_addr}-{start_addr + quantity - 1}"
+
+        # Zweiter Fallback: getrennte Display-Diagnosewerte.
+        missing = []
+        vals = []
+        for reg_no in range(start_addr, start_addr + quantity):
+            reg = self.display_latest_regs.get(reg_no)
+            if reg is None:
+                missing.append(reg_no)
+                continue
+            vals.append(int(reg.raw_value) & 0xFFFF)
+        if not missing and len(vals) == quantity:
+            return vals, f"DREG/Display-Diagnose {start_addr}-{start_addr + quantity - 1}"
+
+        return None, (
+            f"Kein vollständiger Display-Paketblock {start_addr}-{start_addr + quantity - 1} im Cache. "
+            "Erst warten, bis der Block durch Display-Reboot/Display-Bedienung/Display Reboot Fake gesehen wurde."
+        )
+
+    def _display_block_header_warning(self, start_addr: int, words: list[int]) -> str:
+        if len(words) < 10:
+            return "Block ist kürzer als 10 Wörter."
+        expected_sig = [0x5746, 0x3232, 0x3130, 0x3235, 0x3034, 0x3735]
+        warnings = []
+        if words[:6] != expected_sig:
+            warnings.append("Signatur WF2210250475 passt nicht")
+        if (words[8] & 0xFFFF) != 0x0210:
+            warnings.append(f"Marker-Länge W9 ist 0x{words[8] & 0xFFFF:04X}, erwartet 0x0210")
+        if (words[9] & 0xFFFF) != int(start_addr):
+            warnings.append(f"interner Start W10 ist {words[9] & 0xFFFF}, erwartet {start_addr}")
+        return "; ".join(warnings)
+
+    def _enqueue_display_write_block(self, start_addr: int, words: list[int], label: str = "", post_delay_ms: int = 0) -> bool:
+        io_worker = self._active_io_worker()
+        if io_worker is None:
+            self._log("DISPLAY-BlockWRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
+            return False
+        start_addr = int(start_addr)
+        vals = [int(v) & 0xFFFF for v in words]
+        frame = build_write_registers_frame(start_addr, vals, slave_addr=0x03)
+        extra = f" ({label})" if label else ""
+        preview = "; ".join(f"{start_addr + i}={v}/0x{v:04X}" for i, v in enumerate(vals[:12]))
+        more = "" if len(vals) <= 12 else f" ... (+{len(vals) - 12})"
+        self._log(
+            f"DISPLAY-BlockWRITE wird GESENDET{extra}: Unit 0x03, start={start_addr}/0x{start_addr:04X}, "
+            f"qty={len(vals)}, TX={hexdump(frame, -1)}; {preview}{more}"
+        )
+        io_worker.enqueue_write_block(start_addr, vals, slave_addr=0x03, post_delay_ms=post_delay_ms)
+        return True
+
+    def _enqueue_display_fc16_single(self, addr: int, value: int, label: str = "", post_delay_ms: int = 0) -> bool:
+        io_worker = self._active_io_worker()
+        if io_worker is None:
+            self._log("DISPLAY-FC16 nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
+            return False
+        addr = int(addr)
+        value = int(value) & 0xFFFF
+        frame = build_write_frame(addr, value, slave_addr=0x03)
+        extra = f" ({label})" if label else ""
+        self._log(
+            f"DISPLAY-FC16 wird GESENDET{extra}: Unit 0x03, addr={addr}/0x{addr:04X}, "
+            f"value={value}/0x{value:04X}, TX={hexdump(frame, -1)}"
+        )
+        io_worker.enqueue_write(addr, value, slave_addr=0x03, post_delay_ms=post_delay_ms, write_single=False)
+        return True
+
+    def _remember_display_write_ack(self, frame) -> None:
+        """Merkt FC16-ACKs fuer die Display-PRIVATE-Tests.
+
+        Die bisherigen Logs zeigen: gesendet reicht nicht. Der Wert wirkt erst
+        zuverlaessig, wenn Unit 0x03 den FC16-Write als write-response quittiert.
+        """
+        try:
+            if self.current_backend_key() != "display_modbus":
+                return
+            if getattr(frame, "mode", "") != "write-response":
+                return
+            slave = int(getattr(frame, "slave_addr", -1))
+            addr = int(getattr(frame, "typ", -1))
+            qty = int(getattr(frame, "length_field", 0) or 0)
+            if slave < 0 or addr < 0 or qty <= 0:
+                return
+            now = time.monotonic()
+            self.display_write_ack_times[(slave, addr, qty)] = now
+            # Fuer Single-Register FC16 zusaetzlich normalisieren, falls ein Parser
+            # die Menge anders liefert. Unsere Tests schreiben immer qty=1.
+            if qty == 1:
+                self.display_write_ack_times[(slave, addr, 1)] = now
+        except Exception:
+            return
+
+    def _display_write_ack_time(self, addr: int, qty: int = 1, slave: int = 0x03) -> float:
+        return float(self.display_write_ack_times.get((int(slave), int(addr), int(qty)), 0.0) or 0.0)
+
+    def _display_write_ack_seen_since(self, addr: int, since: float, qty: int = 1, slave: int = 0x03) -> bool:
+        return self._display_write_ack_time(addr, qty=qty, slave=slave) >= float(since or 0.0)
+
+    def _display_snapshot_time(self, slave: int, start: int, mode: str) -> float:
+        return float(self.display_hmi_block_snapshot_times.get((int(slave), int(start), str(mode)), 0.0) or 0.0)
+
+    def _display_0bc3_value_from_3001(self) -> Optional[int]:
+        for slave in (0x03, 0x02):
+            words = self.display_hmi_block_snapshots.get((slave, 3001, "read-response"))
+            if words and len(words) >= 11:
+                return int(words[10]) & 0xFFFF  # 3001 + 10 = 3011 / 0BC3
+        return None
+
+    def _display_reboot_fresh_param_blocks(self, since: float) -> list[int]:
+        starts = [1001, 1091, 1181, 1271, 1361, 1451]
+        fresh: list[int] = []
+        for start in starts:
+            if (
+                self._display_snapshot_time(0x03, start, "word-frame") >= since
+                or self._display_snapshot_time(0x03, start, "read-response") >= since
+            ):
+                fresh.append(start)
+        return fresh
+
+    def send_display_fake_reboot(self, _checked: bool = False):
+        """PRIVATE/Debug-Button: Reboot-Fake mit Bestätigung.
+
+        fix11: Der sichtbare Testbereich ist ausgeblendet. Die gleiche Logik wird
+        ohne Bestätigung über _start_display_reboot_snapshot() als Display-Standard
+        für 'Alle bekannten Register lesen' und Popup-Aktualisierungen benutzt.
+        """
+        self._start_display_fake_reboot(prompt=True, source_label="Display Reboot Fake", force=True)
+
+    def _start_display_reboot_snapshot(self, source_label: str = "Display Snapshot", force: bool = False) -> bool:
+        """Startet den Reboot-Fake ohne Dialog als Display-Snapshot-Abfrage.
+
+        Nur Backend 'Modbus Display'. Warmlink/Standard-Modbus werden nie berührt.
+        force=True wird z.B. vom Button 'Alle bekannten Register lesen' verwendet.
+        Popup-Leseanforderungen nutzen force=False und werden per Cooldown entprellt.
+        """
+        return self._start_display_fake_reboot(prompt=False, source_label=source_label, force=force)
+
+    def _start_display_fake_reboot(self, prompt: bool = False, source_label: str = "Display Reboot Fake", force: bool = False) -> bool:
+        if self.current_backend_key() != "display_modbus":
+            if prompt:
+                QMessageBox.warning(self, "Nur Modbus Display", "Display Reboot Fake ist nur im Backend 'Modbus Display' sinnvoll.")
+            else:
+                self._log(f"DISPLAY Reboot Fake fix11 ({source_label}): nicht gestartet, Backend ist nicht Modbus Display.")
+            return False
+        if self.display_fake_reboot_state.get("active"):
+            msg = f"DISPLAY Reboot Fake fix11 ({source_label}): läuft bereits, Anfrage wird zusammengefasst."
+            if prompt:
+                QMessageBox.information(self, "Display Reboot Fake", "Ein Display-Reboot-Fake läuft bereits.")
+            self._log(msg)
+            return False
+        io_worker = self._active_io_worker()
+        if io_worker is None:
+            # Normaler Display-Startpfad fuer Snapshot-Abfragen: falls die alte
+            # Hauptverbindung nicht aktiv ist, den bewaehrten ausgelagerten
+            # DisplayWorker starten und danach denselben Reboot-Fake ausloesen.
+            if self.dual_logger_dialog is None:
+                self.dual_logger_dialog = DualBusLoggerDialog(self)
+                self.dual_logger_dialog.finished.connect(lambda _=None: setattr(self, "dual_logger_dialog", None))
+            self.display_aux_takeover_active = True
+            self.connected = True
+            self.connect_btn.setEnabled(False)
+            self.disconnect_btn.setEnabled(True)
+            self._log(
+                f"DISPLAY Reboot Fake fix11 ({source_label}): kein aktiver Display-Worker, "
+                "starte DisplayWorker und sende danach automatisch."
+            )
+            try:
+                self.dual_logger_dialog.start(display_only=True)
+            except Exception as exc:
+                self._log(f"DISPLAY Reboot Fake fix11 ({source_label}): DisplayWorker-Start fehlgeschlagen: {exc}")
+                return False
+            QTimer.singleShot(1400, lambda: self._start_display_fake_reboot(prompt=False, source_label=source_label, force=force))
+            return True
+
+        now = time.monotonic()
+        if not force and self.display_fake_reboot_last_success_time > 0:
+            age = now - float(self.display_fake_reboot_last_success_time)
+            if age < 8.0:
+                self._log(
+                    f"DISPLAY-SNAPSHOT fix11 ({source_label}): letzter erfolgreicher Reboot-Snapshot "
+                    f"ist erst {age:.1f}s alt ({self.display_fake_reboot_last_source or '-'}), kein neuer Start."
+                )
+                return False
+        if prompt:
+            frame_5112 = build_write_frame(0x5112, 0x0000, slave_addr=0x03)
+            frame_0bc3 = build_write_frame(0x0BC3, 0x8000, slave_addr=0x03)
+            question = (
+                "Display Reboot Fake senden?\n\n"
+                "fix11/fix8 ist ACK-gesteuert:\n"
+                "1) 5112H = 0000H senden und auf ACK warten\n"
+                "2) erst danach 0BC3H = 8000H senden und auf ACK/3001-Poll warten\n"
+                "3) wenn 0BC3 nicht sichtbar wird, wird gezielt nur 0BC3 erneut gesendet\n"
+                "4) danach warten bis frische 1001/1091/1181/1271/1361/1451-Blöcke kommen\n\n"
+                f"TX 5112H: {hexdump(frame_5112, -1)}\n"
+                f"TX 0BC3H: {hexdump(frame_0bc3, -1)}"
+            )
+            if not ask_yes_no(self, "Display Reboot Fake?", question, default_yes=False):
+                self._log("Display Reboot Fake abgebrochen: nicht gesendet.")
+                return False
+        self.display_fake_reboot_state = {
+            "active": True,
+            "attempt": 0,
+            "max_attempts": 3,
+            "started": time.monotonic(),
+            "attempt_started": 0.0,
+            "phase": "idle",
+            "5112_retries": 0,
+            "flag_retries": 0,
+            "last_send_addr": None,
+            "last_send_time": 0.0,
+            "source_label": str(source_label or "Display Reboot Fake"),
+        }
+        self._log(f"DISPLAY Reboot Fake fix11 ({source_label}): gestartet.")
+        self._display_fake_reboot_attempt()
+        return True
+
+    def _display_fake_reboot_attempt(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active"):
+            return
+        attempt = int(state.get("attempt", 0)) + 1
+        state["attempt"] = attempt
+        state["attempt_started"] = time.monotonic()
+        state["5112_retries"] = 0
+        state["flag_retries"] = 0
+        self._log(f"DISPLAY Reboot Fake fix11: Versuch {attempt}/{state.get('max_attempts', 3)} gestartet.")
+        self._display_fake_reboot_send_5112()
+
+    def _display_fake_reboot_send_5112(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active"):
+            return
+        state["phase"] = "wait_5112_ack"
+        state["last_send_addr"] = 0x5112
+        state["last_send_time"] = time.monotonic()
+        retry = int(state.get("5112_retries", 0)) + 1
+        state["5112_retries"] = retry
+        self._enqueue_display_fc16_single(0x5112, 0x0000, f"Display Reboot Fake fix11: 5112H=0 ACK-Test {retry}")
+        QTimer.singleShot(1600, self._display_fake_reboot_check_5112_ack)
+
+    def _display_fake_reboot_check_5112_ack(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active") or state.get("phase") != "wait_5112_ack":
+            return
+        sent_at = float(state.get("last_send_time", 0.0) or 0.0)
+        if self._display_write_ack_seen_since(0x5112, sent_at):
+            self._log("DISPLAY Reboot Fake fix11: ACK für 5112H gesehen, sende jetzt 0BC3H=8000H.")
+            QTimer.singleShot(350, self._display_fake_reboot_send_flag)
+            return
+        if int(state.get("5112_retries", 0)) < 3:
+            self._log("DISPLAY Reboot Fake fix11: kein ACK für 5112H, sende 5112H erneut.")
+            self._display_fake_reboot_send_5112()
+            return
+        self._log("DISPLAY Reboot Fake fix11: kein ACK für 5112H nach 3 Versuchen; starte kompletten Versuch neu.")
+        self._display_fake_reboot_retry_or_fail()
+
+    def _display_fake_reboot_send_flag(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active"):
+            return
+        state["phase"] = "wait_flag_ack"
+        state["last_send_addr"] = 0x0BC3
+        state["last_send_time"] = time.monotonic()
+        retry = int(state.get("flag_retries", 0)) + 1
+        state["flag_retries"] = retry
+        self._enqueue_display_fc16_single(0x0BC3, 0x8000, f"Display Reboot Fake fix11: 0BC3H=8000H ACK-Test {retry}")
+        QTimer.singleShot(1700, self._display_fake_reboot_check_flag_ack)
+
+    def _display_fake_reboot_check_flag_ack(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active") or state.get("phase") != "wait_flag_ack":
+            return
+        sent_at = float(state.get("last_send_time", 0.0) or 0.0)
+        flag = self._display_0bc3_value_from_3001()
+        if self._display_write_ack_seen_since(0x0BC3, sent_at) or flag == 0x8000:
+            self._log(
+                "DISPLAY Reboot Fake fix11: 0BC3H-ACK/Flag gesehen, warte auf 3001-Poll und Parameterblöcke."
+            )
+            state["phase"] = "wait_upload"
+            state["upload_wait_started"] = time.monotonic()
+            QTimer.singleShot(900, self._display_fake_reboot_check_upload)
+            return
+        if int(state.get("flag_retries", 0)) < 4:
+            self._log("DISPLAY Reboot Fake fix11: kein ACK für 0BC3H, sende nur 0BC3H erneut.")
+            self._display_fake_reboot_send_flag()
+            return
+        self._log("DISPLAY Reboot Fake fix11: kein ACK für 0BC3H nach mehreren Versuchen; starte kompletten Versuch neu.")
+        self._display_fake_reboot_retry_or_fail()
+
+    def _display_fake_reboot_check_upload(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active") or state.get("phase") != "wait_upload":
+            return
+        since = float(state.get("attempt_started", 0.0) or 0.0)
+        wait_started = float(state.get("upload_wait_started", since) or since)
+        flag = self._display_0bc3_value_from_3001()
+        fresh = self._display_reboot_fresh_param_blocks(since)
+        if len(fresh) >= 4:
+            source = str(state.get("source_label") or "Display Reboot Fake")
+            self.display_fake_reboot_last_success_time = time.monotonic()
+            self.display_fake_reboot_last_source = source
+            self._log(
+                "DISPLAY Reboot Fake fix11 ERFOLG: frische Parameterblöcke gesehen: "
+                f"{fresh}; 0BC3 aktuell {('--' if flag is None else '0x%04X' % flag)}; Quelle={source}."
+            )
+            self.display_fake_reboot_state = {}
+            return
+        age = time.monotonic() - wait_started
+        if flag == 0x8000:
+            if age < 14.0:
+                self._log(
+                    "DISPLAY Reboot Fake fix11: 0BC3=0x8000 sichtbar, warte weiter auf Parameterblöcke "
+                    f"(bisher {fresh or '-'})."
+                )
+                QTimer.singleShot(1200, self._display_fake_reboot_check_upload)
+                return
+        else:
+            # Sobald der nächste 3001-Poll 0 statt 8000 zeigt, brauchen wir nicht 14s warten.
+            # Dann ist das Flag nicht angekommen/übernommen: gezielt nur 0BC3 nachsetzen.
+            if age >= 3.0 and int(state.get("flag_retries", 0)) < 5:
+                self._log(
+                    "DISPLAY Reboot Fake fix11: 3001-Poll zeigt 0BC3 nicht als 0x8000 "
+                    f"({('--' if flag is None else '0x%04X' % flag)}), setze nur 0BC3 erneut."
+                )
+                self._display_fake_reboot_send_flag()
+                return
+            if age < 8.0:
+                QTimer.singleShot(1000, self._display_fake_reboot_check_upload)
+                return
+        self._log(
+            "DISPLAY Reboot Fake fix11: noch kein vollständiger Upload; "
+            f"0BC3={('--' if flag is None else '0x%04X' % flag)}, frische Blöcke={fresh or '-'}"
+        )
+        self._display_fake_reboot_retry_or_fail()
+
+    def _display_fake_reboot_retry_or_fail(self):
+        state = self.display_fake_reboot_state
+        if not state.get("active"):
+            return
+        attempt = int(state.get("attempt", 1))
+        max_attempts = int(state.get("max_attempts", 3))
+        if attempt < max_attempts:
+            QTimer.singleShot(700, self._display_fake_reboot_attempt)
+        else:
+            self._log("DISPLAY Reboot Fake fix11 FEHLGESCHLAGEN: nach 3 Versuchen kein sicherer Parameter-Upload gesehen.")
+            self.display_fake_reboot_state = {}
+
+    def _display_read_range_intersects_param_packet(self, addr: int, quantity: int) -> bool:
+        try:
+            start = int(addr)
+            end = start + max(1, int(quantity)) - 1
+        except Exception:
+            return False
+        # Bekannte Display/WP-Parameterpakete. Header-Wörter zaehlen hier mit,
+        # weil z.B. Backup/Parameterfenster bewusst komplette Bloecke anfordern.
+        for block_start in (1001, 1091, 1181, 1271, 1361, 1451, 1541):
+            block_end = block_start + 89
+            if start <= block_end and end >= block_start:
+                return True
+        return False
+
+    def _display_should_redirect_read_to_reboot_snapshot(
+        self,
+        addr: int,
+        quantity: int,
+        slave_addr: int,
+        label: str = "",
+    ) -> bool:
+        """Entscheidet, ob ein Display-FC03-Read durch Reboot-Snapshot ersetzt wird.
+
+        fix11: Nur normale UI-/Popup-Aktualisierungen. Manuelle FC03-Reads und
+        die alte aktive Qty90-Forschung bleiben direkt möglich.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return False
+        if not self._display_read_range_intersects_param_packet(addr, quantity):
+            return False
+        text = str(label or "").strip().lower()
+        # Manuell/Direkt/Diagnose soll direkt lesbar bleiben, damit wir den
+        # Qty90-Pfad weiter untersuchen koennen.
+        direct_markers = (
+            "manuell", "rechtsklick", "auto-poll", "offline", "display wp-paketblock",
+            "display-init", "display pakettest", "direkt", "direct", "scan",
+        )
+        if any(marker in text for marker in direct_markers):
+            return False
+        # Diese Labels kommen aus normalen Popups/Arbeitsabläufen, die nur einen
+        # aktuellen Parameter-Snapshot brauchen.
+        popup_markers = (
+            "popup register", "timer", "parameter", "backup", "restore", "sg ready",
+            "silentmodus", "wp ein/aus", "wp steuerung", "at-komp", "kompensation",
+        )
+        if any(marker in text for marker in popup_markers):
+            return True
+        return False
+
+    def _display_param_user_write_candidate(self, addr: int, slave_addr: int) -> Optional[tuple[int, int, int]]:
+        """Erkennt normale Display-Parameterwerte, die per 23xx-Bedienpfad geschrieben werden sollen.
+
+        fix9: Bei Backend "Modbus Display" sollen Rechtsklick/Popups die echten
+        Parameterpakete nicht direkt beschreiben. Statt z.B. 1012=2 schreiben wir
+        23F4=2. Die Display-Logik setzt danach 0BC3 selbst; nur falls das nicht
+        passiert, setzt die ACK-State-Machine das Flag als Fallback.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return None
+        try:
+            wire_slave = self._wire_slave_addr(slave_addr)
+        except Exception:
+            wire_slave = self.current_unit_id()
+        # Der gefundene Bedienpfad gilt fuer das echte DWIN/HMI-Display Unit 0x03.
+        if int(wire_slave) != 0x03:
+            return None
+        try:
+            return self._display_user_variable_for_param_reg(int(addr))
+        except Exception:
+            return None
+
+    def _display_user_value_make_job(
+        self,
+        target_reg: int,
+        target_value: int,
+        user_addr: int,
+        block_start: int,
+        mask: int,
+        *,
+        source_label: str = "",
+        preferred_variant: str = "A",
+        fallback_variants: Optional[list[str]] = None,
+        delay_ms_after: int = 0,
+    ) -> dict[str, Any]:
+        variant = str(preferred_variant or "A").strip().upper()
+        if variant not in {"A", "B", "C"}:
+            variant = "A"
+        if fallback_variants is None:
+            # Normalfall: echte Bedienung. A reicht inzwischen nachweislich; B/C nur Rettungsanker.
+            fallback_variants = ["B", "C"] if variant == "A" else (["C"] if variant == "B" else [])
+        fallback_variants = [str(v).strip().upper() for v in fallback_variants if str(v).strip().upper() in {"A", "B", "C"}]
+        return {
+            "active": True,
+            "target_reg": int(target_reg),
+            "user_addr": int(user_addr),
+            "target_value": int(target_value) & 0xFFFF,
+            "block_start": int(block_start),
+            "mask": int(mask) & 0xFFFF,
+            "requested_variant": variant,
+            "variant": variant,
+            "fallback_variants": fallback_variants,
+            "fallback_used": False,
+            "sequence_no": 0,
+            "source_label": str(source_label or ""),
+            "delay_ms_after": int(delay_ms_after or 0),
+        }
+
+    def _display_user_value_start_job(self, job: dict[str, Any]):
+        self.display_user_value_state = dict(job)
+        source = str(job.get("source_label") or "")
+        suffix = f" ({source})" if source else ""
+        self._log(
+            "DISPLAY Parameterwrite fix9" + suffix + ": starte Bedienwertpfad "
+            f"Reg {int(job['target_reg'])} -> User 0x{int(job['user_addr']):04X}, "
+            f"Wert=0x{int(job['target_value']) & 0xFFFF:04X}, "
+            f"Paket {int(job['block_start'])}, Maske 0x{int(job['mask']) & 0xFFFF:04X}."
+        )
+        self._display_user_value_start_sequence(str(job.get("variant") or "A"))
+
+    def _display_user_value_start_next_queued(self):
+        if self.display_user_value_state.get("active"):
+            return
+        if not self.display_user_value_queue:
+            return
+        job = self.display_user_value_queue.pop(0)
+        self._display_user_value_start_job(job)
+
+    def _display_user_value_complete_current(self, success: bool):
+        state = dict(self.display_user_value_state or {})
+        delay_ms = max(0, int(state.get("delay_ms_after", 0) or 0))
+        queued = len(self.display_user_value_queue)
+        source = str(state.get("source_label") or "")
+        if queued:
+            self._log(
+                f"DISPLAY Parameterwrite fix9: {'erfolgreich' if success else 'fehlgeschlagen'}, "
+                f"starte naechsten queued Write in {max(delay_ms, 150)} ms "
+                f"({queued} verbleibend)."
+            )
+        self.display_user_value_state = {}
+        if queued:
+            QTimer.singleShot(max(delay_ms, 150), self._display_user_value_start_next_queued)
+        elif source:
+            # Kurzer Abschluss nur fuer normale Popups/Rechtsklicks; Experimente loggen ohnehin detailliert.
+            self._log(f"DISPLAY Parameterwrite fix9 ({source}): {'fertig' if success else 'ohne sicheren Erfolg beendet'}.")
+
+    def _queue_display_param_user_write_from_normal(
+        self,
+        addr: int,
+        value: int,
+        slave_addr: int,
+        label: str = "",
+        delay_ms: int = 0,
+    ) -> bool:
+        candidate = self._display_param_user_write_candidate(addr, slave_addr)
+        if candidate is None:
+            return False
+        user_addr, block_start, mask = candidate
+        job = self._display_user_value_make_job(
+            int(addr),
+            int(value) & 0xFFFF,
+            int(user_addr),
+            int(block_start),
+            int(mask),
+            source_label=(label or f"normaler Write {addr}"),
+            preferred_variant="A",
+            fallback_variants=["B", "C"],
+            delay_ms_after=int(delay_ms or 0),
+        )
+        self.display_user_value_queue.append(job)
+        qpos = len(self.display_user_value_queue)
+        extra = f" ({label})" if label else ""
+        self._log(
+            f"DISPLAY Parameterwrite fix9{extra}: normaler Write Reg {addr}=0x{int(value) & 0xFFFF:04X} "
+            f"wird als Bedienwert User 0x{int(user_addr):04X} ausgefuehrt; "
+            f"A zuerst, Fallback B/C; Queue-Position {qpos}."
+        )
+        self._display_user_value_start_next_queued()
+        return True
+
+    def send_display_simulated_mode(self, mode_value: int):
+        self.display_sim_reg_edit.setText("1012")
+        self.display_sim_value_edit.setText(str(int(mode_value)))
+        self.send_display_simulated_user_value_from_fields()
+
+    def send_display_simulated_user_value_from_fields(self):
+        if self.current_backend_key() != "display_modbus":
+            QMessageBox.warning(self, "Nur Modbus Display", "Display-Wert simulieren ist nur im Backend 'Modbus Display' sinnvoll.")
+            return
+        if self.display_user_value_state.get("active"):
+            QMessageBox.information(self, "Display-Wert-Test", "Ein Display-Wert-Test läuft bereits.")
+            return
+        try:
+            target_reg = self._parse_int_text(self.display_sim_reg_edit.text())
+            target_value = self._parse_int_text(self.display_sim_value_edit.text()) & 0xFFFF
+            user_addr, block_start, mask = self._display_user_variable_for_param_reg(target_reg)
+        except Exception as exc:
+            QMessageBox.warning(self, "Ungültiger Display-Wert", str(exc))
+            return
+
+        variant = self._display_user_write_variant()
+        plan = self._display_user_write_plan(variant, target_reg, user_addr, target_value, block_start, mask)
+
+        old_value_text = "--"
+        words, source = self._display_cached_param_block_words(block_start, 90)
+        if words and 0 <= (target_reg - block_start) < len(words):
+            old_value = int(words[target_reg - block_start]) & 0xFFFF
+            old_value_text = f"{old_value}/0x{old_value:04X} aus {source}"
+
+        reg_info = self.regmap.get(target_reg)
+        reg_name = f" - {reg_info.name}" if reg_info and reg_info.name else ""
+        step_lines = []
+        for step in plan:
+            addr = int(step["addr"])
+            value = int(step["value"]) & 0xFFFF
+            frame = build_write_frame(addr, value, slave_addr=0x03)
+            step_lines.append(
+                f"- 0x{addr:04X} / {addr} = 0x{value:04X}  TX: {hexdump(frame, -1)}"
+            )
+        fallback_variants = ["B", "C"] if variant == "A" else (["C"] if variant == "B" else [])
+        question = (
+            "Display-Wert-Test senden?\n\n"
+            "fix9 sendet ACK-gesteuert. Default A schreibt nur den 23xx-Benutzerwert; "
+            "wenn das Display 0BC3 nicht selbst setzt, folgt automatisch Fallback B/C.\n\n"
+            f"Variante: {self._display_user_write_variant_text(variant)}\n"
+            f"Auto-Fallback: {(' -> '.join([variant] + fallback_variants)) if fallback_variants else 'aus'}\n"
+            f"Ziel: Register {target_reg}{reg_name}\n"
+            f"Alter Paketwert: {old_value_text}\n"
+            f"Neuer Wert: {target_value}/0x{target_value:04X}\n"
+            f"Benutzervariable: 0x{user_addr:04X} / {user_addr} = Register + 0x2000\n"
+            f"Modified-Flag für Paket {block_start}: 0BC3H = {mask:04X}H\n\n"
+            "Geplante Writes fuer die Startvariante:\n" + "\n".join(step_lines)
+        )
+        if not ask_yes_no(self, "Display-Wert-Test?", question, default_yes=False):
+            self._log("Display-Wert-Test abgebrochen: nicht gesendet.")
+            return
+
+        job = self._display_user_value_make_job(
+            target_reg, target_value, user_addr, block_start, mask,
+            source_label="Display-Wert-Test",
+            preferred_variant=variant,
+            fallback_variants=fallback_variants,
+        )
+        self._display_user_value_start_job(job)
+
+    def _display_user_value_start_sequence(self, variant: str):
+        state = self.display_user_value_state
+        if not state.get("active"):
+            return
+        variant = str(variant or "A").strip().upper()
+        target_reg = int(state.get("target_reg", 0) or 0)
+        user_addr = int(state.get("user_addr", 0) or 0)
+        target_value = int(state.get("target_value", 0) or 0) & 0xFFFF
+        block_start = int(state.get("block_start", 0) or 0)
+        mask = int(state.get("mask", 0) or 0) & 0xFFFF
+        plan = self._display_user_write_plan(variant, target_reg, user_addr, target_value, block_start, mask)
+        seq = int(state.get("sequence_no", 0)) + 1
+        state.update({
+            "variant": variant,
+            "plan": plan,
+            "step_index": 0,
+            "step_retries": 0,
+            "flag_resends": 0,
+            "sequence_no": seq,
+            "sequence_started": time.monotonic(),
+            "phase": "write_steps",
+        })
+        fallback_txt = " (Fallback)" if state.get("fallback_used") else ""
+        self._log(
+            f"DISPLAY Bedienwert fix9{fallback_txt}: starte Variante {variant} für Reg {target_reg}=0x{target_value:04X} "
+            f"(User 0x{user_addr:04X}, Paket {block_start}, Maske 0x{mask:04X})."
+        )
+        self._display_user_value_send_current_step()
+
+    def _display_user_value_send_current_step(self):
+        state = self.display_user_value_state
+        if not state.get("active"):
+            return
+        plan = list(state.get("plan") or [])
+        idx = int(state.get("step_index", 0) or 0)
+        if idx >= len(plan):
+            state["phase"] = "wait_result"
+            state["result_wait_started"] = time.monotonic()
+            self._log("DISPLAY Bedienwert fix9: alle Writes quittiert/abgesetzt, warte auf 3001-Flag und Master-Read.")
+            QTimer.singleShot(900, self._display_user_value_check)
+            return
+        step = dict(plan[idx])
+        retry = int(state.get("step_retries", 0) or 0) + 1
+        state["step_retries"] = retry
+        state["current_step_addr"] = int(step["addr"])
+        state["current_step_value"] = int(step["value"]) & 0xFFFF
+        state["current_step_label"] = str(step.get("label") or "")
+        state["current_step_delay"] = int(step.get("delay") or 0)
+        state["current_step_sent_at"] = time.monotonic()
+        self._enqueue_display_fc16_single(
+            int(step["addr"]),
+            int(step["value"]),
+            f"fix9 ACK Schritt {idx + 1}/{len(plan)} Versuch {retry}: {step.get('label') or ''}",
+            post_delay_ms=0,
+        )
+        QTimer.singleShot(1500, self._display_user_value_check_step_ack)
+
+    def _display_user_value_check_step_ack(self):
+        state = self.display_user_value_state
+        if not state.get("active") or state.get("phase") != "write_steps":
+            return
+        addr = int(state.get("current_step_addr", 0) or 0)
+        sent_at = float(state.get("current_step_sent_at", 0.0) or 0.0)
+        idx = int(state.get("step_index", 0) or 0)
+        plan = list(state.get("plan") or [])
+        if self._display_write_ack_seen_since(addr, sent_at):
+            self._log(
+                f"DISPLAY Bedienwert fix9: ACK für Schritt {idx + 1}/{len(plan)} "
+                f"Addr 0x{addr:04X} gesehen."
+            )
+            state["step_index"] = idx + 1
+            state["step_retries"] = 0
+            delay = max(150, int(state.get("current_step_delay", 0) or 0))
+            QTimer.singleShot(delay, self._display_user_value_send_current_step)
+            return
+        retry = int(state.get("step_retries", 0) or 0)
+        max_retry = 4 if addr == 0x0BC3 else 3
+        if retry < max_retry:
+            self._log(
+                f"DISPLAY Bedienwert fix9: kein ACK für Addr 0x{addr:04X}, wiederhole Schritt {idx + 1}."
+            )
+            self._display_user_value_send_current_step()
+            return
+        # Wenn nur das Flag-ACK fehlt, kann es trotzdem beim nächsten 3001-Poll sichtbar sein.
+        if addr == 0x0BC3 and self._display_0bc3_value_from_3001() == int(state.get("mask", 0)):
+            self._log("DISPLAY Bedienwert fix9: kein ACK für 0BC3, aber Flag ist sichtbar; warte auf Master-Read.")
+            state["step_index"] = idx + 1
+            state["step_retries"] = 0
+            QTimer.singleShot(200, self._display_user_value_send_current_step)
+            return
+        self._log(f"DISPLAY Bedienwert fix9: Schritt {idx + 1} Addr 0x{addr:04X} ohne ACK fehlgeschlagen.")
+        self._display_user_value_fail_or_fallback()
+
+    def _display_user_value_check(self):
+        state = self.display_user_value_state
+        if not state.get("active"):
+            return
+        sequence_started = float(state.get("sequence_started", 0.0) or 0.0)
+        wait_started = float(state.get("result_wait_started", sequence_started) or sequence_started)
+        block_start = int(state.get("block_start", 0) or 0)
+        target_reg = int(state.get("target_reg", 0) or 0)
+        target_value = int(state.get("target_value", 0) or 0) & 0xFFFF
+        mask = int(state.get("mask", 0) or 0) & 0xFFFF
+        flag = self._display_0bc3_value_from_3001()
+        fresh_time = max(
+            self._display_snapshot_time(0x03, block_start, "read-response"),
+            self._display_snapshot_time(0x03, block_start, "word-frame"),
+        )
+        if fresh_time >= sequence_started:
+            words = None
+            for mode in ("read-response", "word-frame"):
+                candidate = self.display_hmi_block_snapshots.get((0x03, block_start, mode))
+                if candidate and self._display_snapshot_time(0x03, block_start, mode) >= sequence_started:
+                    words = candidate
+                    break
+            read_value = None
+            if words and 0 <= (target_reg - block_start) < len(words):
+                read_value = int(words[target_reg - block_start]) & 0xFFFF
+            if read_value == target_value:
+                self._log(
+                    f"DISPLAY Bedienwert fix9 ERFOLG: Master/Bus hat Paket {block_start} frisch gesehen, "
+                    f"{target_reg}=0x{read_value:04X}; 0BC3 aktuell {('--' if flag is None else '0x%04X' % flag)}."
+                )
+                self._display_user_value_complete_current(True)
+                return
+            self._log(
+                f"DISPLAY Bedienwert fix9: Paket {block_start} wurde frisch gesehen, aber {target_reg}="
+                f"{('--' if read_value is None else '0x%04X' % read_value)} statt 0x{target_value:04X}; "
+                f"0BC3={('--' if flag is None else '0x%04X' % flag)}."
+            )
+            self._display_user_value_fail_or_fallback()
+            return
+
+        age = time.monotonic() - wait_started
+        if flag == mask:
+            if age < 15.0:
+                self._log(
+                    f"DISPLAY Bedienwert fix9: 0BC3=0x{flag:04X} sichtbar, warte auf Master-Read/Paket {block_start}."
+                )
+                QTimer.singleShot(1200, self._display_user_value_check)
+                return
+        else:
+            # Wenn der naechste 3001-Poll weiterhin 0 zeigt, ist das Flag nicht angekommen.
+            # Dann nicht 14s warten, sondern nur 0BC3 erneut setzen.
+            # Variante A darf erst einmal abwarten: Das echte Display setzt 0BC3 oft erst
+            # beim naechsten 3001-Zyklus selbst. Erst danach setzen wir das Flag als Fallback.
+            resend_after = 5.5 if str(state.get("variant", "A")).upper() == "A" and int(state.get("flag_resends", 0) or 0) == 0 else 3.0
+            if age >= resend_after and int(state.get("flag_resends", 0) or 0) < 4:
+                state["flag_resends"] = int(state.get("flag_resends", 0) or 0) + 1
+                state["phase"] = "write_steps"
+                plan = [{
+                    "addr": 0x0BC3,
+                    "value": mask,
+                    "delay": 0,
+                    "label": f"fix9 Nachsetzen 0BC3=0x{mask:04X}",
+                }]
+                state["plan"] = plan
+                state["step_index"] = 0
+                state["step_retries"] = 0
+                self._log(
+                    f"DISPLAY Bedienwert fix9: 3001 zeigt 0BC3 nicht als 0x{mask:04X} "
+                    f"({('--' if flag is None else '0x%04X' % flag)}), setze nur 0BC3 erneut."
+                )
+                self._display_user_value_send_current_step()
+                return
+            if age < 7.0:
+                QTimer.singleShot(1000, self._display_user_value_check)
+                return
+
+        self._log(
+            "DISPLAY Bedienwert fix9: kein frischer Paketblock gesehen. "
+            f"0BC3={('--' if flag is None else '0x%04X' % flag)}."
+        )
+        self._display_user_value_fail_or_fallback()
+
+    def _display_user_value_fail_or_fallback(self):
+        state = self.display_user_value_state
+        if not state.get("active"):
+            return
+        variant = str(state.get("variant", "A")).upper()
+        fallbacks = list(state.get("fallback_variants") or [])
+        if fallbacks:
+            next_variant = str(fallbacks.pop(0)).upper()
+            state["fallback_variants"] = fallbacks
+            state["fallback_used"] = True
+            self._log(
+                f"DISPLAY Bedienwert fix9: Variante {variant} hat nicht sicher gegriffen, "
+                f"starte automatisch Fallback Variante {next_variant}."
+            )
+            QTimer.singleShot(700, lambda v=next_variant: self._display_user_value_start_sequence(v))
+            return
+        self._log("DISPLAY Bedienwert fix9 FEHLGESCHLAGEN: kein sicherer Master-Read/keine Zielwert-Übernahme gesehen.")
+        self._display_user_value_complete_current(False)
+
     def send_register_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        # fix9: Im Display-Backend werden bekannte Parameterpaket-Nutzwerte wie echte
+        # Display-Bedienung geschrieben: Reg 1012 -> 23F4, ACK-gesteuert, ohne Extra-Dialog.
+        if self._queue_display_param_user_write_from_normal(addr, value, slave_addr, label=label, delay_ms=delay_ms):
+            return
         frame, wire_addr, wire_slave, note, fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
         info = self.regmap.get(addr)
         known = f" | {info.name} [{info.dtype}]" if info and info.name else ""
@@ -8354,10 +9468,11 @@ class MainWindow(QMainWindow):
             f"value={value}/0x{value:04X}, signed={s16(value)}, /10={s16(value)/10.0:.1f}, "
             f"TX={hexdump(frame, -1)}{known}{note_text}"
         )
-        if not self.connected or not self.worker:
-            self._log("WRITE nicht gesendet: keine aktive Verbindung.")
+        io_worker = self._active_io_worker()
+        if io_worker is None:
+            self._log("WRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
-        self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
+        io_worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
 
     def show_write_frame(self):
         try:
@@ -8405,10 +9520,11 @@ class MainWindow(QMainWindow):
                 f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
                 f"value={value}/0x{value:04X}, TX={hexdump(frame, -1)}"
             )
-            if not self.connected or not self.worker:
-                self._log("WRITE nicht gesendet: keine aktive Verbindung.")
+            io_worker = self._active_io_worker()
+            if io_worker is None:
+                self._log("WRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
                 return
-            self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, write_single=self._write_single_for_backend())
+            io_worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, write_single=self._write_single_for_backend())
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Eingabe", str(exc))
 

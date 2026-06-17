@@ -1,0 +1,16 @@
+V0.2.38 PRIVATE fix3 - Display-Modbus Schreibtests
+
+- Manuelle Modbus-Display Reads/Writes nutzen jetzt den aktiven DisplayWorker, falls dieser nach Display-Init die Hauptverbindung abgeloest hat.
+- Dadurch soll "WRITE nicht gesendet: keine aktive Verbindung" bei aktivem DisplayWorker nicht mehr auftreten.
+- Manuelles Register-Popup: Dry-Run-Schritt entfernt, ECHT senden ist direkt aktiv.
+- Automatische +0x2000-Uebersetzung fuer Display-Modbus entfernt/deaktiviert.
+- Zahleneingabe erweitert: ASM/DWIN-Schreibweise mit H-Suffix wird unterstuetzt.
+  Beispiele:
+  - 0BC3H = 0x0BC3 = 3011
+  - 5112H = 0x5112 = 20754
+
+Empfohlene Tests:
+1. Modbus Display verbinden / DisplayWorker aktiv.
+2. Register-Popup: Unit 3, Register 0BC3H, Wert 8000H, FC06 senden.
+3. Log pruefen: WRITE gesendet, nicht nur vorbereitet.
+4. Optional danach 0BC3H lesen und Broadcast-/Paketreaktion beobachten.

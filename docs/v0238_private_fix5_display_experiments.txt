@@ -1,0 +1,42 @@
+FoxAir / Phnix Control PRIVATE V0.2.38 fix5
+==============================================
+
+Neue Display-Experimente:
+
+1) Display Reboot Fake
+----------------------
+Sendet an Unit 3:
+- 5112H = 0000H
+- 0BC3H = 8000H
+
+Erwartete Reaktion des echten Masters:
+- FC16 Write 1001..1090 an Unit 3
+- FC16 Write 1091..1180 an Unit 3
+- FC16 Write 1181..1270 an Unit 3
+- FC16 Write 1271..1360 an Unit 3
+- FC16 Write 1361..1450 an Unit 3
+- FC16 Write 1451..1540 an Unit 3
+- danach 0BC3H = 0000H
+
+2) Display-Wert simulieren
+--------------------------
+Ablauf:
+- vollständigen Paketblock aus Cache holen (bevorzugt Unit 3 Snapshot)
+- Zielregister ändern
+- kompletten Block per FC16 an Unit 3 schreiben
+- passendes 0BC3-Maskenbit setzen
+
+Masken:
+- 1001-1090 -> 0BC3 = 0002H
+- 1091-1180 -> 0BC3 = 0004H
+- 1181-1270 -> 0BC3 = 0008H
+- 1271-1360 -> 0BC3 = 0010H
+- 1361-1450 -> 0BC3 = 0020H
+- 1451-1540 -> 0BC3 = 0040H
+- 1541-1630 -> 0BC3 = 0080H
+
+Schnellbuttons:
+- Heizen: 1012 = 1
+- Kühlen: 1012 = 2
+
+Bitte mit RAW-Log testen und danach beobachten, ob der Master Unit 3 / 1001 / Qty 90 liest und 0BC3 wieder auf 0 setzt.

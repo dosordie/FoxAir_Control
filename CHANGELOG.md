@@ -1,10 +1,43 @@
-## V0.2.38 PUBLIC
+## PUBLIC V0.2.39
 
-- Public-Release aus dem internen/private Stand V0.2.38 fix2.
-- App-Edition auf PUBLIC gesetzt; PRIVATE-Markierung in Titel/About/Splash entfällt.
-- Public-Default-Host geleert, damit keine private Test-IP vorbelegt ist.
-- README/Release-Hinweis ergänzt: Schreiben über den Modbus Display-/HMI-Bus funktioniert aktuell noch nicht bzw. ist nicht freigegeben.
-- Display-/HMI-Bus bleibt in dieser Version Diagnose-/Lesepfad; Parameteränderungen/Restore nur über die bewusst getesteten Wege verwenden.
+- Public-Release aus internem Stand V0.2.38 fix11.
+- Backend **Modbus Display**: bekannte Parameterpaket-Nutzwerte werden beim Schreiben automatisch über den Display-Bedienwertpfad geschrieben (`Register + 0x2000`, z. B. `1012 -> 23F4`) und ACK-gesteuert verarbeitet.
+- Display-Parameterwrites laufen über eine Warteschlange, damit mehrere Popup-/Timer-/Parameterwrites nacheinander und nicht parallel gesendet werden.
+- Backend **Modbus Display**: **Alle bekannten Register lesen** nutzt als Snapshot-Methode den beobachteten Display-Reboot-Fake (`5112H=0`, `0BC3H=8000H`), bis direkte `qty=90`-Reads stabil verstanden sind.
+- Display-Parameterpakete `0x03/1001ff..1541ff` werden auch bei passiv gesehenen Master-Reads wieder mit normalem WP-/Warmlink-Mapping dekodiert, damit Klartexte/Value-Maps sichtbar bleiben.
+- Der frühere private Display-Testbereich ist in der UI ausgeblendet; der Code bleibt als Diagnose-/Fallback-Basis erhalten.
+- **Modbus Standart** und **Modbus Warmlink LTE** bleiben in ihren Lese-/Schreibpfaden unverändert.
+
+
+## V0.2.38 PRIVATE fix11
+
+- PRIVATE Display-Testbereich in der Seitenleiste ausgeblendet, Code/Methoden bleiben zum Reaktivieren und Debuggen erhalten.
+- Backend **Modbus Display**: Button **Alle bekannten Register lesen** nutzt jetzt standardmäßig den ACK-gesteuerten **Display Reboot Fake** als Snapshot-Methode statt aktive Qty90-Paketreads.
+- Popup-/Arbeitsablauf-Reads auf bekannte Display-Parameterpakete werden im Display-Backend entprellt ebenfalls über den Reboot-Snapshot aktualisiert. Manuelle FC03-Reads bleiben direkt möglich, damit der Qty90-Direktleseweg weiter untersucht werden kann.
+- Warmlink und Standard-Modbus bleiben unverändert und nutzen weiterhin ihre eigenen Init-/Lesepfade.
+
+
+## V0.2.38 PRIVATE fix10
+
+- Display-Parameterpakete `0x03/1001ff..1541ff` werden nun auch bei passiv gesehenen Master-Reads wieder mit dem normalen WP-/Warmlink-Mapping dekodiert.
+- Damit bleiben Klartexte/Value-Maps nach Bedienwert-Writes sichtbar, z. B. `1012 = 0 Warmwasser`, `1012 = 1 Heizen`, `1012 = 2 Kühlen`.
+- Display-/DWIN-Diagnoseadressen wie `3001ff` bleiben weiterhin im getrennten Display-Mapping.
+
+## PRIVATE V0.2.38 fix9
+
+- Normale Schreiblogik im Backend **Modbus Display** erweitert: bekannte Display-Parameterpaket-Nutzwerte werden jetzt automatisch wie eine echte Display-Bedienung geschrieben. Beispiel: `1012=2` wird als `23F4=2` gesendet.
+- Der Rechtsklick-Write und Popups wie WP-Steuerung, Timer-/Parameterfenster usw. brauchen dafür keine Extra-Bestätigung.
+- Neue ACK-gesteuerte Warteschlange für Display-Parameterwrites: mehrere Popup-Schreibbefehle laufen nacheinander statt parallel auf dem Bus.
+- Default für den Display-Wert-Test ist jetzt Variante **A**: nur Benutzerwert (`Register + 0x2000`). Das Display setzt `0BC3` selbst.
+- Fallback bleibt automatisch: wenn Variante A nicht sicher greift, wird `0BC3` nachgesetzt bzw. B/C versucht.
+
+## PRIVATE V0.2.38 fix8
+
+- Display-Experimente PRIVATE: Reboot-Fake jetzt ACK-gesteuert. `5112H=0` wird erst nach ACK fortgesetzt; `0BC3H=8000H` wird bei fehlendem ACK oder fehlendem `3001/3011=0x8000` gezielt erneut gesendet.
+- Display-Wert-Test jetzt ACK-gesteuert: Paketwert/Userwert/`0BC3` werden sequenziell gesendet; der nächste Schritt startet erst nach ACK von Unit `0x03`.
+- Wenn `0BC3` beim nächsten `3001`-Poll nicht sichtbar wird, setzt die App nur `0BC3` erneut, statt lange auf einen Paketblock zu warten.
+- Variante B (`23xx` Benutzerwert + `0BC3`) nutzt automatisch Variante C (`03xx` Paketwert + `23xx` Benutzerwert + `0BC3`) als Fallback, wenn B trotz ACK/Retry nicht greift.
+- Schnellbutton **WW** ergänzt: setzt `1012=0` laut `MODE_0_4` Mapping. Heizen bleibt `1012=1`, Kühlen `1012=2`.
 
 ## V0.2.38 fix2
 - Display-Init-Paketreads werden vorerst wieder ins Hauptfenster übernommen, wenn der WP-Paketkopf gültig ist.
@@ -287,3 +320,12 @@ Public-Prep-Version.
 - Display-Paketblock-Test erweitert: testet sequenziell jetzt auch Unit `0x02` und `0x05` zusätzlich zu `0x03`, `0x01`, `0x04`.
 - Unit `0x00` wird in der Busübersicht nicht mehr als ungültige Adresse bezeichnet, sondern als Modbus-Broadcast/System-Adresse.
 - Unit `0x00` wird bewusst nicht aktiv gepollt, weil Broadcast-Reads keine normale Antwort erwarten lassen. Passive Broadcast-Paketblöcke `2001ff`/`2091ff` bleiben unverändert validiert und übernommen.
+
+## PRIVATE V0.2.38 fix5
+
+- Modbus Display: neue PRIVATE-Experimente in der Seitenleiste:
+  - **Display Reboot Fake**: setzt Unit 3 / `5112H=0` und danach `0BC3H=8000H`, damit der echte Master wie beim Display-Neustart die Parameterblöcke ans Display schreiben soll.
+  - **Display-Wert simulieren**: nutzt den zuletzt gesehenen vollständigen Display-Paketblock, ändert genau ein Register im Block, schreibt den kompletten Block per FC16 an Unit 3 und setzt anschließend das passende `0BC3`-Maskenbit.
+  - Schnellbuttons für `1012=1` (Heizen) und `1012=2` (Kühlen).
+- FC16-Block-Write für 90er Display-Paketblöcke ergänzt.
+- Erwarteter echter Display-Pfad aus den RAW-Logs umgesetzt: `1001ff` wird als kompletter Block gelesen/geschrieben, `0BC3` signalisiert die Änderung (`1001`-Paket: `0x0002`; Reboot/Power-On: `0x8000`).

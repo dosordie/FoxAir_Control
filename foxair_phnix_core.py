@@ -161,6 +161,36 @@ def build_write_multiple_one_frame(addr: int, value: int, slave_addr: int = DEFA
     return build_write_frame(addr, value, slave_addr=slave_addr)
 
 
+
+def build_write_registers_frame(addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR) -> bytes:
+    """Modbus FC16: Write Multiple Registers fuer echte Mehrwort-Bloecke.
+
+    Wird fuer Display/DWIN-Paketbloecke genutzt, z.B. Unit 3, Start 1001, Qty 90.
+    """
+    if not 0 <= addr <= 0xFFFF:
+        raise ValueError("Adresse außerhalb 0..65535")
+    if not is_possible_bus_addr(slave_addr):
+        raise ValueError("Bus-Adresse außerhalb 1..247")
+    vals = [int(v) & 0xFFFF for v in values]
+    if not 1 <= len(vals) <= 123:
+        raise ValueError("Registeranzahl für FC16 außerhalb 1..123")
+    end_addr = addr + len(vals) - 1
+    if end_addr > 0xFFFF:
+        raise ValueError("Adresse+Anzahl außerhalb 0..65535")
+    byte_count = len(vals) * 2
+    payload = bytearray([
+        slave_addr, 0x10,
+        (addr >> 8) & 0xFF, addr & 0xFF,
+        (len(vals) >> 8) & 0xFF, len(vals) & 0xFF,
+        byte_count & 0xFF,
+    ])
+    for value in vals:
+        payload.append((value >> 8) & 0xFF)
+        payload.append(value & 0xFF)
+    frame_wo_crc = bytes(payload)
+    return frame_wo_crc + crc_bytes_le(frame_wo_crc)
+
+
 def build_read_frame(addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR) -> bytes:
     if not 0 <= addr <= 0xFFFF:
         raise ValueError("Adresse außerhalb 0..65535")

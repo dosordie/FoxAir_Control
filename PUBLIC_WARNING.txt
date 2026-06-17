@@ -1,16 +1,2 @@
-FoxAir / Phnix Control - Warnhinweis
-=====================================
-
-Dieses Programm ist ein inoffizielles Diagnose- und Parametrierwerkzeug.
-Es ist kein offizielles FoxAir- oder Phnix-Produkt.
-
-Das Programm kann Register lesen und schreiben. Falsche Registerwerte können
-Betriebsparameter verändern und zu Störungen oder Fehlfunktionen führen.
-
-Vor Änderungen immer ein Backup erstellen.
-Restore/Schreiben nur verwenden, wenn die Bedeutung der Register bekannt ist.
-Nutzung auf eigene Verantwortung.
-
-Hinweis Display-Bus:
-Schreiben über Modbus Display / HMI funktioniert aktuell noch nicht bzw. ist nicht freigegeben.
-Display-Bus-Funktionen bitte nur für Diagnose/Lesen/passives Mithören verwenden.
+Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen.
+Display-/HMI-Bus-Funktionen sind experimentell: erst mit bekannten, unkritischen Werten testen.

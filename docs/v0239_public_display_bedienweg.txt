@@ -1,0 +1,10 @@
+PUBLIC V0.2.39 - Display-Bedienweg
+
+- Public-Release aus V0.2.38 PRIVATE fix11.
+- Display-Schreiben fuer bekannte Parameterpaket-Nutzwerte erfolgt ueber Register+0x2000.
+  Beispiel: 1012=2 wird auf Unit 0x03 als 23F4=2 geschrieben.
+- Bei Bedarf wird das passende 0BC3-Flag nachgesetzt, damit der Master den 90er-Parameterblock liest.
+- Alle bekannten Register lesen nutzt im Display-Backend vorerst den Display-Reboot-Snapshot
+  (5112H=0, 0BC3H=8000H), weil direkte FC03 qty=90 Reads noch timingkritisch sind.
+- Manuelle FC03 Reads bleiben fuer Diagnose erhalten.
+- Standard-Modbus und Warmlink-LTE bleiben unveraendert.

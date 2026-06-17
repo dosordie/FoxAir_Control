@@ -1,0 +1,9 @@
+V0.2.38 PRIVATE fix7 - Display-Bedienwert A/B/C-Testmatrix
+
+- Display-Wert-Test im PRIVATE-Experimentbereich um Varianten-Auswahl ergänzt:
+  A: nur Benutzer-/Displayvariable schreiben (Register + 0x2000), ohne 0BC3 manuell zu setzen.
+  B: Benutzer-/Displayvariable schreiben und danach 0BC3-Maske setzen. Dies ist der im Log bestätigte funktionierende Weg für 1012=Kühlen.
+  C: zusätzlich den Paket-/Kommunikationswert schreiben, dann Benutzerwert und 0BC3-Maske.
+- Heizen/Kühlen-Schnellbuttons verwenden die ausgewählte Variante.
+- Es wird weiterhin kein kompletter 90er-Parameterblock geschrieben.
+- Die Auswertung beobachtet 3001/3011 (0BC3), den Master-Read des betroffenen Pakets und den frisch gelesenen Zielwert.
