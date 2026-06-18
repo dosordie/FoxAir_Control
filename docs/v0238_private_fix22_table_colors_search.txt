@@ -1,0 +1,18 @@
+PRIVATE V0.2.38 fix22 – Hauptfenster Farben / Suche
+
+Änderung fix22:
+- Bereich 2000–2999 ist nun auch im Normalzustand farbig:
+  - helles Design: hellorange
+  - dunkles Design: dunkles Braun/Orange
+- Änderungsfarbe fuer 2000–2999 ist dunkler/kraeftiger orange und bleibt bis
+  "Hauptfenster leeren" aktiv.
+- Suchtreffer nutzen nun eine eigene deutliche Blau/Cyan-Farbe statt Orange.
+  Dadurch kollidieren sie nicht mehr mit dem 2000er-Bereich.
+- Suchtreffer werden zusaetzlich fett dargestellt.
+- Aenderungsmarkierungen selbst bleiben nicht fett.
+
+Bereiche:
+- 1000–1599: beschreibbare Parameter / gruen
+- 2000–2999: Live-/Statuswerte / orange
+- 3000+: Display-/DWIN-Diagnose / lila
+- 91099–91149: virtueller Displaybus-0x01-Rohstatus / tuerkis

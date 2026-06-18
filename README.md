@@ -1,8 +1,17 @@
-## PUBLIC V0.2.39 Hinweis
+## PUBLIC V0.2.41 Hinweis
 
-Diese Public-Version basiert auf dem internen Stand **V0.2.38 fix11**.
+Diese Public-Version basiert auf dem internen Stand **V0.2.41 fix7**.
 
-**Neu gegenüber Public V0.2.38:** Der Display-/HMI-Bus ist nicht mehr nur passive Diagnose. Bekannte Parameterpaket-Nutzwerte können jetzt über den beobachteten Display-Bedienweg geschrieben werden: normale Registerwrites auf z. B. `1012` werden im Display-Backend automatisch als Benutzerwert `Register + 0x2000` gesendet, also `1012 -> 23F4`. Der direkte PRIVATE-Testbereich bleibt im Code vorhanden, ist in der Public-UI aber ausgeblendet.
+**Neu gegenüber Public V0.2.39:**
+
+- Display-/HMI-Schreibpfade weiter verbessert: bekannte Parameter-/Timerwerte werden im Backend **Modbus Display** nur dort über den Bedienwertpfad `Register + 0x2000` geschrieben, z. B. `1287 -> 0x2507`.
+- Timer 1-6, WP-Ein/Aus Timer, Silent Timer, SG Ready, WP-Steuerung, AT-Kompensation und Parameterfenster warten im Display-Modus auf die benötigten Paketdaten, statt leere/alte Werte blind zu schreiben.
+- Mehrfachänderungen werden sequenziell geschrieben und bestätigt; besonders Timer-/Popupwrites laufen nicht mehr parallel auf den Bus.
+- Für den WP-Ein/Aus-/Silent-Timer (`1181ff`) ist ein zusätzlicher Fallback über Kommunikationsregister + `0BC3=0x0008` enthalten.
+- Neues Log-Level 1–7: Level 4 ist für Chat-/Fehlerdiagnose gedacht, RAW/TX-Spam erst ab Level 6.
+- RAW anzeigen zeigt HEX+ASCII zusammen; die separate RAW-ASCII-Option entfällt.
+- FC06/FC16-Auswahl ist in der normalen UI ausgeblendet; die Display-Spezialpfade wählen intern selbst den passenden Schreibweg.
+- Unit-Einstellung bleibt als aktives Ziel für manuelle Modbusbefehle sichtbar; im Displaybus werden die passiven Rollen `0x00`, `0x01`, `0x03` usw. weiterhin separat erkannt.
 
 **Wichtig:** Der Display-/HMI-Bus bleibt experimentell. Für sichere/produktive Änderungen bleiben **Modbus Standart** und **Modbus Warmlink LTE** die bevorzugten Wege. Vor Änderungen immer Backup erstellen.
 

@@ -1,0 +1,12 @@
+V0.2.40 PRIVATE - Display-Modbus Schreibpfade
+
+Änderungen:
+- APP_VERSION auf 0.2.40 angehoben.
+- Display-Modbus Timer/Popup-Writes prüfen vorher, ob benötigte Parameterpakete geladen sind.
+- Fehlende Pakete starten automatisch einmal "Alle bekannten Register lesen"; aktueller Write wird nicht blind gesendet.
+- Timerdaten 1281-1325 liegen im Paket 1271ff.
+- WP Ein/Aus Timer 1256-1270 und Silent Timer 1244-1249 liegen im Paket 1181ff.
+- SG Ready 1334-1341 liegt im Paket 1271ff.
+- AT-Kompensation 1234-1236 liegt im Paket 1181ff.
+- Aktiv/Tage-Paarregister 1268-1270 und 1323-1325 werden nur gesendet, wenn sich der Wert tatsächlich geändert hat.
+- Fehlt bei einem optionalen Aktiv/Tage-Schritt ein ACK, läuft der Rest weiter und die Übernahme soll über frische Paketdaten geprüft werden.

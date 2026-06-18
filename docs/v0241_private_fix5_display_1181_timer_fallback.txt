@@ -1,0 +1,18 @@
+PRIVATE V0.2.41 fix5 – Display-Modbus WP Ein/Aus Timer / 1181ff
+
+Aus Log 13:46:
+- 1256 wurde korrekt als User-Adresse 24E8 geschrieben.
+- Auf 24E8 kam aber 3x kein ACK, danach brach fix4 ab.
+- ASM bestaetigt: KG1 nutzt 04E8 als Kommunikationsvariable und 24E8 als Benutzerwert, 0BC3-Maske 0008.
+
+Fix5:
+- Fuer 1181ff wird zuerst weiterhin Reg+0x2000 geschrieben.
+- Wenn kein ACK kommt, ist das kein harter Fehler mehr.
+- Danach wird als Fallback das Kommunikationsregister 04E8..04F6 geschrieben.
+- Es folgt eine kurze Pause, damit die Display-Firmware den Wert spiegeln kann.
+- Danach wird 0BC3=0008 gesetzt, damit der Master 1181ff neu liest.
+
+Geltungsbereich:
+- Nur Backend Modbus Display.
+- Nur Paket 1181ff (WP Ein/Aus Timer, Silentmodus Timer, AT-Kompensation/Parameter aus diesem Paket falls ueber Popup-Timerpfad).
+- Der Betriebsart-Timer 1271ff bleibt beim bewaehrten Userwert-Einzelcommit.

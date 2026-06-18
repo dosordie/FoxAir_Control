@@ -1,0 +1,12 @@
+# PRIVATE V0.2.38 fix23 – Displaybus Timerwrites und Registerinfos
+
+- Timer-/SG-/Popup-Mehrfachwrites im Backend Modbus Display verwenden jetzt den DWIN-Bedienwertpfad.
+- Werte werden pro Register nach User-Adresse `Register + 0x2000` geschrieben.
+- Pro betroffenem 90er-Paketblock wird anschließend `0BC3` mit der passenden Maske gesetzt.
+- Damit werden 12xx/13xx-Timerregister nicht mehr direkt per FC06 auf Unit 0x03 geschrieben.
+- Auslöser: Testlog zeigte direkte FC06-Writes auf `1281..1287`, `1323`, `1286`; Änderung `1287` von 1.0 auf 1.1 wurde nicht übernommen.
+
+Registerinfos:
+- `1286` Code 9 = keinen Modus ändern / Code 9.
+- `1356 / H42`: AT-Schwelle für Gehäusewannenheizung.
+- `1437 / D30`: Delays OFF Time after Defrost; wirkt erst, wenn AT kleiner `H42 / 1356` ist.

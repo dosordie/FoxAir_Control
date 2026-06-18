@@ -1,0 +1,11 @@
+V0.2.41 PRIVATE fix1 - Display-Modbus Timerwrite
+
+Keine Versionsanhebung: APP_VERSION bleibt 0.2.41.
+
+Änderungen:
+- Timer-/Popupwrites im Display-Modbus schreiben nur geänderte Werte.
+- Der komplette Block 0x2501..0x2507 wird nicht mehr als ein Block geschrieben.
+- Geänderte Register werden einzeln als User-Adresse Register+0x2000 gesendet.
+- Danach wird pro Paket 0BC3 als weicher Trigger gesetzt.
+- Fehlende ACKs führen nicht mehr sofort zum harten Abbruch.
+- Fehlende Parameterpakete starten weiterhin einen Snapshot-Hinweis, blockieren den aktuellen Dialog-Write aber nicht mehr hart.

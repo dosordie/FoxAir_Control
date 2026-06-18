@@ -1,0 +1,14 @@
+V0.2.38 PRIVATE fix16
+
+- Fix fuer Haupttabellenfarben:
+  - Bereichsfarben bleiben direkt nach Cache-/Tabellenaufbau sichtbar.
+  - Frische Aenderungen werden fuer einige Sekunden in einer kraeftigeren/dunkleren Bereichsfarbe gehalten.
+  - Refresh durch Suche/Cache/Theme ueberschreibt die Aenderungsfarbe nicht mehr sofort.
+
+- Farben helles Design:
+  - 1000-1599: gruenlich, Aenderung dunkler gruen.
+  - 2000-2999: neutral wie bisher, Aenderung gelblich wie bisher.
+  - 3000+: lila/blaeulich, Aenderung dunkler lila.
+  - 91099-91149: virtuell Displaybus 0x01/2099ff, eigene blau/tuerkis Diagnosefarbe, Aenderung dunkler blau.
+
+- Dunkles Design logisch mit angepasst, aber Schwerpunkt/Test nach Nutzerwunsch helles Design.

@@ -1,0 +1,13 @@
+PRIVATE V0.2.38 fix21 – Änderungsfarben ohne Fett
+
+Ziel:
+- Keine Fett-Markierung in der Haupttabelle.
+- Bereichsfarben bleiben sofort sichtbar.
+- Änderungsfarbe wird nur bei echten Wertänderungen gesetzt.
+- Initialwerte nach Start oder nach "Hauptfenster leeren" markieren keine Änderung.
+
+Umsetzung:
+- Änderung = Register hatte bereits einen echten Live-Wert UND neuer Rohwert unterscheidet sich.
+- Erstwert = nur anzeigen, normale Bereichsfarbe.
+- register_change_highlights bleibt bis "Hauptfenster leeren" aktiv.
+- Fonts werden beim Zeilenrefresh explizit wieder auf nicht-fett gesetzt.

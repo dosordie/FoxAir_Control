@@ -1,0 +1,7 @@
+PRIVATE V0.2.38 fix14
+
+- Hauptfenster-Farben: 1000-1599 gruenlich, 3000+ lila/blau, 2000er unveraendert.
+- Bereichsfarben haben nun Vorrang vor Cache-Grau, damit sie direkt beim Laden alter Cachewerte sichtbar sind.
+- Display-Bus 0x01/2099ff wird als virtueller Diagnosebereich 91099-91149 uebernommen.
+  Hintergrund: 0x01/2099ff ist nuetzlich, kollidiert aber mit echten WP-Registern 2099-2149.
+- 0x04/0x05 bleiben konservativ und werden nur kollisionsfrei uebernommen.

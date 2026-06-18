@@ -1,0 +1,18 @@
+PRIVATE V0.2.38 fix21 – Hauptfenster Änderungsfarben
+
+Problem aus fix19:
+- Die Bereichsfarben selbst waren sichtbar.
+- Die dunklere Änderungsfarbe wurde in der Praxis weiter durch normale Tabellen-/Such-/Cache-Refreshes oder Qt-Zeichnung überschrieben bzw. war nicht sichtbar.
+
+Änderung fix21:
+- Neue zentrale Zeilenfunktion _apply_register_row_visual_state().
+- Hintergrund wird pro Zelle explizit als QBrush in Qt.BackgroundRole und setBackground gesetzt.
+- Nach Upsert, Such-Refresh und Bulk-Updates werden markierte Register erneut eingefärbt.
+- register_change_highlights bleibt bis Hauptfenster leeren aktiv.
+- Geänderte Zeilen werden zusätzlich fett dargestellt.
+
+Farbgruppen:
+- 1000–1599: beschreibbare Parameter, grün; Änderung kräftiger/dunkler grün.
+- 2000–2999: Live-/Statuswerte wie bisher; Änderung gelblich.
+- 3000+: DWIN/Display-Diagnose, lila/bläulich; Änderung kräftiger/dunkler lila.
+- 91099–91149: virtueller 0x01/2099ff-Rohstatus, türkis/blau; Änderung kräftiger/dunkler türkis/blau.

@@ -113,6 +113,10 @@
     "name": "DWIN/Display Rohstatusblock 2099ff Wort 5 (Bedeutung unklar)",
     "type": "RAW"
   },
+  "2104": {
+    "name": "Displaybus 2099ff Rohwort 6 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
   "2105": {
     "function": "16",
     "mode": "r/w",
@@ -123,6 +127,10 @@
     "function": "16",
     "mode": "write",
     "name": "DWIN/Display Rohstatusblock 2099ff Wort 8 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2107": {
+    "name": "Displaybus 2099ff Rohwort 9 (nur Diagnose, nicht Warmlink)",
     "type": "RAW"
   },
   "2108": {
@@ -165,6 +173,10 @@
     "function": "16",
     "mode": "write",
     "name": "DWIN/Display Rohstatusblock 2099ff Wort 16 (Bedeutung unklar)",
+    "type": "RAW"
+  },
+  "2115": {
+    "name": "Displaybus 2099ff Rohwort 17 (nur Diagnose, nicht Warmlink)",
     "type": "RAW"
   },
   "2116": {
@@ -275,37 +287,237 @@
     "name": "DWIN/Display Rohstatusblock 2099ff Wort 34 (Bedeutung unklar)",
     "type": "DIGI6"
   },
+  "2133": {
+    "name": "Displaybus 2099ff Rohwort 35 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2134": {
+    "name": "Displaybus 2099ff Rohwort 36 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2135": {
+    "name": "Displaybus 2099ff Rohwort 37 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2136": {
+    "name": "Displaybus 2099ff Rohwort 38 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2137": {
+    "name": "Displaybus 2099ff Rohwort 39 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2138": {
+    "name": "Displaybus 2099ff Rohwort 40 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2139": {
+    "name": "Displaybus 2099ff Rohwort 41 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2140": {
+    "name": "Displaybus 2099ff Rohwort 42 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2141": {
+    "name": "Displaybus 2099ff Rohwort 43 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2142": {
+    "name": "Displaybus 2099ff Rohwort 44 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2143": {
+    "name": "Displaybus 2099ff Rohwort 45 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2144": {
+    "name": "Displaybus 2099ff Rohwort 46 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2145": {
+    "name": "Displaybus 2099ff Rohwort 47 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2146": {
+    "name": "Displaybus 2099ff Rohwort 48 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2147": {
+    "name": "Displaybus 2099ff Rohwort 49 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2148": {
+    "name": "Displaybus 2099ff Rohwort 50 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "2149": {
+    "name": "Displaybus 2099ff Rohwort 51 (nur Diagnose, nicht Warmlink)",
+    "type": "RAW"
+  },
+  "3001": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W1 Anzeige-/Status 1",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3002": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W2 Anzeige-/Status 2",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3003": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W3 Anzeige-/Status 3",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3004": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W4 Anzeige-/Status 4",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3005": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W5 Anzeige-/Status 5",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3006": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W6 Anzeige-/Status 6",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3007": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W7 Anzeige-/Status 7",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3008": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W8 Anzeige-/Status 8",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3009": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W9 Anzeige-/Status 9",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3010": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W10 Anzeige-/Status 10",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3011": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0BC3 Parameter-Sync-/Änderungsflag",
+    "note": "0BC3H im DWIN/ASM: Parameter-Sync-/Änderungsflag. Bit 15 = Init/Reboot; 0x0002 = Paket 1001 geändert.",
+    "type": "RAW",
+    "value_map": {
+      "0": "kein Änderungsflag",
+      "128": "Paket 1541 geändert",
+      "16": "Paket 1271 geändert",
+      "2": "Paket 1001 geändert",
+      "32": "Paket 1361 geändert",
+      "32768": "Initial/Reboot: Parameterpakete neu laden",
+      "4": "Paket 1091 geändert",
+      "64": "Paket 1451 geändert",
+      "8": "Paket 1181 geändert"
+    }
+  },
   "3012": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Display Softwarecode / Anzeige Softwarecode (beobachtet im 3001ff-Block)",
+    "name": "DWIN 3001ff W12 Anzeige-/Pointer-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
     "type": "RAW"
   },
   "3013": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Display Softwareversion (V1.7 beobachtet)",
+    "name": "DWIN 3001ff W13 Anzeige-/Pointer-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
     "type": "RAW",
     "value_map": {
       "17": "V1.7 Display-Software"
     }
   },
+  "3014": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W14 Anzeige-/Pointer-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3015": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W15 Anzeige-/Pointer-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3016": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W16 kleiner Code / Status-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3017": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W17 Anzeige-/Status-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3018": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W18 Anzeige-/Status-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3019": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W19 Anzeige-/Status-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
+  "3020": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 3001ff W20 Anzeige-/Status-Kandidat",
+    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
+    "type": "RAW"
+  },
   "3021": {
     "function": "03",
     "mode": "read",
     "name": "DWIN Anzeige-/Icon-/Seiten-Code 3021 (Kandidat; nicht direkt 2012)",
+    "note": "Merker V0.2.38: beobachtet 55→56 bzw. verschiedene Werte; Anzeige/Icon/Seitenstatus-Kandidat, nicht direkt WP-Modus.",
     "type": "RAW",
     "value_map": {
       "0": "Code 0 - noch nicht zugeordnet",
       "1": "Code 1 - noch nicht zugeordnet",
-      "2": "Code 2 - noch nicht zugeordnet",
-      "3": "Code 3 - noch nicht zugeordnet",
-      "4": "Code 4 - noch nicht zugeordnet",
-      "5": "Code 5 - noch nicht zugeordnet",
-      "6": "Code 6 - noch nicht zugeordnet",
-      "7": "Code 7 - noch nicht zugeordnet",
-      "8": "Code 8 - noch nicht zugeordnet",
-      "9": "Code 9 - noch nicht zugeordnet",
       "10": "Code 10 - noch nicht zugeordnet",
       "11": "Code 11 - noch nicht zugeordnet",
       "12": "Code 12 - noch nicht zugeordnet",
@@ -316,9 +528,16 @@
       "17": "Code 17 - noch nicht zugeordnet",
       "18": "Code 18 - noch nicht zugeordnet",
       "19": "Code 19 - noch nicht zugeordnet",
-      "20": "Code 20 - noch nicht zugeordnet"
-    },
-    "note": "Merker V0.2.38: beobachtet 55→56 bzw. verschiedene Werte; Anzeige/Icon/Seitenstatus-Kandidat, nicht direkt WP-Modus."
+      "2": "Code 2 - noch nicht zugeordnet",
+      "20": "Code 20 - noch nicht zugeordnet",
+      "3": "Code 3 - noch nicht zugeordnet",
+      "4": "Code 4 - noch nicht zugeordnet",
+      "5": "Code 5 - noch nicht zugeordnet",
+      "6": "Code 6 - noch nicht zugeordnet",
+      "7": "Code 7 - noch nicht zugeordnet",
+      "8": "Code 8 - noch nicht zugeordnet",
+      "9": "Code 9 - noch nicht zugeordnet"
+    }
   },
   "4544": {
     "function": "03",
@@ -332,85 +551,18 @@
     "name": "DWIN 1270 Temperatur-/Anzeige-Kandidatenblock",
     "type": "RAW"
   },
-  "4722": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 0x1272 WW-Tanktemperatur Anzeige (Korrelation zu WREG 2047)",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
-  },
-  "4732": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 0x127C Heiz-Soll / berechneter Heiz-Sollwert Anzeige",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
-  },
-  "5920": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1720 Modus-Anzeige / Textpointer-Kandidat",
-    "type": "RAW"
-  },
-  "5936": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1730 Betriebsstatus-Anzeige / Textpointer-Kandidat",
-    "type": "RAW"
-  },
-  "6144": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1800 Anzeigeobjekt-/Layoutblock (kein Warmlink-Register)",
-    "type": "RAW"
-  },
-  "6272": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1880 Anzeige-/Temperatur-Kandidatenblock",
-    "type": "RAW"
-  },
-  "6656": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock",
-    "type": "RAW"
-  },
-  "6145": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1801 Anzeigeobjekt-/Layoutparameter",
-    "type": "RAW"
-  },
-  "6146": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1802 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
-    "type": "RAW"
-  },
-  "6176": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1820 Anzeigeobjekt-/Layoutblock (kein Temperatur-Rohwert)",
-    "type": "RAW"
-  },
-  "6177": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1821 Anzeigeobjekt-/Layoutparameter",
-    "type": "RAW"
-  },
-  "6178": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN 1822 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
-    "type": "RAW"
-  },
   "4721": {
     "function": "03",
     "mode": "read",
     "name": "DWIN Wertebereich 0x1271 Temperatur-/Anzeige-Kandidat",
     "type": "RAW"
+  },
+  "4722": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x1272 WW-Tanktemperatur Anzeige (Korrelation zu WREG 2047)",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4723": {
     "function": "03",
@@ -422,15 +574,15 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x1274 Einlasswassertemperatur Anzeige (Korrelation zu WREG 2045)",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4725": {
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x1275 Auslasswassertemperatur Anzeige (Kandidat, Korrelation zu WREG 2046)",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4726": {
     "function": "03",
@@ -448,15 +600,15 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x1278 Anzeige-Sollwert/Kandidat 45.0",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4729": {
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x1279 Anzeige-Sollwert/Grenzwert Kandidat 35.0",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4730": {
     "function": "03",
@@ -469,6 +621,13 @@
     "mode": "read",
     "name": "DWIN Wertebereich 0x127B Temperatur-/Anzeige-Kandidat",
     "type": "RAW"
+  },
+  "4732": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 0x127C Heiz-Soll / berechneter Heiz-Sollwert Anzeige",
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4733": {
     "function": "03",
@@ -696,8 +855,8 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12A2 WW-Tanktemperatur Anzeige Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4771": {
     "function": "03",
@@ -709,15 +868,15 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12A4 Einlasswassertemperatur Anzeige Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4773": {
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12A5 Auslasswassertemperatur Anzeige Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4774": {
     "function": "03",
@@ -735,15 +894,15 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12A8 Anzeige-Sollwert/Kandidat 45.0 Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4777": {
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12A9 Anzeige-Sollwert/Grenzwert Kandidat 35.0 Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4778": {
     "function": "03",
@@ -761,8 +920,8 @@
     "function": "03",
     "mode": "read",
     "name": "DWIN 0x12AC Heiz-Soll / berechneter Heiz-Sollwert Spiegelblock",
-    "type": "TEMP1",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register"
+    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
+    "type": "TEMP1"
   },
   "4781": {
     "function": "03",
@@ -1262,84 +1421,84 @@
     "name": "DWIN Wertebereich 0x12FF Temperatur-/Anzeige-Kandidat",
     "type": "RAW"
   },
-  "2104": {
-    "name": "Displaybus 2099ff Rohwort 6 (nur Diagnose, nicht Warmlink)",
+  "5920": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1720 Modus-Anzeige / Textpointer-Kandidat",
     "type": "RAW"
   },
-  "2107": {
-    "name": "Displaybus 2099ff Rohwort 9 (nur Diagnose, nicht Warmlink)",
+  "5936": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1730 Betriebsstatus-Anzeige / Textpointer-Kandidat",
     "type": "RAW"
   },
-  "2115": {
-    "name": "Displaybus 2099ff Rohwort 17 (nur Diagnose, nicht Warmlink)",
+  "6144": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1800 Anzeigeobjekt-/Layoutblock (kein Warmlink-Register)",
     "type": "RAW"
   },
-  "2133": {
-    "name": "Displaybus 2099ff Rohwort 35 (nur Diagnose, nicht Warmlink)",
+  "6145": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1801 Anzeigeobjekt-/Layoutparameter",
     "type": "RAW"
   },
-  "2134": {
-    "name": "Displaybus 2099ff Rohwort 36 (nur Diagnose, nicht Warmlink)",
+  "6146": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1802 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
     "type": "RAW"
   },
-  "2135": {
-    "name": "Displaybus 2099ff Rohwort 37 (nur Diagnose, nicht Warmlink)",
+  "6176": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1820 Anzeigeobjekt-/Layoutblock (kein Temperatur-Rohwert)",
     "type": "RAW"
   },
-  "2136": {
-    "name": "Displaybus 2099ff Rohwort 38 (nur Diagnose, nicht Warmlink)",
+  "6177": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1821 Anzeigeobjekt-/Layoutparameter",
     "type": "RAW"
   },
-  "2137": {
-    "name": "Displaybus 2099ff Rohwort 39 (nur Diagnose, nicht Warmlink)",
+  "6178": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1822 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp",
     "type": "RAW"
   },
-  "2138": {
-    "name": "Displaybus 2099ff Rohwort 40 (nur Diagnose, nicht Warmlink)",
+  "6272": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1880 Anzeige-/Temperatur-Kandidatenblock",
     "type": "RAW"
   },
-  "2139": {
-    "name": "Displaybus 2099ff Rohwort 41 (nur Diagnose, nicht Warmlink)",
+  "6656": {
+    "function": "03",
+    "mode": "read",
+    "name": "DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock",
     "type": "RAW"
   },
-  "2140": {
-    "name": "Displaybus 2099ff Rohwort 42 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
+  "91105": {
+    "block": "DWINV",
+    "code": "DV2105",
+    "function": "03",
+    "mode": "read",
+    "name": "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062",
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
   },
-  "2141": {
-    "name": "Displaybus 2099ff Rohwort 43 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2142": {
-    "name": "Displaybus 2099ff Rohwort 44 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2143": {
-    "name": "Displaybus 2099ff Rohwort 45 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2144": {
-    "name": "Displaybus 2099ff Rohwort 46 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2145": {
-    "name": "Displaybus 2099ff Rohwort 47 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2146": {
-    "name": "Displaybus 2099ff Rohwort 48 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2147": {
-    "name": "Displaybus 2099ff Rohwort 49 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2148": {
-    "name": "Displaybus 2099ff Rohwort 50 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2149": {
-    "name": "Displaybus 2099ff Rohwort 51 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
+  "91108": {
+    "block": "DWINV",
+    "code": "DV2108",
+    "function": "03",
+    "mode": "read",
+    "name": "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043",
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
   }
 }

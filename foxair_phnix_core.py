@@ -729,26 +729,33 @@ def decode_contact_bits(value: int) -> List[Tuple[int, int, str, str, str]]:
 
 
 def guess_device_name(slave_addr: int, crc_ok: bool = True) -> str:
+    """Kurze, gut lesbare Rollen der bisher beobachteten Bus-Adressen.
+
+    Wichtig: Bei Modbus-RTU ist die Adresse in Request-Frames die Zieladresse,
+    nicht zwingend der physische Sender. Die Texte beschreiben daher bewusst,
+    was diese Adresse auf dem jeweiligen Bus darstellt bzw. welche Frames wir
+    bisher dort gesehen haben.
+    """
     if slave_addr == 0x00:
-        return "Modbus-Broadcast/System-Adresse 0x00; WP-Paket-Broadcast 2001ff/2091ff, keine normale Read-Antwort erwartet"
+        return "Broadcast 0x00: WP sendet echte Live-/Statuspakete 2001/2091; keine Antwort erwartet"
     if slave_addr == DEFAULT_BUS_ADDR:
-        return "Wärmepumpe / Regler 0x63"
+        return "Warmlink/WP 0x63: normaler Warmlink-Modbus am Außengerät"
     if slave_addr == 0x01:
-        return "Display/HMI-Bus: vermutlich WP-Hauptplatine/Kopf; Live-/Status 1999/2099ff"
+        return "Displaybus 0x01: WP-/Kopf-Rohstatus; 2099/51 lesbar, in Hauptliste virtuell 91099-91149"
     if slave_addr == 0x02:
         if not crc_ok:
-            return "wahrscheinlich eingebetteter Marker / Resync, kein echtes Gerät"
-        return "Display/HMI-Bus: DWIN/HMI-Pfad 0x02; 3001ff/Parameterpakete, Rolle unklar"
+            return "0x02: evtl. Resync/Marker, erst bei CRC OK bewerten"
+        return "Displaybus 0x02: 3001/21 wird angefragt; Rolle noch unklar, bisher nur Diagnose"
     if slave_addr == 0x03:
-        return "Display/HMI-Bus: vermutlich Display/DWIN-HMI; Parameterpakete 1001ff und DWIN 3001ff"
+        return "Display/DWIN 0x03: 3001-3021 lesbar; Parameterbedienwerte über 23xx/0BC3"
     if slave_addr == 0x04:
-        return "Display/HMI-Bus: interner Teilnehmer 0x04; fragt 1011ff, evtl. Leistungs-/Hydraulikpfad"
+        return "Displaybus 0x04: interner Teilnehmer/Ziel; fragt 1011-1024, Rolle noch offen"
     if slave_addr == 0x05:
-        return "Display/HMI-Bus: interner Teilnehmer 0x05; liest 2000ff/schreibt 1001ff, evtl. Leistungselektronik"
+        return "Displaybus 0x05: interner Teilnehmer; liest 2000/90, schreibt 1001/90 Nullblock - nicht übernehmen"
     if slave_addr == 0x06:
-        return "Display/HMI-Bus: Testadresse 0x06, bisher keine gesicherte Rolle"
+        return "Displaybus 0x06: Test-/Reserveadresse, keine gesicherte Rolle"
     if 1 <= slave_addr <= 247:
-        return "unbekannter Modbus-Teilnehmer"
+        return "unbekannter Modbus-Teilnehmer / bisher keine Zuordnung"
     return "ungültige Modbus-Adresse"
 
 

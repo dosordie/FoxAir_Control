@@ -1,0 +1,12 @@
+V0.2.41 PRIVATE - Display-Modbus Timerwrite
+
+Problem in V0.2.40:
+- Timer-Userwertblock 0x2501..0x2507 wurde gesendet.
+- Danach wurde ein verpflichtender manueller 0BC3-Schritt gesendet.
+- Dieser konnte ohne ACK haengen bleiben und den Ablauf abbrechen.
+
+Aenderung:
+- Timer-/Popup-Mehrfachwrites senden wieder nur Userwert-Bloecke (Register + 0x2000).
+- Kein manueller 0BC3-Pflichtschritt in diesem Batchpfad.
+- Erwartung wie im funktionierenden fix24-Log: Display setzt 0BC3 selbst, Master liest danach das passende Paket.
+- Einzelne normale Parameterwrites behalten ihren separaten Bedienwert-/Fallbackpfad.

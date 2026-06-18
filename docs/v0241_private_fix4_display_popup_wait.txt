@@ -1,0 +1,9 @@
+V0.2.41 PRIVATE fix5
+
+- Keine Versionsanhebung, APP_VERSION bleibt 0.2.41.
+- Display-Popups zeigen bei fehlenden Werten sofort einen Ladehinweis.
+- Popups oeffnen automatisch, sobald die benoetigten Display-Parameterpakete geladen sind.
+- Wenn die Werte bereits geladen sind, wird nicht erneut gelesen.
+- Wenn noch ein Display-Snapshot laeuft, wird das Popup erst nach Bus-Freigabe geoeffnet.
+- Register+0x2000-Schreibpfad bleibt nur fuer Modbus Display aktiv.
+- 1181ff-Writes fuer WP Ein/Aus-/Silent-Timer bekommen laengere ACK-/Commit-Zeiten.

@@ -3211,7 +3211,7 @@
   "1286": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 1 Modus (ASM)",
+    "name": "Timer 1 Modus-Code (ASM; 9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3219,7 +3219,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1287": {
@@ -3261,7 +3261,7 @@
   "1293": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 2 Modus (ASM)",
+    "name": "Timer 2 Modus (ASM) (9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3269,7 +3269,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1294": {
@@ -3311,7 +3311,7 @@
   "1300": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 3 Modus (ASM)",
+    "name": "Timer 3 Modus (ASM) (9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3319,7 +3319,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1301": {
@@ -3361,7 +3361,7 @@
   "1307": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 4 Modus (ASM)",
+    "name": "Timer 4 Modus (ASM) (9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3369,7 +3369,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1308": {
@@ -3411,7 +3411,7 @@
   "1314": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 5 Modus (ASM)",
+    "name": "Timer 5 Modus (ASM) (9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3419,7 +3419,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1315": {
@@ -3461,7 +3461,7 @@
   "1321": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Timer 6 Modus (ASM)",
+    "name": "Timer 6 Modus (ASM) (9 = keinen Modus ändern)",
     "type": "TIMER_MODE",
     "value_map": {
       "0": "Warmwasser",
@@ -3469,7 +3469,7 @@
       "2": "Kühlen",
       "3": "Warmwasser + Heizen",
       "4": "Warmwasser + Kühlen",
-      "9": "kein Modell gewählt / aktueller Modus"
+      "9": "keinen Modus ändern / Code 9"
     }
   },
   "1322": {
@@ -3732,8 +3732,11 @@
   "1356": {
     "block": "H",
     "code": "H42",
-    "name": "Einschalt-AT Gehaeusewannenheizung (wenn AT kleiner füx H.. Min ein)",
-    "type": "RAW"
+    "name": "H42 Einschalt-AT Gehaeusewannenheizung (D30/1437 erst wirksam, wenn AT kleiner H42 ist)",
+    "type": "RAW",
+    "notes": "H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist.",
+    "function": "03/16",
+    "mode": "r/w"
   },
   "1357": {
     "app_label": "Diff. of No Pump On at Low Water Temp.",
@@ -3944,8 +3947,8 @@
     "function": "03/16",
     "last_review": "v0.2.32 correction 2026-06-14; user confirmed register and unit minutes",
     "mode": "r/w",
-    "name": "Gehaeusewannenheizung Delays Off Time after Defrost",
-    "notes": "Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten.",
+    "name": "D30 Gehaeusewannenheizung Delays Off Time after Defrost",
+    "notes": "Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
     "source": "User confirmed; used in live system",
     "type": "MINUTES",
     "unit": "min"
@@ -5176,5 +5179,25 @@
     "mode": "write",
     "name": "Strom des externen Lüftermotorantriebs.",
     "type": "DIGI6"
+  },
+  "91105": {
+    "block": "DWINV",
+    "code": "DV2105",
+    "function": "03",
+    "mode": "read",
+    "name": "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062",
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
+  },
+  "91108": {
+    "block": "DWINV",
+    "code": "DV2108",
+    "function": "03",
+    "mode": "read",
+    "name": "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043",
+    "type": "DIGI1",
+    "unit": "V",
+    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
   }
 }

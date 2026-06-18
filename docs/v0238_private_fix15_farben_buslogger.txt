@@ -1,0 +1,7 @@
+V0.2.38 PRIVATE fix15
+========================
+
+- Hauptfenster-Farben robuster: 10xx/30xx-Bereichsfarben werden nach Tabellenaufbau, Cache-Laden und Theme-/Backend-Wechsel erneut angewendet.
+- Wertänderungen nutzen jetzt Bereichsfarben: 1000-1599 grünlich-dunkler, 3000+ lila/bläulich-dunkler.
+- Dual-Bus Logger Button ist standardmäßig ausgeblendet und nur im Backend Modbus Display sichtbar, wenn in Programm-Einstellungen aktiviert.
+- Gesehene Bus-Adressen: Popup mit Rolle, typischen Frames und Übernahmehinweis; Erkenntnisse zu 0x00/0x01/0x02/0x03/0x04/0x05/0x63 aktualisiert.

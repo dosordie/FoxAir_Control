@@ -1,13 +1,20 @@
-## PUBLIC V0.2.39
+## PUBLIC V0.2.41 fix7
 
-- Public-Release aus internem Stand V0.2.38 fix11.
-- Backend **Modbus Display**: bekannte Parameterpaket-Nutzwerte werden beim Schreiben automatisch über den Display-Bedienwertpfad geschrieben (`Register + 0x2000`, z. B. `1012 -> 23F4`) und ACK-gesteuert verarbeitet.
-- Display-Parameterwrites laufen über eine Warteschlange, damit mehrere Popup-/Timer-/Parameterwrites nacheinander und nicht parallel gesendet werden.
-- Backend **Modbus Display**: **Alle bekannten Register lesen** nutzt als Snapshot-Methode den beobachteten Display-Reboot-Fake (`5112H=0`, `0BC3H=8000H`), bis direkte `qty=90`-Reads stabil verstanden sind.
-- Display-Parameterpakete `0x03/1001ff..1541ff` werden auch bei passiv gesehenen Master-Reads wieder mit normalem WP-/Warmlink-Mapping dekodiert, damit Klartexte/Value-Maps sichtbar bleiben.
-- Der frühere private Display-Testbereich ist in der UI ausgeblendet; der Code bleibt als Diagnose-/Fallback-Basis erhalten.
-- **Modbus Standart** und **Modbus Warmlink LTE** bleiben in ihren Lese-/Schreibpfaden unverändert.
+- Public-Build aus internem Stand **V0.2.41 fix7** erstellt; `APP_EDITION` ist **PUBLIC**.
+- Display-Modbus: verbesserte Timer-/Popup-Schreibpfade mit `Register + 0x2000` nur im Backend **Modbus Display**.
+- Display-Modbus: Popups warten auf benötigte Paketdaten und öffnen/schreiben nicht mehr blind mit leeren oder alten Werten.
+- Display-Modbus: Mehrfachwrites werden einzeln/sequenziell abgearbeitet; `1181ff`-Timerpfade enthalten zusätzlichen Fallback über Kommunikationsregister und `0BC3=0x0008`.
+- Log-Level 1–7 ergänzt und nachgeschärft; Level 4 ist für normale Diagnose-Logs geeignet, RAW/TX erst ab Level 6.
+- RAW anzeigen liefert HEX+ASCII; separate RAW-ASCII-Checkbox aus der Kopfzeile entfernt.
+- FC06/FC16-Auswahl aus der normalen Einstellungsseite ausgeblendet; Spezialpfade entscheiden intern.
+- Installer-Version auf 0.2.41 gesetzt.
 
+## V0.2.38 PRIVATE fix12
+
+- Backend **Modbus Display**: DWIN-/Displaywerte ab Register `3000` werden jetzt im Hauptfenster sichtbar, z. B. `3001ff`, `3011/0BC3` und `3021`.
+- `foxair_phnix_display_registers.json` um Einträge `3001–3021` ergänzt, inklusive Klartext für `3011/0BC3` als Parameter-Sync-/Änderungsflag.
+- Teilnehmer `0x04` und `0x05` werden nur dann in die Hauptliste übernommen, wenn deren Register nicht mit bekannten WP-/Warmlink-Registern kollidieren. Null-/Fremdblöcke auf bekannten Bereichen wie `1001ff` oder `2000ff` bleiben Diagnose.
+- Die Änderung gilt ausschließlich für das Backend **Modbus Display**. Warmlink RAW und Standard-Modbus bleiben unverändert.
 
 ## V0.2.38 PRIVATE fix11
 
@@ -98,7 +105,7 @@
 - Kleine wechselnde Codes 0..4 werden als Kandidaten für Istmodus/Icon/Anzeigezustand markiert.
 - In den Tests wurde 3021/W21 im DWIN-Anzeigeblock als starker Kandidat für einen Display-Istmodus-/Icon-Code sichtbar.
 
-## V0.2.37 PRIVATE Fix4 (ohne Versionsanhebung)
+## V0.2.37 PRIVATE Fix5 (ohne Versionsanhebung)
 
 - Display-/HMI-Modbus: 1012→2012-Fallback wieder entfernt. 1012 ist Sollmodus, 2012 ist Ist-/Betriebsstatus mit anderer Codetabelle; ein Spiegeln erzeugt falsche Werte.
 - Display-/HMI-Modbus: Addr 0x01 / 1999ff bzw. 2001ff wird nicht mehr in die Hauptliste übernommen, solange der Block nicht eindeutig als vollständiger Nutzdatenblock verifiziert ist.

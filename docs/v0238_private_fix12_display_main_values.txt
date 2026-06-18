@@ -1,0 +1,15 @@
+PRIVATE V0.2.38 fix12 – Display-Zusatzwerte im Hauptfenster
+
+Ziel:
+- DWIN-/Displaywerte ab 3000 im Backend Modbus Display nicht nur loggen, sondern im Hauptfenster sichtbar machen.
+- Besonders interessant: 3001ff, 3011/0BC3 und 3021.
+- Teilnehmer 0x04/0x05 nur kollisionsfrei übernehmen. Bekannte WP-/Warmlink-Registernummern dürfen durch Fremdteilnehmer nicht überschrieben werden.
+
+Regeln:
+- Unit 0x02/0x03 + Start >= 3000 + Read/Write-Daten => Hauptliste erlaubt.
+- Unit 0x04/0x05 => nur wenn alle Register nicht im normalen WP-/Warmlink-Mapping existieren; bekannte 10xx/20xx-Bereiche bleiben Diagnose.
+- Nur Backend Modbus Display. Warmlink RAW und Standard-Modbus unverändert.
+
+Mapping:
+- foxair_phnix_display_registers.json enthält nun 3001-3021.
+- 3011 ist 0BC3 Parameter-Sync-/Änderungsflag: 0=kein Flag, 2=Paket 1001 geändert, 0x8000=Initial/Reboot.

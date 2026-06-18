@@ -1312,7 +1312,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1286": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1287": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1333,7 +1334,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1293": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1294": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1354,7 +1356,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1300": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1301": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1375,7 +1378,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1307": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1308": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1396,7 +1400,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1314": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1315": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1417,7 +1422,8 @@
     "source": "Display-FW ASM Timer CFxx"
   },
   "1321": {
-    "source": "Display-FW ASM Timer CFxx"
+    "source": "Display-FW ASM Timer CFxx",
+    "description": "Timer-Modus-Code. Code 9 bedeutet: keinen Modus ändern / aktuellen Modus nicht überschreiben."
   },
   "1322": {
     "source": "Display-FW ASM Timer CFxx"
@@ -1548,7 +1554,9 @@
     "source": "ASM/DWIN Binäranalyse v23"
   },
   "1356": {
-    "default": "4"
+    "default": "4",
+    "description": "H42 Einschalt-Außentemperatur Gehaeusewannenheizung. D30/1437 wirkt erst, wenn AT kleiner als H42/1356 ist.",
+    "notes": "Text korrigiert: der Bezug ist D30/1437, nicht ein unklarer H..-Minutenwert."
   },
   "1357": {
     "default": "2.0°C",
@@ -1663,7 +1671,7 @@
   },
   "1437": {
     "description": "D30 Gehaeusewannenheizung / Button Heater Delays OFF Time after Defrost. Einheit: Minuten.",
-    "notes": "Sicher bestätigt: 1437 ist D30, nicht P15. Einheit sicher: Minuten.",
+    "notes": "Sicher bestätigt: 1437 ist D30, nicht P15. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
     "source": "User confirmed 2026-06-14; live system use"
   },
   "1438": {

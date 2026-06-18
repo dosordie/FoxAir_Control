@@ -1,0 +1,11 @@
+PUBLIC V0.2.41 fix7
+====================
+
+Public-Build auf Basis des internen Standes V0.2.41 fix7.
+
+Wichtigste Punkte:
+- Display-Modbus-Schreibpfade fuer Timer/Popups ueber bekannte Bedienwertadressen Register+0x2000.
+- Display-Modbus-only: Warmlink RAW und Standard-Modbus bleiben unveraendert.
+- Popups warten auf benoetigte Parameterpakete, bevor Werte angezeigt/geschrieben werden.
+- Log-Level 1-7; Level 4 fuer Chat-/Fehlerdiagnose, RAW/TX erst ab Level 6.
+- FC06/FC16-Auswahl im normalen Einstellungsfenster ausgeblendet.

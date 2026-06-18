@@ -17,7 +17,7 @@ import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
-from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QPen
+from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -78,10 +78,24 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.39"
-BUILD_DATE = "2026-06-16"
+APP_VERSION = "0.2.41"
+BUILD_DATE = "2026-06-18"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
+
+# V0.2.41 fix6/fix7: zentrale Log-Level.
+# 1 = sehr ruhig, 7 = Debug/alles. Die eigentliche Einordnung erfolgt
+# absichtlich per Textklassifikation in MainWindow._infer_log_level(), damit
+# bestehende Worker-/Dialog-Signale kompatibel bleiben.
+LOG_LEVEL_LABELS = [
+    (1, "1 Ruhig: Werte/Fehler"),
+    (2, "2 Normal: + Bedienung/Verbindung"),
+    (3, "3 Schreiben: + Writes/ACK/Timer"),
+    (4, "4 Chat-Diagnose: Writes + Bestätigung"),
+    (5, "5 Bus: + Reads/Fremdframes"),
+    (6, "6 Trace: + RAW/TX/lange Blöcke"),
+    (7, "7 Debug: alles"),
+]
 PUBLIC_WARNING_TEXT = "Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen."
 APP_ICON_FILE = "app_icon.png"
 DEFAULT_HOST = "192.168.10.43"
@@ -1095,7 +1109,7 @@ class TimerEditorDialog(QDialog):
         ("Kühlen / Code 2", 2),
         ("Warmwasser + Heizen / Code 3", 3),
         ("Warmwasser + Kühlen / Code 4", 4),
-        ("kein Modell gewählt / Code 9", 9),
+        ("keinen Modus ändern / Code 9", 9),
     ]
 
     def __init__(self, main_window: "MainWindow"):
@@ -1405,19 +1419,36 @@ class TimerEditorDialog(QDialog):
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
         self._apply_capability_hints()
-        # sinnvolle Defaults nur für noch unbekannte Felder
-        for timer_no, fld in self.fields.items():
-            base = fld["base"]
-            if self.main_window.latest_regs.get(base) is None:
-                self._set_time_widgets(fld["on_hour"], fld["on_min"], encode_hhmm(15, 0), force=True)
-            if self.main_window.latest_regs.get(base + 1) is None:
-                self._set_time_widgets(fld["off_hour"], fld["off_min"], encode_hhmm(19, 0), force=True)
-            if self.main_window.latest_regs.get(base + 2) is None:
-                fld["ww_temp"].setValue(55.0)
-            if self.main_window.latest_regs.get(base + 3) is None:
-                fld["heat_temp"].setValue(45.0)
-            if self.main_window.latest_regs.get(base + 4) is None:
-                fld["cool_temp"].setValue(7.0)
+        # V0.2.41 fix5: Wenn noch kein 1271ff-/Timer-Livewert geladen ist,
+        # keine scheinbar sinnvollen Fantasie-Defaults mehr setzen. Leere
+        # Timerfelder bleiben konsequent 0, damit ein zu früh geöffnetes Popup
+        # nicht 15:00/19:00/55°C/45°C/7°C in den Dialog übernimmt.
+        self._programmatic = True
+        try:
+            for timer_no, fld in self.fields.items():
+                base = fld["base"]
+                if self.main_window.latest_regs.get(base) is None:
+                    self._set_time_widgets(fld["on_hour"], fld["on_min"], encode_hhmm(0, 0), force=True)
+                if self.main_window.latest_regs.get(base + 1) is None:
+                    self._set_time_widgets(fld["off_hour"], fld["off_min"], encode_hhmm(0, 0), force=True)
+                if self.main_window.latest_regs.get(base + 2) is None:
+                    fld["ww_temp"].setValue(0.0)
+                if self.main_window.latest_regs.get(base + 3) is None:
+                    fld["heat_temp"].setValue(0.0)
+                if self.main_window.latest_regs.get(base + 4) is None:
+                    fld["cool_temp"].setValue(0.0)
+                if self.main_window.latest_regs.get(base + 5) is None:
+                    fld["mode_raw"].setValue(0)
+                    self._mode_raw_changed(timer_no, 0)
+                if self.main_window.latest_regs.get(base + 6) is None:
+                    fld["power_raw"].setValue(0)
+                    fld["power_kw"].setValue(0.0)
+                bit_reg = fld["bit_reg"]
+                if self.main_window.latest_regs.get(bit_reg) is None:
+                    fld["day_raw"].setValue(0)
+                    self._set_day_controls_from_byte(timer_no, 0)
+        finally:
+            self._programmatic = False
 
     def update_from_live_register(self, reg, force: bool = False):
         reg_no = int(reg.reg)
@@ -1511,6 +1542,12 @@ class TimerEditorDialog(QDialog):
         return out
 
     def _dry_run_lines(self, values: list[tuple[int, int, str]], slave_addr: int) -> list[str]:
+        # PRIVATE fix53: Im Display-Bus nutzen Timer-/SG-/Popup-Mehrfachwrites
+        # denselben Bedienwertpfad wie normale Display-Parameterwrites. Der Dry-Run
+        # soll deshalb nicht mehr faelschlich direkte 12xx/13xx-FC06-Frames anzeigen.
+        helper = getattr(self.main_window, "_timer_write_preview_lines", None)
+        if callable(helper):
+            return helper(values, slave_addr)
         lines = []
         for addr, value, label in values:
             frame, wire_addr, wire_slave, note, fc_text = self.main_window._build_write_frame_for_backend(addr, value, slave_addr)
@@ -1846,6 +1883,12 @@ class OnOffTimerEditorDialog(QDialog):
         return out
 
     def _dry_run_lines(self, values: list[tuple[int, int, str]], slave_addr: int) -> list[str]:
+        # PRIVATE fix53: Im Display-Bus nutzen Timer-/SG-/Popup-Mehrfachwrites
+        # denselben Bedienwertpfad wie normale Display-Parameterwrites. Der Dry-Run
+        # soll deshalb nicht mehr faelschlich direkte 12xx/13xx-FC06-Frames anzeigen.
+        helper = getattr(self.main_window, "_timer_write_preview_lines", None)
+        if callable(helper):
+            return helper(values, slave_addr)
         lines = []
         for addr, value, label in values:
             frame, wire_addr, wire_slave, note, fc_text = self.main_window._build_write_frame_for_backend(addr, value, slave_addr)
@@ -2000,7 +2043,7 @@ class RegisterQuickWriteDialog(QDialog):
             2: "Kühlen",
             3: "Warmwasser + Heizen",
             4: "Warmwasser + Kühlen",
-            9: "kein Modell gewählt / aktueller Modus",
+            9: "keinen Modus ändern / Code 9",
         },
         "MODE_0_4": {
             0: "WW",
@@ -2449,6 +2492,54 @@ class ManualRegisterDialog(QDialog):
             QMessageBox.warning(self, "Ungültige Schreibdaten", str(exc))
 
 
+def display_bus_address_info(addr: int) -> tuple[str, str, str]:
+    """Lesbare Displaybus-Rollen fuer das Popup 'Gesehene Bus-Adressen'."""
+    addr = int(addr)
+    if addr == 0x00:
+        return (
+            "Broadcast / WP-Livewerte",
+            "FC16 2001/90 und 2091/90",
+            "wird als echter WP-Livebereich übernommen",
+        )
+    if addr == 0x01:
+        return (
+            "WP-/Kopf-/Power-Modul-Rohstatus",
+            "FC16 1999/16, FC03 2099/51",
+            "2099/51 virtuell 91099-91149; 91105~2062 AC-Spannung, 91108~2043 DC-Bus",
+        )
+    if addr == 0x02:
+        return (
+            "DWIN/HMI-Pfad unklar",
+            "FC03 3001/21 Requests gesehen",
+            "bisher Diagnose, keine stabile Übernahme",
+        )
+    if addr == 0x03:
+        return (
+            "Display / DWIN-Speicher",
+            "FC03 3001/21, Parameterpakete 1001ff, Writes 23xx",
+            "3001-3021 sichtbar; Bedienwerte laufen über 23xx",
+        )
+    if addr == 0x04:
+        return (
+            "interner Teilnehmer/Ziel",
+            "FC03 1011/14 Requests",
+            "nicht übernehmen, solange Bereich mit 10xx kollidiert",
+        )
+    if addr == 0x05:
+        return (
+            "interner Teilnehmer",
+            "FC03 2000/90, FC16 1001/90 Nullblock",
+            "Null-/Fremdblock gesperrt, überschreibt keine WP-Werte",
+        )
+    if addr == DEFAULT_BUS_ADDR:
+        return (
+            "Warmlink/WP",
+            "normaler Warmlink-Modbus",
+            "Standard-WP-Adresse außerhalb Displaybus",
+        )
+    return ("unbekannt", "noch keine feste Zuordnung", "nur beobachten")
+
+
 class BusAddressDialog(QDialog):
     """Popup fuer gesehene Bus-Adressen."""
 
@@ -2457,16 +2548,28 @@ class BusAddressDialog(QDialog):
         self.main_window = main_window
         self.setWindowTitle("Gesehene Bus-Adressen")
         self.setWindowIcon(app_icon())
-        self.resize(760, 320)
+        self.resize(1040, 380)
         layout = QVBoxLayout(self)
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Bus", "Frames", "CRC OK", "CRC BAD", "Letzter Frame", "Vermutung"])
+        hint = QLabel(
+            "Hinweis: In Modbus-RTU-Requests ist die Adresse die Zieladresse. "
+            "Die Rollen unten beschreiben die bisher beobachteten Frames/Erkenntnisse."
+        )
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        self.table = QTableWidget(0, 8)
+        self.table.setHorizontalHeaderLabels([
+            "Bus", "Rolle", "Typische Frames", "Übernahme/Hinweis",
+            "Frames", "CRC OK", "CRC BAD", "Letzter Frame"
+        ])
         self.table.verticalHeader().setVisible(False)
         self.table.setSortingEnabled(True)
         h = self.table.horizontalHeader()
-        for col in range(5):
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(2, QHeaderView.Stretch)
+        h.setSectionResizeMode(3, QHeaderView.Stretch)
+        for col in (4, 5, 6, 7):
             h.setSectionResizeMode(col, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(5, QHeaderView.Stretch)
         layout.addWidget(self.table)
         btns = QHBoxLayout()
         self.refresh_btn = QPushButton("aktualisieren")
@@ -2485,9 +2588,11 @@ class BusAddressDialog(QDialog):
         self.table.setRowCount(len(stats))
         for row, addr in enumerate(sorted(stats)):
             st = stats[addr]
+            role, typical, hint = display_bus_address_info(int(addr))
             values = [
-                f"0x{addr:02X}", str(st.get("frames", 0)), str(st.get("crc_ok", 0)),
-                str(st.get("crc_bad", 0)), str(st.get("last_frame", "")), str(st.get("guess", "")),
+                f"0x{addr:02X}", role, typical, hint,
+                str(st.get("frames", 0)), str(st.get("crc_ok", 0)),
+                str(st.get("crc_bad", 0)), str(st.get("last_frame", "")),
             ]
             for col, text in enumerate(values):
                 item = self.table.item(row, col)
@@ -2495,8 +2600,10 @@ class BusAddressDialog(QDialog):
                     item = QTableWidgetItem()
                     self.table.setItem(row, col, item)
                 item.setText(text)
-                if col in (0, 1, 2, 3):
+                if col in (0, 4, 5, 6):
                     item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setSortingEnabled(True)
 
 
@@ -3781,9 +3888,9 @@ class DualBusLoggerDialog(QDialog):
         (2099, 51, "Display Unit 0x01 Rohstatus 2099ff"),
     ]
 
-    # Fix19/Fix20: Aktiver Paketblock-Test auf dem Display-Bus.
+    # Fix19/Fix21: Aktiver Paketblock-Test auf dem Display-Bus.
     # Historisch kamen die WP/Display-Daten paketweise in 90-Register-Bloecken.
-    # Fix20 sendet diese Tests sequenziell (1 Read -> Antwort/Timeout -> naechster Read),
+    # Fix21 sendet diese Tests sequenziell (1 Read -> Antwort/Timeout -> naechster Read),
     # damit langsame Antworten nicht mehr dem falschen Startblock zugeordnet werden.
     DISPLAY_PACKET_SCAN_STARTS = [1001, 1091, 1181, 1271, 1361, 1451, 1541, 2001, 2091]
     # Unit 0x03 zuerst: im Test bestaetigt fuer 1001/1091. Danach Vergleichseinheiten.
@@ -3793,7 +3900,7 @@ class DualBusLoggerDialog(QDialog):
     # Antwort zu erwarten.
     DISPLAY_PACKET_SCAN_UNITS = [0x03, 0x01, 0x04, 0x02, 0x05]
 
-    # Fix20: gleicher Paketblock-Test auf dem Warmlink-/WP-Bus. Damit pruefen wir,
+    # Fix21: gleicher Paketblock-Test auf dem Warmlink-/WP-Bus. Damit pruefen wir,
     # ob die 10xx-/Parameterpakete auch direkt von einer WP-Adresse lieferbar sind
     # und nicht nur von der Display-Unit 0x03. Getestet wird die eingestellte
     # Warmlink Unit plus Unit 0x01 als Vergleich, falls abweichend.
@@ -3933,6 +4040,17 @@ class DualBusLoggerDialog(QDialog):
         # Diese Queue-Meldungen sind dann nicht mehr hilfreich und haben das Log geflutet.
         if self._stopping and ("READ in Sendewarteschlange" in text or "WRITE in Sendewarteschlange" in text):
             return
+
+        # V0.2.41 fix6: Dual-/DisplayWorker-Dialog folgt dem Haupt-Log-Level.
+        # Dadurch bleibt auch der automatisch gestartete DisplayWorker ruhig, wenn
+        # im Hauptfenster Level 1/2 gewaehlt ist. RAW-Datei-Mitschrift bleibt davon
+        # unberuehrt.
+        try:
+            if not self.main_window._should_log_message(str(text)):
+                return
+        except Exception:
+            pass
+
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
         # Zusaetzlich im Hauptlog markieren, damit der normale Log-Export reicht.
@@ -4285,7 +4403,7 @@ class DualBusLoggerDialog(QDialog):
                 self.display_worker.enqueue_read(addr, qty, slave_addr=0x01, post_delay_ms=delay)
                 queued += 1
 
-        # 2) Fix20: Paketblock-Test laeuft NICHT mehr als Massenscan hier,
+        # 2) Fix21: Paketblock-Test laeuft NICHT mehr als Massenscan hier,
         # sondern sequenziell ueber _display_packet_scan_step(). Damit werden
         # langsame Antworten nicht dem falschen Startblock zugeordnet.
         if self.display_packet_scan_cb.isChecked() and not self.display_packet_step_timer.isActive():
@@ -4366,7 +4484,7 @@ class DualBusLoggerDialog(QDialog):
                     f"words={len(regs)}, marker=0x{marker:04X}, CRC OK, interner Start passt; "
                     "wird fuer Display-Init wieder ins Hauptfenster übernommen."
                 )
-                # V0.2.38 fix2: Auf Wunsch bleiben aktive Display-Init-Paketreads
+                # V0.2.38 fix5: Auf Wunsch bleiben aktive Display-Init-Paketreads
                 # vorerst sichtbar/nutzbar im Hauptfenster. Die Broadcasts 0x00/2001
                 # und 0x00/2091 aktualisieren weiterhin zyklisch und koennen diese
                 # Werte spaeter wieder ueberschreiben, sind aber nicht mehr die einzige
@@ -4746,19 +4864,25 @@ class DualBusLoggerDialog(QDialog):
             for reg in regs:
                 reg_no = int(reg.reg)
                 raw = int(reg.raw_value) & 0xFFFF
+                old_known = reg_no in mw.last_values
                 old = mw.last_values.get(reg_no)
+                value_diff = old != raw
                 was_cached = reg_no in mw.cached_regs
+                # Cachewerte sind Start-/Vergleichshilfe, aber keine Live-Basis
+                # fuer eine sichtbare Aenderungsmarkierung.
+                real_changed = bool(old_known and (not was_cached) and value_diff)
                 if was_cached:
                     mw.cached_regs.discard(reg_no)
-                if old != raw:
+                if value_diff:
                     if old is None:
                         mw.previous_value_texts.setdefault(reg_no, "--")
                     else:
                         mw.previous_value_texts[reg_no] = f"{old} / 0x{old:04X}"
-                    changed.append(f"{reg_no}: {'--' if old is None else old} -> {raw} ({reg.display_value})")
+                if real_changed:
+                    changed.append(f"{reg_no}: {old} -> {raw} ({reg.display_value})")
                 mw.last_values[reg_no] = raw
-                if old != raw or was_cached or reg_no not in mw.table_rows:
-                    mw._upsert_register_row(reg, old != raw)
+                if value_diff or was_cached or reg_no not in mw.table_rows:
+                    mw._upsert_register_row(reg, real_changed)
                 if reg_no == 2034:
                     mw._update_contact_table(raw)
                 if reg_no == 2019:
@@ -4784,6 +4908,14 @@ class DualBusLoggerDialog(QDialog):
                 mw._suppress_name_resize = False
                 mw.register_table.setUpdatesEnabled(old_updates)
                 mw._resize_name_column()
+            if changed:
+                regs_to_repaint = []
+                for entry in changed:
+                    try:
+                        regs_to_repaint.append(int(str(entry).split(":", 1)[0]))
+                    except Exception:
+                        pass
+                mw._apply_persistent_change_backgrounds(regs_to_repaint)
             mw.reg_count_label.setText(str(len(mw.last_values)))
 
         if changed:
@@ -5000,16 +5132,16 @@ class CommunicationSettingsDialog(QDialog):
         self.translate_cb.setVisible(False)
 
         self.display_write_mode_combo = QComboBox()
-        self.display_write_mode_combo.addItem("FC16 Single Register (Test für Display/XRAM)", "fc16")
-        self.display_write_mode_combo.addItem("FC06 Single Register", "fc06")
-        mode = str(main_window.settings.get("display_write_mode", "fc16")).lower()
-        midx = self.display_write_mode_combo.findData(mode)
-        self.display_write_mode_combo.setCurrentIndex(midx if midx >= 0 else 0)
+        self.display_write_mode_combo.addItem("FC16 Single Register (intern/fix)", "fc16")
+        self.display_write_mode_combo.addItem("FC06 Single Register (nur Alt-Test)", "fc06")
+        # V0.2.41 fix7: Für normale Bedienung nicht mehr auswählbar.
+        # Display-Modbus nutzt intern FC16-Single-Register; Spezialpfade entscheiden selbst.
+        self.display_write_mode_combo.setCurrentIndex(0)
         self.display_write_mode_combo.setToolTip(
-            "Nur für Modbus Display: Umschaltung der Schreibfunktion. "
-            "FC16 Single Register sendet 03 10 ... 00 01 02 ... und ist für 0BC3/Display-XRAM der nächste Test."
+            "Interne Alt-/Debug-Einstellung. Für normale Bedienung wird im Display-Modus FC16 verwendet; "
+            "Warmlink/Standard-Modbus bleiben davon unabhängig."
         )
-        self.display_write_mode_label = QLabel("Display schreiben:")
+        self.display_write_mode_label = QLabel("Display schreiben (intern):")
 
         self.device_combo = QComboBox()
         for dev_key, dev_label in DEVICE_MODELS:
@@ -5027,6 +5159,11 @@ class CommunicationSettingsDialog(QDialog):
         self.bytesize_label = QLabel("Datenbits:")
         self.stopbits_label = QLabel("Stopbits:")
         self.unit_label = QLabel("Unit:")
+        self.unit_spin.setToolTip(
+            "Modbus-Slave-Adresse für aktive manuelle Lese-/Schreibbefehle. "
+            "Standard-Modbus meist Unit 1; Display/HMI meist Unit 3. "
+            "Passive Displaybus-Rollen wie 0x00 Broadcast oder 0x01 Rohstatus werden automatisch erkannt."
+        )
 
         form.addRow("Kommunikationsart:", self.backend_combo)
         form.addRow("Transport:", self.transport_combo)
@@ -5041,6 +5178,15 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow(self.display_write_mode_label, self.display_write_mode_combo)
         form.addRow("Gerät:", self.device_combo)
         form.addRow("Hinweis:", self.device_hint_label)
+
+        self.display_dual_logger_cb = QCheckBox("Dual-Bus Logger Button im Hauptfenster anzeigen")
+        self.display_dual_logger_cb.setChecked(bool(main_window.settings.get("show_dual_logger_button_display", False)))
+        self.display_dual_logger_cb.setToolTip(
+            "Nur für Modbus Display/HMI: zeigt den Diagnosebutton 'Dual-Bus Logger' im Hauptfenster. "
+            "Standardmäßig ausgeblendet, weil der Logger ein reines Diagnosewerkzeug ist."
+        )
+        self.display_dual_logger_label = QLabel("Display-Diagnose:")
+        form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
 
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
@@ -5154,15 +5300,32 @@ class CommunicationSettingsDialog(QDialog):
         self.translate_cb.setVisible(False)
         self.unit_label.setVisible(backend in ("display_modbus", "standard_modbus"))
         self.unit_spin.setVisible(backend in ("display_modbus", "standard_modbus"))
-        self.display_write_mode_label.setVisible(backend == "display_modbus")
-        self.display_write_mode_combo.setVisible(backend == "display_modbus")
+        # V0.2.41 fix7: FC06/FC16 ist keine normale Benutzereinstellung mehr.
+        # Display-Modbus verwendet intern FC16; Spezial-/Fallbackpfade entscheiden selbst.
+        self.display_write_mode_label.setVisible(False)
+        self.display_write_mode_combo.setVisible(False)
+        if hasattr(self, "display_dual_logger_cb"):
+            self.display_dual_logger_cb.setVisible(backend == "display_modbus")
+        if hasattr(self, "display_dual_logger_label"):
+            self.display_dual_logger_label.setVisible(backend == "display_modbus")
         self._transport_changed()
         if backend == "warmlink_raw":
             self.info_label.setText("Modbus Warmlink LTE: Bus/Modem im Außengerät am Mainboard. WP-Busadresse bleibt intern 0x63.")
         elif backend == "standard_modbus":
-            self.info_label.setText("Modbus Standart: offizielle Modbus-Klemmen am Gerät, typ. Unit 1. Nutzt FC03 lesen und FC06 schreiben.")
+            self.info_label.setText(
+                "Modbus Standard: offizielle Modbus-Klemmen am Gerät, typ. Unit 1. "
+                "Unit ist die Slave-Adresse; gelesen wird per FC03, einfache Schreibwerte per FC06."
+            )
         else:
-            self.info_label.setText("Modbus Display/HMI: 4800 8N1 laut Display-CONFIG. Der Bus enthält mehrere Teilnehmer/Platinen. Aktuelle Vermutung: Unit 3 = Display/DWIN-Speicher 3001ff, 3021 = Anzeige-/Icon-Code; Unit 5 = interner Parameter-/Liveblock; Unit 1 = Live-/Statusblock. Aktive Steuerung besser über Warmlink.")
+            self.info_label.setText(
+                "Modbus Display/HMI: 4800 8N1 laut Display-CONFIG. "
+                "Unit ist nur die aktive Zieladresse, normalerweise 3. "
+                "Gesehen: 0x03 = Display/DWIN, 3001-3021 lesbar und Bedienwerte über 23xx; "
+                "0x00 = Broadcast echter WP-Livewerte 2001/2091; "
+                "0x01 = Rohstatus 2099/51, virtuell 91099-91149; 91105~2062 AC-Spannung, 91108~2043 DC-Bus (Power-Modul-Spiegel-Kandidaten); "
+                "0x04 fragt 1011-1024; 0x05 liest 2000/90 und schreibt 1001/90 Nullblock. "
+                "0x04/0x05 bleiben Diagnose, wenn sie bekannte WP-Bereiche berühren."
+            )
 
     def _transport_changed(self):
         is_serial = str(self.transport_combo.currentData() or "tcp") == "serial"
@@ -5183,7 +5346,9 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
-        self.main_window.settings["display_write_mode"] = str(self.display_write_mode_combo.currentData() or "fc16")
+        # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
+        self.main_window.settings["display_write_mode"] = "fc16"
+        self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
         apply_app_theme(QApplication.instance(), self.main_window.settings["theme"])
         if hasattr(self.main_window, "public_warning_label"):
             self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
@@ -5191,6 +5356,8 @@ class CommunicationSettingsDialog(QDialog):
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.main_window.apply_communication_settings(backend)
         self.main_window._apply_live_poll_timer_state()
+        self.main_window._update_dual_logger_button_visibility()
+        self.main_window._refresh_search_highlights()
         self.main_window._save_settings(sync_main_fields=False)
         super().accept()
 
@@ -5845,6 +6012,9 @@ class MainWindow(QMainWindow):
         self.raw_file: Optional[BinaryIO] = None
         self.raw_file_path: Optional[str] = None
         self.cached_regs: set[int] = set()
+        # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
+        # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
+        self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
         self.display_last_frame_monotonic = 0.0
         self.display_init_retry_items: list[tuple[int, int, str, int, int]] = []
@@ -5862,12 +6032,26 @@ class MainWindow(QMainWindow):
         # nur dann wirken, wenn das Display Unit 0x03 den Write wirklich quittiert.
         self.display_write_ack_times: Dict[tuple[int, int, int], float] = {}
         self.display_fake_reboot_state: dict[str, Any] = {}
-        # fix11: Display-Reboot-Fake ist am Display-Bus die Standard-Snapshot-Methode
+        # fix12: Display-Reboot-Fake ist am Display-Bus die Standard-Snapshot-Methode
         # fuer "Alle Register lesen" und Popup-Aktualisierungen. Cooldown verhindert,
         # dass mehrere Popup-Reads denselben Reboot-Snapshot mehrfach starten.
         self.display_fake_reboot_last_success_time: float = 0.0
         self.display_fake_reboot_last_source: str = ""
         self.display_user_value_state: dict[str, Any] = {}
+        # V0.2.41 PRIVATE: Timer-/Popup-Mehrfachwrites am Displaybus laufen ACK-gesteuert
+        # und bevorzugt als kompakte FC16-Blockwrites, damit keine Einzelwrites im
+        # normalen Displaybus-Verkehr verloren gehen.
+        self.display_timer_batch_state: dict[str, Any] = {}
+        # V0.2.41 PRIVATE: Merker, damit der automatische Hinweis/Init-Lauf bei
+        # fehlenden Display-Parameterpaketen nicht bei jedem Klick neu nervt.
+        self.display_param_init_prompted_contexts: set[str] = set()
+        # V0.2.41 fix5: Popup-Oeffnung kann warten, bis die benoetigten
+        # Display-Parameterpakete wirklich angekommen sind. Key = Kontextname,
+        # Value = Startzeit monotonic.
+        self.display_pending_popup_open_started: dict[str, float] = {}
+        # V0.2.41 fix5: sichtbarer, nicht blockierender Hinweis beim Klick auf
+        # ein Popup, solange die benoetigten Display-Live-/Parameterwerte laden.
+        self.display_pending_popup_wait_messages: dict[str, QMessageBox] = {}
         # fix9: normale Display-Parameterwrites (Rechtsklick/Popups) laufen
         # nacheinander ACK-gesteuert ueber den 23xx-Bedienwertpfad.
         self.display_user_value_queue: list[dict[str, Any]] = []
@@ -5903,7 +6087,7 @@ class MainWindow(QMainWindow):
         self.init_read_active = False
         self.warmlink_init_controller = WarmlinkInitReadController(self)
         self.standard_modbus_init_controller = StandardModbusInitReadController(self)
-        # Fix24: Display-Init liest 90er-WP-Paketblöcke sequenziell.
+        # V0.2.41: Display-Init liest 90er-WP-Paketblöcke sequenziell.
         # Nicht mehr nach fixer Pause alles raushauen, sondern Antwort/Timeout abwarten.
         self.init_display_packet_mode = False
         self.init_waiting_for_display_packet = False
@@ -5926,6 +6110,12 @@ class MainWindow(QMainWindow):
             self._log(f"Display-Diagnose-Mapping: {self.display_regmap_path} ({len(self.display_regmap)} Einträge, getrennt von Warmlink)")
         if self.cache_load_start_cb.isChecked():
             self.load_value_cache(silent=False)
+        # PRIVATE fix16: Bereichsfarben nach dem ersten Qt-Layout/Stylesheet-Pass
+        # nochmal setzen. Dadurch greifen 10xx/30xx-Farben auch direkt nach
+        # Programmstart/Cache-Aufbau, nicht erst nach dem ersten Live-Read.
+        QTimer.singleShot(0, self._refresh_search_highlights)
+        QTimer.singleShot(250, self._refresh_search_highlights)
+        QTimer.singleShot(1000, self._refresh_search_highlights)
         self._log(f"Benutzerdaten: {self.user_data_dir}")
         QTimer.singleShot(700, self._autoconnect_if_enabled)
         if APP_EDITION.upper() == "PUBLIC":
@@ -6079,9 +6269,19 @@ class MainWindow(QMainWindow):
         self.known_only_cb.setChecked(False)
         self.log_changes_only_cb = QCheckBox("nur Änderungen loggen")
         self.log_changes_only_cb.setChecked(True)
-        self.raw_log_cb = QCheckBox("Raw anzeigen")
+        self.log_level_combo = QComboBox()
+        self.log_level_combo.setToolTip("Log-Level 1=ruhig, 7=Debug/alles. Für Chat-Diagnose Level 4; RAW/TX nur mit RAW anzeigen oder Level 6/7.")
+        for level, label in LOG_LEVEL_LABELS:
+            self.log_level_combo.addItem(label, level)
+        saved_log_level = int(self.settings.get("log_level", 2))
+        lvl_idx = self.log_level_combo.findData(saved_log_level)
+        self.log_level_combo.setCurrentIndex(lvl_idx if lvl_idx >= 0 else 1)
+        self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
+        self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
         self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
         self.raw_ascii_cb = QCheckBox("Raw ASCII-Vorschau")
+        self.raw_ascii_cb.setChecked(True)
+        self.raw_ascii_cb.setVisible(False)
         self.clear_log_btn = QPushButton("Log leeren")
         self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.")
         self.clear_main_btn = QPushButton("Hauptfenster leeren")
@@ -6098,9 +6298,13 @@ class MainWindow(QMainWindow):
         top.addWidget(self.autoconnect_cb)
         top.addWidget(self.known_only_cb)
         top.addWidget(self.log_changes_only_cb)
+        top.addWidget(QLabel("Log:"))
+        top.addWidget(self.log_level_combo)
         top.addWidget(self.raw_log_cb)
         top.addWidget(self.raw_file_cb)
-        top.addWidget(self.raw_ascii_cb)
+        # V0.2.41 fix6: eigene RAW-ASCII-Option ist überflüssig;
+        # RAW anzeigen liefert jetzt immer HEX+ASCII. Checkbox bleibt nur
+        # intern/kompatibel, wird aber nicht mehr in die Kopfzeile gesetzt.
         top.addWidget(self.clear_log_btn)
         top.addWidget(self.clear_main_btn)
         top.addStretch(1)
@@ -6133,6 +6337,7 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(9, QHeaderView.ResizeToContents)
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.register_table.setAlternatingRowColors(False)
         self.register_table.itemDoubleClicked.connect(self.open_register_quick_write_from_table_item)
         upper.addWidget(self.register_table)
 
@@ -6291,6 +6496,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn = QPushButton("Offline Register-Browser ...")
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.dual_logger_btn = QPushButton("Dual-Bus Logger (Diagnose) ...")
+        self.dual_logger_btn.setToolTip("Nur bei Modbus Display/HMI sichtbar, wenn in Programm-Einstellungen aktiviert.")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
         self.wp_control_btn = QPushButton("WP-Steuerung ...")
         self.at_comp_btn = QPushButton("AT-Kompensation ...")
@@ -6417,6 +6623,7 @@ class MainWindow(QMainWindow):
         self.clear_name_search_btn.clicked.connect(self.clear_name_search)
         self.name_search_edit.returnPressed.connect(self.search_name_now)
         self.known_only_cb.stateChanged.connect(lambda _=None: self.rebuild_table_filter())
+        self.log_level_combo.currentIndexChanged.connect(lambda _=None: self._on_log_level_changed())
         self.raw_file_cb.stateChanged.connect(lambda _=None: self.on_raw_file_checkbox_changed())
         self.clear_log_btn.clicked.connect(self.clear_log)
         self.clear_main_btn.clicked.connect(self.clear_main_window_values)
@@ -6441,6 +6648,8 @@ class MainWindow(QMainWindow):
 
         self.frame_count = 0
         self._backend_changed()
+        self._update_dual_logger_button_visibility()
+        QTimer.singleShot(0, self._refresh_search_highlights)
 
     def _load_settings(self) -> dict:
         for path in (self.settings_path, getattr(self, "old_settings_path", "")):
@@ -6479,6 +6688,8 @@ class MainWindow(QMainWindow):
             "tab_auto_poll": bool(self.settings.get("tab_auto_poll", False)),
             "tab_poll_interval_s": int(self.settings.get("tab_poll_interval_s", 30)),
             "display_write_mode": str(self.settings.get("display_write_mode", "fc16")),
+            "show_dual_logger_button_display": bool(self.settings.get("show_dual_logger_button_display", False)),
+            "log_level": int(self.settings.get("log_level", 2)),
         }
 
     def _write_settings_file(self):
@@ -6616,8 +6827,6 @@ class MainWindow(QMainWindow):
             parts.append(f"{self.host_edit.text().strip()}:{int(self.port_edit.value())}")
         if backend in ("display_modbus", "standard_modbus"):
             parts.append(f"Unit {int(self.unit_spin.value())}")
-        if backend == "display_modbus":
-            parts.append(str(self.settings.get("display_write_mode", "fc16")).upper())
         return " | ".join(parts)
 
     def _update_comm_summary(self):
@@ -6798,7 +7007,7 @@ class MainWindow(QMainWindow):
             if not silent:
                 stamp = data.get("saved_at")
                 stamp_text = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(stamp)) if stamp else "unbekannt"
-                self._log(f"Werte-Cache geladen: {loaded} Register, Stand {stamp_text}. Geladene Zeilen sind grau.")
+                self._log(f"Werte-Cache geladen: {loaded} Register, Stand {stamp_text}. Geladene neutrale Zeilen sind grau; 10xx/30xx behalten ihre Bereichsfarbe.")
         except Exception as exc:
             self._log(f"Werte-Cache laden fehlgeschlagen: {exc}")
 
@@ -6909,9 +7118,90 @@ class MainWindow(QMainWindow):
             self.update_check_btn.setEnabled(True)
             self.update_check_btn.setText("Update prüfen ...")
 
-    def _log(self, text: str):
+    def current_log_level(self) -> int:
+        try:
+            if hasattr(self, "log_level_combo"):
+                return int(self.log_level_combo.currentData() or 2)
+        except Exception:
+            pass
+        try:
+            return int(self.settings.get("log_level", 2))
+        except Exception:
+            return 2
+
+    def _infer_log_level(self, text: str) -> int:
+        """Ordnet bestehende Logtexte in Level 1..7 ein.
+
+        fix7-Ziel: Level 4 soll fuer Chat-Diagnose reichen, aber ohne
+        Fremdframe-/RAW-/Nullblock-Spam. Rohbytes, TX und lange Wertebloecke
+        wandern nach Level 6; reine Busbeobachtung nach Level 5.
+        """
+        t = str(text or "")
+        u = t.upper()
+
+        # Immer wichtig / ruhig sichtbar.
+        if any(k in u for k in ("FEHLER", "ERROR", "WARN", "FEHLGESCHLAGEN", "ABBRUCH", "ABGEBROCHEN", "TIMEOUT")):
+            return 1
+        if t.startswith("REG ") or t.startswith("DREG "):
+            return 1
+        if any(k in u for k in ("ERFOLGREICH", "ÜBERNOMMEN", "UEBERNOMMEN", "GEÄNDERT", "GEAENDERT")):
+            return 1
+
+        # Explizite Roh-/Trace-Daten zuerst nach oben ziehen, auch wenn darin
+        # z. B. FC16, DISPLAY-HMI oder FREMD-FRAME vorkommt.
+        if t.startswith("RX ") or "RAW=" in u or "TX=" in u or "ROHDATEN" in u:
+            return 6
+        if "SENDEWARTESCHLANGE" in u or "WRITE GESENDET" in u or "BLOCKWRITE WIRD GESENDET" in u:
+            return 6
+        if "PASSIVE WERTE" in u or "READ WERTE:" in u:
+            return 6
+
+        # Bedienung, Verbindung, allgemeiner Status.
+        if any(k in u for k in ("VERBINDE", "VERBUNDEN", "GETRENNT", "AUTOCONNECT", "CACHE", "BENUTZERDATEN", "REGISTER-MAPPING", "DISPLAY-DIAGNOSE-MAPPING", "LOG GELEERT", "HAUPTFENSTER GELEERT", "UPDATE", "POPUP", "BITTE WARTEN", "KOMMUNIKATION EINGESTELLT", "LOG-LEVEL GESETZT")):
+            return 2
+
+        # Schreib-/Timer-Diagnose: wichtig fuer normale Chat-Analyse.
+        if any(k in u for k in ("TIMER", "SG READY", "AT-KOMP", "WP EIN/AUS", "SILENT", "PARAMETERWRITE", "WRITE/ACK", "WRITE/ECHO", "0BC3", "ACK", "FC16 WIRD GESENDET", "FC06 WIRD GESENDET", "BEDIENWERT", "USERWERT", "DISPLAY-INIT", "REBOOT FAKE")):
+            return 3
+
+        # Level 4: bestaetigende Diagnose ohne volle Rohdaten.
+        if any(k in u for k in ("READ/RESPONSE PASST ZU ANFRAGE", "DREG ", "DISPLAY-HMI DIFF", "DISPLAY-HMI SNAPSHOT", "DISPLAY-HMI DISPLAY-PARAMETERPAKET", "BEKANNTES 10XX", "BEKANNTES 11XX", "BEKANNTES 12XX", "BEKANNTES 13XX", "BEKANNTES 14XX", "BEKANNTES 15XX", "KANDIDAT ISTMODUS", "VALIDIERT")):
+            return 4
+
+        # Level 5: Bus-/Read-Beobachtung, Fremdteilnehmer, passive Zuordnung.
+        if any(k in u for k in ("READ/REQUEST", "READ/RESPONSE", "PASSIVE RESPONSE", "PAKETBLOCK", "FREMD-FRAME", "BUS NEU", "BUS=0X", "VERMUTUNG=", "ROHSTATUS", "DISPLAY-HMI", "WARMLINK/WP PAKETTEST")):
+            return 5
+
+        # Level 6: sonstige Queue/TX/lokale Worker-Details.
+        if any(k in u for k in (" GESENDET", "SERIAL RX", "QUEUE", "TRACE")):
+            return 6
+
+        return 2
+
+    def _should_log_message(self, text: str, level: Optional[int] = None, force: bool = False) -> bool:
+        if force:
+            return True
+        needed = int(level) if level is not None else self._infer_log_level(str(text))
+        return int(needed) <= int(self.current_log_level())
+
+    def _log(self, text: str, level: Optional[int] = None, force: bool = False):
+        if not self._should_log_message(str(text), level=level, force=force):
+            return
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
+
+    def _on_log_level_changed(self):
+        try:
+            level = int(self.log_level_combo.currentData() or 2)
+        except Exception:
+            level = 2
+        self.settings["log_level"] = level
+        try:
+            self._save_settings(sync_main_fields=False)
+        except Exception:
+            pass
+        label = self.log_level_combo.currentText() if hasattr(self, "log_level_combo") else str(level)
+        self._log(f"Log-Level gesetzt: {label}", force=True)
 
     def clear_log(self):
         self.log_text.clear()
@@ -6929,6 +7219,7 @@ class MainWindow(QMainWindow):
             self.last_values.clear()
             self.previous_value_texts.clear()
             self.cached_regs.clear()
+            self.register_change_highlights.clear()
             self.last_contact_value = None
             self.last_load_output_value = None
             self._update_contact_table(None)
@@ -7001,8 +7292,11 @@ class MainWindow(QMainWindow):
         return int(requested if requested is not None else DEFAULT_BUS_ADDR)
 
     def _display_write_mode(self) -> str:
-        mode = str(self.settings.get("display_write_mode", "fc16")).lower().strip()
-        return mode if mode in ("fc06", "fc16") else "fc16"
+        # V0.2.41 fix7: Für den Display-Modus ist FC16-Single-Register der
+        # normale Schreibmodus. FC06 bleibt nur noch in altem Settingbestand
+        # erhalten, wird aber nicht mehr aktiv benutzt. Spezialpfade/Fallbacks
+        # haben eigene explizite Logik.
+        return "fc16"
 
     def _write_single_for_backend(self) -> bool:
         backend = self.current_backend_key()
@@ -7038,6 +7332,8 @@ class MainWindow(QMainWindow):
             self.display_aux_takeover_active = False
         self._update_init_read_button_state()
         self._update_comm_summary()
+        self._update_dual_logger_button_visibility()
+        self._refresh_search_highlights()
 
     def _update_init_read_button_state(self):
         if not hasattr(self, "init_read_btn"):
@@ -7220,11 +7516,10 @@ class MainWindow(QMainWindow):
                 self.raw_file.write(chunk)
                 self.raw_file.flush()
         if self.raw_log_cb.isChecked():
-            # Anzeige ähnlich nc/tee, aber binär sicher. Optional mit ASCII-Spalte.
-            if self.raw_ascii_cb.isChecked():
-                self._log(f"RX {len(chunk)}B: {hex_ascii_line(chunk, -1)}")
-            else:
-                self._log(f"RX {len(chunk)}B: {hexdump(chunk, -1)}")
+            # V0.2.41 fix6: RAW anzeigen liefert immer HEX+ASCII.
+            # Die separate RAW-ASCII-Checkbox ist damit überflüssig.
+            # Explizit eingeschaltetes RAW wird unabhängig vom Log-Level angezeigt.
+            self._log(f"RX {len(chunk)}B: {hex_ascii_line(chunk, -1)}", level=7, force=True)
 
     def _frame_direction_text(self, frame) -> str:
         if frame.slave_addr == DEFAULT_BUS_ADDR:
@@ -7388,17 +7683,24 @@ class MainWindow(QMainWindow):
             if self.known_only_cb.isChecked() and not reg.name:
                 continue
 
+            old_known = reg.reg in self.last_values
             old_value = self.last_values.get(reg.reg)
-            changed = old_value != reg.raw_value
+            value_diff = old_value != reg.raw_value
             was_cached = reg.reg in self.cached_regs
+            # PRIVATE fix51: Erster Live-Wert nach Programmstart/Leeren ist ein
+            # Initialwert und soll NICHT als Änderung markiert werden. Auch ein
+            # vom Cache geladener Altwert zaehlt noch nicht als Live-Basis; erst
+            # ab dem zweiten echten Live-Wert darf die Änderungsfarbe greifen.
+            changed = bool(old_known and (not was_cached) and value_diff)
             if was_cached:
                 self.cached_regs.discard(reg.reg)
-            if changed:
-                changed_regs_for_live_search.append(reg.reg)
+            if value_diff:
                 if old_value is None:
                     self.previous_value_texts.setdefault(reg.reg, "--")
                 else:
                     self.previous_value_texts[reg.reg] = f"{old_value} / 0x{old_value:04X}"
+            if changed:
+                changed_regs_for_live_search.append(reg.reg)
             self.last_values[reg.reg] = reg.raw_value
 
             if self.current_backend_key() == "display_modbus":
@@ -7463,6 +7765,11 @@ class MainWindow(QMainWindow):
             self.register_table.setUpdatesEnabled(old_table_updates)
             self._resize_name_column()
 
+        # PRIVATE fix51: Nach Bulk-Updates die gespeicherten Aenderungsfarben
+        # erneut setzen, weil Qt die Tabelle erst danach neu zeichnet.
+        if changed_regs_for_live_search:
+            self._apply_persistent_change_backgrounds(changed_regs_for_live_search)
+
         if self.value_search_target is not None and self.value_search_live_cb.isChecked():
             old_hits = set(self.value_search_matches)
             hits = self._recalculate_value_search()
@@ -7493,12 +7800,14 @@ class MainWindow(QMainWindow):
         """
         raw_value = int(raw_value) & 0xFFFF
         info = self.regmap.get(2012)
+        old_known = 2012 in self.last_values
         old_value = self.last_values.get(2012)
-        changed = old_value != raw_value
+        value_diff = old_value != raw_value
         was_cached = 2012 in self.cached_regs
+        changed = bool(old_known and (not was_cached) and value_diff)
         if was_cached:
             self.cached_regs.discard(2012)
-        if changed:
+        if value_diff:
             if old_value is None:
                 self.previous_value_texts.setdefault(2012, "--")
             else:
@@ -7556,17 +7865,133 @@ class MainWindow(QMainWindow):
         self.table_rows[reg_no] = row
         return row
 
+    def _register_area_color(self, reg_no: int, dark: bool) -> Optional[QColor]:
+        """Dauerfarbe der Registerbereiche in der Haupttabelle."""
+        reg_no = int(reg_no)
+        # Virtuelle Diagnosebereiche zuerst pruefen, weil 91099ff sonst in
+        # die allgemeine 3000+-DWIN-Farbe fallen wuerde.
+        if 91000 <= reg_no < 91200:
+            return QColor(28, 52, 58) if dark else QColor(220, 242, 252)
+        if 1000 <= reg_no < 1600:
+            return QColor(28, 50, 34) if dark else QColor(224, 246, 224)
+        # PRIVATE fix52: Live-/Statuswerte ab 2000 bekommen im hellen Design
+        # dauerhaft ein helles Orange. Aenderungen werden dunkler orange.
+        # 3000+ bleibt ein eigener DWIN-/Displaybereich und wird deshalb vorher
+        # nicht vom 2000er-Block abgefangen.
+        if 2000 <= reg_no < 3000:
+            return QColor(58, 43, 24) if dark else QColor(255, 239, 210)
+        if reg_no >= 3000:
+            return QColor(45, 38, 70) if dark else QColor(238, 230, 255)
+        return None
+
+    def _register_changed_color(self, reg_no: int, dark: bool) -> QColor:
+        """Aenderungsfarbe, passend zum jeweiligen Bereich, deutlich kraeftiger.
+
+        PRIVATE fix52: 2000er-Werte sind nun im Normalzustand hellorange und
+        bei Aenderung dunkelorange. Geaenderte Register bleiben bis
+        "Hauptfenster leeren" markiert.
+        """
+        reg_no = int(reg_no)
+        if 91000 <= reg_no < 91200:
+            return QColor(12, 104, 128) if dark else QColor(80, 185, 225)
+        if 1000 <= reg_no < 1600:
+            return QColor(18, 112, 45) if dark else QColor(85, 195, 95)
+        if 2000 <= reg_no < 3000:
+            return QColor(118, 70, 18) if dark else QColor(255, 172, 82)
+        if reg_no >= 3000:
+            return QColor(94, 58, 150) if dark else QColor(158, 112, 230)
+        return QColor(120, 92, 20) if dark else QColor(255, 198, 45)
+
+    def _register_search_color(self, dark: bool) -> QColor:
+        """Deutliche Suchtreffer-Farbe, absichtlich nicht orange.
+
+        So kollidiert die Suchmarkierung nicht mehr mit dem 2000er-Statusbereich.
+        """
+        return QColor(36, 72, 130) if dark else QColor(125, 205, 255)
+
+    def _register_change_highlight_active(self, reg_no: int) -> bool:
+        """True, wenn eine Zeile seit dem letzten Leeren geändert wurde."""
+        return int(reg_no) in self.register_change_highlights
+
+    def _mark_register_changed_for_color(self, reg_no: int) -> None:
+        """Änderungsfarbe dauerhaft halten, bis "Hauptfenster leeren" gedrückt wird."""
+        reg_no = int(reg_no)
+        self.register_change_highlights.add(reg_no)
+        # PRIVATE fix51: direkt auf die bestehende Zeile anwenden. Bisher war
+        # die Markierung zwar gespeichert, konnte aber danach durch normale
+        # Bereichs-/Cache-/Such-Refreshes optisch wieder verschwinden.
+        self._apply_register_row_visual_state(reg_no, force_changed=True)
+
     def _background_for_register(self, reg_no: int, changed: bool) -> QColor:
         dark = app_theme_is_dark()
-        if reg_no in self.value_search_matches:
-            return QColor(105, 75, 40) if dark else QColor(255, 190, 120)
-        if reg_no in self.name_search_matches:
-            return QColor(80, 70, 120) if dark else QColor(225, 210, 255)
+        reg_no = int(reg_no)
+
+        # Priorität: Suchtreffer und Änderungen. Änderungen bleiben bis
+        # "Hauptfenster leeren" sichtbar; dadurch werden sie nicht von einem
+        # Tabellen-/Cache-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
+        if reg_no in self.value_search_matches or reg_no in self.name_search_matches:
+            return self._register_search_color(dark)
+        if changed or self._register_change_highlight_active(reg_no):
+            return self._register_changed_color(reg_no, dark)
+
+        area = self._register_area_color(reg_no, dark)
+        if area is not None:
+            return area
+
+        # Cache-Grau nur für neutrale Bereiche verwenden. 10xx/30xx/91xxx behalten
+        # ihre Bereichsfarbe auch direkt nach Cache-/Tabellenaufbau.
         if reg_no in self.cached_regs:
             return QColor(55, 55, 55) if dark else QColor(225, 225, 225)
-        if changed:
-            return QColor(85, 75, 40) if dark else QColor(255, 245, 180)
+
         return QColor(37, 37, 37) if dark else QColor(255, 255, 255)
+
+    def _set_table_item_background(self, item: QTableWidgetItem, color: QColor) -> None:
+        # PRIVATE fix51: explizit QBrush setzen. Das ist robuster als QColor
+        # direkt und verhindert, dass Stylesheet/alternating-row-color die
+        # geaenderte Zeile optisch wieder auf die Grundfarbe zurueckzieht.
+        brush = QBrush(color)
+        item.setData(Qt.BackgroundRole, brush)
+        item.setBackground(brush)
+
+    def _apply_register_row_visual_state(self, reg_no: int, force_changed: bool = False) -> None:
+        """Setzt Hintergrund/Fett fuer eine komplette Haupttabellen-Zeile.
+
+        Das ist die eine zentrale Stelle fuer Bereichsfarbe + dauerhafte
+        Aenderungsmarkierung. Sie wird nach Upsert, Such-Refresh, Cache-/
+        Filter-Rebuild und Theme-Wechsel verwendet.
+        """
+        reg_no = int(reg_no)
+        row = self.table_rows.get(reg_no)
+        if row is None:
+            return
+        active_changed = bool(force_changed or self._register_change_highlight_active(reg_no))
+        color = self._background_for_register(reg_no, active_changed)
+        reg = self.latest_regs.get(reg_no)
+        is_block_row = is_block_dtype(getattr(reg, "dtype", ""))
+        for col in range(self.register_table.columnCount()):
+            item = self.register_table.item(row, col)
+            if item is None:
+                continue
+            # Grundschrift/Farbe zuerst herstellen. PRIVATE fix52: Änderungen
+            # werden nicht fett markiert. Nur aktive Suchtreffer werden bewusst
+            # fett dargestellt, damit sie sich klar von Bereichsfarben abheben.
+            apply_block_header_item_style(self.register_table, item, is_block_row)
+            is_search_hit = reg_no in self.value_search_matches or reg_no in self.name_search_matches
+            font = item.font()
+            font.setBold(bool(is_search_hit))
+            item.setFont(font)
+            if is_search_hit:
+                # Suchtreffer zusätzlich mit kontrastreicher Schriftfarbe darstellen.
+                item.setForeground(QColor(0, 0, 0) if not app_theme_is_dark() else QColor(255, 255, 255))
+            self._set_table_item_background(item, color)
+
+    def _apply_persistent_change_backgrounds(self, only_regs: Optional[list[int]] = None) -> None:
+        """PRIVATE fix51: geaenderte Zeilen nach Refreshes erneut sichtbar machen."""
+        regs = only_regs if only_regs is not None else list(self.table_rows.keys())
+        for reg_no in regs:
+            if int(reg_no) in self.table_rows:
+                self._apply_register_row_visual_state(int(reg_no))
+        self.register_table.viewport().update()
 
     def _upsert_register_row(self, reg, changed: bool):
         self.latest_regs[reg.reg] = reg
@@ -7590,6 +8015,8 @@ class MainWindow(QMainWindow):
         ]
         is_block_row = is_block_dtype(reg.dtype)
         self.register_table.setRowHeight(row, 19 if is_block_row else 24)
+        if changed:
+            self._mark_register_changed_for_color(reg.reg)
 
         for col, value in enumerate(values):
             item = self.register_table.item(row, col)
@@ -7606,7 +8033,10 @@ class MainWindow(QMainWindow):
             if col == 2 and value:
                 item.setToolTip(reg.name)
             apply_block_header_item_style(self.register_table, item, is_block_row)
-            item.setBackground(self._background_for_register(reg.reg, changed))
+
+        # PRIVATE fix51: Hintergrund nach dem kompletten Text-/Font-Update setzen,
+        # damit er nicht mehr durch Style-/Refresh-Schritte verloren geht.
+        self._apply_register_row_visual_state(reg.reg, force_changed=changed)
 
         if not getattr(self, "_suppress_name_resize", False):
             self._resize_name_column()
@@ -7739,19 +8169,25 @@ class MainWindow(QMainWindow):
             self.backup_restore_dialog.raise_()
             self.backup_restore_dialog.activateWindow()
 
+    def _update_dual_logger_button_visibility(self):
+        if not hasattr(self, "dual_logger_btn"):
+            return
+        visible = (
+            self.current_backend_key() == "display_modbus"
+            and bool(self.settings.get("show_dual_logger_button_display", False))
+        )
+        self.dual_logger_btn.setVisible(visible)
+
     def toggle_cache_options(self):
         visible = not self.cache_options_widget.isVisible()
         self.cache_options_widget.setVisible(visible)
         self.cache_toggle_btn.setText("Einstellungen ausblenden" if visible else "Einstellungen ...")
 
     def _refresh_search_highlights(self):
-        # Hintergrund in allen sichtbaren Zeilen neu setzen.
-        for reg_no, row in list(self.table_rows.items()):
-            bg = self._background_for_register(reg_no, False)
-            for col in range(self.register_table.columnCount()):
-                item = self.register_table.item(row, col)
-                if item is not None:
-                    item.setBackground(bg)
+        # PRIVATE fix51: Such-/Bereichs-/Aenderungsfarben immer ueber die
+        # zentrale Zeilenfunktion setzen. So bleiben dauerhaft geaenderte
+        # Register dunkler, bis "Hauptfenster leeren" gedrueckt wird.
+        self._apply_persistent_change_backgrounds()
 
     def _parse_search_target(self) -> float:
         text = self.search_value_edit.text().strip().replace(",", ".")
@@ -7982,7 +8418,7 @@ class MainWindow(QMainWindow):
                 and (
                     "DWIN" in req_label
                     or "Display" in req_label
-                    or int(frame.slave_addr) in {0x02, 0x03, 0x05}
+                    or int(frame.slave_addr) in {0x02, 0x03, 0x04, 0x05}
                     or int(start_addr) >= 3000
                     or 0x1200 <= int(start_addr) <= 0x1AFF
                 )
@@ -8166,12 +8602,120 @@ class MainWindow(QMainWindow):
             if len(changes) > 80:
                 self._log(f"DISPLAY-HMI {label}: ... (+{len(changes) - 80} weitere DREG-Änderungen)")
 
+    def _display_hmi_virtual_regs_0x01_2099(self, frame) -> list[DecodedRegister]:
+        """PRIVATE fix14: 0x01/2099ff als virtuellen Diagnosebereich abbilden.
+
+        Der Rohstatus auf Bus 0x01 nutzt echte Adressen 2099-2149, ist aber
+        nicht identisch/vertraulich genug, um die normalen WP-Register 2099ff
+        zu ueberschreiben. Darum wird er im Hauptfenster als 91099-91149
+        sichtbar gemacht.
+        """
+        virt_start = 91099
+        source_start = int(getattr(frame, "typ", 2099) or 2099)
+        regs: list[DecodedRegister] = []
+        # PRIVATE fix18: zwei Rohstatuswerte wurden mit echten WP-Werten
+        # korreliert. Im Log verhaelt sich 91105 wie 2062 (AC-Eingang)
+        # und 91108 wie 2043 (DC-Power-Bus). Die Quelle bleibt Bus 0x01;
+        # als Absender/Rolle ist Power-Modul-Spiegel plausibel, aber noch
+        # nicht endgueltig bestaetigt.
+        special_names = {
+            91105: "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062 (virtuell, Kandidat)",
+            91108: "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043 (virtuell, Kandidat)",
+        }
+        special_units = {91105: "V", 91108: "V"}
+        for idx, old_reg in enumerate(list(getattr(frame, "registers", []) or [])):
+            raw = int(getattr(old_reg, "raw_value", 0) or 0) & 0xFFFF
+            orig_reg = source_start + idx
+            virt_reg = virt_start + idx
+            name = special_names.get(virt_reg, f"Displaybus 0x01 Rohstatus {orig_reg}/0x{orig_reg:04X} (virtuell)")
+            unit = special_units.get(virt_reg)
+            # PRIVATE fix51: format_value_by_type erwartet value_map/bit_map,
+            # keine Einheit. Ein String "V" als value_map kann eine Exception
+            # ausloesen und dadurch die komplette virtuelle 91099ff-Uebernahme
+            # abbrechen. Deshalb die Einheit hier manuell anhaengen.
+            display_value = f"{s16(raw)} {unit}" if unit else format_value_by_type(raw, "DIGI1")
+            regs.append(DecodedRegister(
+                slave_addr=int(getattr(frame, "slave_addr", 0) or 0),
+                reg=virt_reg,
+                index=idx,
+                frame_type=virt_start,
+                raw_value=raw,
+                signed_value=s16(raw),
+                display_value=display_value,
+                name=name,
+                dtype="DIGI1",
+                timestamp=time.time(),
+            ))
+        return regs
+
+    def _display_hmi_promote_0x01_2099_virtual(self, frame) -> bool:
+        if self.current_backend_key() != "display_modbus":
+            return False
+        if int(getattr(frame, "slave_addr", -1)) != 0x01:
+            return False
+        if int(getattr(frame, "typ", -1)) != 2099:
+            return False
+        if str(getattr(frame, "mode", "")) != "read-response":
+            return False
+        if not getattr(frame, "registers", None):
+            return False
+        frame.registers = self._display_hmi_virtual_regs_0x01_2099(frame)
+        frame.typ = 91099
+        frame.length_field = len(frame.registers)
+        return True
+
+    def _display_hmi_is_extra_main_window_candidate(self, frame) -> bool:
+        """PRIVATE fix12: zusätzliche Display-Bus-Werte ins Hauptfenster übernehmen.
+
+        Ziel:
+        - DWIN-/Display-Werte ab 3000 sichtbar machen, weil die WP diese Werte
+          vom Display zyklisch abfragt (z. B. 3001ff / 3011 / 3021).
+        - Fremdteilnehmer 0x04/0x05 nur dann übernehmen, wenn deren Register-
+          nummern nicht mit bekannten WP-/Warmlink-Registern kollidieren.
+
+        Warmlink RAW und Standard-Modbus rufen diese Logik nicht auf.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return False
+        if not getattr(frame, "crc_ok", False) or not getattr(frame, "registers", None):
+            return False
+        mode = str(getattr(frame, "mode", ""))
+        if mode not in {"read-response", "word-frame", "write-request"}:
+            return False
+        slave = int(getattr(frame, "slave_addr", 0) or 0)
+        start = int(getattr(frame, "typ", 0) or 0)
+        regs = list(getattr(frame, "registers", []) or [])
+
+        # Unit 0x02/0x03: echter DWIN-/Display-Speicher. Alles ab 3000
+        # darf sichtbar werden; diese Nummern kollidieren nicht mit den
+        # normalen 10xx/20xx-WP-Paketen.
+        if slave in {0x02, 0x03} and start >= 3000:
+            return True
+
+        # Unit 0x04/0x05: nur unbekannte/nicht belegte Registerbereiche in die
+        # Hauptliste übernehmen. Bekannte WP-Register wie 1001ff/2000ff bleiben
+        # Diagnose, damit Null-/Fremdblöcke keine echten WP-Werte überschreiben.
+        if slave in {0x04, 0x05}:
+            wp_known = getattr(self.regmap, "items", {})
+            for reg in regs:
+                reg_no = int(getattr(reg, "reg", 0) or 0)
+                if reg_no in wp_known:
+                    return False
+            # Sicherheitsgurt: Niedrige unbekannte Bereiche nur dann aufnehmen,
+            # wenn sie sicher außerhalb der bekannten WP-Paketzone liegen.
+            if start >= 3000:
+                return True
+            if all((int(getattr(r, "reg", 0) or 0) < 1000 or int(getattr(r, "reg", 0) or 0) > 2300) for r in regs):
+                return True
+
+        return False
+
     def _display_hmi_should_apply_registers(self, frame, expected_slave: int, matched_pending_read: bool, matched_passive_read: bool) -> bool:
         """Entscheidet, welche Display/HMI-Register in die Hauptliste dürfen.
 
         Fix8: Display-/DWIN-Bus bleibt grundsaetzlich Diagnose. Die Hauptliste nutzt
         normalerweise das Warmlink/WP-Mapping und nur vertrauenswuerdige Quellen.
-        V0.2.38 fix2: validierte aktive Display-Init-WP-Paketbloecke 0x03/10xx
+        V0.2.38 fix5: validierte aktive Display-Init-WP-Paketbloecke 0x03/10xx
         duerfen vorerst wieder ins Hauptfenster, bis ein besserer Init-Weg gefunden ist.
         """
         if matched_pending_read:
@@ -8194,6 +8738,12 @@ class MainWindow(QMainWindow):
                         "nicht übernommen."
                     )
                 return False
+            if self._display_hmi_is_extra_main_window_candidate(frame):
+                self._log(
+                    f"DISPLAY-HMI fix12: aktive/manuelle Display-Antwort Bus 0x{frame.slave_addr:02X} "
+                    f"{frame.typ}/0x{frame.typ:04X} wird als zusätzlicher Display-Wert in die Hauptliste übernommen."
+                )
+                return True
             self._log(
                 f"DISPLAY-HMI: manuelle Antwort addr {frame.typ}/0x{frame.typ:04X} "
                 "nur im Popup/Log ausgewertet; nicht in Haupt-Registerliste übernommen."
@@ -8233,20 +8783,40 @@ class MainWindow(QMainWindow):
                 )
                 return False
 
-        # 0x01 / 2099ff und 0x03 / 1001ff sind auf dem Displaybus nützlich für
-        # Diagnose/Snapshots, aber dürfen NICHT die normale Warmlink-Liste füllen.
+        # 0x01 / 2099ff ist auf dem Displaybus nuetzlich, kollidiert aber mit
+        # echten WP-Registern. PRIVATE fix14: als virtueller Diagnosebereich
+        # 91099-91149 uebernehmen, statt 2099ff zu ueberschreiben.
         if int(frame.slave_addr) == 0x01 and int(frame.typ) == 2099:
-            if frame.registers and matched_passive_read:
-                self._log(
-                    "DISPLAY-HMI: 0x01/2099ff Rohstatus nur Diagnose; "
-                    "nicht in Hauptliste übernommen (Warmlink-Mapping bleibt unverändert)."
-                )
+            # PRIVATE fix51: nicht mehr hart von matched_passive_read abhaengig machen.
+            # Entscheidend ist, dass der Frame bereits als 2099/read-response mit
+            # Registerliste vorliegt. Dann ist der virtuelle Bereich sicher, weil er
+            # 2099ff nicht ueberschreibt, sondern nach 91099ff verschiebt.
+            if frame.registers and str(getattr(frame, "mode", "")) == "read-response":
+                if self._display_hmi_promote_0x01_2099_virtual(frame):
+                    self._log(
+                        "DISPLAY-HMI fix21: 0x01/2099ff Rohstatus als virtuellen "
+                        "Diagnosebereich 91099-91149 in die Hauptliste übernommen "
+                        "(Warmlink-2099ff bleibt unverändert)."
+                    )
+                    return True
+            self._log(
+                "DISPLAY-HMI: 0x01/2099ff Rohstatus nur Diagnose; "
+                "nicht in Hauptliste übernommen (Warmlink-Mapping bleibt unverändert)."
+            )
             return False
 
         if int(frame.slave_addr) == 0x03 and int(frame.typ) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}:
             self._log(
                 f"DISPLAY-HMI: bekanntes 10xx/Parameterpaket 0x03/{frame.typ}ff "
                 "wieder in Hauptliste übernommen."
+            )
+            return True
+
+        if self._display_hmi_is_extra_main_window_candidate(frame):
+            self._log(
+                f"DISPLAY-HMI fix12: Bus 0x{frame.slave_addr:02X} "
+                f"{frame.typ}/0x{frame.typ:04X} mode={frame.mode} "
+                "als zusätzlicher Display-/Fremdwert in die Hauptliste übernommen."
             )
             return True
 
@@ -8298,7 +8868,7 @@ class MainWindow(QMainWindow):
                 and (
                     "DWIN" in req_label
                     or "Display" in req_label
-                    or int(frame.slave_addr) in {0x02, 0x03, 0x05}
+                    or int(frame.slave_addr) in {0x02, 0x03, 0x04, 0x05}
                     or int(start_addr) >= 3000
                     or 0x1200 <= int(start_addr) <= 0x1AFF
                 )
@@ -8377,7 +8947,7 @@ class MainWindow(QMainWindow):
         # wir den gestern gefundenen Qty90-Direktlese-Pfad weiter testen können.
         if self._display_should_redirect_read_to_reboot_snapshot(addr, quantity, slave_addr, label):
             self._log(
-                f"DISPLAY-SNAPSHOT fix11: Leseanforderung '{label or 'ohne Label'}' "
+                f"DISPLAY-SNAPSHOT fix12: Leseanforderung '{label or 'ohne Label'}' "
                 f"{int(addr)}/0x{int(addr):04X}, qty={int(quantity)} wird nicht direkt gelesen, "
                 "sondern über Display Reboot Fake aktualisiert."
             )
@@ -8455,7 +9025,7 @@ class MainWindow(QMainWindow):
             # Die alte aktive Qty90-Display-Read-Logik bleibt im Code/DualLogger
             # erhalten, ist aber NICHT mehr der Standard für diesen Button.
             self._log(
-                "DISPLAY-SNAPSHOT fix11: 'Alle bekannten Register lesen' nutzt jetzt Display Reboot Fake "
+                "DISPLAY-SNAPSHOT fix12: 'Alle bekannten Register lesen' nutzt jetzt Display Reboot Fake "
                 "statt aktiver Qty90-Reads. Warmlink/Standard-Modbus bleiben unverändert."
             )
             self._start_display_reboot_snapshot(source_label="Alle bekannten Register lesen", force=True)
@@ -8526,6 +9096,19 @@ class MainWindow(QMainWindow):
             self.write_addr_edit.setText(str(reg_no))
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
+        # Display-Modbus: bekannte Parameterregister erst nach geladenem Paket öffnen,
+        # damit aktueller Wert/Klartext nicht leer oder alt ist. Warmlink/Standard
+        # bleiben unverändert.
+        if self.current_backend_key() == "display_modbus":
+            try:
+                wire_slave = self._wire_slave_addr(slave_addr)
+                if int(wire_slave) == 0x03:
+                    _user_addr, block_start, _mask = self._display_user_variable_for_param_reg(int(reg_no))
+                    cb = lambda rn=int(reg_no), sa=int(slave_addr): self.open_register_quick_write(rn, sa)
+                    if not self._display_wait_for_param_blocks_before_popup(f"Schnellschreiben {int(reg_no)}", [int(block_start)], cb):
+                        return
+            except Exception:
+                pass
         key = (int(slave_addr), int(reg_no))
         dialog = self.register_write_dialogs.get(key)
         if dialog is None or not dialog.isVisible():
@@ -8557,7 +9140,7 @@ class MainWindow(QMainWindow):
         for start in (1001, 1091, 1181, 1271, 1361, 1451, 1541):
             if start <= reg_no <= start + 89:
                 return start
-        raise ValueError("Display-Paketwert aktuell nur für Paketblöcke 1001..1540 unterstützt")
+        raise ValueError("Display-Paketwert aktuell nur für Paketblöcke 1001..1630 unterstützt")
 
     def _display_user_variable_for_param_reg(self, reg_no: int) -> tuple[int, int, int]:
         """Mappt einen normalen Paket-/Kommunikationswert auf die DWIN-Benutzervariable.
@@ -8580,6 +9163,215 @@ class MainWindow(QMainWindow):
                 "Für Display-Bedienung bitte einen Nutzwert ab +10 wählen, z.B. 1012."
             )
         return reg_no + 0x2000, block_start, self._display_param_mask_for_block_start(block_start)
+
+    def _display_param_block_words_loaded(self, block_start: int) -> bool:
+        """V0.2.41 PRIVATE: Prüft, ob ein Display-Parameterpaket schon im Speicher ist.
+
+        Am Displaybus sind Dialoge wie Timer, AT-Kompensation und Parameterwrite
+        auf frische 10xx/12xx/13xx/14xx/15xx-Pakete angewiesen. Sonst schreiben
+        wir schnell mit alten/fehlenden Partnerwerten. Als geladen gilt entweder
+        ein echter 90er-Snapshot von Unit 0x03 oder sichtbare Hauptfensterwerte
+        aus demselben Paket.
+        """
+        try:
+            start = int(block_start)
+            for mode in ("read-response", "word-frame"):
+                words = self.display_hmi_block_snapshots.get((0x03, start, mode))
+                if words and len(words) >= 20:
+                    return True
+            # Hauptfensterwerte reichen als Fallback; +10 überspringt den Paketkopf.
+            for reg_no in range(start + 10, start + 90):
+                if reg_no in self.latest_regs or reg_no in self.last_values:
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _display_missing_param_blocks(self, required_blocks: Optional[list[int]] = None) -> list[int]:
+        blocks = required_blocks or [1001, 1091, 1181, 1271, 1361, 1451, 1541]
+        missing: list[int] = []
+        for block in blocks:
+            try:
+                block_i = int(block)
+            except Exception:
+                continue
+            if not self._display_param_block_words_loaded(block_i):
+                missing.append(block_i)
+        return missing
+
+    def _ensure_display_param_blocks_loaded_once(
+        self,
+        context: str,
+        required_blocks: Optional[list[int]] = None,
+        *,
+        block_write: bool = False,
+    ) -> bool:
+        """Sichert Display-Modbus-Dialoge gegen fehlenden 10xx/12xx..15xx-Cache ab.
+
+        Rückgabe True = benötigte Blöcke sind vorhanden oder Backend ist nicht Display.
+        Rückgabe False = es wurde einmalig ein Init/Snapshot gestartet; aktuellen
+        Schreibvorgang nicht senden und nach dem Init erneut versuchen.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return True
+        missing = self._display_missing_param_blocks(required_blocks)
+        if not missing:
+            return True
+        context_key = str(context or "Display-Parameter")
+        missing_txt = ", ".join(f"{m}ff" for m in missing)
+        message = (
+            f"DISPLAY-INIT V0.2.41 ({context_key}): benötigte Parameterpakete fehlen noch: {missing_txt}. "
+            "Ich starte einmal automatisch 'Alle bekannten Register lesen'. "
+            "Bitte den Schreibvorgang nach dem Einlesen noch einmal ausführen."
+        )
+        self._log(message)
+        if context_key not in self.display_param_init_prompted_contexts:
+            self.display_param_init_prompted_contexts.add(context_key)
+            try:
+                QMessageBox.information(
+                    self,
+                    "Display-Parameter erst einlesen",
+                    "Für diesen Display-Modbus-Schreibpfad fehlen noch Parameterpakete.\n\n"
+                    f"Fehlend: {missing_txt}\n\n"
+                    "Ich starte jetzt einmal automatisch 'Alle bekannten Register lesen'.\n"
+                    "Danach den Schreibvorgang bitte noch einmal starten."
+                )
+            except Exception:
+                pass
+        try:
+            self.send_init_reads()
+        except Exception as exc:
+            self._log(f"DISPLAY-INIT V0.2.41 ({context_key}): automatischer Init-Start fehlgeschlagen: {exc}")
+        return False
+
+
+    def _display_close_wait_message(self, key: str) -> None:
+        """V0.2.41 fix5: modelosen Ladehinweis fuer Display-Popups schliessen."""
+        try:
+            msg = self.display_pending_popup_wait_messages.pop(str(key), None)
+            if msg is not None:
+                msg.close()
+                msg.deleteLater()
+        except Exception:
+            pass
+
+    def _display_show_wait_message(self, key: str, missing_txt: str) -> None:
+        """V0.2.41 fix5: sofort sichtbarer Hinweis statt scheinbar nichts tun."""
+        if self.current_backend_key() != "display_modbus":
+            return
+        key = str(key or "Display-Popup")
+        if key in self.display_pending_popup_wait_messages:
+            try:
+                msg = self.display_pending_popup_wait_messages[key]
+                msg.raise_()
+                msg.activateWindow()
+            except Exception:
+                pass
+            return
+        try:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Lade Display-Werte")
+            msg.setText(f"{key}: Lade Werte, bitte warten …")
+            msg.setInformativeText(
+                f"Fehlend: {missing_txt}\n\n"
+                "Ich lese die benoetigten Display-Parameterpakete jetzt automatisch.\n"
+                "Das Popup oeffnet sich danach selbst."
+            )
+            msg.setStandardButtons(QMessageBox.NoButton)
+            msg.setWindowModality(Qt.NonModal)
+            msg.show()
+            self.display_pending_popup_wait_messages[key] = msg
+        except Exception:
+            pass
+
+    def _display_wait_for_param_blocks_before_popup(
+        self,
+        context: str,
+        required_blocks: list[int],
+        retry_callback,
+        *,
+        timeout_s: float = 45.0,
+        retry_ms: int = 1000,
+    ) -> bool:
+        """V0.2.41 fix5: Display-Popup erst nach geladenen Live-/Parameterwerten öffnen.
+
+        Rückgabe True = Popup darf jetzt geöffnet werden.
+        Rückgabe False = Snapshot läuft/weiter warten; retry_callback wird geplant.
+        Nur im Backend "Modbus Display" aktiv. Warmlink/Standard-Modbus bleiben
+        unverändert und öffnen Popups sofort.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return True
+        key = str(context or "Display-Popup")
+        missing = self._display_missing_param_blocks(required_blocks)
+        snapshot_busy = bool(getattr(self, "display_fake_reboot_state", {}) and self.display_fake_reboot_state.get("active"))
+        if not missing and not snapshot_busy:
+            self.display_pending_popup_open_started.pop(key, None)
+            self._display_close_wait_message(key)
+            return True
+
+        now = time.monotonic()
+        started = float(self.display_pending_popup_open_started.get(key, 0.0) or 0.0)
+        missing_txt = ", ".join(f"{m}ff" for m in missing)
+        if snapshot_busy:
+            if missing_txt:
+                missing_txt += "; Snapshot/Displaybus noch beschaeftigt"
+            else:
+                missing_txt = "Snapshot/Displaybus noch beschaeftigt"
+
+        # Sichtbarer Soforthinweis bei jedem Klick, falls noch kein Hinweis offen ist.
+        # Damit wirkt der Button nicht mehr "tot", waehrend 1271ff/1181ff/... laden.
+        # PRIVATE fix5: Auch wenn der benoetigte Block schon da ist, aber der
+        # Reboot-Snapshot noch weitere Pakete liest, bleibt das Popup zu. Sonst
+        # koennen direkte Writes in den laufenden Snapshot fallen und z.B. 0x24E8
+        # ohne ACK verloren gehen.
+        self._display_show_wait_message(key, missing_txt)
+
+        if started <= 0.0:
+            self.display_pending_popup_open_started[key] = now
+            if missing:
+                self._log(
+                    f"DISPLAY-POPUP V0.2.41 fix5 ({key}): Werte fehlen noch ({missing_txt}). "
+                    "Ich starte einmal den Snapshot und öffne das Popup automatisch, sobald die Werte da sind und der Displaybus frei ist."
+                )
+                try:
+                    self.send_init_reads()
+                except Exception as exc:
+                    self._log(f"DISPLAY-POPUP V0.2.41 fix5 ({key}): automatischer Snapshot-Start fehlgeschlagen: {exc}")
+            else:
+                self._log(
+                    f"DISPLAY-POPUP V0.2.41 fix5 ({key}): benötigte Werte sind da, "
+                    "aber der Snapshot/Displaybus läuft noch. Popup öffnet automatisch, sobald der Bus frei ist."
+                )
+        elif now - started >= float(timeout_s):
+            self.display_pending_popup_open_started.pop(key, None)
+            self._display_close_wait_message(key)
+            self._log(
+                f"DISPLAY-POPUP V0.2.41 fix5 ({key}): Wartezeit abgelaufen ({missing_txt}). "
+                "Popup wird trotzdem geöffnet; unbekannte Felder bleiben 0/--."
+            )
+            return True
+        QTimer.singleShot(int(retry_ms), retry_callback)
+        return False
+
+    def _display_current_param_raw_value(self, reg_no: int) -> Optional[int]:
+        """Liefert den aktuell bekannten Rohwert eines Display-Parameterregisters."""
+        try:
+            reg_i = int(reg_no)
+            if reg_i in self.latest_regs:
+                return int(getattr(self.latest_regs[reg_i], "raw_value", 0)) & 0xFFFF
+            if reg_i in self.last_values:
+                return int(self.last_values[reg_i]) & 0xFFFF
+            block_start = self._display_param_block_start_for_reg(reg_i)
+            offset = reg_i - block_start
+            for mode in ("read-response", "word-frame"):
+                words = self.display_hmi_block_snapshots.get((0x03, block_start, mode))
+                if words and 0 <= offset < len(words):
+                    return int(words[offset]) & 0xFFFF
+        except Exception:
+            return None
+        return None
 
     def _display_user_write_variant(self) -> str:
         combo = getattr(self, "display_sim_variant_combo", None)
@@ -8789,7 +9581,7 @@ class MainWindow(QMainWindow):
     def send_display_fake_reboot(self, _checked: bool = False):
         """PRIVATE/Debug-Button: Reboot-Fake mit Bestätigung.
 
-        fix11: Der sichtbare Testbereich ist ausgeblendet. Die gleiche Logik wird
+        fix12: Der sichtbare Testbereich ist ausgeblendet. Die gleiche Logik wird
         ohne Bestätigung über _start_display_reboot_snapshot() als Display-Standard
         für 'Alle bekannten Register lesen' und Popup-Aktualisierungen benutzt.
         """
@@ -8846,7 +9638,7 @@ class MainWindow(QMainWindow):
             age = now - float(self.display_fake_reboot_last_success_time)
             if age < 8.0:
                 self._log(
-                    f"DISPLAY-SNAPSHOT fix11 ({source_label}): letzter erfolgreicher Reboot-Snapshot "
+                    f"DISPLAY-SNAPSHOT fix12 ({source_label}): letzter erfolgreicher Reboot-Snapshot "
                     f"ist erst {age:.1f}s alt ({self.display_fake_reboot_last_source or '-'}), kein neuer Start."
                 )
                 return False
@@ -8904,7 +9696,7 @@ class MainWindow(QMainWindow):
         state["last_send_time"] = time.monotonic()
         retry = int(state.get("5112_retries", 0)) + 1
         state["5112_retries"] = retry
-        self._enqueue_display_fc16_single(0x5112, 0x0000, f"Display Reboot Fake fix11: 5112H=0 ACK-Test {retry}")
+        self._enqueue_display_fc16_single(0x5112, 0x0000, f"Display Reboot Fake fix12: 5112H=0 ACK-Test {retry}")
         QTimer.singleShot(1600, self._display_fake_reboot_check_5112_ack)
 
     def _display_fake_reboot_check_5112_ack(self):
@@ -8932,7 +9724,7 @@ class MainWindow(QMainWindow):
         state["last_send_time"] = time.monotonic()
         retry = int(state.get("flag_retries", 0)) + 1
         state["flag_retries"] = retry
-        self._enqueue_display_fc16_single(0x0BC3, 0x8000, f"Display Reboot Fake fix11: 0BC3H=8000H ACK-Test {retry}")
+        self._enqueue_display_fc16_single(0x0BC3, 0x8000, f"Display Reboot Fake fix12: 0BC3H=8000H ACK-Test {retry}")
         QTimer.singleShot(1700, self._display_fake_reboot_check_flag_ack)
 
     def _display_fake_reboot_check_flag_ack(self):
@@ -9171,6 +9963,14 @@ class MainWindow(QMainWindow):
         if candidate is None:
             return False
         user_addr, block_start, mask = candidate
+        if not self._ensure_display_param_blocks_loaded_once(label or f"Write {addr}", [int(block_start)], block_write=False):
+            # Wichtig: True zurückgeben, damit der normale Direktwrite am Displaybus
+            # NICHT versehentlich trotzdem ausgeführt wird.
+            self._log(
+                f"DISPLAY Parameterwrite V0.2.41 ({label or addr}): Write noch nicht gesendet, "
+                "erst Parameterpaket einlesen und danach erneut starten."
+            )
+            return True
         job = self._display_user_value_make_job(
             int(addr),
             int(value) & 0xFFFF,
@@ -9529,43 +10329,62 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ungültige Eingabe", str(exc))
 
     def open_timer_editor(self):
+        # V0.2.41 fix5: Timer-Popup am Displaybus erst öffnen, wenn 1271ff
+        # wirklich geladen ist. Sonst waren die Felder beim Öffnen noch 0 bzw.
+        # ältere Defaults und Mehrfachwrites konnten falsche Partnerwerte nutzen.
+        if not self._display_wait_for_param_blocks_before_popup("Timer 1-6", [1271], self.open_timer_editor):
+            return
         if self.timer_dialog is None or not self.timer_dialog.isVisible():
             self.timer_dialog = TimerEditorDialog(self)
             self.timer_dialog.finished.connect(lambda _=None: setattr(self, "timer_dialog", None))
             self.timer_dialog.show()
         else:
+            self.timer_dialog.load_from_live_values()
             self.timer_dialog.raise_()
             self.timer_dialog.activateWindow()
 
     def open_onoff_timer_editor(self):
+        if not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
+            return
         if self.onoff_timer_dialog is None or not self.onoff_timer_dialog.isVisible():
             self.onoff_timer_dialog = OnOffTimerEditorDialog(self)
             self.onoff_timer_dialog.finished.connect(lambda _=None: setattr(self, "onoff_timer_dialog", None))
             self.onoff_timer_dialog.show()
         else:
+            self.onoff_timer_dialog.load_from_live_values()
             self.onoff_timer_dialog.raise_()
             self.onoff_timer_dialog.activateWindow()
 
     def open_silent_timer_editor(self):
+        if not self._display_wait_for_param_blocks_before_popup("Silentmodus Timer", [1181], self.open_silent_timer_editor):
+            return
         if self.silent_timer_dialog is None or not self.silent_timer_dialog.isVisible():
             self.silent_timer_dialog = SilentTimerDialog(self)
             self.silent_timer_dialog.finished.connect(lambda _=None: setattr(self, "silent_timer_dialog", None))
             self.silent_timer_dialog.show()
         else:
+            self.silent_timer_dialog.load_from_live_values()
             self.silent_timer_dialog.raise_()
             self.silent_timer_dialog.activateWindow()
 
     def open_sg_editor(self):
+        if not self._display_wait_for_param_blocks_before_popup("SG Ready", [1271], self.open_sg_editor):
+            return
         if self.sg_dialog is None or not self.sg_dialog.isVisible():
             self.sg_dialog = SGReadyEditorDialog(self)
             self.sg_dialog.finished.connect(lambda _=None: setattr(self, "sg_dialog", None))
             self.sg_dialog.show()
         else:
+            self.sg_dialog.load_from_live_values()
             self.sg_dialog.raise_()
             self.sg_dialog.activateWindow()
 
 
     def open_wp_control(self):
+        # WP-Steuerung nutzt im Display-Modus u.a. 1011/1012/1016 und 1157-1159.
+        # Deshalb warten wir dort auf Paket 1001ff und 1091ff; andere Backends öffnen sofort.
+        if not self._display_wait_for_param_blocks_before_popup("WP-Steuerung", [1001, 1091], self.open_wp_control):
+            return
         if self.wp_control_dialog is None or not self.wp_control_dialog.isVisible():
             self.wp_control_dialog = WPControlDialog(self)
             self.wp_control_dialog.finished.connect(lambda _=None: setattr(self, "wp_control_dialog", None))
@@ -9576,6 +10395,9 @@ class MainWindow(QMainWindow):
             self.wp_control_dialog.activateWindow()
 
     def open_at_compensation(self):
+        # AT-Kompensation liegt im Paket 1181ff (1234-1236).
+        if not self._display_wait_for_param_blocks_before_popup("AT-Kompensation", [1181], self.open_at_compensation):
+            return
         if self.at_comp_dialog is None or not self.at_comp_dialog.isVisible():
             self.at_comp_dialog = ATCompensationDialog(self)
             self.at_comp_dialog.finished.connect(lambda _=None: setattr(self, "at_comp_dialog", None))
@@ -9586,6 +10408,9 @@ class MainWindow(QMainWindow):
             self.at_comp_dialog.activateWindow()
 
     def open_parameter_settings(self):
+        # Parameteransicht kann alle Paketbereiche betreffen.
+        if not self._display_wait_for_param_blocks_before_popup("Parameter Einstellungen", [1001, 1091, 1181, 1271, 1361, 1451, 1541], self.open_parameter_settings):
+            return
         if self.parameter_dialog is None or not self.parameter_dialog.isVisible():
             self.parameter_dialog = ParameterSettingsDialog(self)
             self.parameter_dialog.finished.connect(lambda _=None: setattr(self, "parameter_dialog", None))
@@ -9595,22 +10420,349 @@ class MainWindow(QMainWindow):
             self.parameter_dialog.raise_()
             self.parameter_dialog.activateWindow()
 
-    def send_timer_values(self, slave_addr: int, values: list[tuple[int, int, str]], delay_ms: int = 1200, title: str = "Timer"):
-        if not self.connected or not self.worker:
-            self._log("TIMER nicht gesendet: keine aktive Verbindung.")
-            return
+    def _display_timer_batch_plan(self, values: list[tuple[int, int, str]], slave_addr: int) -> Optional[list[dict[str, Any]]]:
+        """V0.2.41 PRIVATE: Mehrfachwrites von Timer/SG/Popup-Pfaden im Displaybus planen.
+
+        Der alte Pfad schrieb direkt 1281..1287/1323 per FC06/FC16 auf Unit 0x03.
+        Am Displaybus muessen normale Parameter-/Bedienwerte jedoch als DWIN-
+        Benutzervariable (Register + 0x2000) geschrieben werden. Anschliessend
+        wird fuer den betroffenen 90er-Paketblock 0BC3 mit der passenden Maske
+        gesetzt, damit der echte Master das Paket uebernimmt.
+        """
+        if self.current_backend_key() != "display_modbus":
+            return None
+        try:
+            wire_slave = self._wire_slave_addr(slave_addr)
+        except Exception:
+            wire_slave = self.current_unit_id()
+        if int(wire_slave) != 0x03:
+            return None
+
+        required_blocks: list[int] = []
+        for addr, _value, _label in values:
+            try:
+                block_start = self._display_param_block_start_for_reg(int(addr))
+            except Exception:
+                return None
+            if block_start not in required_blocks:
+                required_blocks.append(block_start)
+        # V0.2.41 fix5: Timer-/Popup-Schreiben nicht hart blockieren, wenn der
+        # Paket-Cache noch fehlt. Die Werte kommen aus dem geöffneten Dialog. Wir
+        # starten den Snapshot weiterhin als Hilfe, lassen den aktuellen Write aber
+        # weiterlaufen. In V0.2.41 blieb der eigentliche Timer-Write sonst an der
+        # vorgeschalteten 1271ff-Prüfung hängen.
+        cache_missing = bool(self._display_missing_param_blocks(required_blocks))
+        if cache_missing:
+            self._log(
+                "DISPLAY-INIT V0.2.41 fix5 (Timer/Popup schreiben): benötigte Parameterpakete "
+                + ", ".join(f"{b}ff" for b in self._display_missing_param_blocks(required_blocks))
+                + " fehlen noch. Ich starte den Snapshot einmal im Hintergrund, sende den aktuellen Dialog-Write aber trotzdem."
+            )
+            try:
+                self.send_init_reads()
+            except Exception as exc:
+                self._log(f"DISPLAY-INIT V0.2.41 fix5 (Timer/Popup schreiben): automatischer Init-Start fehlgeschlagen: {exc}")
+
+        plan: list[dict[str, Any]] = []
+        skipped_unchanged_bitregs: list[str] = []
+        skipped_unchanged_regs: list[str] = []
+        for addr, value, label in values:
+            try:
+                addr_i = int(addr)
+                value_i = int(value) & 0xFFFF
+                user_addr, block_start, mask = self._display_user_variable_for_param_reg(addr_i)
+            except Exception:
+                return None
+
+            # V0.2.41 fix5: nur noch wirklich geänderte Werte senden.
+            # In V0.2.41 wurde bei Timer 1 der komplette Block 0x2501..0x2507
+            # geschrieben; der Displaybus quittierte diesen Block gar nicht. Für
+            # eine reine Leistungsänderung reicht z.B. 0x2507 als Einzelwert.
+            cur = self._display_current_param_raw_value(addr_i)
+            if cur is not None and int(cur) == value_i:
+                if addr_i in (1268, 1269, 1270, 1323, 1324, 1325):
+                    skipped_unchanged_bitregs.append(f"{addr_i}=0x{value_i:04X}")
+                else:
+                    skipped_unchanged_regs.append(f"{addr_i}=0x{value_i:04X}")
+                continue
+
+            plan.append({
+                "addr": addr_i,
+                "value": value_i,
+                "label": str(label or f"Reg {addr}"),
+                "user_addr": int(user_addr),
+                "block_start": int(block_start),
+                "mask": int(mask) & 0xFFFF,
+                # Display-ACKs kommen auf diesem Bus nicht zuverlässig. Deshalb
+                # nach Retries weiter zum 0BC3-Trigger statt hart abbrechen.
+                "optional_ack": True,
+            })
+        if skipped_unchanged_regs:
+            self._log(
+                "DISPLAY Timer V0.2.41 fix5: unveränderte Timer-/Popupwerte nicht gesendet: "
+                + ", ".join(skipped_unchanged_regs)
+            )
+        if skipped_unchanged_bitregs:
+            self._log(
+                "DISPLAY Timer V0.2.41 fix5: unveränderte Aktiv/Tage-Paarregister nicht gesendet: "
+                + ", ".join(skipped_unchanged_bitregs)
+            )
+        return plan
+
+    def _timer_write_preview_lines(self, values: list[tuple[int, int, str]], slave_addr: int) -> list[str]:
+        plan = self._display_timer_batch_plan(values, slave_addr)
+        if plan is not None:
+            if not plan:
+                return ["Display-Modbus: kein Direktwrite geplant (fehlende Paketdaten/Init läuft oder keine geänderten Werte übrig)."]
+            lines = []
+            seen_blocks: list[tuple[int, int]] = []
+            for step in plan:
+                lines.append(
+                    f"{step['label']}: Reg {step['addr']}/0x{step['addr']:04X} "
+                    f"-> User {step['user_addr']}/0x{step['user_addr']:04X} "
+                    f"= {step['value']}/0x{step['value']:04X} FC16 "
+                    f"(Display-Bedienwertpfad, Paket {step['block_start']}, 0BC3=0x{step['mask']:04X})"
+                )
+                bm = (int(step['block_start']), int(step['mask']))
+                if bm not in seen_blocks:
+                    seen_blocks.append(bm)
+            for block_start, mask in seen_blocks:
+                lines.append(f"Display-Flag: 0BC3/0x0BC3 = 0x{mask:04X} fuer Paket {block_start} FC16")
+            return lines
 
         lines = []
         for addr, value, label in values:
             frame, wire_addr, wire_slave, note, fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
             note_text = f" ({note})" if note else ""
             lines.append(f"{label}: Reg {addr}/0x{addr:04X} -> wire {wire_addr}/0x{wire_addr:04X} = {value}/0x{value:04X} {fc_text} TX={hexdump(frame, -1)}{note_text}")
+        return lines
+
+    def _display_timer_compact_steps(self, plan: list[dict[str, Any]], title: str) -> list[dict[str, Any]]:
+        """V0.2.41 fix5: mehrere Display-Timerwerte einzeln committen.
+
+        fix1 schrieb zwar nur geänderte User-Adressen, setzte 0BC3 aber erst
+        nach allen Werten. Im Log wurden bei Mehrfachänderung dadurch nicht alle
+        Werte übernommen (z.B. 1283 und 1287 ja, 1284 nein). Deshalb wird jetzt
+        jeder Wert als eigener Mini-Zyklus behandelt:
+
+            Userwert schreiben -> 0BC3 fuer Paket setzen -> kurze Commit-Pause
+
+        So bekommt der echte Display-Master jeden geänderten Wert einzeln zu
+        sehen, bevor der nächste Userwert geschrieben wird.
+        """
+        by_block: dict[int, list[dict[str, Any]]] = {}
+        block_order: list[int] = []
+        for step in plan:
+            block = int(step["block_start"])
+            if block not in by_block:
+                by_block[block] = []
+                block_order.append(block)
+            by_block[block].append(step)
+
+        out: list[dict[str, Any]] = []
+        for block in block_order:
+            steps = sorted(by_block[block], key=lambda item: int(item["user_addr"]))
+            if not steps:
+                continue
+            mask = int(steps[0]["mask"]) & 0xFFFF
+            for item in steps:
+                is_1181_block = int(block) == 1181
+                out.append({
+                    "kind": "single",
+                    "addr": int(item["user_addr"]),
+                    "qty": 1,
+                    "value": int(item["value"]) & 0xFFFF,
+                    "label": f"{title}: {item.get('label') or 'Timerwert'} Reg {int(item['addr'])} -> User 0x{int(item['user_addr']):04X}",
+                    "block_start": int(block),
+                    "mask": int(mask),
+                    # PRIVATE fix5: 1181ff/KG-/WP-Ein-Aus-Timer bestaetigt
+                    # 24E8..24F6 im Log nicht per ACK, obwohl die Adresse laut ASM
+                    # korrekt ist. Deshalb ist der Userwert bei diesem Block weich:
+                    # nach Retries folgt ein 04E8..04F6-Kommunikationswert-Fallback
+                    # und erst danach 0BC3=0x0008. Fuer 1271ff bleibt der
+                    # erfolgreiche striktere Userwertpfad unveraendert.
+                    "optional_ack": bool(is_1181_block),
+                    "post_pause_ms": 420 if is_1181_block else 260,
+                    "note_no_ack": "1181ff-Useradresse ohne ACK; weiter mit Kommunikationswert-Fallback",
+                })
+                if is_1181_block:
+                    out.append({
+                        "kind": "single",
+                        "addr": int(item["addr"]),
+                        "qty": 1,
+                        "value": int(item["value"]) & 0xFFFF,
+                        "label": f"{title}: 1181ff-Fallback Kommunikationswert Reg {int(item['addr'])}=0x{int(item['value']) & 0xFFFF:04X}",
+                        "block_start": int(block),
+                        "mask": int(mask),
+                        "optional_ack": True,
+                        "is_comm_fallback": True,
+                        # Ohne 0BC3 kann Four_Variable_Communication den neuen
+                        # Kommunikationswert erst in den User-/Cachewert spiegeln.
+                        # Danach wird 0BC3=0x0008 gesetzt, damit der Master 1181ff liest.
+                        "post_pause_ms": 1700,
+                        "note_no_ack": "1181ff-Kommunikationswert ohne ACK; setze trotzdem 0BC3 als weichen Trigger",
+                    })
+                out.append({
+                    "kind": "single",
+                    "addr": 0x0BC3,
+                    "qty": 1,
+                    "value": mask,
+                    "label": f"{title}: Commit fuer {item.get('label') or 'Timerwert'} via 0BC3 Paket {block} = 0x{mask:04X}",
+                    "block_start": int(block),
+                    "mask": int(mask),
+                    "optional_ack": True,
+                    "is_trigger": True,
+                    # Der Master braucht sichtbar Zeit, bis das passende Paket
+                    # nach 0BC3 neu gelesen ist. 1181ff ist im Log besonders traege.
+                    "post_pause_ms": 5200 if is_1181_block else 3200,
+                })
+        return out
+
+    def _send_display_timer_batch(self, plan: list[dict[str, Any]], delay_ms: int, title: str) -> bool:
+        if not plan:
+            return False
+        if self.display_timer_batch_state.get("active"):
+            self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): es läuft bereits ein Display-Timer-Write; neuer Auftrag ignoriert.")
+            return True
+        steps = self._display_timer_compact_steps(plan, title)
+        if not steps:
+            self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): keine geänderten Display-Werte zum Schreiben übrig.")
+            return True
+        timeout_ms = max(900, min(3500, int(delay_ms or 1200) + 500))
+        # PRIVATE fix5: 1181ff / WP-Ein-Aus-/Silent-Timer reagiert traeger als
+        # der Betriebsart-Timer 1271ff. Etwas mehr ACK-Zeit verhindert unnoetige
+        # Fehlversuche auf 0x24E8/0x24E9/...
+        if any(int(item.get("block_start", 0) or 0) == 1181 for item in plan):
+            timeout_ms = max(timeout_ms, 2600)
+        pause_ms = 220
+        self.display_timer_batch_state = {
+            "active": True,
+            "title": str(title),
+            "steps": steps,
+            "step_index": 0,
+            "step_retries": 0,
+            "timeout_ms": timeout_ms,
+            "pause_ms": pause_ms,
+            "started": time.monotonic(),
+        }
+        self._log(
+            f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): schreibe {len(plan)} Werte ACK-gesteuert "
+            f"als {len(steps)} einzelne FC16-Schritte (Timeout {timeout_ms} ms, Retry max. 3). "
+            "Direkte 12xx/13xx-Fallback-Writes werden nur fuer 1181ff genutzt, wenn 24E8..24F6 kein ACK liefern. "
+            "Es werden nur geänderte Userwerte plus weicher 0BC3-Trigger gesendet."
+        )
+        self._display_timer_batch_send_current_step()
+        return True
+
+    def _display_timer_batch_send_current_step(self) -> None:
+        state = self.display_timer_batch_state
+        if not state.get("active"):
+            return
+        steps = list(state.get("steps") or [])
+        idx = int(state.get("step_index", 0) or 0)
+        if idx >= len(steps):
+            title = str(state.get("title") or "Timer")
+            self._log(
+                f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): alle FC16-Schritte quittiert/abgesetzt. "
+                "0BC3-Trigger wurde weich abgesetzt. Bitte frisches passendes Parameterpaket zur Bestätigung prüfen."
+            )
+            self.display_timer_batch_state = {}
+            return
+        step = dict(steps[idx])
+        retry = int(state.get("step_retries", 0) or 0) + 1
+        state["step_retries"] = retry
+        state["current_step"] = step
+        state["current_sent_at"] = time.monotonic()
+        kind = str(step.get("kind") or "single")
+        label = f"V0.2.41 fix5 ACK Schritt {idx + 1}/{len(steps)} Versuch {retry}: {step.get('label') or ''}"
+        if kind == "block":
+            self._enqueue_display_write_block(int(step["addr"]), list(step.get("values") or []), label=label, post_delay_ms=0)
+        else:
+            self._enqueue_display_fc16_single(int(step["addr"]), int(step.get("value", 0)) & 0xFFFF, label=label, post_delay_ms=0)
+        QTimer.singleShot(int(state.get("timeout_ms", 1700) or 1700), self._display_timer_batch_check_step_ack)
+
+    def _display_timer_batch_check_step_ack(self) -> None:
+        state = self.display_timer_batch_state
+        if not state.get("active"):
+            return
+        step = dict(state.get("current_step") or {})
+        addr = int(step.get("addr", 0) or 0)
+        qty = int(step.get("qty", 1) or 1)
+        sent_at = float(state.get("current_sent_at", 0.0) or 0.0)
+        idx = int(state.get("step_index", 0) or 0)
+        steps = list(state.get("steps") or [])
+        title = str(state.get("title") or "Timer")
+        if self._display_write_ack_seen_since(addr, sent_at, qty=qty, slave=0x03):
+            self._log(
+                f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): ACK für Schritt {idx + 1}/{len(steps)} "
+                f"Addr 0x{addr:04X} qty={qty} gesehen."
+            )
+            state["step_index"] = idx + 1
+            state["step_retries"] = 0
+            next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
+            QTimer.singleShot(next_pause, self._display_timer_batch_send_current_step)
+            return
+        # 0BC3 kann manchmal im 3001-Poll sichtbar sein, bevor/ohne dass der ACK sauber geloggt wurde.
+        if addr == 0x0BC3:
+            mask = int(step.get("mask", 0) or 0) & 0xFFFF
+            flag = self._display_0bc3_value_from_3001()
+            if flag == mask:
+                self._log(
+                    f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): kein ACK für 0BC3, aber 3001 zeigt Flag 0x{mask:04X}; weiter."
+                )
+                state["step_index"] = idx + 1
+                state["step_retries"] = 0
+                next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
+                QTimer.singleShot(next_pause, self._display_timer_batch_send_current_step)
+                return
+        retry = int(state.get("step_retries", 0) or 0)
+        max_retry = 4 if addr == 0x0BC3 else 3
+        if retry < max_retry:
+            self._log(
+                f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): kein ACK für Schritt {idx + 1}/{len(steps)} "
+                f"Addr 0x{addr:04X} qty={qty}, wiederhole."
+            )
+            self._display_timer_batch_send_current_step()
+            return
+        if bool(step.get("optional_ack")):
+            extra_note = str(step.get("note_no_ack") or "Ich setze trotzdem mit 0BC3/den Folgeschritten fort")
+            self._log(
+                f"DISPLAY Timer/Popup V0.2.41 fix5 WARNUNG ({title}): optionaler Schritt {idx + 1}/{len(steps)} "
+                f"Addr 0x{addr:04X} qty={qty} ohne ACK nach {max_retry} Versuchen. "
+                f"{extra_note}; Übernahme bitte im frischen Paket prüfen."
+            )
+            state["step_index"] = idx + 1
+            state["step_retries"] = 0
+            next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
+            QTimer.singleShot(next_pause, self._display_timer_batch_send_current_step)
+            return
+        self._log(
+            f"DISPLAY Timer/Popup V0.2.41 fix5 FEHLER ({title}): Schritt {idx + 1}/{len(steps)} "
+            f"Addr 0x{addr:04X} qty={qty} ohne ACK nach {max_retry} Versuchen. Abbruch."
+        )
+        self.display_timer_batch_state = {}
+
+    def send_timer_values(self, slave_addr: int, values: list[tuple[int, int, str]], delay_ms: int = 1200, title: str = "Timer"):
+        if not self.connected or self._active_io_worker() is None:
+            self._log("TIMER nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
+            return
+
+        display_plan = self._display_timer_batch_plan(values, slave_addr)
+        if display_plan is not None and not display_plan:
+            self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): Write nicht gesendet (Init/Snapshot gestartet oder keine geänderten Werte übrig).")
+            return
+
+        lines = self._timer_write_preview_lines(values, slave_addr)
 
         if not ask_yes_no(self, f"{title} schreiben?", f"Diese {title}-Register schreiben?\n\n" + "\n".join(lines), default_yes=False):
             self._log("TIMER Write abgebrochen: nicht gesendet.")
             return
 
         self._log(f"TIMER wird GESENDET ({title}):\n" + "\n".join(lines))
+        if display_plan is not None:
+            self._send_display_timer_batch(display_plan, delay_ms, title)
+            return
+
         for addr, value, _label in values:
             _frame, wire_addr, wire_slave, _note, _fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
             self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
