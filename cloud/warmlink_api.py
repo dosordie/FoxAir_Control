@@ -74,7 +74,6 @@ class WarmLinkCloudResponse:
 
 
 class WarmLinkCloudApi:
-    TOKEN_MAX_AGE_S = 24 * 60 * 60
 
     def __init__(
         self,
@@ -90,7 +89,7 @@ class WarmLinkCloudApi:
         self.base_url = str(base_url or BASE_URL).rstrip("/")
         self.timeout = float(timeout)
         self.token: str | None = str(initial_token or "").strip() or None
-        self.last_login_at: float = float(initial_login_at or 0.0)
+        self.last_login_at: float = float(initial_login_at or (time.time() if self.token else 0.0))
         self.reused_initial_token: bool = False
         self.last_login_attempts: list[dict[str, Any]] = []
         self.last_login_method: str | None = None
@@ -176,7 +175,9 @@ class WarmLinkCloudApi:
         return code == "404" or "not found" in msg
 
     def has_fresh_token(self) -> bool:
-        return bool(self.token) and self.last_login_at > 0 and (time.time() - self.last_login_at) < self.TOKEN_MAX_AGE_S
+        # WarmLink tokens are reused until the cloud rejects them.
+        # Do not impose an artificial client-side timeout.
+        return bool(self.token)
 
     def _login_payload(self, password_value: str, extended: bool = False) -> dict[str, Any]:
         payload: dict[str, Any] = {"userName": self.username, "password": password_value}
@@ -251,14 +252,14 @@ class WarmLinkCloudApi:
         raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + fallback_txt + (f" ({detail})" if detail else ""))
 
     def post(self, endpoint: str, payload: dict[str, Any], relogin: bool = True) -> dict[str, Any]:
-        if not self.has_fresh_token():
-            self.token = None
-            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
-        else:
+        if self.token:
             self.reused_initial_token = True
+        else:
+            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
         data = self._request_json(endpoint, payload, token=self.token)
         if relogin and self._token_expired(data):
             self.token = None
+            self.last_login_at = 0.0
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
             data = self._request_json(endpoint, payload, token=self.token)
         if not isinstance(data, dict):
@@ -505,6 +506,10 @@ def keyring_module():
         ) from exc
 
 
+def _token_key(username: str) -> str:
+    return f"{str(username or '').strip()}:token"
+
+
 def keyring_set_password(username: str, password: str) -> None:
     kr = keyring_module()
     kr.set_password(KEYRING_SERVICE, username, password)
@@ -521,4 +526,23 @@ def keyring_delete_password(username: str) -> None:
         kr.delete_password(KEYRING_SERVICE, username)
     except Exception:
         # Kein gespeichertes Passwort ist kein fataler Fehler.
+        pass
+
+
+def keyring_set_token(username: str, token: str) -> None:
+    kr = keyring_module()
+    kr.set_password(KEYRING_SERVICE, _token_key(username), token)
+
+
+def keyring_get_token(username: str) -> str | None:
+    kr = keyring_module()
+    return kr.get_password(KEYRING_SERVICE, _token_key(username))
+
+
+def keyring_delete_token(username: str) -> None:
+    kr = keyring_module()
+    try:
+        kr.delete_password(KEYRING_SERVICE, _token_key(username))
+    except Exception:
+        # Kein gespeicherter Token ist kein fataler Fehler.
         pass
