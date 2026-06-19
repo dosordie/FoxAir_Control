@@ -82,6 +82,9 @@ class WarmLinkCloudApi:
         self.token: str | None = None
         self.last_login_at: float = 0.0
         self.last_login_attempts: list[dict[str, Any]] = []
+        self.last_login_method: str | None = None
+        self.preferred_login_method: str | None = "md5"
+        self.use_login_fallbacks: bool = True
 
     def _url(self, endpoint: str) -> str:
         ep = str(endpoint or "").strip()
@@ -173,26 +176,45 @@ class WarmLinkCloudApi:
             })
         return payload
 
-    def login(self) -> bool:
+    def login(self, preferred_method: str | None = "md5", use_fallbacks: bool = True) -> bool:
         if not self.username:
             raise WarmLinkAuthError("Benutzername fehlt")
         if not self.password:
             raise WarmLinkAuthError("Passwort fehlt")
 
+        self.preferred_login_method = preferred_method
+        self.use_login_fallbacks = bool(use_fallbacks)
+        self.last_login_method = None
+
         plain = self.password
         md5 = hashlib.md5(plain.encode("utf-8")).hexdigest()
         md5md5 = hashlib.md5(md5.encode("utf-8")).hexdigest()
-        attempts: list[tuple[str, str, bool]] = [
-            ("plain", plain, False),
-            ("md5", md5, False),
-            ("md5md5", md5md5, False),
-            ("plain+app", plain, True),
-            ("md5+app", md5, True),
-            ("md5md5+app", md5md5, True),
-        ]
+        all_attempts: dict[str, tuple[str, bool]] = {
+            "plain": (plain, False),
+            "md5": (md5, False),
+            "md5md5": (md5md5, False),
+            "plain+app": (plain, True),
+            "md5+app": (md5, True),
+            "md5md5+app": (md5md5, True),
+        }
+        fallback_order = ["md5md5", "plain", "md5+app", "md5md5+app", "plain+app"]
+        preferred = str(preferred_method or "md5").strip() or "md5"
+        if preferred not in all_attempts:
+            preferred = "md5"
+
+        labels: list[str] = []
+        for label in [preferred]:
+            if label not in labels:
+                labels.append(label)
+        if use_fallbacks:
+            for label in ["md5", *fallback_order]:
+                if label not in labels:
+                    labels.append(label)
+
         self.last_login_attempts = []
         last_data: dict[str, Any] = {}
-        for label, pw_value, extended in attempts:
+        for label in labels:
+            pw_value, extended = all_attempts[label]
             data = self._request_json(ENDPOINT_LOGIN, self._login_payload(pw_value, extended=extended))
             last_data = data
             self.last_login_attempts.append({
@@ -208,17 +230,19 @@ class WarmLinkCloudApi:
                 if token:
                     self.token = str(token)
                     self.last_login_at = time.time()
+                    self.last_login_method = label
                     return True
         detail = "; ".join(f"{a['attempt']}={a.get('error_code') or a.get('http_status') or a.get('message') or 'fail'}" for a in self.last_login_attempts)
-        raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + (f" ({detail})" if detail else ""))
+        fallback_txt = "" if use_fallbacks else "; Fallbacks deaktiviert"
+        raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + fallback_txt + (f" ({detail})" if detail else ""))
 
     def post(self, endpoint: str, payload: dict[str, Any], relogin: bool = True) -> dict[str, Any]:
         if not self.token:
-            self.login()
+            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
         data = self._request_json(endpoint, payload, token=self.token)
         if relogin and self._token_expired(data):
             self.token = None
-            self.login()
+            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
             data = self._request_json(endpoint, payload, token=self.token)
         if not isinstance(data, dict):
             raise WarmLinkCloudError("Ungueltige Antwortstruktur")

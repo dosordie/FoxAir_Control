@@ -64,6 +64,8 @@ class WarmLinkCloudDialog(QDialog):
             cfg = {}
             self.main_window.settings["warmlink_cloud"] = cfg
         cfg.setdefault("show_cloud_only", True)
+        cfg.setdefault("login_method", "md5")
+        cfg.setdefault("login_fallbacks", False)
         return cfg
 
     def _build_ui(self):
@@ -100,6 +102,8 @@ class WarmLinkCloudDialog(QDialog):
         self.auto_start_cb.setToolTip("Startet Cloud-Polling im Hintergrund nach Programmstart, wenn Zugangsdaten gespeichert sind.")
         self.cloud_only_cb = QCheckBox("Cloud-only-Zeilen")
         self.cloud_only_cb.setToolTip("Gemappte Cloud-Werte auch dann als Zeile zeigen, wenn lokal noch kein Registerwert gelesen wurde.")
+        self.login_fallbacks_cb = QCheckBox("Login-Fallbacks erlauben")
+        self.login_fallbacks_cb.setToolTip("Wenn MD5 bzw. die gespeicherte Methode fehlschlägt, weitere Hash-/App-Login-Varianten testen.")
         self.test_btn = QPushButton("Login testen")
         self.save_btn = QPushButton("Zugang speichern")
         self.delete_btn = QPushButton("Zugang löschen")
@@ -121,7 +125,7 @@ class WarmLinkCloudDialog(QDialog):
         login.addWidget(QLabel("Status:"), 3, 0)
         login.addWidget(self.status_label, 3, 1, 1, 3)
         btn_row = QHBoxLayout()
-        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.cloud_only_cb):
+        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.cloud_only_cb, self.login_fallbacks_cb):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
         login.addLayout(btn_row, 4, 0, 1, 4)
@@ -263,6 +267,7 @@ class WarmLinkCloudDialog(QDialog):
         self.auto_start_cb.toggled.connect(lambda _=None: self._save_settings())
         self.overlay_cb.toggled.connect(self._overlay_toggled)
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
+        self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
         self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -283,6 +288,9 @@ class WarmLinkCloudDialog(QDialog):
         self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
         self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
         self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
+        cfg.setdefault("login_method", "md5")
+        cfg.setdefault("login_fallbacks", False)
+        self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
         selected = str(cfg.get("selected_device_code", ""))
         if selected:
             self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
@@ -297,6 +305,8 @@ class WarmLinkCloudDialog(QDialog):
         cfg["overlay_enabled"] = bool(self.overlay_cb.isChecked())
         cfg["auto_start_polling"] = bool(self.auto_start_cb.isChecked())
         cfg["show_cloud_only"] = bool(self.cloud_only_cb.isChecked())
+        cfg["login_method"] = str(cfg.get("login_method") or "md5").strip() or "md5"
+        cfg["login_fallbacks"] = bool(self.login_fallbacks_cb.isChecked())
         if self.device_combo.currentData():
             cfg["selected_device_code"] = str(self.device_combo.currentData())
         self.main_window._save_settings(sync_main_fields=False)
@@ -375,6 +385,9 @@ class WarmLinkCloudDialog(QDialog):
             QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort fehlt. Passwort ggf. zuerst speichern oder eingeben.")
             return
         self._save_settings()
+        cfg = self._cloud_settings()
+        preferred_login_method = str(cfg.get("login_method") or "md5").strip() or "md5"
+        login_fallbacks = bool(cfg.get("login_fallbacks", False))
         self.status_label.setText("starte ...")
         self.test_btn.setEnabled(False)
         self.poll_once_btn.setEnabled(False)
@@ -388,6 +401,8 @@ class WarmLinkCloudDialog(QDialog):
             interval_s=int(self.interval_spin.value()),
             device_code=self._selected_device_code(),
             poll_once=bool(poll_once or just_login),
+            preferred_login_method=preferred_login_method,
+            login_fallbacks=login_fallbacks,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
         self.cloud_thread.started.connect(self.cloud_worker.run)
@@ -396,6 +411,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.devices.connect(self._on_devices)
         self.cloud_worker.data.connect(self._on_data)
         self.cloud_worker.error.connect(self._on_worker_error)
+        self.cloud_worker.login_method.connect(self._on_login_method)
         self.cloud_worker.finished.connect(self.cloud_thread.quit)
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
@@ -420,6 +436,15 @@ class WarmLinkCloudDialog(QDialog):
 
     def _on_worker_log(self, text: str):
         self.main_window._log(str(text))
+
+    def _on_login_method(self, method: str):
+        method = str(method or "").strip()
+        if not method:
+            return
+        cfg = self._cloud_settings()
+        if cfg.get("login_method") != method:
+            cfg["login_method"] = method
+            self.main_window._save_settings(sync_main_fields=False)
 
     def _on_worker_status(self, text: str):
         self.status_label.setText(str(text))

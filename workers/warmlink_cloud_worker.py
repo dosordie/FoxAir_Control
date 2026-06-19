@@ -26,6 +26,7 @@ class WarmLinkCloudWorker(QObject):
     devices = Signal(list)
     data = Signal(list)
     error = Signal(str)
+    login_method = Signal(str)
     finished = Signal()
 
     def __init__(
@@ -37,6 +38,8 @@ class WarmLinkCloudWorker(QObject):
         device_code: str | None = None,
         poll_once: bool = False,
         timeout_s: float = 15.0,
+        preferred_login_method: str | None = "md5",
+        login_fallbacks: bool = False,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -46,6 +49,8 @@ class WarmLinkCloudWorker(QObject):
         self.device_code = str(device_code or "").strip() or None
         self.poll_once = bool(poll_once)
         self.timeout_s = float(timeout_s)
+        self.preferred_login_method = str(preferred_login_method or "md5").strip() or "md5"
+        self.login_fallbacks = bool(login_fallbacks)
         self._stop_event = threading.Event()
         self._last_good_rows: list[dict[str, Any]] = []
         self._last_good_by_code: dict[str, dict[str, Any]] = {}
@@ -65,9 +70,12 @@ class WarmLinkCloudWorker(QObject):
             api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s)
             self.status.emit("Login ...")
             self.log.emit("WarmLink Cloud: Login wird versucht ...")
-            api.login()
+            api.login(preferred_method=self.preferred_login_method, use_fallbacks=self.login_fallbacks)
+            if api.last_login_method:
+                self.preferred_login_method = api.last_login_method
+                self.login_method.emit(api.last_login_method)
             self.status.emit("verbunden")
-            self.log.emit("WarmLink Cloud: Login OK")
+            self.log.emit(f"WarmLink Cloud: Login OK via {api.last_login_method or self.preferred_login_method}")
 
             devices_response = api.get_devices()
             devs = normalize_device_list(devices_response)
@@ -179,6 +187,8 @@ class WarmLinkCloudWorker(QObject):
                 )
                 if attempts:
                     self.log.emit("WarmLink Cloud: Login-Versuche: " + attempts)
+            if not self.login_fallbacks:
+                self.log.emit("WarmLink Cloud: Login-Fallbacks deaktiviert")
         finally:
             self.finished.emit()
 
