@@ -139,7 +139,7 @@ class WarmLinkCloudApi:
         headers = {
             "Content-Type": "application/json;charset=utf-8",
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.46",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.47",
         }
         if token:
             headers["x-token"] = token
