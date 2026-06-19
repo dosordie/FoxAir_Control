@@ -122,7 +122,12 @@ jobs:
 
       - name: Install Inno Setup
         shell: pwsh
-        run: choco install innosetup -y
+        run: |
+          $ErrorActionPreference = 'Continue'
+          choco install innosetup -y
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning 'Chocolatey could not install Inno Setup. Setup build may be skipped, but portable ZIP will still be built.'
+          }
 
       - name: Build Windows EXE
         shell: cmd
@@ -146,7 +151,7 @@ jobs:
           if ((Test-Path 'build_windows_setup.bat') -and $iscc) {
             cmd /c call build_windows_setup.bat
           } elseif (-not $iscc) {
-            Write-Warning 'Inno Setup 6 is not available on this runner. Skipping setup build; EXE assets will still be released.'
+            Write-Warning 'Inno Setup 6 is not available on this runner. Skipping setup build; portable ZIP will still be released.'
           } else {
             Write-Warning 'build_windows_setup.bat not found. Skipping setup build.'
           }
@@ -161,9 +166,37 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
-            throw "No release changes to commit after merge/version update. Aborting before push/tag."
+            Write-Host 'No version file changes to commit; continuing with existing release commit.'
+            Add-Content -Path $env:GITHUB_ENV -Value 'RELEASE_COMMIT_CREATED=false'
+          } else {
+            git commit -m "Release v$env:VERSION"
+            Add-Content -Path $env:GITHUB_ENV -Value 'RELEASE_COMMIT_CREATED=true'
           }
-          git commit -m "Release v$env:VERSION"
+
+      - name: Build portable ZIP
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $portableZip = "FoxAir_Phnix_Control_v$env:VERSION`_Windows_Portable.zip"
+          $onedirPath = 'dist/FoxAir_Phnix_Control'
+          $onefilePath = 'dist/FoxAir_Phnix_Control.exe'
+          if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
+          if (Test-Path $onedirPath -PathType Container) {
+            Compress-Archive -Path $onedirPath -DestinationPath $portableZip -Force
+            $zipSize = (Get-Item $portableZip).Length
+            if ($zipSize -lt 20MB) {
+              throw 'Portable ZIP suspiciously small; PyInstaller onedir folder was not packaged correctly.'
+            }
+            Add-Content -Path $env:GITHUB_ENV -Value "PORTABLE_ZIP=$portableZip"
+            Write-Host "Created portable ZIP $portableZip ($zipSize bytes)."
+          } elseif (Test-Path $onefilePath -PathType Leaf) {
+            Add-Content -Path $env:GITHUB_ENV -Value "ONEFILE_EXE=$onefilePath"
+            Write-Host 'PyInstaller onefile executable found; it will be released because no onedir folder exists.'
+          } else {
+            throw 'Neither dist/FoxAir_Phnix_Control/ nor dist/FoxAir_Phnix_Control.exe exists after the Windows EXE build.'
+          }
 
       - name: Build source ZIP
         shell: pwsh
@@ -171,7 +204,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $zip = "FoxAir_Phnix_Control_Source_v$env:VERSION.zip"
+          $zip = "FoxAir_Phnix_Control_PUBLIC_V$env:VERSION`_source.zip"
           if (Test-Path $zip) { Remove-Item $zip -Force }
           git archive --format=zip --output=$zip HEAD
           Add-Content -Path $env:GITHUB_ENV -Value "SOURCE_ZIP=$zip"
@@ -183,8 +216,12 @@ jobs:
           TARGET_BRANCH: ${{ inputs.target_branch }}
         run: |
           $ErrorActionPreference = 'Stop'
-          git push origin "HEAD:$env:TARGET_BRANCH"
           git tag "v$env:VERSION"
+          if ($env:RELEASE_COMMIT_CREATED -eq 'true') {
+            git push origin "HEAD:$env:TARGET_BRANCH"
+          } else {
+            Write-Host 'No release commit was created; skipping target branch push.'
+          }
           git push origin "v$env:VERSION"
 
       - name: Collect release assets
@@ -194,10 +231,23 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $assetDir = 'release-assets'
+          if (Test-Path $assetDir) { Remove-Item $assetDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
           Copy-Item $env:SOURCE_ZIP $assetDir
-          Get-ChildItem -Path 'dist' -Recurse -File -Include '*.exe','*.zip' -ErrorAction SilentlyContinue | Copy-Item -Destination $assetDir -Force
-          Get-ChildItem -Path 'installer' -Recurse -File -Include '*Setup*.exe','*.exe' -ErrorAction SilentlyContinue | Copy-Item -Destination $assetDir -Force
+          if ($env:PORTABLE_ZIP) {
+            Copy-Item $env:PORTABLE_ZIP $assetDir
+          } elseif ($env:ONEFILE_EXE) {
+            Copy-Item $env:ONEFILE_EXE $assetDir
+          } else {
+            throw 'No portable ZIP or onefile EXE was prepared for release.'
+          }
+          $setupName = "FoxAir_Phnix_Control_Setup_v$env:VERSION.exe"
+          $setup = Get-ChildItem -Path 'installer','.' -Recurse -File -Filter $setupName -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($setup) {
+            Copy-Item $setup.FullName -Destination (Join-Path $assetDir $setupName) -Force
+          } else {
+            Write-Warning "Setup EXE $setupName was not found. Continuing with source and portable assets."
+          }
           $assets = Get-ChildItem -Path $assetDir -File
           if (-not $assets) { throw 'No release assets were collected.' }
           $assets.FullName | Set-Content release-assets.txt
