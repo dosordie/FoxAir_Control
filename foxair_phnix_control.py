@@ -9523,6 +9523,12 @@ class MainWindow(QMainWindow):
                 self._log("WarmLink Cloud: Token konnte nicht aus dem OS-Keyring gelesen werden: " + str(exc))
                 token = None
         if token:
+            if not pw:
+                try:
+                    pw = keyring_get_password(user)
+                except Exception as exc:
+                    self._log("WarmLink Cloud: Passwort konnte nicht für Token-Fallback gelesen werden: " + str(exc))
+                    pw = None
             return user, pw, token, device_code or None
         if pw:
             return user, pw, None, device_code or None
