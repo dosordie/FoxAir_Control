@@ -15,6 +15,7 @@ from cloud.warmlink_api import (
     WarmLinkCloudApi,
     WarmLinkCloudError,
     WarmLinkAuthError,
+    translate_cloud_error_message,
     normalize_data_values,
     normalize_device_list,
 )
@@ -177,7 +178,7 @@ class WarmLinkCloudWorker(QObject):
                         break
                 except (WarmLinkAuthError, WarmLinkCloudError, Exception) as exc:
                     msg = f"WarmLink Cloud: Poll Fehler: {exc}"
-                    self.error.emit(str(exc))
+                    self.error.emit(translate_cloud_error_message(str(exc)))
                     self.status.emit(f"Fehler, Retry in {int(backoff_s)}s")
                     self.log.emit(msg)
                     if self._last_good_rows:
@@ -195,7 +196,7 @@ class WarmLinkCloudWorker(QObject):
                         break
                     backoff_s = min(300.0, backoff_s * 2.0)
         except Exception as exc:
-            msg = str(exc)
+            msg = translate_cloud_error_message(str(exc))
             self.error.emit(msg)
             self.status.emit("Fehler: " + msg)
             self.log.emit("WarmLink Cloud: Login/Start Fehler: " + msg)
@@ -293,6 +294,6 @@ class WarmLinkCloudCommandWorker(QObject):
 
             self.result.emit(data)
         except Exception as exc:
-            self.error.emit(str(exc))
+            self.error.emit(translate_cloud_error_message(str(exc)))
         finally:
             self.finished.emit()

@@ -27,6 +27,7 @@ from cloud.warmlink_api import (
     keyring_get_token,
     keyring_set_password,
     keyring_set_token,
+    translate_cloud_error_message,
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
 
@@ -104,7 +105,7 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.47"
+APP_VERSION = "0.2.48"
 BUILD_DATE = "2026-06-19"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
@@ -9650,7 +9651,7 @@ class MainWindow(QMainWindow):
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
         ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
-        msg = str(data.get("error_msg") or data.get("message") or "")
+        msg = translate_cloud_error_message(str(data.get("error_msg") or data.get("message") or ""))
         endpoint = str(data.get("endpoint") or "")
         payload = data.get("payload")
         readback = data.get("readback") if isinstance(data, dict) else None
@@ -9672,7 +9673,7 @@ class MainWindow(QMainWindow):
 
     def _on_cloud_write_error(self, text: str):
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
-        QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + str(text))
+        QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + translate_cloud_error_message(str(text)))
 
     def _cloud_write_finished(self):
         if self.cloud_write_thread is not None:

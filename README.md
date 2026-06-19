@@ -18,6 +18,23 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames bleibt aktiv
 - Runtime-Code ist in `core/`, `workers/`, `cloud/`, `dialogs/`, `ui/` und `data/` gegliedert
 
+
+## Screenshots
+
+![FoxAir / Phnix Control Hauptfenster](docs/screenshots/Screenshot%20Fox_main.png)
+
+![FoxAir / Phnix Control Hauptfenster mit erweiterten Werten](docs/screenshots/Screenshot%20Fox_main2.png)
+
+![FoxAir / Phnix Control Cloud-Ansicht](docs/screenshots/Screenshot%20Fox_cloud.png)
+
+![FoxAir / Phnix Control Steuerung](docs/screenshots/Screenshot%20Fox_control.png)
+
+![FoxAir / Phnix Control Timer](docs/screenshots/Screenshot%20Fox_timer.png)
+
+![FoxAir / Phnix Control AT-Kompensation](docs/screenshots/Screenshot%20Fox_AT.png)
+
+![FoxAir / Phnix Control Einstellungen](docs/screenshots/Screenshot%20Fox_settings.png)
+
 ## Funktionen
 
 - Live-Registeranzeige mit bekannten FoxAir/Phnix-Datenpunkten

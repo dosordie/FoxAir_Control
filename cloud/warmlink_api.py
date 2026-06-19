@@ -58,6 +58,35 @@ EXPERT_WRITE_ENDPOINT_CANDIDATES = [
 KEYRING_SERVICE = "warmlink_gui"
 
 
+_CLOUD_ERROR_TRANSLATIONS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("密码错误",), "Passwort falsch"),
+    (("账号不存在", "帳號不存在", "用户不存在", "用戶不存在"), "Benutzerkonto nicht gefunden"),
+    (("登录失效", "登錄失效", "请重新登录", "請重新登錄", "please login again"), "Login abgelaufen, bitte neu anmelden"),
+    (("网络错误", "網絡錯誤", "network error"), "Netzwerkfehler"),
+    (("timeout", "timed out", "超时", "超時"), "Netzwerkfehler / Timeout"),
+)
+
+
+def translate_cloud_error_message(msg: str) -> str:
+    """Bekannte WarmLink/Linked-Go API-Fehlermeldungen benutzerfreundlich uebersetzen.
+
+    Es wird bewusst keine Live-Uebersetzung verwendet. Wenn eine bekannte
+    API-Meldung erkannt wird, bleibt der Originaltext fuer Log/Diagnose in
+    Klammern erhalten. Unbekannte Meldungen werden unveraendert zurueckgegeben.
+    """
+    original = str(msg or "").strip()
+    if not original:
+        return ""
+    lowered = original.lower()
+    for needles, german in _CLOUD_ERROR_TRANSLATIONS:
+        for needle in needles:
+            if needle and needle.lower() in lowered:
+                if original == german or original.startswith(f"{german} (API:"):
+                    return original
+                return f"{german} (API: {original})"
+    return original
+
+
 class WarmLinkCloudError(RuntimeError):
     pass
 
@@ -110,7 +139,7 @@ class WarmLinkCloudApi:
         headers = {
             "Content-Type": "application/json;charset=utf-8",
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.47",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.48",
         }
         if token:
             headers["x-token"] = token
@@ -135,9 +164,9 @@ class WarmLinkCloudApi:
             data.setdefault("endpoint", endpoint)
             return data
         except urllib.error.URLError as exc:
-            raise WarmLinkCloudError(f"Netzwerkfehler: {exc}") from exc
+            raise WarmLinkCloudError(translate_cloud_error_message(f"Netzwerkfehler: {exc}")) from exc
         except TimeoutError as exc:
-            raise WarmLinkCloudError(f"Timeout nach {self.timeout:.0f}s") from exc
+            raise WarmLinkCloudError(translate_cloud_error_message(f"Timeout nach {self.timeout:.0f}s")) from exc
         except json.JSONDecodeError as exc:
             raise WarmLinkCloudError(f"Ungueltige JSON-Antwort: {exc}") from exc
 
@@ -154,7 +183,7 @@ class WarmLinkCloudApi:
     def message(data: dict[str, Any]) -> str:
         for key in ("error_msg", "message", "msg", "errorMsg", "error"):
             if data.get(key):
-                return str(data.get(key))
+                return translate_cloud_error_message(str(data.get(key)))
         code = data.get("error_code") or data.get("code") or data.get("http_status")
         return "" if code in (None, "") else f"Fehlercode {code}"
 
