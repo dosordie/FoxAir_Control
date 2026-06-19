@@ -1,0 +1,8 @@
+V0.2.44 PRIVATE fix2
+
+WarmLink Cloud Schreibtest:
+- Sendeformat fuer app/device/control korrigiert.
+- Bisher getestetes Format {deviceCode, appId, param, value} wurde von der Cloud mit "请求参数格式错误" abgelehnt.
+- Neue bevorzugte Variante nach 00gtw00/homeassistant_warmlink:
+  {"appId":"16","param":[{"deviceCode":"...","protocolCode":"Mode","value":"2"}]}
+- Fallbacks mit protocalCode-Tippfehler und numerischem appId bleiben zum Testen enthalten.

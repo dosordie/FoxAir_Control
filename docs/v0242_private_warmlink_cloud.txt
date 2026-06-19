@@ -1,0 +1,15 @@
+PRIVATE V0.2.42 – WarmLink/Linked-Go Cloud / LTE
+
+- Optionale Cloud-Anbindung als getrennte Zusatzmodule:
+  - warmlink_cloud_api.py
+  - warmlink_cloud_worker.py
+  - warmlink_cloud_codes.py
+- Nur lesend umgesetzt: Login, DeviceList, getDataByCode.
+- Login probiert Klartext-Passwort und danach MD5-Fallback.
+- Token wird gespeichert und als Header x-token genutzt; bei Sessionfehlern wird erneut eingeloggt.
+- Passwort wird nicht in Settings/config gespeichert, sondern via Python keyring im OS-Keyring (Service warmlink_gui).
+- Neuer Dialog WarmLink Cloud / LTE mit Zugang testen/speichern/löschen, Geräteauswahl, Polling und Daten-/Gerätetabelle.
+- Sensible IDs werden optional maskiert.
+- Cloud-Worker blockiert die GUI nicht, nutzt Backoff und markiert alte Daten als veraltet.
+- Mapping-Hinweise vorbereitet, aber keine harten Modbus-Zuordnungen erzwungen.
+- Credits: WarmLink/Linked-Go API mapping inspired by srbjessen/ha-warmlink (MIT), original reverse engineering credited there to zyznos321/warmlink.

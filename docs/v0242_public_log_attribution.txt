@@ -1,0 +1,14 @@
+PUBLIC V0.2.42
+
+Basis:
+- PUBLIC V0.2.41 fix7.
+- Keine Änderung an den Display-Modus-/Write-Pfaden.
+
+Änderungen:
+- Log-Spam-Drosselung für wiederholte Bus-Diagnosezeilen im Backend Modbus Display.
+- Besonders wiederholte 0x02/3001 READ-Requests werden zusammengefasst, statt jede identische Zeile einzeln ins GUI-Log zu schreiben.
+- Quellen-/Attributionshinweise im README ergänzt.
+
+Hinweis Public Release:
+- Bei GitHub-Releases sichtbar auf verwendete/verglichene Quellen und die jeweiligen Lizenzen hinweisen.
+- Genannte Recherchequellen: srbjessen/ha-warmlink und 00gtw00/homeassistant_warmlink.

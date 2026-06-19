@@ -1,2 +1,1 @@
-Inoffizielles Tool. Register schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen.
-Display-/HMI-Bus-Funktionen sind experimentell: erst mit bekannten, unkritischen Werten testen.
+Inoffizielles Tool. Register- und Cloud-Schreiben auf eigene Gefahr. Vor Änderungen Backup erstellen. Kein offizielles FoxAir-/Phnix-/WarmLink-Tool.

@@ -1,8 +1,13 @@
-## PUBLIC V0.2.41 Hinweis
+## PUBLIC V0.2.42 Hinweis
 
-Diese Public-Version basiert auf dem internen Stand **V0.2.41 fix7**.
+Diese Public-Version basiert auf **PUBLIC V0.2.41 fix7** und enthält bewusst **keine Änderung an den Display-Modus-/Write-Pfaden**.
 
-**Neu gegenüber Public V0.2.39:**
+**Neu gegenüber Public V0.2.41 fix7:**
+
+- Log-Spam im Backend **Modbus Display** reduziert: stark wiederholte Bus-Diagnosezeilen, z. B. `0x02 / 3001`, werden im Log zusammengefasst statt tausendfach einzeln ausgegeben.
+- Quellen-/Attributionshinweise für den Public-Release ergänzt.
+
+**Aus Public V0.2.41 fix7 weiterhin enthalten:**
 
 - Display-/HMI-Schreibpfade weiter verbessert: bekannte Parameter-/Timerwerte werden im Backend **Modbus Display** nur dort über den Bedienwertpfad `Register + 0x2000` geschrieben, z. B. `1287 -> 0x2507`.
 - Timer 1-6, WP-Ein/Aus Timer, Silent Timer, SG Ready, WP-Steuerung, AT-Kompensation und Parameterfenster warten im Display-Modus auf die benötigten Paketdaten, statt leere/alte Werte blind zu schreiben.
@@ -21,9 +26,30 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
 
+
+## PUBLIC V0.2.44 – WarmLink Cloud
+
+Diese Version übernimmt die Cloud-Funktionen aus **PRIVATE V0.2.44 fix4**, lässt aber die Public-Display-Modus-/Write-Pfade aus **PUBLIC V0.2.42** unverändert.
+
+Neu/enthalten:
+
+- WarmLink/Linked-Go Cloud-Login mit E-Mail in Settings und Passwort im OS-Keyring
+- Geräte-/Device-ID-Anzeige
+- Cloud-Polling, Overlay und Cloud-Spalten im Hauptfenster
+- Cloud-Wertefinder
+- Cloud-Schreibtest mit bestätigtem Endpunkt `app/device/control?lang=en`
+- Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
+- Hauptfenster-Checkbox **Cloud-only Zeilen**, Standard eingeschaltet
+- Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames
+
+### Quellen / Attribution
+
+WarmLink/Linked-Go-Cloud-Erkenntnisse und Mapping-Ideen basieren unter anderem auf öffentlich verfügbaren Projekten/Recherchen, insbesondere `srbjessen/ha-warmlink`, `00gtw00/homeassistant_warmlink` und dort genannten ursprünglichen Reverse-Engineering-Hinweisen wie `zyznos321/warmlink`.
+
 ## Funktionen
 
 - Live-Registeranzeige mit bekannten FoxAir/Phnix-Datenpunkten
+- WarmLink/Linked-Go Cloud: Login, Geräteübersicht, Statuswerte, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes
 - Lesen und Schreiben per Modbus Standart und Modbus Warmlink LTE
 - Experimentelle Display-/HMI-Unterstützung: passives Mithören, Snapshot per Reboot-Fake und ACK-gesteuertes Schreiben bekannter Parameterpaket-Nutzwerte
 - TCP/IP/ser2net oder USB-RS485/COM-Port
@@ -32,6 +58,18 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
 - Offline Register-Browser mit Umschaltung zwischen Warmlink/WP- und Display/DWIN-Mapping
+
+
+## Quellen / Attribution
+
+Dieses Projekt ist ein inoffizielles Diagnose- und Parametrierwerkzeug. Es ist kein offizielles FoxAir-, Phnix-, DWIN- oder WarmLink-Produkt.
+
+Für Reverse Engineering, Plausibilitätsprüfungen und Protokollvergleich wurden neben eigenen Mitschnitten/Analysen auch öffentlich verfügbare Projekte und Diskussionen als Orientierung genutzt, unter anderem:
+
+- `srbjessen/ha-warmlink`
+- `00gtw00/homeassistant_warmlink`
+
+Die Public-Version enthält keine fremden Warmlink-Cloud-Dateien und keine Zugangsdaten. Bitte beim Veröffentlichen auf GitHub die jeweiligen Projektlizenzen und Quellenhinweise beachten.
 
 ## Installation / Download
 

@@ -1,0 +1,10 @@
+V0.2.44 PRIVATE
+
+- WarmLink Cloud Login robuster: plain, md5, md5md5 sowie optionale App-Felder loginSource, areaCode, appId=16, type=2, lang=en.
+- Token-Ablauf wird bei HTTP 401, error_code 401 oder -100 erkannt; danach Re-Login und ein Retry.
+- Cloud-Zusatzabfragen vorbereitet: app/device/getDeviceStatus und app/device/getFaultDataByDeviceCode bzw. cloudservice-Fallback.
+- Cloud-Write-Test verwendet jetzt Endpoint-Auto-Modus mit Kandidaten unter cloudservice/api/device/updateDeviceControlModelValue, updateDeviceControlModelData, updateDeviceControlSwithSate und altem app-Fallback.
+- Default-Polling 60s, UI-Minimum 60s.
+- Letzte gueltige Cloud-Werte werden gecached; leere/unsupported Antworten ueberschreiben den Cache nicht.
+- Cloud-Dialog kann ausgeblendet werden, waehrend Polling im Hintergrund weiterlaeuft; optional Autostart beim App-Start.
+- Wertefinder-Tab ergänzt: Cloud-Wert gegen lokale Modbus/Registerwerte suchen, z. B. fuer SG Status.

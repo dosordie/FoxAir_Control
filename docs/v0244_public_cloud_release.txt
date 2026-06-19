@@ -1,0 +1,13 @@
+PUBLIC V0.2.44 – WarmLink/Linked-Go Cloud Release
+
+Diese Public-Version übernimmt die Cloud-Funktionen aus dem bisherigen PRIVATE-Stand V0.2.44 fix4, ohne die Public-Display-Modus-/Write-Pfade aus V0.2.42 zu verändern.
+
+Bestätigter Schreibweg:
+Endpoint: app/device/control?lang=en
+Payload:
+{"appId":"16","param":[{"deviceCode":"<deviceCode>","protocolCode":"<Code>","value":"<Wert>"}]}
+
+Attribution / Quellen:
+- srbjessen/ha-warmlink
+- 00gtw00/homeassistant_warmlink
+- dort genannte ursprüngliche Reverse-Engineering-Hinweise, z. B. zyznos321/warmlink

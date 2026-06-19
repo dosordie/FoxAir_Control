@@ -1,3 +1,22 @@
+## PUBLIC V0.2.44
+
+- Public-Build auf Basis von **PUBLIC V0.2.42** erstellt; `APP_EDITION` bleibt **PUBLIC**.
+- Cloud-Funktionen aus **PRIVATE V0.2.44 fix4** übernommen: Login, Geräte-/Device-ID-Anzeige, Polling, Overlay, Wertefinder, Schreibtest und Hauptfenster-Rechtsklick **Wert per Cloud schreiben ...**.
+- Cloud-Schreiben nutzt das live bestätigte Format: `app/device/control?lang=en` mit `appId="16"` und `param: [{deviceCode, protocolCode, value}]`.
+- Hauptfenster: Checkbox **Cloud-only Zeilen**, Standard eingeschaltet.
+- Display-Modus-/Write-Pfade bleiben gegenüber **PUBLIC V0.2.42** unverändert.
+- Log-Spam-Reduktion aus PUBLIC V0.2.42 bleibt enthalten.
+- Quellen-/Attributionshinweise für öffentliche Warmlink-/Linked-Go-Recherchequellen ergänzt.
+- Installer-Version auf 0.2.44 gesetzt.
+
+## PUBLIC V0.2.42
+
+- Public-Build auf Basis von **PUBLIC V0.2.41 fix7** erstellt; `APP_EDITION` bleibt **PUBLIC**.
+- Keine Änderung an den Display-Modus-/Write-Pfaden übernommen. Die experimentellen Display-Schreibabläufe bleiben unverändert zum letzten Public-Stand.
+- Log-Spam im Backend **Modbus Display** reduziert: stark wiederholte Fremdframe-/Read-Request-Zeilen werden pro Frame-Typ zusammengefasst, z. B. bei massiven `0x02 / 3001` Polls.
+- Quellen-/Attributionshinweise für den GitHub-Public-Release ergänzt, u. a. Hinweise auf öffentlich genutzte Warmlink-Recherchequellen.
+- Installer-Version auf 0.2.42 gesetzt.
+
 ## PUBLIC V0.2.41 fix7
 
 - Public-Build aus internem Stand **V0.2.41 fix7** erstellt; `APP_EDITION` ist **PUBLIC**.

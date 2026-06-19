@@ -1,0 +1,8 @@
+V0.2.44 PRIVATE fix1
+
+- Kein Versionssprung, nur Fix-Paket.
+- WarmLink Cloud Schreibtest: Auto-Endpunkt auf app/device/control?lang=en / app/device/control umgestellt.
+- Payload: {deviceCode, appId: 16, param, value}.
+- Cloudservice-Control-Endpunkte bleiben nur als Expert-Fallback.
+- Login-E-Mail wird in settings.warmlink_cloud.username gespeichert; Passwort bleibt im OS-Keyring.
+- Cloud-Hauptfensterspalte formatiert bekannte Value-Maps wie lokale Register.

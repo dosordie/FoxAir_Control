@@ -1,0 +1,13 @@
+V0.2.44 PRIVATE fix3
+
+WarmLink Cloud schreiben:
+- Auto-Modus nutzt nur noch das bestaetigte Payloadformat:
+  {"appId":"16","param":[{"deviceCode":"...","protocolCode":"Mode","value":"2"}]}
+- Erfolgreicher Endpoint aus Live-Test: app/device/control?lang=en, HTTP 200, error_code 0, Success.
+- Alte Varianten mit protocalCode, numerischem appId und Einzelparameterformat bleiben nur noch fuer Endpoint debug/expert.
+- Nach erfolgreichem Send wird getDataByCode als kurzer Readback versucht.
+
+Hauptfenster:
+- Rechtsklick auf schreibbare Cloud-gemappte Register zeigt zusaetzlich "Wert per Cloud schreiben ...".
+- Freigegeben sind derzeit nur Codes mit write_allowed im Cloud-Mapping, z.B. Power/1011 und Mode/1012.
+- Zugangsdaten kommen aus WarmLink-Cloud-Settings + OS-Keyring. Wenn kein deviceCode gespeichert ist, nutzt der Worker nach Login das erste Cloud-Geraet.
