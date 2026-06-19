@@ -1,0 +1,14 @@
+PRIVATE V0.2.41 fix8 - Mapping-/Einheitenpflege
+
+- SG01-SG08 ohne (ASM) im Namen.
+- SG08 = Heizstab ein bei SG Mode4, 0 Nein / 1 Ja.
+- H38 = 1025, Funktion unbekannt, nicht External Pump Selection.
+- H40 = 1345, External Pump Selection / Externe Pumpenauswahl, live getestet:
+  0 Hot Water Pump
+  1 Warm Water Circulation Pump
+  2 Off Signal when defrosting
+- H41 bestätigt.
+- F27 = Fan Motor Power Curve / Lüftermotor-Leistungskurve.
+- C13-C15, E20-E21, R12-R14: In App nicht sichtbar.
+- Einheiten/Skalierungen laut User-Korrektur ergänzt.
+- 2057 ist nicht T34; T34 = 2062 / AC-Eingangsspannung in V.

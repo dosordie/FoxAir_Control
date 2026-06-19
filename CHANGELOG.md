@@ -1,32 +1,69 @@
+## PUBLIC V0.2.45
+
+- Version hochgezogen auf **0.2.45**, damit der Public-Fix nachvollziehbar bleibt.
+- Doppelten Schalter **Cloud-only Zeilen** aus dem Hauptfenster entfernt.
+- **Cloud-only Zeilen** bleiben im WarmLink-Cloud-Fenster und sind dort standardmäßig aktiviert.
+- `keyring>=25.0` ist in `requirements.txt` enthalten; SETUP-Hinweise ergänzt.
+- PyInstaller-Build ergänzt `keyring` als collect/hidden import, damit die EXE den Windows-Keyring sauber mitnimmt.
+
 ## PUBLIC V0.2.44
 
-- Public-Build auf Basis von **PUBLIC V0.2.42** erstellt; `APP_EDITION` bleibt **PUBLIC**.
-- Cloud-Funktionen aus **PRIVATE V0.2.44 fix4** übernommen: Login, Geräte-/Device-ID-Anzeige, Polling, Overlay, Wertefinder, Schreibtest und Hauptfenster-Rechtsklick **Wert per Cloud schreiben ...**.
+- Public-Build mit WarmLink/Linked-Go-Cloud-Funktionen aus **PRIVATE V0.2.44 fix4** erstellt; `APP_EDITION` ist **PUBLIC**.
+- Enthält Cloud-Login, Geräte-/Device-ID-Anzeige, Cloud-Polling, Cloud-Overlay, Cloud-Wertefinder und Cloud-Schreibtest.
 - Cloud-Schreiben nutzt das live bestätigte Format: `app/device/control?lang=en` mit `appId="16"` und `param: [{deviceCode, protocolCode, value}]`.
+- Hauptfenster: Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes.
 - Hauptfenster: Checkbox **Cloud-only Zeilen**, Standard eingeschaltet.
-- Display-Modus-/Write-Pfade bleiben gegenüber **PUBLIC V0.2.42** unverändert.
-- Log-Spam-Reduktion aus PUBLIC V0.2.42 bleibt enthalten.
+- Log-Spam im Backend **Modbus Display** reduziert: stark wiederholte Fremdframe-/Read-Request-Zeilen werden pro Frame-Typ zusammengefasst, z. B. bei massiven `0x02 / 3001` Polls.
 - Quellen-/Attributionshinweise für öffentliche Warmlink-/Linked-Go-Recherchequellen ergänzt.
 - Installer-Version auf 0.2.44 gesetzt.
 
-## PUBLIC V0.2.42
 
-- Public-Build auf Basis von **PUBLIC V0.2.41 fix7** erstellt; `APP_EDITION` bleibt **PUBLIC**.
-- Keine Änderung an den Display-Modus-/Write-Pfaden übernommen. Die experimentellen Display-Schreibabläufe bleiben unverändert zum letzten Public-Stand.
-- Log-Spam im Backend **Modbus Display** reduziert: stark wiederholte Fremdframe-/Read-Request-Zeilen werden pro Frame-Typ zusammengefasst, z. B. bei massiven `0x02 / 3001` Polls.
-- Quellen-/Attributionshinweise für den GitHub-Public-Release ergänzt, u. a. Hinweise auf öffentlich genutzte Warmlink-Recherchequellen.
-- Installer-Version auf 0.2.42 gesetzt.
+## V0.2.44 PRIVATE fix4
 
-## PUBLIC V0.2.41 fix7
+- Rechtsklick-/Popup-Schreiben im Backend **Modbus Display** blockiert am Schluss nicht mehr auf den abschließenden 3001-/Readback-Check. Der Write wird weiterhin ACK-gesteuert gesendet; der Abschlusscheck läuft danach nur noch passiv ins Log.
+- Für normale Display-Parameterwrites wird jetzt direkt Variante **B** genutzt: Benutzerwert (`Register + 0x2000`) plus `0BC3`-Modified-Flag. Keine langen Fallback-/Erfolgspopup-Ketten mehr bei normalen Rechtsklick-Writes.
+- Cloud-Schreiben aus dem Hauptfenster zeigt bei Erfolg kein Popup mehr; Ergebnis und Readback landen im Log/Status. Popups bleiben nur für echte Fehler.
+- **Wert per Cloud schreiben ...** wird für alle gemappten Parameter-/Sollwert-Codes freigegeben, bei denen wir das `protocolCode`-Format kennen und die nicht als reine Live-/Fehler-/Ausgangsstatus-Codes wirken.
+- Cloud-Wertefinder entschärft: Button wird während der Suche deaktiviert, Statusmeldung erscheint sofort, Tabellenfüllung läuft entprellt über den Qt-Eventloop.
 
-- Public-Build aus internem Stand **V0.2.41 fix7** erstellt; `APP_EDITION` ist **PUBLIC**.
-- Display-Modbus: verbesserte Timer-/Popup-Schreibpfade mit `Register + 0x2000` nur im Backend **Modbus Display**.
-- Display-Modbus: Popups warten auf benötigte Paketdaten und öffnen/schreiben nicht mehr blind mit leeren oder alten Werten.
-- Display-Modbus: Mehrfachwrites werden einzeln/sequenziell abgearbeitet; `1181ff`-Timerpfade enthalten zusätzlichen Fallback über Kommunikationsregister und `0BC3=0x0008`.
-- Log-Level 1–7 ergänzt und nachgeschärft; Level 4 ist für normale Diagnose-Logs geeignet, RAW/TX erst ab Level 6.
-- RAW anzeigen liefert HEX+ASCII; separate RAW-ASCII-Checkbox aus der Kopfzeile entfernt.
-- FC06/FC16-Auswahl aus der normalen Einstellungsseite ausgeblendet; Spezialpfade entscheiden intern.
-- Installer-Version auf 0.2.41 gesetzt.
+## V0.2.44 PRIVATE fix3
+
+- WarmLink Cloud Schreibtest auf das live bestaetigte Control-Format aufgeraeumt: Auto zeigt/sendet nur noch `appId="16"` mit `param: [{deviceCode, protocolCode, value}]`.
+- Alte Payload-Varianten bleiben als Debug/Expert-Test erhalten (`debug`/`expert` im Endpoint-Feld), werden aber im normalen Auto-Modus nicht mehr durchprobiert.
+- Nach erfolgreichem Cloud-Schreiben wird ein kurzer Readback per `getDataByCode` versucht und in Log/Antwort angezeigt.
+- Hauptfenster: Rechtsklick auf schreibbare Cloud-gemappte Register, z. B. 1011/Power und 1012/Mode, bietet jetzt zusätzlich **Wert per Cloud schreiben ...**. Login erfolgt automatisch über gespeicherte Cloud-Zugangsdaten/OS-Keyring.
+
+## V0.2.44 PRIVATE fix2
+
+- WarmLink Cloud Schreibtest: `app/device/control` Payload korrigiert.
+- Sendet jetzt zuerst `{"appId":"16","param":[{"deviceCode":"...","protocolCode":"Mode","value":"2"}]}`.
+- Fallbacks mit `protocalCode` und altem Einzelparameterformat bleiben fuer Diagnose erhalten.
+
+## V0.2.44 PRIVATE fix1
+
+- WarmLink-Cloud-Schreibtest korrigiert: Auto nutzt jetzt zuerst `app/device/control?lang=en` und `app/device/control` mit Payload `deviceCode`, `appId=16`, `param`, `value`.
+- Die vorher getesteten `cloudservice/api/device/updateDeviceControl...`-Endpunkte bleiben nur noch als expliziter Expert-Fallback, da sie mit normalem App-Token HTTP 401 liefern.
+- Login-E-Mail wird jetzt wirklich in den App-Settings gespeichert; Passwort bleibt weiterhin ausschließlich im OS-Keyring.
+- Cloud-Spalte im Hauptfenster formatiert gemappte ENUM-/Value-Map-Werte wie lokale Werte, z. B. `0 = Warmwasser`, `1 = Heizen`, `2 = Kühlen`.
+
+## V0.2.41 PRIVATE fix8
+
+- Register-/Mappingpflege aus Live-Test und Display-Firmware-Analyse übernommen.
+- SG01–SG08: Zusatz `(ASM)` aus den Namen entfernt; SG08 jetzt **Heizstab ein bei SG Mode4** mit Ja/Nein-Werten.
+- H40/1345 korrigiert: **External Pump Selection / Externe Pumpenauswahl** mit Werten `0 Hot Water Pump`, `1 Warm Water Circulation Pump`, `2 Off Signal when defrosting`. H38/1025 bleibt **Funktion unbekannt**.
+- H41 als bestätigt markiert; F27 als **Fan Motor Power Curve / Lüftermotor-Leistungskurve**.
+- C13–C15, E20–E21 sowie R12–R14 mit Hinweis **In App nicht sichtbar** ergänzt.
+- Einheiten/Skalierungen ergänzt: F25/F26 rpm, D02/D03/D13/D19/D23 min, D11 °C, D12 bar, D14/D15 Wert/100, D16 W, D20 Hz, D22 m³/h, H42 °C.
+- Livewerte korrigiert/ergänzt: 2016 Solltemperatur wie 2013/2014 in °C (/10), 2031 min, 2042/T36 A, 2043 V, 2062/T34 V, 2069/T15 bar, 2079 kW/h, 2115 %.
+- Korrektur: **2057 ist nicht T34**; T34 / AC-Spannung bleibt bei **2062**.
+
+## V0.2.41 PRIVATE fix7
+
+- Log-Level nachgeschärft: **Level 4** ist jetzt als Chat-Diagnose gedacht und zeigt Writes, ACKs, Fallbacks, 0BC3, bestätigende DREG/REG-Änderungen und relevante Paket-DIFFs, aber keine langen RAW-/TX-/Nullblock-Details mehr.
+- Lange Rohdaten (`RAW=`, `TX=`, `RX ...`) sowie lange `passive Werte` wandern auf **Level 6**; reine Fremdframe-/Busbeobachtung auf **Level 5**.
+- Die alte Display-Schreibmodus-Auswahl **FC06/FC16** wird in den normalen Einstellungen ausgeblendet. Display-Modbus verwendet intern FC16-Single-Register; Spezial-/Fallbackpfade entscheiden selbst. Warmlink und Standard-Modbus bleiben unverändert.
+- Die Unit-Einstellung bekommt einen klareren Hinweis: Unit ist die aktive Modbus-Slave-Adresse für manuelle/Standard-Zugriffe; passive Displaybus-Rollen wie `0x00`, `0x01`, `0x03` werden automatisch erkannt.
+
 
 ## V0.2.38 PRIVATE fix12
 

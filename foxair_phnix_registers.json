@@ -327,8 +327,10 @@
     "code": "H38",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Funktion unbekannt",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "H38 ist nicht External Pump Selection. ASM: normaler Vier-Variablen-Parameter 0401H/2401H; keine weitere Display-Logik gefunden."
   },
   "1026": {
     "block": "H",
@@ -850,10 +852,11 @@
     "block": "F",
     "code": "F27",
     "function": "03/16",
-    "last_review": "v39",
+    "last_review": "v0.2.41 fix8",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Fan Motor Power Curve / Lüftermotor-Leistungskurve",
+    "type": "RAW",
+    "unit": "rpm"
   },
   "1062": {
     "app_label": "Min Cool Coil Temp",
@@ -1310,7 +1313,7 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüfterdrehzahl im Kühlbetrieb",
-    "type": "DIGI1",
+    "type": "RPM",
     "unit": "rpm"
   },
   "1104": {
@@ -1321,7 +1324,7 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüfterdrehzahl im Heizbetrieb",
-    "type": "DIGI1",
+    "type": "RPM",
     "unit": "rpm"
   },
   "1105": {
@@ -1342,7 +1345,8 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Heizbetriebszeit vor dem Abtauen",
-    "type": "DIGI1"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1107": {
     "app_label": "Defrosting Cycle",
@@ -1352,7 +1356,8 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Intervallzeit zwischen den Abtauzyklen",
-    "type": "DIGI1"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1108": {
     "app_label": "Exhaust Temp. Correction for Defrosting Cycle",
@@ -1444,7 +1449,8 @@
     "mode": "r/w",
     "my_value": "19°C",
     "name": "Min. Einlasswassertemperatur des Abtauens",
-    "type": "DIGI5"
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "1117": {
     "app_label": "Suction Pressure of Forced Defrosting",
@@ -1454,7 +1460,8 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Saugsdruck des erzwungenen Abtauens",
-    "type": "DIGI5"
+    "type": "BAR_X10",
+    "unit": "bar"
   },
   "1118": {
     "app_label": "Heating Operation Time Before Forced Defrosting",
@@ -1465,7 +1472,8 @@
     "mode": "r/w",
     "my_value": "210min",
     "name": "Heizbetriebszeit vor dem erzwungenen Abtauen",
-    "type": "DIGI1"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1119": {
     "app_label": "Fan Motor Power Ratio to Extend Defrosting Cycle",
@@ -1475,7 +1483,9 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Lüftermotorleistungsverhältnis zur Verlängerung des Abtauzyklus",
-    "type": "DIGI7"
+    "type": "DIGI19",
+    "unit": "",
+    "notes": "Skalierung: Wert / 100."
   },
   "1120": {
     "app_label": "Fan Motor Power Ratio to Enter Forced Defrosting",
@@ -1485,7 +1495,9 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Lüftermotorleistungsverhältnis zum Eintritt in das erzwungene Abtauen",
-    "type": "DIGI7"
+    "type": "DIGI19",
+    "unit": "",
+    "notes": "Skalierung: Wert / 100."
   },
   "1121": {
     "app_label": "Max. Fan Motor Power to Enter Forced Defrosting",
@@ -1495,7 +1507,8 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Lüftermotorleistung zum Eintritt in das erzwungene Abtauen",
-    "type": "DIGI1"
+    "type": "WATT",
+    "unit": "W"
   },
   "1122": {
     "app_label": "Coil Temp. of Exit Defrosting",
@@ -1526,7 +1539,8 @@
     "last_review": "v39",
     "mode": "r/w",
     "name": "Max. Abtauzeit",
-    "type": "DIGI1"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1125": {
     "app_label": "Defrosting Frequency",
@@ -1537,7 +1551,8 @@
     "mode": "r/w",
     "my_value": "77Hz",
     "name": "Abtaufrequenz",
-    "type": "DIGI1"
+    "type": "HZ",
+    "unit": "Hz"
   },
   "1126": {
     "app_label": "Enable Electric Heater During Defrosting",
@@ -1566,7 +1581,8 @@
     "mode": "r/w",
     "my_value": "0",
     "name": "Wasserdurchfluss beim Abtauen",
-    "type": "DIGI9"
+    "type": "FLOW_M3H_X10",
+    "unit": "m³/h"
   },
   "1128": {
     "app_label": "Max. Defrosting Cycle by Fan Motor Power",
@@ -1577,7 +1593,8 @@
     "mode": "r/w",
     "my_value": "135min",
     "name": "Max. Abtauzyklus durch Lüftermotorleistung",
-    "type": "DIGI1"
+    "type": "MINUTES",
+    "unit": "min"
   },
   "1129": {
     "app_label": "Defrosting Heating Source in Heating / DHW Mode",
@@ -2194,24 +2211,33 @@
     "code": "R12",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1"
+    "name": "Temperatur-/Hystereseparameter R12",
+    "type": "TEMP1",
+    "unit": "°C",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1179": {
     "block": "R",
     "code": "R13",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1"
+    "name": "Temperatur-/Hystereseparameter R13",
+    "type": "TEMP1",
+    "unit": "°C",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1180": {
     "block": "R",
     "code": "R14",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperatur-/Hystereseparameter (ASM)",
-    "type": "TEMP1"
+    "name": "Temperatur-/Hystereseparameter R14",
+    "type": "TEMP1",
+    "unit": "°C",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1181": {
     "function": "03",
@@ -3549,7 +3575,7 @@
     "code": "SG01",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Ready Funktion (ASM)",
+    "name": "SG Ready Funktion",
     "type": "SG_MODE",
     "value_map": {
       "0": "Aus",
@@ -3562,7 +3588,7 @@
     "code": "SG02",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 1 Schlafmodus Zeit (ASM)",
+    "name": "SG Mode 1 Schlafmodus Zeit",
     "type": "RAW"
   },
   "1336": {
@@ -3570,7 +3596,7 @@
     "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 2 Einschaltverzögerung (ASM)",
+    "name": "SG Mode 2 Einschaltverzögerung",
     "type": "RAW"
   },
   "1337": {
@@ -3578,7 +3604,7 @@
     "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 3 Einschaltverzögerung (ASM)",
+    "name": "SG Mode 3 Einschaltverzögerung",
     "type": "RAW"
   },
   "1338": {
@@ -3586,7 +3612,7 @@
     "code": "SG05",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 WW-Zieltemperatur-Anhebung (ASM)",
+    "name": "SG Mode 4 WW-Zieltemperatur-Anhebung",
     "type": "TEMP1"
   },
   "1339": {
@@ -3594,7 +3620,7 @@
     "code": "SG06",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung (ASM)",
+    "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung",
     "type": "TEMP1"
   },
   "1340": {
@@ -3602,7 +3628,7 @@
     "code": "SG07",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung (ASM)",
+    "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung",
     "type": "TEMP1"
   },
   "1341": {
@@ -3610,8 +3636,18 @@
     "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Ready Parameter (ASM)",
-    "type": "RAW"
+    "name": "Heizstab ein bei SG Mode4",
+    "type": "DIGI1",
+    "value_map": {
+      "0": "Nein",
+      "1": "Ja"
+    },
+    "app_values": {
+      "0": "NO",
+      "1": "YES"
+    },
+    "app_label": "Electric Heater On in SG Mode4",
+    "last_review": "v0.2.41 fix8 user confirmed"
   },
   "1342": {
     "app_current_video_value": "0.0 bar",
@@ -3650,14 +3686,29 @@
     "code": "H40",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "External Pump Selection / Externe Pumpenauswahl",
+    "type": "DIGI1",
+    "value_map": {
+      "0": "Hot Water Pump / Warmwasserpumpe",
+      "1": "Warm Water Circulation Pump / Warmwasser-Zirkulationspumpe",
+      "2": "Off Signal when defrosting / Aus-Signal beim Abtauen"
+    },
+    "app_label": "External Pump Selection",
+    "app_values": {
+      "0": "Hot Water Pump",
+      "1": "Warm Water Circulation Pump",
+      "2": "Off Signal when defrosting"
+    },
+    "last_review": "v0.2.41 fix8 user live test",
+    "notes": "Live getestet. Nicht H38. ASM-Zusatz: 2541H beeinflusst Timer-/Pumpen-Seitenauswahl."
   },
   "1346": {
     "block": "H",
     "code": "H41",
-    "name": "Supervisor-Passwort (unconfirmed): 66",
-    "type": "RAW"
+    "name": "Supervisor-Passwort: 66",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8 user confirmed",
+    "notes": "H41 bestätigt."
   },
   "1347": {
     "app_current_video_value": "90 Hz",
@@ -3676,40 +3727,50 @@
     "code": "C13",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C13",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1349": {
     "block": "C",
     "code": "C14",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C14",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1350": {
     "block": "C",
     "code": "C15",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C15",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1351": {
     "block": "E",
     "code": "E20",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter E20",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1352": {
     "block": "E",
     "code": "E21",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter E21",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1353": {
     "function": "03/16",
@@ -3733,10 +3794,11 @@
     "block": "H",
     "code": "H42",
     "name": "H42 Einschalt-AT Gehaeusewannenheizung (D30/1437 erst wirksam, wenn AT kleiner H42 ist)",
-    "type": "RAW",
-    "notes": "H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist.",
+    "type": "TEMP1",
+    "notes": "H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist. Einheit °C.",
     "function": "03/16",
-    "mode": "r/w"
+    "mode": "r/w",
+    "unit": "°C"
   },
   "1357": {
     "app_label": "Diff. of No Pump On at Low Water Temp.",
@@ -4210,8 +4272,10 @@
   "2016": {
     "function": "16",
     "mode": "write",
-    "name": "Wie 2013 u 2014",
-    "type": "RAW"
+    "name": "Solltemperatur wie 2013 / 2014",
+    "type": "TEMP1",
+    "unit": "°C",
+    "notes": "Skalierung /10 wie 2013/2014."
   },
   "2017": {
     "function": "16",
@@ -4322,8 +4386,9 @@
   "2031": {
     "function": "16",
     "mode": "write",
-    "name": "Eingangsstrom 2",
-    "type": "DIGI5"
+    "name": "Zeitwert 2031",
+    "type": "MINUTES",
+    "unit": "min"
   },
   "2032": {
     "function": "16",
@@ -4421,7 +4486,8 @@
     "function": "16",
     "mode": "write",
     "name": "Phasenstrom des Kompressors",
-    "type": "DIGI5"
+    "type": "AMP_X10",
+    "unit": "A"
   },
   "2043": {
     "block": "T",
@@ -4429,7 +4495,7 @@
     "function": "16",
     "mode": "write",
     "name": "DC-Power-Bus-Spannung",
-    "type": "DIGI1",
+    "type": "VOLT",
     "unit": "V",
     "notes": "User confirmed unit V/Volt in v0.2.35"
   },
@@ -4539,13 +4605,13 @@
     "type": "TEMP1"
   },
   "2057": {
-    "block": "T",
-    "code": "T34",
     "function": "16",
     "mode": "write",
-    "name": "AC-Spannung / AC Voltage (App T34, V)",
-    "type": "DIGI1",
-    "note": "Korrektur V0.2.38: laut App/Tests T34 = AC Spannung in V, nicht Temperatur/Strom."
+    "name": "Livewert 2057 (nicht T34; Bedeutung unbestätigt)",
+    "type": "RAW",
+    "unit": "",
+    "notes": "Korrektur V0.2.41 fix8: 2057 ist nicht T34. T34 / AC-Spannung ist 2062.",
+    "last_review": "v0.2.41 fix8 user correction"
   },
   "2058": {
     "block": "T",
@@ -4591,9 +4657,9 @@
     "function": "16",
     "mode": "write",
     "name": "AC-Eingangsspannung",
-    "type": "DIGI1",
+    "type": "VOLT",
     "unit": "V",
-    "notes": "User confirmed unit V/Volt in v0.2.35"
+    "notes": "User confirmed unit V/Volt in v0.2.35 T34 bestätigt hier; 2057 ist nicht T34."
   },
   "2063": {
     "block": "T",
@@ -4658,7 +4724,8 @@
     "function": "16",
     "mode": "write",
     "name": "Niederdruck",
-    "type": "DIGI5"
+    "type": "BAR_X10",
+    "unit": "bar"
   },
   "2070": {
     "function": "16",
@@ -4734,8 +4801,9 @@
   "2079": {
     "function": "16",
     "mode": "write",
-    "name": "Leistung",
-    "type": "DIGI1"
+    "name": "Leistung / Energiezähler",
+    "type": "KWH_PER_H",
+    "unit": "kW/h"
   },
   "2080": {
     "function": "16",
@@ -5066,8 +5134,9 @@
   "2115": {
     "function": "16",
     "mode": "write",
-    "name": "UP PWM aktuell %",
-    "type": "RAW"
+    "name": "UP PWM aktuell",
+    "type": "PERCENT",
+    "unit": "%"
   },
   "2116": {
     "function": "16",

@@ -19,6 +19,9 @@ py -m PyInstaller ^
   --add-data "app_icon.ico;." ^
   --add-data "docs;docs" ^
   --add-data "tools;tools" ^
+  --collect-submodules keyring ^
+  --hidden-import keyring.backends.Windows ^
+  --hidden-import keyring.backends.null ^
   foxair_phnix_control.py || goto :err
 
 echo [3/3] Portable ZIP-Ordner vorbereiten ...

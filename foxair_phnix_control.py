@@ -100,12 +100,12 @@ from foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.44"
+APP_VERSION = "0.2.45"
 BUILD_DATE = "2026-06-19"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
-# V0.2.44 PUBLIC: zentrale Log-Level plus Bus-Log-Drosselung und WarmLink Cloud.
+# V0.2.45 PUBLIC: Cloud-only-Schalter nur noch im Cloud-Fenster; Log-Drosselung bleibt aktiv.
 # 1 = sehr ruhig, 7 = Debug/alles. Die eigentliche Einordnung erfolgt
 # absichtlich per Textklassifikation in MainWindow._infer_log_level(), damit
 # bestehende Worker-/Dialog-Signale kompatibel bleiben.
@@ -1154,107 +1154,6 @@ class TimerEditorDialog(QDialog):
     def _timer_uses_high_byte(self, timer_no: int) -> bool:
         return (timer_no % 2) == 0
 
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
@@ -1751,107 +1650,6 @@ class OnOffTimerEditorDialog(QDialog):
     def _uses_high_byte(self, timer_no: int) -> bool:
         return (timer_no % 2) == 0
 
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
         hint = QLabel("WP Ein/Aus Timer: 6 Timer mit Start/Stop, Aktiv und Tagen Mo-So. Silentmodus Timer ist als eigene Registerkarte enthalten.")
@@ -2166,107 +1964,6 @@ class SilentTimerDialog(QDialog):
         self._build_ui()
         self.load_from_live_values()
 
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
         hint = QLabel("Silentmodus Timer: Start und Stop können getrennt aktiviert werden. Register 1244-1249.")
@@ -2450,107 +2147,6 @@ class RegisterQuickWriteDialog(QDialog):
                 return dict(self.GENERIC_VALUE_MAPS["ON_OFF"])
         return {}
 
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
         info = self.main_window.regmap.get(self.reg_no)
@@ -2698,107 +2294,6 @@ class SGReadyEditorDialog(QDialog):
         self.setMinimumWidth(620)
         self._build_ui()
         self.load_from_live_values()
-
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -3146,107 +2641,6 @@ class KnowledgeEditorDialog(QDialog):
         self.resize(720, 560)
         self._build_ui()
         self._load_values()
-
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -3666,107 +3060,6 @@ class ParameterSettingsDialog(QDialog):
             num = int(num_match.group(1)) if num_match else 9999
             return (item["block"], num, item["reg"])
         return sorted(items, key=sort_key)
-
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -6091,6 +5384,7 @@ class CommunicationSettingsDialog(QDialog):
         super().accept()
 
 
+
 class WarmLinkCloudDialog(QDialog):
     """Optionale WarmLink/Linked-Go Cloud-Anbindung mit Overlay/Compare.
 
@@ -6129,108 +5423,8 @@ class WarmLinkCloudDialog(QDialog):
         if not isinstance(cfg, dict):
             cfg = {}
             self.main_window.settings["warmlink_cloud"] = cfg
+        cfg.setdefault("show_cloud_only", True)
         return cfg
-
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -6876,10 +6070,6 @@ class WarmLinkCloudDialog(QDialog):
 
     def _apply_overlay_to_main(self):
         self._save_settings()
-        if hasattr(self.main_window, "cloud_only_main_cb"):
-            self.main_window.cloud_only_main_cb.blockSignals(True)
-            self.main_window.cloud_only_main_cb.setChecked(bool(self.cloud_only_cb.isChecked()))
-            self.main_window.cloud_only_main_cb.blockSignals(False)
         if self.overlay_cb.isChecked():
             self.main_window.apply_cloud_rows_to_main(self.data_rows, show_cloud_only=bool(self.cloud_only_cb.isChecked()))
         else:
@@ -7044,6 +6234,11 @@ class AboutDialog(QDialog):
         info.setWordWrap(True)
         layout.addWidget(info)
 
+        cloud_credit = QLabel(WARMLINK_CLOUD_CREDIT)
+        cloud_credit.setWordWrap(True)
+        cloud_credit.setStyleSheet("color: #666666;")
+        layout.addWidget(cloud_credit)
+
         repo = QLabel(f'GitHub: <a href="https://github.com/{UPDATE_REPO}">https://github.com/{UPDATE_REPO}</a>')
         repo.setTextFormat(Qt.RichText)
         repo.setOpenExternalLinks(True)
@@ -7124,107 +6319,6 @@ class WPControlDialog(QDialog):
         info = self.main_window.regmap.get(int(reg_no))
         dtype = info.dtype if info and info.dtype else "RAW"
         return format_value_by_type(int(raw), dtype)
-
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -7565,107 +6659,6 @@ class ATCompensationDialog(QDialog):
         raw = self._raw(1235)
         return numeric_value_by_type(raw, "TEMP1") if raw is not None else float(self.offset_spin.value())
 
-    def open_warmlink_cloud_dialog(self):
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
-
-    def _autostart_warmlink_cloud_if_enabled(self):
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
-            return
-        username = str(cfg.get("username", "")).strip()
-        if not username:
-            self._log("WarmLink Cloud Autostart übersprungen: keine E-Mail gespeichert")
-            return
-        if self.warmlink_cloud_dialog is None:
-            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
-            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self._log("WarmLink Cloud Autostart: Polling im Hintergrund startet ...")
-        self.warmlink_cloud_dialog._start_worker(poll_once=False)
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
         self.enable_cb = QCheckBox("AT-Kompensationskurve Zone 1 aktivieren (H36 / Register 1236)")
@@ -7854,8 +6847,8 @@ class MainWindow(QMainWindow):
         self.foreign_frame_count = 0
         self.bus_rows: Dict[int, int] = {}
         self.bus_stats: Dict[int, dict] = {}
-        # V0.2.42 PUBLIC: stark wiederholte Bus-Diagnosezeilen werden
-        # zusammengefasst, damit das GUI-Log bei Poll-Stueremen (z. B.
+        # V0.2.44 PUBLIC: stark wiederholte Bus-Diagnosezeilen werden
+        # zusammengefasst, damit das GUI-Log bei Poll-Stuermen (z. B.
         # 0x02/3001) nicht tausende identische Zeilen pro Sekunde anhaengt.
         self.log_throttle_state: Dict[tuple[Any, ...], dict[str, Any]] = {}
         self.raw_file: Optional[BinaryIO] = None
@@ -7993,85 +6986,6 @@ class MainWindow(QMainWindow):
         else:
             self.about_dialog.raise_()
             self.about_dialog.activateWindow()
-
-    def _autoconnect_if_enabled(self):
-        if self.autoconnect_cb.isChecked() and not self.connected:
-            self._log("Autoconnect aktiv: verbinde mit letzter IP/Port ...")
-            self.connect_to_device()
-
-    def _load_knowledge_defs(self) -> dict[str, Any]:
-        try:
-            path = self.knowledge_path if os.path.exists(self.knowledge_path) else getattr(self, "bundled_knowledge_path", self.knowledge_path)
-            if not os.path.exists(path):
-                return {}
-            with open(path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            return raw if isinstance(raw, dict) else {}
-        except Exception as exc:
-            print(f"Knowledge-Datei konnte nicht gelesen werden: {exc}")
-            return {}
-
-    def _load_register_defs(self) -> dict[str, Any]:
-        try:
-            with open(self.regmap_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            defs = raw if isinstance(raw, dict) else {}
-        except Exception:
-            return {}
-        # Mapping beim Laden normalisieren: neue Struktur code/block/name, alte "A40 / Name" bleibt kompatibel.
-        for _key, _data in list(defs.items()):
-            if isinstance(_data, dict):
-                block, code, clean = register_meta_parts(_data)
-                if clean:
-                    _data["name"] = clean
-                if code:
-                    _data["code"] = code
-                if block:
-                    _data["block"] = block
-        # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
-        for key, extra in getattr(self, "knowledge_defs", {}).items():
-            if not isinstance(extra, dict):
-                continue
-            skey = str(key)
-            base = defs.setdefault(skey, {})
-            if not isinstance(base, dict):
-                continue
-            for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
-                if field in extra and str(extra.get(field, "")).strip():
-                    base[field] = extra[field]
-            if isinstance(extra.get("default_by_device"), dict):
-                cleaned = {str(k): str(v) for k, v in extra["default_by_device"].items() if str(v).strip()}
-                if cleaned:
-                    base["default_by_device"] = cleaned
-        return defs
-
-    def get_register_knowledge(self, reg_no: int) -> dict[str, Any]:
-        raw = getattr(self, "knowledge_defs", {}).get(str(int(reg_no)), {})
-        return dict(raw) if isinstance(raw, dict) else {}
-
-    def set_register_knowledge(self, reg_no: int, data: dict[str, Any]):
-        reg_key = str(int(reg_no))
-        clean = {}
-        for k, v in data.items():
-            if k == "default_by_device" and isinstance(v, dict):
-                dv = {str(dk): str(dv) for dk, dv in v.items() if str(dv).strip()}
-                if dv:
-                    clean[k] = dv
-            elif str(v).strip():
-                clean[k] = v
-        if clean:
-            self.knowledge_defs[reg_key] = clean
-        else:
-            self.knowledge_defs.pop(reg_key, None)
-        os.makedirs(os.path.dirname(self.knowledge_path), exist_ok=True)
-        with open(self.knowledge_path, "w", encoding="utf-8") as f:
-            json.dump(self.knowledge_defs, f, ensure_ascii=False, indent=2)
-        self.register_defs = self._load_register_defs()
-        self._log(f"Wissensdatenbank gespeichert: Register {reg_no} ({self.knowledge_path})")
-
-    def edit_register_knowledge(self, reg_no: int) -> bool:
-        dlg = KnowledgeEditorDialog(self, int(reg_no))
-        return dlg.exec() == QDialog.Accepted
 
     def open_warmlink_cloud_dialog(self):
         if self.warmlink_cloud_dialog is None:
@@ -8213,9 +7127,6 @@ class MainWindow(QMainWindow):
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
         self.cloud_btn = QPushButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
-        self.cloud_only_main_cb = QCheckBox("Cloud-only Zeilen")
-        self.cloud_only_main_cb.setToolTip("Cloud-gemappte Zeilen anzeigen, auch wenn lokal noch kein Modbus-Wert gelesen wurde.")
-        self.cloud_only_main_cb.setChecked(bool(self.settings.get("warmlink_cloud", {}).get("show_cloud_only", True)))
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
 
@@ -8254,7 +7165,6 @@ class MainWindow(QMainWindow):
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
-        top.addWidget(self.cloud_only_main_cb)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
         top.addWidget(self.disconnect_btn)
@@ -8298,6 +7208,10 @@ class MainWindow(QMainWindow):
         self.register_table.setColumnWidth(7, 130)
         header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(9, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(10, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(11, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(12, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(13, QHeaderView.ResizeToContents)
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
@@ -8564,7 +7478,6 @@ class MainWindow(QMainWindow):
         self.comm_settings_btn.clicked.connect(self.open_communication_settings)
         self.about_btn.clicked.connect(self.open_about_dialog)
         self.cloud_btn.clicked.connect(self.open_warmlink_cloud_dialog)
-        self.cloud_only_main_cb.stateChanged.connect(lambda _=None: self._on_main_cloud_only_toggled())
         self.connect_btn.clicked.connect(self.connect_to_device)
         self.disconnect_btn.clicked.connect(self.disconnect_from_device)
         self.write_dry_btn.clicked.connect(self.show_write_frame)
@@ -8910,6 +7823,18 @@ class MainWindow(QMainWindow):
             return f"{signed / 10.0:.1f} bar"
         if dtype in ("AMP_X2", "CURRENT_A_X2"):
             return f"{signed / 2.0:.1f} A"
+        if dtype in ("AMP_X10", "CURRENT_A_X10"):
+            return f"{signed / 10.0:.1f} A"
+        if dtype in ("VOLT", "VOLTS", "V"):
+            return f"{signed} V"
+        if dtype in ("WATT", "WATTS", "POWER_W"):
+            return f"{signed} W"
+        if dtype in ("RPM", "FAN_RPM"):
+            return f"{signed} rpm"
+        if dtype in ("KWH_PER_H", "KW_PER_H"):
+            return f"{signed} kW/h"
+        if dtype in ("KWH", "ENERGY_KWH"):
+            return f"{signed} kWh"
         if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
             return f"{signed / 100.0:.1f} m³/h"
         if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
@@ -9169,7 +8094,7 @@ class MainWindow(QMainWindow):
     ):
         """Loggt die erste Zeile sofort und fasst schnelle Wiederholungen zusammen.
 
-        Wichtig: Die Bus-/Frame-Verarbeitung selbst bleibt unveraendert; nur die
+        Die Bus-/Frame-Verarbeitung selbst bleibt unveraendert; nur die
         Textausgabe wird gedrosselt. Dadurch gehen keine Werte verloren, aber
         Poll-Stuerme wie 0x02/3001 blockieren die GUI nicht mehr mit Log-Spam.
         """
@@ -9231,6 +8156,7 @@ class MainWindow(QMainWindow):
             self.previous_value_texts.clear()
             self.cached_regs.clear()
             self.register_change_highlights.clear()
+            self.cloud_overlay_by_reg.clear()
             self.last_contact_value = None
             self.last_load_output_value = None
             self._update_contact_table(None)
@@ -10095,46 +9021,6 @@ class MainWindow(QMainWindow):
         if not getattr(self, "_suppress_name_resize", False):
             self._resize_name_column()
 
-    def _cloud_only_enabled(self) -> bool:
-        try:
-            if hasattr(self, "cloud_only_main_cb"):
-                return bool(self.cloud_only_main_cb.isChecked())
-        except Exception:
-            pass
-        return bool(self.settings.get("warmlink_cloud", {}).get("show_cloud_only", True))
-
-    def _is_cloud_only_register(self, reg_no: int) -> bool:
-        reg = self.latest_regs.get(int(reg_no))
-        if reg is None:
-            return False
-        try:
-            return int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D
-        except Exception:
-            return False
-
-    def _apply_cloud_only_visibility_for_reg(self, reg_no: int) -> None:
-        row = self.table_rows.get(int(reg_no))
-        if row is None:
-            return
-        hide = self._is_cloud_only_register(int(reg_no)) and not self._cloud_only_enabled()
-        self.register_table.setRowHidden(row, bool(hide))
-
-    def _apply_cloud_only_visibility(self) -> None:
-        for reg_no in list(self.table_rows.keys()):
-            self._apply_cloud_only_visibility_for_reg(int(reg_no))
-
-    def _on_main_cloud_only_toggled(self) -> None:
-        cfg = self.settings.setdefault("warmlink_cloud", {})
-        cfg["show_cloud_only"] = self._cloud_only_enabled()
-        try:
-            self._save_settings(sync_main_fields=False)
-        except Exception:
-            pass
-        if self._cloud_only_enabled() and self.cloud_last_rows:
-            self.apply_cloud_rows_to_main(self.cloud_last_rows, show_cloud_only=True)
-        else:
-            self._apply_cloud_only_visibility()
-        self._log(f"Cloud-only Zeilen: {'ein' if self._cloud_only_enabled() else 'aus'}", level=2)
 
     def _parse_cloud_numeric_value(self, value: Any) -> tuple[int, str]:
         text = str(value if value is not None else "").strip()
@@ -10193,6 +9079,45 @@ class MainWindow(QMainWindow):
 
         unit = code_unit(code)
         return f"{text} {unit}".strip()
+
+    def _cloud_only_enabled(self) -> bool:
+        cfg = self.settings.get("warmlink_cloud", {})
+        if not isinstance(cfg, dict):
+            return True
+        return bool(cfg.get("show_cloud_only", True))
+
+    def _is_cloud_only_register(self, reg_no: int) -> bool:
+        reg = self.latest_regs.get(int(reg_no))
+        if reg is None:
+            return False
+        try:
+            return int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D
+        except Exception:
+            return False
+
+    def _apply_cloud_only_visibility_for_reg(self, reg_no: int) -> None:
+        row = self.table_rows.get(int(reg_no))
+        if row is None:
+            return
+        hide = self._is_cloud_only_register(int(reg_no)) and not self._cloud_only_enabled()
+        self.register_table.setRowHidden(row, bool(hide))
+
+    def _apply_cloud_only_visibility(self) -> None:
+        for reg_no in list(self.table_rows.keys()):
+            self._apply_cloud_only_visibility_for_reg(int(reg_no))
+
+    def _on_main_cloud_only_toggled(self) -> None:
+        cfg = self.settings.setdefault("warmlink_cloud", {})
+        cfg["show_cloud_only"] = self._cloud_only_enabled()
+        try:
+            self._save_settings(sync_main_fields=False)
+        except Exception:
+            pass
+        if self._cloud_only_enabled() and self.cloud_last_rows:
+            self.apply_cloud_rows_to_main(self.cloud_last_rows, show_cloud_only=True)
+        else:
+            self._apply_cloud_only_visibility()
+        self._log(f"Cloud-only Zeilen: {'ein' if self._cloud_only_enabled() else 'aus'}", level=2)
 
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
         """Cloud-Werte als Overlay in der Haupttabelle anzeigen.
@@ -11341,6 +10266,7 @@ class MainWindow(QMainWindow):
         elif action == act_use_write:
             self.write_addr_edit.setText(str(reg_no))
 
+
     def _cloud_code_is_write_candidate(self, code: str, hint: dict[str, Any]) -> bool:
         """Cloud-Schreiben freigeben, wenn das bekannte protocolCode-Format nutzbar ist.
 
@@ -12344,6 +11270,7 @@ class MainWindow(QMainWindow):
         preferred_variant: str = "A",
         fallback_variants: Optional[list[str]] = None,
         delay_ms_after: int = 0,
+        final_check_mode: str = "strict",
     ) -> dict[str, Any]:
         variant = str(preferred_variant or "A").strip().upper()
         if variant not in {"A", "B", "C"}:
@@ -12366,6 +11293,7 @@ class MainWindow(QMainWindow):
             "sequence_no": 0,
             "source_label": str(source_label or ""),
             "delay_ms_after": int(delay_ms_after or 0),
+            "final_check_mode": str(final_check_mode or "strict").strip().lower(),
         }
 
     def _display_user_value_start_job(self, job: dict[str, Any]):
@@ -12433,17 +11361,18 @@ class MainWindow(QMainWindow):
             int(block_start),
             int(mask),
             source_label=(label or f"normaler Write {addr}"),
-            preferred_variant="A",
-            fallback_variants=["B", "C"],
+            preferred_variant="B",
+            fallback_variants=[],
             delay_ms_after=int(delay_ms or 0),
+            final_check_mode="passive",
         )
         self.display_user_value_queue.append(job)
         qpos = len(self.display_user_value_queue)
         extra = f" ({label})" if label else ""
         self._log(
-            f"DISPLAY Parameterwrite fix9{extra}: normaler Write Reg {addr}=0x{int(value) & 0xFFFF:04X} "
+            f"DISPLAY Parameterwrite fix4{extra}: normaler Write Reg {addr}=0x{int(value) & 0xFFFF:04X} "
             f"wird als Bedienwert User 0x{int(user_addr):04X} ausgefuehrt; "
-            f"A zuerst, Fallback B/C; Queue-Position {qpos}."
+            f"B (Benutzerwert + 0BC3) ohne blockierenden Abschlusscheck; Ergebnis nur passiv im Log; Queue-Position {qpos}."
         )
         self._display_user_value_start_next_queued()
         return True
@@ -12551,6 +11480,18 @@ class MainWindow(QMainWindow):
         if idx >= len(plan):
             state["phase"] = "wait_result"
             state["result_wait_started"] = time.monotonic()
+            if str(state.get("final_check_mode") or "strict").lower() in {"log", "passive", "background"}:
+                # V0.2.44 fix4: normale Rechtsklick-/Popup-Writes sollen nach dem
+                # eigentlichen Senden/ACK nicht mehr auf Readback/Master-Read blockieren.
+                # Der Abschlusscheck laeuft nur noch passiv ins Log.
+                passive_state = dict(state)
+                self._log(
+                    "DISPLAY Bedienwert fix4: alle Writes quittiert/abgesetzt; "
+                    "abschliessender 3001-/Readback-Check laeuft nur noch passiv im Log."
+                )
+                self._display_user_value_complete_current(True)
+                QTimer.singleShot(2500, lambda st=passive_state: self._display_user_value_passive_check(st, 1))
+                return
             self._log("DISPLAY Bedienwert fix9: alle Writes quittiert/abgesetzt, warte auf 3001-Flag und Master-Read.")
             QTimer.singleShot(900, self._display_user_value_check)
             return
@@ -12605,6 +11546,51 @@ class MainWindow(QMainWindow):
             return
         self._log(f"DISPLAY Bedienwert fix9: Schritt {idx + 1} Addr 0x{addr:04X} ohne ACK fehlgeschlagen.")
         self._display_user_value_fail_or_fallback()
+
+    def _display_user_value_passive_check(self, state_snapshot: dict[str, Any], attempt: int = 1):
+        """Nur loggender Abschlusscheck fuer normale Display-Rechtsklick-/Popup-Writes."""
+        try:
+            block_start = int(state_snapshot.get("block_start", 0) or 0)
+            target_reg = int(state_snapshot.get("target_reg", 0) or 0)
+            target_value = int(state_snapshot.get("target_value", 0) or 0) & 0xFFFF
+            mask = int(state_snapshot.get("mask", 0) or 0) & 0xFFFF
+            sequence_started = float(state_snapshot.get("sequence_started", 0.0) or 0.0)
+            flag = self._display_0bc3_value_from_3001()
+            fresh_time = max(
+                self._display_snapshot_time(0x03, block_start, "read-response"),
+                self._display_snapshot_time(0x03, block_start, "word-frame"),
+            )
+            if fresh_time >= sequence_started:
+                words = None
+                for mode in ("read-response", "word-frame"):
+                    candidate = self.display_hmi_block_snapshots.get((0x03, block_start, mode))
+                    if candidate and self._display_snapshot_time(0x03, block_start, mode) >= sequence_started:
+                        words = candidate
+                        break
+                read_value = None
+                if words and 0 <= (target_reg - block_start) < len(words):
+                    read_value = int(words[target_reg - block_start]) & 0xFFFF
+                if read_value == target_value:
+                    self._log(
+                        f"DISPLAY Bedienwert fix4 PASSIV OK: Paket {block_start} frisch gesehen, "
+                        f"{target_reg}=0x{read_value:04X}; 0BC3={('--' if flag is None else '0x%04X' % flag)}."
+                    )
+                else:
+                    self._log(
+                        f"DISPLAY Bedienwert fix4 PASSIV HINWEIS: Paket {block_start} frisch gesehen, "
+                        f"{target_reg}={('--' if read_value is None else '0x%04X' % read_value)} statt 0x{target_value:04X}; "
+                        f"0BC3={('--' if flag is None else '0x%04X' % flag)}."
+                    )
+                return
+            if attempt < 3:
+                QTimer.singleShot(3500, lambda st=dict(state_snapshot), a=attempt + 1: self._display_user_value_passive_check(st, a))
+                return
+            self._log(
+                f"DISPLAY Bedienwert fix4 PASSIV: kein frischer Paketblock {block_start} gesehen; "
+                f"0BC3={('--' if flag is None else '0x%04X' % flag)}, erwartet Maske 0x{mask:04X}."
+            )
+        except Exception as exc:
+            self._log(f"DISPLAY Bedienwert fix4 PASSIV: Abschlusscheck uebersprungen: {exc}")
 
     def _display_user_value_check(self):
         state = self.display_user_value_state
@@ -13234,6 +12220,12 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._save_settings()
+        if self.warmlink_cloud_dialog is not None:
+            try:
+                setattr(self.warmlink_cloud_dialog, "_force_close", True)
+                self.warmlink_cloud_dialog.stop_worker()
+            except Exception:
+                pass
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         if self.cache_save_exit_cb.isChecked():

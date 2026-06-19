@@ -1,0 +1,8 @@
+PRIVATE V0.2.44 fix4
+
+- Display-Rechtsklick-/Popup-Schreiben: Abschlusscheck/Readback nicht mehr blockierend.
+- Normaler Display-Parameterwrite nutzt Variante B (23xx-Benutzerwert + 0BC3-Flag) und beendet die aktive Write-State-Machine nach ACK der Writes.
+- Ein passiver Check loggt spaeter, ob ein frischer Paketblock den Zielwert bestaetigt. Kein Erfolgs-Popup.
+- Cloud-Schreiben: Erfolg nur Log/Status, Popup nur bei Fehler.
+- Cloud-Hauptfenster-Schreiben fuer weitere gemappte Parameter-/Sollwert-Codes mit bekanntem protocolCode freigegeben.
+- Cloud-Wertefinder UI entprellt, Button waehrend Suche deaktiviert.

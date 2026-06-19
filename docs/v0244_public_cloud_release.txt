@@ -1,6 +1,12 @@
 PUBLIC V0.2.44 – WarmLink/Linked-Go Cloud Release
 
-Diese Public-Version übernimmt die Cloud-Funktionen aus dem bisherigen PRIVATE-Stand V0.2.44 fix4, ohne die Public-Display-Modus-/Write-Pfade aus V0.2.42 zu verändern.
+Diese Public-Version übernimmt die Cloud-Funktionen aus dem bisherigen PRIVATE-Stand V0.2.44 fix4:
+- Cloud-Login mit gespeicherter E-Mail und Passwort im OS-Keyring
+- Geräte-/Device-ID-Anzeige
+- Status-/Wertepolling aus der WarmLink/Linked-Go Cloud
+- Cloud-Overlay und Cloud-Spalten in der Haupttabelle
+- Cloud-Wertefinder
+- Cloud-Schreibtest und Hauptfenster-Rechtsklick "Wert per Cloud schreiben ..."
 
 Bestätigter Schreibweg:
 Endpoint: app/device/control?lang=en
@@ -8,6 +14,9 @@ Payload:
 {"appId":"16","param":[{"deviceCode":"<deviceCode>","protocolCode":"<Code>","value":"<Wert>"}]}
 
 Attribution / Quellen:
+WarmLink/Linked-Go-Cloud-Erkenntnisse und Mapping-Ideen basieren unter anderem auf öffentlich verfügbaren Projekten und Recherchen, insbesondere:
 - srbjessen/ha-warmlink
 - 00gtw00/homeassistant_warmlink
 - dort genannte ursprüngliche Reverse-Engineering-Hinweise, z. B. zyznos321/warmlink
+
+Die App enthält eigenen Code. Fremde Quellen werden im Code/README genannt, damit Attribution und Lizenzhinweise nachvollziehbar bleiben.

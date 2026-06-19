@@ -19,7 +19,7 @@ Installationsschritte
 | 3  | Python installieren          | Haken setzen bei "Add python.exe to PATH"     | Sehr wichtig fuer pip/py im CMD              |
 | 4  | ZIP entpacken                | FoxAir_Phnix_Control_Vx.x.x.zip entpacken    | Nicht direkt aus dem ZIP starten             |
 | 5  | CMD im Programmordner oeffnen| In die Adresszeile "cmd" eingeben + Enter     | Ordner mit foxair_phnix_control.py                   |
-| 6  | Pakete installieren          | py -m pip install -r requirements.txt         | Installiert PySide6 und pyserial             |
+| 6  | Pakete installieren          | py -m pip install -r requirements.txt         | Installiert PySide6, pyserial und keyring    |
 | 7  | Programm starten             | start_gui.bat doppelklicken                   | Start ohne schwarzes CMD-Fenster             |
 | 8  | Debug-Start bei Problemen    | start_gui_debug_console.bat doppelklicken     | Zeigt Fehlerausgaben im CMD-Fenster          |
 +----+------------------------------+-----------------------------------------------+----------------------------------------------+
@@ -33,6 +33,7 @@ Die Pakete stehen in requirements.txt:
 +----------+-------------------------------------------+
 | PySide6  | grafische Oberflaeche / GUI                |
 | pyserial | COM-Port / USB-RS485 fuer Modbus RTU       |
+| keyring  | sichere Passwortablage im Windows-Keyring  |
 +----------+-------------------------------------------+
 
 Manuelle Installation
@@ -82,6 +83,7 @@ Hinweise
 --------
 - Wenn das Programm nicht startet: start_gui_debug_console.bat nutzen.
 - Wenn "ModuleNotFoundError" erscheint: requirements.txt erneut installieren.
+- Wenn "Python keyring ist nicht installiert" erscheint: `py -m pip install keyring` oder erneut `py -m pip install -r requirements.txt` ausfuehren.
 - Wenn kein COM-Port sichtbar ist: USB-RS485 Treiber installieren und im Windows Geraetemanager pruefen.
 - Wenn TCP nicht verbindet: IP, Port und Firewall pruefen.
 

@@ -1,0 +1,8 @@
+PUBLIC V0.2.45 – Cloud-only-Schalter und Keyring
+
+- Version auf 0.2.45 angehoben.
+- Doppelten Schalter "Cloud-only Zeilen" aus dem Hauptfenster entfernt.
+- Der Schalter bleibt im WarmLink-Cloud-Fenster und ist bei neuen Settings standardmäßig aktiv.
+- requirements.txt enthält keyring>=25.0.
+- SETUP.txt beschreibt keyring und den Fehlerhinweis "Python keyring ist nicht installiert".
+- PyInstaller-Build sammelt keyring-Submodule/Windows-Backend explizit ein.

@@ -4,66 +4,92 @@
     "code": "H38",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Funktion unbekannt",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "H38 ist nicht External Pump Selection. ASM: normaler Vier-Variablen-Parameter 0401H/2401H; keine weitere Display-Logik gefunden."
   },
   "1061": {
     "app_label": "Fan Motor Power Curve",
     "block": "F",
     "code": "F27",
     "function": "03/16",
-    "last_review": "v39",
+    "last_review": "v0.2.41 fix8",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Fan Motor Power Curve / Lüftermotor-Leistungskurve",
+    "type": "RAW",
+    "unit": "rpm"
   },
   "1345": {
     "block": "H",
     "code": "H40",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "External Pump Selection / Externe Pumpenauswahl",
+    "type": "DIGI1",
+    "value_map": {
+      "0": "Hot Water Pump / Warmwasserpumpe",
+      "1": "Warm Water Circulation Pump / Warmwasser-Zirkulationspumpe",
+      "2": "Off Signal when defrosting / Aus-Signal beim Abtauen"
+    },
+    "app_label": "External Pump Selection",
+    "app_values": {
+      "0": "Hot Water Pump",
+      "1": "Warm Water Circulation Pump",
+      "2": "Off Signal when defrosting"
+    },
+    "last_review": "v0.2.41 fix8 user live test",
+    "notes": "Live getestet. Nicht H38. ASM-Zusatz: 2541H beeinflusst Timer-/Pumpen-Seitenauswahl."
   },
   "1348": {
     "block": "C",
     "code": "C13",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C13",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1349": {
     "block": "C",
     "code": "C14",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C14",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1350": {
     "block": "C",
     "code": "C15",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter C15",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1351": {
     "block": "E",
     "code": "E20",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter E20",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1352": {
     "block": "E",
     "code": "E21",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter (ASM)",
-    "type": "RAW"
+    "name": "Display-Firmware Parameter E21",
+    "type": "RAW",
+    "last_review": "v0.2.41 fix8",
+    "notes": "In App nicht sichtbar."
   },
   "1353": {
     "function": "03/16",
@@ -176,8 +202,9 @@
     "type": "RAW"
   },
   "2115": {
-    "name": "Displaybus 2099ff Rohwort 17 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
+    "name": "UP PWM aktuell",
+    "type": "PERCENT",
+    "unit": "%"
   },
   "2116": {
     "function": "16",

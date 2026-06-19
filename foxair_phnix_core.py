@@ -344,6 +344,18 @@ def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[in
         return f"{signed / 10.0:.1f} bar"
     if dtype in ("AMP_X2", "CURRENT_A_X2"):
         return f"{signed / 2.0:.1f} A"
+    if dtype in ("AMP_X10", "CURRENT_A_X10"):
+        return f"{signed / 10.0:.1f} A"
+    if dtype in ("VOLT", "VOLTS", "V"):
+        return f"{signed} V"
+    if dtype in ("WATT", "WATTS", "POWER_W"):
+        return f"{signed} W"
+    if dtype in ("RPM", "FAN_RPM"):
+        return f"{signed} rpm"
+    if dtype in ("KWH_PER_H", "KW_PER_H"):
+        return f"{signed} kW/h"
+    if dtype in ("KWH", "ENERGY_KWH"):
+        return f"{signed} kWh"
     if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
         return f"{signed / 100.0:.1f} m³/h"
     if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
@@ -667,12 +679,14 @@ def numeric_value_by_type(raw_value: int, dtype: str) -> float:
         return signed / 10.0
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
         return signed / 2.0
-    if dtype in ("DIGI5", "POWER_KW_X10", "KW_X10", "BAR_X10", "PRESSURE_BAR_X10", "FLOW_M3H_X10", "FLOW_X10"):
+    if dtype in ("DIGI5", "POWER_KW_X10", "KW_X10", "BAR_X10", "PRESSURE_BAR_X10", "FLOW_M3H_X10", "FLOW_X10", "AMP_X10", "CURRENT_A_X10"):
         return signed / 10.0
     if dtype in ("FLOW_M3H_X100", "FLOW_X100", "COP_X100", "COP100"):
         return signed / 100.0
     if dtype in ("AMP_X2", "CURRENT_A_X2"):
         return signed / 2.0
+    if dtype in ("VOLT", "VOLTS", "V", "WATT", "WATTS", "POWER_W", "RPM", "FAN_RPM", "KWH_PER_H", "KW_PER_H", "KWH", "ENERGY_KWH"):
+        return float(signed)
     if dtype == "DIGI6":
         return signed / 1000.0
     if dtype == "DIGI19":
