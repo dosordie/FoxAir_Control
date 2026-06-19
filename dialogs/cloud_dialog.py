@@ -18,6 +18,7 @@ from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, KEYRING_SERVICE,
     keyring_delete_password, keyring_delete_token, keyring_get_password,
     keyring_get_token, keyring_set_password, keyring_set_token,
+    translate_cloud_error_message,
 )
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
@@ -529,7 +530,7 @@ class WarmLinkCloudDialog(QDialog):
         self.status_label.setText(str(text))
 
     def _on_worker_error(self, text: str):
-        text = str(text)
+        text = translate_cloud_error_message(str(text))
         self.status_label.setText("Fehler: " + text)
         self.main_window._log("WarmLink Cloud Fehler: " + text)
         lower = text.lower()
@@ -900,8 +901,9 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log("WarmLink Cloud Schreibtest Antwort: " + text[:500].replace("\n", " "))
 
     def _on_command_error(self, text: str):
-        self.write_result.append("FEHLER: " + str(text))
-        self.main_window._log("WarmLink Cloud Schreibtest Fehler: " + str(text))
+        text = translate_cloud_error_message(str(text))
+        self.write_result.append("FEHLER: " + text)
+        self.main_window._log("WarmLink Cloud Schreibtest Fehler: " + text)
 
     def _command_finished(self):
         if self.command_thread is not None:
