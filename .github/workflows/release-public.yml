@@ -53,8 +53,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           git fetch origin $env:SOURCE_BRANCH $env:TARGET_BRANCH --tags
-          $null = git rev-parse -q --verify "refs/tags/v$env:VERSION"
-          if ($LASTEXITCODE -eq 0) {
+          $tagExists = git tag --list "v$env:VERSION"
+          if ($tagExists) {
             throw "Tag v$env:VERSION already exists. Aborting without overwriting the existing release tag."
           }
 
