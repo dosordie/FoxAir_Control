@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
 
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, KEYRING_SERVICE,
-    keyring_delete_password, keyring_get_password, keyring_set_password,
+    keyring_delete_password, keyring_delete_token, keyring_get_password,
+    keyring_get_token, keyring_set_password, keyring_set_token,
 )
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
@@ -69,6 +70,7 @@ class WarmLinkCloudDialog(QDialog):
         cfg.setdefault("show_cloud_only", True)
         cfg.setdefault("login_method", "md5")
         cfg.setdefault("login_fallbacks", False)
+        cfg.setdefault("save_token", True)
         return cfg
 
     def _build_ui(self):
@@ -107,6 +109,8 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_only_cb.setToolTip("Gemappte Cloud-Werte auch dann als Zeile zeigen, wenn lokal noch kein Registerwert gelesen wurde.")
         self.login_fallbacks_cb = QCheckBox("Login-Fallbacks erlauben")
         self.login_fallbacks_cb.setToolTip("Wenn MD5 bzw. die gespeicherte Methode fehlschlägt, weitere Hash-/App-Login-Varianten testen.")
+        self.save_token_cb = QCheckBox("Cloud-Token speichern")
+        self.save_token_cb.setToolTip("Speichert den Cloud-Token sicher im OS-Keyring, nicht in settings.json.")
         self.test_btn = QPushButton("Login testen")
         self.save_btn = QPushButton("Zugang speichern")
         self.delete_btn = QPushButton("Zugang löschen")
@@ -128,7 +132,7 @@ class WarmLinkCloudDialog(QDialog):
         login.addWidget(QLabel("Status:"), 3, 0)
         login.addWidget(self.status_label, 3, 1, 1, 3)
         btn_row = QHBoxLayout()
-        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.cloud_only_cb, self.login_fallbacks_cb):
+        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.cloud_only_cb, self.login_fallbacks_cb, self.save_token_cb):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
         login.addLayout(btn_row, 4, 0, 1, 4)
@@ -271,6 +275,7 @@ class WarmLinkCloudDialog(QDialog):
         self.overlay_cb.toggled.connect(self._overlay_toggled)
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
+        self.save_token_cb.toggled.connect(lambda _=None: self._save_settings())
         self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -294,6 +299,7 @@ class WarmLinkCloudDialog(QDialog):
         cfg.setdefault("login_method", "md5")
         cfg.setdefault("login_fallbacks", False)
         self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
+        self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
         selected = str(cfg.get("selected_device_code", ""))
         if selected:
             self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
@@ -310,6 +316,7 @@ class WarmLinkCloudDialog(QDialog):
         cfg["show_cloud_only"] = bool(self.cloud_only_cb.isChecked())
         cfg["login_method"] = str(cfg.get("login_method") or "md5").strip() or "md5"
         cfg["login_fallbacks"] = bool(self.login_fallbacks_cb.isChecked())
+        cfg["save_token"] = bool(self.save_token_cb.isChecked())
         if self.device_combo.currentData():
             cfg["selected_device_code"] = str(self.device_combo.currentData())
         self.main_window._save_settings(sync_main_fields=False)
@@ -363,6 +370,7 @@ class WarmLinkCloudDialog(QDialog):
         if user:
             try:
                 keyring_delete_password(user)
+                keyring_delete_token(user)
             except Exception as exc:
                 QMessageBox.warning(self, "Keyring", str(exc))
                 return
@@ -371,6 +379,9 @@ class WarmLinkCloudDialog(QDialog):
             cfg.pop(key, None)
         self.main_window._save_settings(sync_main_fields=False)
         self.password_edit.clear()
+        self._cloud_token = None
+        self._cloud_token_login_at = 0.0
+        self._cloud_token_username = ""
         self.status_label.setText("Zugang gelöscht.")
         self.main_window._log("WarmLink Cloud: Zugang gelöscht.")
 
@@ -389,6 +400,18 @@ class WarmLinkCloudDialog(QDialog):
             return
         self._save_settings()
         cfg = self._cloud_settings()
+        initial_token = None
+        initial_login_at = 0.0
+        if bool(cfg.get("save_token", True)):
+            if self._cloud_token_username == user and self._cloud_token:
+                initial_token = self._cloud_token
+                initial_login_at = self._cloud_token_login_at
+            else:
+                try:
+                    initial_token = keyring_get_token(user)
+                    initial_login_at = time.time() if initial_token else 0.0
+                except Exception as exc:
+                    self.main_window._log("WarmLink Cloud: Token-Keyring nicht verfügbar: " + str(exc))
         preferred_login_method = str(cfg.get("login_method") or "md5").strip() or "md5"
         login_fallbacks = bool(cfg.get("login_fallbacks", False))
         self.status_label.setText("starte ...")
@@ -406,8 +429,8 @@ class WarmLinkCloudDialog(QDialog):
             poll_once=bool(poll_once or just_login),
             preferred_login_method=preferred_login_method,
             login_fallbacks=login_fallbacks,
-            initial_token=self._cloud_token if self._cloud_token_username == user else None,
-            initial_login_at=self._cloud_token_login_at if self._cloud_token_username == user else 0.0,
+            initial_token=initial_token,
+            initial_login_at=initial_login_at,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
         self.cloud_thread.started.connect(self.cloud_worker.run)
@@ -443,13 +466,19 @@ class WarmLinkCloudDialog(QDialog):
     def _on_worker_log(self, text: str):
         self.main_window._log(str(text))
 
-    def _on_token_updated(self, token: str, login_at: float):
+    def _on_token_updated(self, token: str):
         token = str(token or "").strip()
         if not token:
             return
+        user = self.username_edit.text().strip()
         self._cloud_token = token
-        self._cloud_token_login_at = float(login_at or time.time())
-        self._cloud_token_username = self.username_edit.text().strip()
+        self._cloud_token_login_at = time.time()
+        self._cloud_token_username = user
+        if self.save_token_cb.isChecked():
+            try:
+                keyring_set_token(user, token)
+            except Exception as exc:
+                self.main_window._log("WarmLink Cloud: Token konnte nicht gespeichert werden: " + str(exc))
 
     def _on_login_method(self, method: str):
         method = str(method or "").strip()
@@ -464,8 +493,20 @@ class WarmLinkCloudDialog(QDialog):
         self.status_label.setText(str(text))
 
     def _on_worker_error(self, text: str):
-        self.status_label.setText("Fehler: " + str(text))
-        self.main_window._log("WarmLink Cloud Fehler: " + str(text))
+        text = str(text)
+        self.status_label.setText("Fehler: " + text)
+        self.main_window._log("WarmLink Cloud Fehler: " + text)
+        lower = text.lower()
+        if "401" in lower or "-100" in lower or "please login again" in lower or "login" in lower:
+            user = self.username_edit.text().strip()
+            self._cloud_token = None
+            self._cloud_token_login_at = 0.0
+            self._cloud_token_username = ""
+            if user:
+                try:
+                    keyring_delete_token(user)
+                except Exception as exc:
+                    self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
 
     def _on_devices(self, devices: list):
         self.devices = [d for d in devices if isinstance(d, dict)]

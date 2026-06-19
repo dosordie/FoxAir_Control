@@ -27,7 +27,7 @@ class WarmLinkCloudWorker(QObject):
     data = Signal(list)
     error = Signal(str)
     login_method = Signal(str)
-    token_updated = Signal(str, float)
+    token_updated = Signal(str)
     finished = Signal()
 
     def __init__(
@@ -87,13 +87,13 @@ class WarmLinkCloudWorker(QObject):
 
             devices_response = api.get_devices()
             if api.reused_initial_token and not api.last_login_method:
-                self.log.emit("WarmLink Cloud: vorhandenen Token verwendet")
+                self.log.emit("WarmLink Cloud: gespeicherten Token verwendet")
             if api.last_login_method:
                 self.preferred_login_method = api.last_login_method
                 self.login_method.emit(api.last_login_method)
                 self.log.emit(f"WarmLink Cloud: Login OK via {api.last_login_method}")
-            if api.token and api.last_login_at:
-                self.token_updated.emit(api.token, float(api.last_login_at))
+            if api.token:
+                self.token_updated.emit(api.token)
             self.status.emit("verbunden")
             devs = normalize_device_list(devices_response)
             self.devices.emit(devs)
@@ -121,8 +121,8 @@ class WarmLinkCloudWorker(QObject):
                 started = time.time()
                 try:
                     response = api.get_data_by_code(self.device_code, self.codes)
-                    if api.token and api.last_login_at:
-                        self.token_updated.emit(api.token, float(api.last_login_at))
+                    if api.token:
+                        self.token_updated.emit(api.token)
                     rows_raw = normalize_data_values(response, self.codes)
                     now_txt = time.strftime("%Y-%m-%d %H:%M:%S")
                     rows: list[dict[str, Any]] = []
