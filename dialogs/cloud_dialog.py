@@ -275,7 +275,7 @@ class WarmLinkCloudDialog(QDialog):
         self.overlay_cb.toggled.connect(self._overlay_toggled)
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
-        self.save_token_cb.toggled.connect(lambda _=None: self._save_settings())
+        self.save_token_cb.toggled.connect(self._save_token_toggled)
         self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -299,6 +299,7 @@ class WarmLinkCloudDialog(QDialog):
         cfg.setdefault("login_method", "md5")
         cfg.setdefault("login_fallbacks", False)
         self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
+        cfg.setdefault("save_token", True)
         self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
         selected = str(cfg.get("selected_device_code", ""))
         if selected:
@@ -320,6 +321,21 @@ class WarmLinkCloudDialog(QDialog):
         if self.device_combo.currentData():
             cfg["selected_device_code"] = str(self.device_combo.currentData())
         self.main_window._save_settings(sync_main_fields=False)
+
+
+    def _save_token_toggled(self, checked: bool) -> None:
+        self._save_settings()
+        if checked:
+            return
+        user = self.username_edit.text().strip()
+        if user:
+            try:
+                keyring_delete_token(user)
+            except Exception as exc:
+                self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
+        self._cloud_token = None
+        self._cloud_token_login_at = 0.0
+        self._cloud_token_username = ""
 
     def _codes(self) -> list[str]:
         text = self.codes_edit.toPlainText().replace(",", "\n").replace(";", "\n")
@@ -904,6 +920,7 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log(f"WarmLink Cloud: JSON exportiert: {path}")
 
     def closeEvent(self, event):
+        self._save_settings()
         if self.cloud_worker is not None and not getattr(self, "_force_close", False):
             # Dialog nur ausblenden, Polling laeuft weiter im Hintergrund.
             # Zum Beenden den Stop-Button nutzen oder die Haupt-App schliessen.
