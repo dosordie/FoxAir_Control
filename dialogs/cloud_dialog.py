@@ -59,6 +59,7 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token: str | None = None
         self._cloud_token_login_at: float = 0.0
         self._cloud_token_username: str = ""
+        self._loading_settings = False
         self._build_ui()
         self._load_settings()
 
@@ -275,7 +276,7 @@ class WarmLinkCloudDialog(QDialog):
         self.overlay_cb.toggled.connect(self._overlay_toggled)
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
-        self.save_token_cb.toggled.connect(lambda _=None: self._save_settings())
+        self.save_token_cb.toggled.connect(self._save_token_toggled)
         self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -290,23 +291,43 @@ class WarmLinkCloudDialog(QDialog):
 
     def _load_settings(self):
         cfg = self._cloud_settings()
-        self.username_edit.setText(str(cfg.get("username", "")))
-        self.interval_spin.setValue(max(60, int(cfg.get("poll_interval_s", 60) or 60)))
-        self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
-        self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
-        self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
-        self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
-        cfg.setdefault("login_method", "md5")
-        cfg.setdefault("login_fallbacks", False)
-        self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
-        self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
-        selected = str(cfg.get("selected_device_code", ""))
-        if selected:
-            self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
-        if self.username_edit.text().strip():
-            self.status_label.setText(f"bereit, Keyring-Service: {KEYRING_SERVICE}")
+        signal_widgets = (
+            self.ids_cb,
+            self.overlay_cb,
+            self.auto_start_cb,
+            self.cloud_only_cb,
+            self.login_fallbacks_cb,
+            self.save_token_cb,
+            self.interval_spin,
+            self.device_combo,
+        )
+        previous_signal_states = [widget.blockSignals(True) for widget in signal_widgets]
+        self._loading_settings = True
+        try:
+            self.username_edit.setText(str(cfg.get("username", "")))
+            self.interval_spin.setValue(max(60, int(cfg.get("poll_interval_s", 60) or 60)))
+            self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
+            self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
+            self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
+            self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
+            cfg.setdefault("login_method", "md5")
+            cfg.setdefault("login_fallbacks", False)
+            self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
+            cfg.setdefault("save_token", True)
+            self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
+            selected = str(cfg.get("selected_device_code", ""))
+            if selected:
+                self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
+            if self.username_edit.text().strip():
+                self.status_label.setText(f"bereit, Keyring-Service: {KEYRING_SERVICE}")
+        finally:
+            self._loading_settings = False
+            for widget, blocked in zip(signal_widgets, previous_signal_states):
+                widget.blockSignals(blocked)
 
     def _save_settings(self):
+        if getattr(self, "_loading_settings", False):
+            return
         cfg = self._cloud_settings()
         cfg["username"] = self.username_edit.text().strip()
         cfg["poll_interval_s"] = int(self.interval_spin.value())
@@ -320,6 +341,21 @@ class WarmLinkCloudDialog(QDialog):
         if self.device_combo.currentData():
             cfg["selected_device_code"] = str(self.device_combo.currentData())
         self.main_window._save_settings(sync_main_fields=False)
+
+
+    def _save_token_toggled(self, checked: bool) -> None:
+        self._save_settings()
+        if checked:
+            return
+        user = self.username_edit.text().strip()
+        if user:
+            try:
+                keyring_delete_token(user)
+            except Exception as exc:
+                self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
+        self._cloud_token = None
+        self._cloud_token_login_at = 0.0
+        self._cloud_token_username = ""
 
     def _codes(self) -> list[str]:
         text = self.codes_edit.toPlainText().replace(",", "\n").replace(";", "\n")
@@ -845,14 +881,18 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker = WarmLinkCloudCommandWorker(user, pw, dev, code, value, endpoint=endpoint, dry_run=dry_run)
         self.command_worker.moveToThread(self.command_thread)
         self.command_thread.started.connect(self.command_worker.run)
-        self.command_worker.log.connect(lambda t: self.write_result.append(str(t)))
-        self.command_worker.log.connect(self.main_window._log)
+        self.command_worker.log.connect(self._on_command_log)
         self.command_worker.result.connect(self._on_command_result)
         self.command_worker.error.connect(self._on_command_error)
         self.command_worker.finished.connect(self.command_thread.quit)
         self.command_worker.finished.connect(self.command_worker.deleteLater)
         self.command_thread.finished.connect(self._command_finished)
         self.command_thread.start()
+
+    def _on_command_log(self, text: str):
+        text = str(text)
+        self.write_result.append(text)
+        self.main_window._log(text)
 
     def _on_command_result(self, data: dict):
         text = json.dumps(data, ensure_ascii=False, indent=2)
@@ -904,6 +944,7 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log(f"WarmLink Cloud: JSON exportiert: {path}")
 
     def closeEvent(self, event):
+        self._save_settings()
         if self.cloud_worker is not None and not getattr(self, "_force_close", False):
             # Dialog nur ausblenden, Polling laeuft weiter im Hintergrund.
             # Zum Beenden den Stop-Button nutzen oder die Haupt-App schliessen.

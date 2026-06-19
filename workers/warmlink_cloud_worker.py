@@ -228,6 +228,7 @@ class WarmLinkCloudCommandWorker(QObject):
         endpoint: str = ENDPOINT_AUTO_WRITE,
         dry_run: bool = True,
         timeout_s: float = 15.0,
+        initial_token: str | None = None,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -238,13 +239,17 @@ class WarmLinkCloudCommandWorker(QObject):
         self.endpoint = str(endpoint or ENDPOINT_WRITE_MODEL_VALUE).strip()
         self.dry_run = bool(dry_run)
         self.timeout_s = float(timeout_s)
+        self.initial_token = str(initial_token or "").strip() or None
 
     @Slot()
     def run(self) -> None:
         try:
-            api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s)
-            self.log.emit("WarmLink Cloud schreiben: Login ...")
-            api.login()
+            api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s, initial_token=self.initial_token)
+            if self.initial_token:
+                self.log.emit("WarmLink Cloud schreiben: gespeicherten/vorhandenen Token verwendet")
+            else:
+                self.log.emit("WarmLink Cloud schreiben: Login ...")
+                api.login()
 
             if not self.device_code:
                 devices_response = api.get_devices()
