@@ -6100,6 +6100,7 @@ class MainWindow(QMainWindow):
         self.warmlink_cloud_dialog: Optional[WarmLinkCloudDialog] = None
         self.cloud_write_thread: Optional[QThread] = None
         self.cloud_write_worker: Optional[WarmLinkCloudCommandWorker] = None
+        self.cloud_write_code: str = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
         self.cloud_last_rows: list[dict[str, Any]] = []
         self.about_dialog: Optional[AboutDialog] = None
@@ -9622,6 +9623,7 @@ class MainWindow(QMainWindow):
             return
         dev = str(device_code or saved_device_code or "").strip()
         self._log(f"WarmLink Cloud schreiben: {cloud_code}={value} ({label or 'Hauptfenster'})")
+        self.cloud_write_code = str(cloud_code)
         self.cloud_write_thread = QThread(self)
         self.cloud_write_worker = WarmLinkCloudCommandWorker(
             username=user,
@@ -9636,12 +9638,15 @@ class MainWindow(QMainWindow):
         self.cloud_write_worker.moveToThread(self.cloud_write_thread)
         self.cloud_write_thread.started.connect(self.cloud_write_worker.run)
         self.cloud_write_worker.log.connect(self._log)
-        self.cloud_write_worker.result.connect(lambda data, cc=str(cloud_code): self._on_cloud_write_result(cc, data))
+        self.cloud_write_worker.result.connect(self._on_cloud_write_result_current)
         self.cloud_write_worker.error.connect(self._on_cloud_write_error)
         self.cloud_write_worker.finished.connect(self.cloud_write_thread.quit)
         self.cloud_write_worker.finished.connect(self.cloud_write_worker.deleteLater)
         self.cloud_write_thread.finished.connect(self._cloud_write_finished)
         self.cloud_write_thread.start()
+
+    def _on_cloud_write_result_current(self, data: dict):
+        self._on_cloud_write_result(self.cloud_write_code, data)
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
         ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
@@ -9674,6 +9679,7 @@ class MainWindow(QMainWindow):
             self.cloud_write_thread.deleteLater()
         self.cloud_write_thread = None
         self.cloud_write_worker = None
+        self.cloud_write_code = ""
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
         # Display-Modbus: bekannte Parameterregister erst nach geladenem Paket öffnen,

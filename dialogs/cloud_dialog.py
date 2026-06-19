@@ -881,14 +881,18 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker = WarmLinkCloudCommandWorker(user, pw, dev, code, value, endpoint=endpoint, dry_run=dry_run)
         self.command_worker.moveToThread(self.command_thread)
         self.command_thread.started.connect(self.command_worker.run)
-        self.command_worker.log.connect(lambda t: self.write_result.append(str(t)))
-        self.command_worker.log.connect(self.main_window._log)
+        self.command_worker.log.connect(self._on_command_log)
         self.command_worker.result.connect(self._on_command_result)
         self.command_worker.error.connect(self._on_command_error)
         self.command_worker.finished.connect(self.command_thread.quit)
         self.command_worker.finished.connect(self.command_worker.deleteLater)
         self.command_thread.finished.connect(self._command_finished)
         self.command_thread.start()
+
+    def _on_command_log(self, text: str):
+        text = str(text)
+        self.write_result.append(text)
+        self.main_window._log(text)
 
     def _on_command_result(self, data: dict):
         text = json.dumps(data, ensure_ascii=False, indent=2)
