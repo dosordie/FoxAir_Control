@@ -1,12 +1,12 @@
-# FoxAir / Phnix Control PUBLIC V0.2.45
+# FoxAir / Phnix Control PUBLIC V0.2.46
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
 
-## PUBLIC V0.2.45 – Cloud-only-Schalter bereinigt
+## PUBLIC V0.2.46 – Struktur-Refactoring
 
-Diese Public-Version enthält weiterhin die WarmLink/Linked-Go-Cloud-Funktionen aus der bisherigen PRIVATE V0.2.44 fix4 und bereinigt die Cloud-only-Bedienung:
+Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projektstruktur auf:
 
 - Cloud-Login mit gespeicherter E-Mail und Passwort im OS-Keyring (`keyring>=25.0`)
 - Cloud-Geräte-/Device-ID-Anzeige
@@ -14,18 +14,9 @@ Diese Public-Version enthält weiterhin die WarmLink/Linked-Go-Cloud-Funktionen 
 - Cloud-Wertefinder
 - Cloud-Schreibtest mit bestätigtem Endpunkt `app/device/control?lang=en`
 - Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
-- **Cloud-only Zeilen** gibt es nur noch im WarmLink-Cloud-Fenster; dort ist der Schalter standardmäßig aktiviert
-- Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames, z. B. `0x02 / 3001`
-
-### Quellen / Attribution
-
-WarmLink/Linked-Go-Cloud-Erkenntnisse und Mapping-Ideen basieren unter anderem auf öffentlicher Recherche und öffentlich verfügbaren Projekten, insbesondere:
-
-- `srbjessen/ha-warmlink`
-- `00gtw00/homeassistant_warmlink`
-- ursprüngliche Reverse-Engineering-Hinweise, soweit dort genannt, z. B. `zyznos321/warmlink`
-
-Die App enthält eigenen Code; fremde Quellen werden im Code/README genannt, damit Attribution und Lizenzhinweise nachvollziehbar bleiben.
+- **Cloud-only Zeilen** gibt es nur im WarmLink-Cloud-Fenster; dort ist der Schalter standardmäßig aktiviert
+- Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames bleibt aktiv
+- Runtime-Code ist in `core/`, `workers/`, `cloud/`, `dialogs/`, `ui/` und `data/` gegliedert
 
 ## Funktionen
 
@@ -38,27 +29,6 @@ Die App enthält eigenen Code; fremde Quellen werden im Code/README genannt, dam
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
 - Offline Register-Browser mit Umschaltung zwischen Warmlink/WP- und Display/DWIN-Mapping
-
-
-
-### PRIVATE V0.2.38 fix12 – Display-Zusatzwerte im Hauptfenster
-
-Im Backend **Modbus Display** werden jetzt zusätzlich die vom WP-Master abgefragten DWIN-/Displaywerte ab `3000` im Hauptfenster sichtbar gemacht, z. B. `3001ff`, `3011/0BC3` und `3021`. Diese Werte nutzen weiter das getrennte Display-/DWIN-Mapping, erscheinen aber nun in der normalen Registertabelle, damit Kandidaten fuer Anzeige-/Icon-/Statuswerte leichter beobachtet werden koennen.
-
-Bus-Teilnehmer `0x04` und `0x05` werden nur dann in die Hauptliste übernommen, wenn deren Registerbereich nicht mit bekannten WP-/Warmlink-Registern kollidiert. Bekannte Paket-/Statusbereiche wie `1001ff` oder `2000ff` bleiben fuer diese Fremdteilnehmer Diagnose, damit keine echten WP-Werte überschrieben werden. Warmlink und Standard-Modbus sind davon nicht betroffen.
-
-### PRIVATE V0.2.38 fix11 – Display-Snapshot
-
-Im Backend **Modbus Display** ist **Display Reboot Fake** jetzt die Standard-Snapshot-Methode für **Alle bekannten Register lesen**. Die App setzt dabei `5112H=0` und `0BC3H=8000H` ACK-gesteuert, damit der echte Master die Parameterpakete wieder an Unit `0x03` schreibt.
-
-Der PRIVATE Display-Testbereich ist in der normalen UI ausgeblendet, bleibt aber im Code erhalten. Manuelle FC03-Reads bleiben weiterhin direkt möglich, damit gezielte `qty=90`-Reads weiter getestet werden können. Warmlink und Standard-Modbus sind davon nicht betroffen.
-
-
-### PRIVATE V0.2.38 fix9 – Display-Schreiben
-
-Im Backend **Modbus Display** werden normale Schreibbefehle auf bekannte Display-Parameterpaket-Nutzwerte automatisch ueber den Bedienwertpfad ausgefuehrt. Beispiel: Ein normaler Write auf `1012=2` wird nicht direkt in den Paketblock geschrieben, sondern als `23F4=2` an Unit `0x03` gesendet. Danach wartet die App auf das vom Display gesetzte `0BC3`-Modified-Flag und den Master-Read des passenden Parameterpakets.
-
-Damit profitieren auch Rechtsklick-Write und Popups wie WP-Steuerung, Timer- und Parameterfenster. Mehrere Writes werden intern in eine ACK-gesteuerte Warteschlange gelegt.
 
 ## Installation / Download
 
@@ -95,7 +65,7 @@ Kurz gesagt:
 Aktueller DWIN-Diagnosestand:
 
 - Warmlink/WP-Register und Display/DWIN-Adressen sind getrennt. Der normale Registerbrowser bleibt Warmlink/WP; im Offline-Registerbrowser kann auf Display/DWIN-Mapping umgeschaltet werden.
-- Display-Bus-Parameterpakete von Unit `0x03` werden mit WP-/Warmlink-Mapping dekodiert; zusätzliche DWIN-/Displaywerte ab `3000` erscheinen in PRIVATE fix12 im Hauptfenster. Fremdteilnehmer `0x04`/`0x05` werden nur kollisionsfrei übernommen.
+- Display-Bus-Parameterpakete von Unit `0x03` werden mit WP-/Warmlink-Mapping dekodiert; zusätzliche DWIN-/Displaywerte ab `3000` erscheinen im Hauptfenster. Fremdteilnehmer `0x04`/`0x05` werden nur kollisionsfrei übernommen.
 - `3021` / `0x0BCD` im Block `0x03 / 3001ff` ist ein Kandidat für Display-Istmodus / Anzeige-Icon-Code. Der Wert wird bewusst **nicht** automatisch als `2012` übernommen.
 - `3013` wurde als Display-Softwareversion bestätigt/beobachtet: `17` = V1.7.
 - Für sichtbare Display-Temperaturen wie T1/T2/T4 gibt es im manuellen Register-Popup jetzt die Buttons **DWIN Temp-Suche** und **DWIN Status-Suche**. Diese lesen Anzeigeadressen auf Unit `0x03`, z. B. `0x1270`, `0x127C`, `0x1800`, `0x1880`, `0x1A00`, `0x11C0`, `0x1720`, `0x1730`.
@@ -112,21 +82,12 @@ Aktuelle Display-/HMI-Bus-Vermutungen aus Mitschnitten:
 | 0x05 | interner Parameter-/Liveblock | 2000ff Reads, 1001-1090 Writes |
 | 0x06 | Testadresse | bisher keine gesicherte Rolle |
 
-Wichtig: Auf dem Display-/HMI-Bus werden passive Frames und manuelle DWIN-Lesungen **nicht mehr automatisch in die Haupt-Registerliste übernommen**. Die Hauptliste bleibt Warmlink/WP-Mapping. Display-/DWIN-Adressen werden getrennt über `foxair_phnix_display_registers.json` nur für Popup/Log-Diagnose beschriftet. Damit überschreiben Rohblöcke wie `0x01/2099ff` keine bekannten Warmlink-Register ab 2101 mehr.
+Wichtig: Auf dem Display-/HMI-Bus werden passive Frames und manuelle DWIN-Lesungen **nicht mehr automatisch in die Haupt-Registerliste übernommen**. Die Hauptliste bleibt Warmlink/WP-Mapping. Display-/DWIN-Adressen werden getrennt über `data/foxair_phnix_display_registers.json` nur für Popup/Log-Diagnose beschriftet. Damit überschreiben Rohblöcke wie `0x01/2099ff` keine bekannten Warmlink-Register ab 2101 mehr.
 
 Hinweis zu **1999/2001 / 20xx** im Display-/HMI-Modbus: diese Blöcke sind noch nicht sauber verifiziert. FC16-ACKs und unklare 1999/2001-Frames werden deshalb nur noch geloggt, aber nicht in die Hauptliste übernommen. **2012** wird im Display-Modbus nicht mehr aus 1012 gespiegelt, weil 1012 Sollmodus und 2012 Ist-/Betriebsstatus mit unterschiedlicher Codetabelle sind. Für echte/saubere Istwerte bleibt Warmlink die bessere Quelle.
 
 Hinweis fuer Kaskaden: Bei Kaskadenanlagen koennten am **HMI-/Display-Modbus** mehrere Geraete mit unterschiedlichen Slave-Adressen haengen. Das ist noch nicht verifiziert, wird aber fuer spaetere Bus-Scan-/Mehrgeraete-Funktionen vorgemerkt.
 
-
-### PRIVATE V0.2.38 fix8 – Display-Experiment Hinweise
-
-Die PRIVATE-Buttons im Bereich **Display-Experimente** arbeiten jetzt ACK-gesteuert:
-
-- **Display Reboot Fake** setzt `5112H=0` und danach `0BC3H=8000H`. Beide Writes werden auf ACK von Unit `0x03` geprüft. Wenn `0BC3` beim nächsten `3001/3011`-Poll nicht sichtbar wird, wird nur `0BC3` erneut gesetzt.
-- **Display-Wert testen** schreibt die gewählte Variante sequenziell und wartet je Schritt auf ACK. Erst danach wird auf `0BC3` und den Master-Read des betroffenen Paketblocks gewartet.
-- Variante **B** ist der bevorzugte Bedienweg: `Register+0x2000` / Benutzerwert plus `0BC3`-Maske. Wenn B nicht greift, versucht die App automatisch Variante **C** als Fallback.
-- Schnellbuttons für Modus `1012`: **WW=0**, **Heizen=1**, **Kühlen=2**.
 
 ## Unterstützte Geräteauswahl für Defaultwerte
 
@@ -205,11 +166,11 @@ Die enthaltene GitHub-Actions-Workflow-Datei kann auf Windows automatisch ein Po
 | Datei | Zweck |
 |---|---|
 | `foxair_phnix_control.py` | GUI |
-| `foxair_phnix_core.py` | Kommunikation/Parser |
-| `foxair_phnix_registers.json` | technische Registerdaten |
-| `foxair_phnix_knowledge.json` | Beschreibungen, Hinweise, Defaults |
+| `core/foxair_phnix_core.py` | Kommunikation/Parser |
+| `data/foxair_phnix_registers.json` | technische Registerdaten |
+| `data/foxair_phnix_knowledge.json` | Beschreibungen, Hinweise, Defaults |
 | `app_icon.png` / `app_icon.ico` | App-, Fenster- und Taskleisten-Icon |
-| `tools/modbus_sniffer_plus.py` | Zusatztool/Sniffer |
+| `devtools/modbus_sniffer_plus.py` | Zusatztool/Sniffer |
 
 ## Haftung
 
@@ -232,28 +193,6 @@ Portable/private Versionen koennen weiterhin alles im Programmordner speichern. 
 
 
 
-### PRIVATE V0.2.37 Fix2 Hinweise
-
-Display-/HMI-Modbus übernimmt zusätzlich den Statusblock `Addr 0x01 / 1999ff`.
-Dadurch können Werte wie `2011` und `2012` aus den passiven Statuspaketen sichtbar werden.
-Parameterpakete von `Addr 0x03 / 1001ff` bleiben weiterhin aktiv, damit `1012` beim Umschalten am Display mitläuft.
-
-### PRIVATE V0.2.35 Fix1 Hinweise
-
-- Die Popups **WP-Steuerung ...** und **AT-Kompensation ...** laden beim Öffnen automatisch die benötigten Register.
-- Beide Popups besitzen eine optionale **Autorefresh**-Funktion.
-- Im WP-Steuerung-Popup aktualisiert **Status/Livewerte lesen** die Anzeige automatisch, sobald Werte eingehen.
-- Bei Kombimodi mit Warmwasser ist zusätzlich der **WW-Sollwert Register 1157** editierbar.
-- Die AT-Kompensationskurve wird zusätzlich grafisch angezeigt.
-
-### PRIVATE V0.2.35 Hinweise
-
-- Neue Popups: **WP-Steuerung ...** und **AT-Kompensation ...**.
-- WP-Steuerung trennt klar zwischen **1012 Modus setzen** und **2012 aktuellem Betriebsstatus**.
-- Silent Mode wird über **1016 Bit 1 / Maske 0x0002** gelesen und per Read-Modify-Write geschrieben.
-- AT-Kompensation nutzt **1236 / H36** als Aktiv-Schalter, **1234** als Slope und **1235** als Offset. Die Kurve wird nach der aus der App abgeleiteten Formel `Ziel = Offset - Slope × AT` mit Mindestbegrenzung angezeigt.
-- Korrekturen: **2043 = V**, **2062 = V**, **2063 = °C**.
-
 ### Windows SmartScreen Hinweis
 
 Da FoxAir / Phnix Control aktuell nicht digital signiert ist, kann Windows beim ersten Start eine SmartScreen-Warnung anzeigen, z. B. **"Der Computer wurde durch Windows geschützt"**.
@@ -270,7 +209,7 @@ Die Warnung erscheint typischerweise bei unbekannten bzw. nicht signierten EXE-D
 - Theme-Fix: Darstellung kann jetzt **System / Hell / Dunkel** nutzen. Bei System wird unter Windows der App-Modus aus der Registry erkannt. Hell soll wieder wie der frühere helle Standard aussehen; Dunkel nutzt konsequent dunkle Tabellenfarben.
 - Haupt-Registertabelle im Dunkelmodus korrigiert; helle Zeilen mit heller Schrift werden vermieden. Log/Konsole ist im Hellmodus wieder hell.
 - Splash/Startlogo wird separat gestylt und übernimmt keine gemischten Systemfarben mehr.
-- Public wird in Titelleiste/About/Splash nicht mehr angezeigt; nur PRIVATE-Versionen bekommen eine sichtbare PRIVATE-Markierung.
+- Public wird in Titelleiste/About/Splash nicht mehr angezeigt; interne Entwicklungsstände können abweichend markiert sein.
 - Kopfzeile bereinigt: Geräte-/Modellinfo wird nicht mehr neben der aktuellen Verbindung angezeigt, sondern bleibt in den Programm-Einstellungen.
 - Update-Download verbessert: Setup/Installer und Portable werden anhand Release-Asset-Namen bzw. Einstellung **Automatisch / Portable / Setup** ausgewählt; Source-ZIPs werden ignoriert.
 - Button **Init-Blöcke lesen** umbenannt in **Alle bekannten Register lesen** und im Bedienbereich über dem Register-Lesen/Schreiben platziert.
@@ -321,13 +260,3 @@ Hinweis V0.2.32: H36 ist Register 1236, H37 ist Register 1046. Register 1048 ist
 - Fix für Warmlink-Timing: späte Antworten der letzten Statusblöcke können nicht mehr so leicht dem falschen Pending-Read zugeordnet werden.
 - DisplayWorker-Timing verbessert: vor aktiven Display-Paketreads wird jetzt auf eine Buslücke gewartet; Timeout leicht erhöht.
 - Warmlink/Standard-Lesepfad und DisplayWorker bleiben funktional getrennt.
-
-### PRIVATE fix5 Display-Experimente
-
-Im Backend **Modbus Display** gibt es in der Seitenleiste den Bereich **Display-Experimente PRIVATE**.
-
-- **Display Reboot Fake** sendet an Unit 3 zuerst `5112H=0000H` und danach `0BC3H=8000H`. Erwartung: Der echte Master schreibt danach die Parameterblöcke `1001`, `1091`, `1181`, `1271`, `1361`, `1451` per FC16 an Unit 3 und löscht anschließend `0BC3` wieder auf `0`.
-- **Display-Wert simulieren** benötigt einen vollständigen Paketblock im Cache, z. B. `1001-1090`. Der Block kommt normalerweise durch Display-Reboot, Display-Bedienung oder den Reboot-Fake herein. Das Tool ändert genau ein Register im Block, schreibt den ganzen Block per FC16 an Unit 3 und setzt danach das passende `0BC3`-Änderungsflag.
-- Schnelltest Modus: **Heizen** setzt `1012=1`, **Kühlen** setzt `1012=2`. Der echte Status ist weiterhin im Broadcast `2012` zu beobachten.
-
-Diese Funktionen sind Diagnose-/Experimentalfunktionen und sollten nur mit aktivem RAW-Log und kurzer Beobachtungszeit genutzt werden.

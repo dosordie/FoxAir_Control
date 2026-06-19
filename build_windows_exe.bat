@@ -13,12 +13,10 @@ py -m PyInstaller ^
   --windowed ^
   --name "FoxAir_Phnix_Control" ^
   --icon "app_icon.ico" ^
-  --add-data "foxair_phnix_registers.json;." ^
-  --add-data "foxair_phnix_knowledge.json;." ^
+  --add-data "data;data" ^
   --add-data "app_icon.png;." ^
   --add-data "app_icon.ico;." ^
-  --add-data "docs;docs" ^
-  --add-data "tools;tools" ^
+  --add-data "docs\public;docs\public" ^
   --collect-submodules keyring ^
   --hidden-import keyring.backends.Windows ^
   --hidden-import keyring.backends.null ^

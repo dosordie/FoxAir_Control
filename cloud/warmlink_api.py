@@ -4,7 +4,7 @@
 WarmLink/Linked-Go API mapping inspired by srbjessen/ha-warmlink, licensed
 under MIT. Original reverse engineering credited there to zyznos321/warmlink.
 
-V0.2.45: Lesen bleibt Standard. Login ist robuster (plain, md5, md5md5,
+V0.2.46: Lesen bleibt Standard. Login ist robuster (plain, md5, md5md5,
 optionale App-Payload-Felder). Schreibtests koennen mehrere bekannte Endpoint-
 Varianten testen, bleiben aber im UI explizit freizuschalten.
 """
@@ -19,7 +19,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from warmlink_cloud_codes import WARMLINK_PRODUCT_IDS
+from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
 BASE_URL = SERVICE_ROOT + "/crmservice/api"
@@ -97,7 +97,7 @@ class WarmLinkCloudApi:
         headers = {
             "Content-Type": "application/json;charset=utf-8",
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.45",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.46",
         }
         if token:
             headers["x-token"] = token

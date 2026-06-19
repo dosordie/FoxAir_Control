@@ -9,7 +9,7 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from warmlink_cloud_api import (
+from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     ENDPOINT_WRITE_MODEL_VALUE,
     WarmLinkCloudApi,
