@@ -39,7 +39,7 @@ jobs:
           Compress-Archive -Path dist\FoxAir_Phnix_Control_Portable\* -DestinationPath "FoxAir_Phnix_Control_${tag}_Windows_Portable.zip" -Force
 
       - name: Install Inno Setup
-        run: choco install innosetup --yes
+        run: choco install innosetup -y
 
       - name: Build installer
         run: .\build_windows_setup.bat
