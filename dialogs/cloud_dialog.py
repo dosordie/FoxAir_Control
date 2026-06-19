@@ -59,6 +59,7 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token: str | None = None
         self._cloud_token_login_at: float = 0.0
         self._cloud_token_username: str = ""
+        self._loading_settings = False
         self._build_ui()
         self._load_settings()
 
@@ -290,24 +291,43 @@ class WarmLinkCloudDialog(QDialog):
 
     def _load_settings(self):
         cfg = self._cloud_settings()
-        self.username_edit.setText(str(cfg.get("username", "")))
-        self.interval_spin.setValue(max(60, int(cfg.get("poll_interval_s", 60) or 60)))
-        self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
-        self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
-        self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
-        self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
-        cfg.setdefault("login_method", "md5")
-        cfg.setdefault("login_fallbacks", False)
-        self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
-        cfg.setdefault("save_token", True)
-        self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
-        selected = str(cfg.get("selected_device_code", ""))
-        if selected:
-            self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
-        if self.username_edit.text().strip():
-            self.status_label.setText(f"bereit, Keyring-Service: {KEYRING_SERVICE}")
+        signal_widgets = (
+            self.ids_cb,
+            self.overlay_cb,
+            self.auto_start_cb,
+            self.cloud_only_cb,
+            self.login_fallbacks_cb,
+            self.save_token_cb,
+            self.interval_spin,
+            self.device_combo,
+        )
+        previous_signal_states = [widget.blockSignals(True) for widget in signal_widgets]
+        self._loading_settings = True
+        try:
+            self.username_edit.setText(str(cfg.get("username", "")))
+            self.interval_spin.setValue(max(60, int(cfg.get("poll_interval_s", 60) or 60)))
+            self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
+            self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
+            self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
+            self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
+            cfg.setdefault("login_method", "md5")
+            cfg.setdefault("login_fallbacks", False)
+            self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
+            cfg.setdefault("save_token", True)
+            self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
+            selected = str(cfg.get("selected_device_code", ""))
+            if selected:
+                self.device_combo.addItem(f"gespeichert: {self._mask(selected)}", selected)
+            if self.username_edit.text().strip():
+                self.status_label.setText(f"bereit, Keyring-Service: {KEYRING_SERVICE}")
+        finally:
+            self._loading_settings = False
+            for widget, blocked in zip(signal_widgets, previous_signal_states):
+                widget.blockSignals(blocked)
 
     def _save_settings(self):
+        if getattr(self, "_loading_settings", False):
+            return
         cfg = self._cloud_settings()
         cfg["username"] = self.username_edit.text().strip()
         cfg["poll_interval_s"] = int(self.interval_spin.value())
