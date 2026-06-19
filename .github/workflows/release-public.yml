@@ -123,11 +123,15 @@ jobs:
       - name: Install Inno Setup
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Continue'
+          $ErrorActionPreference = 'Stop'
           choco install innosetup -y
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning 'Chocolatey could not install Inno Setup. Setup build may be skipped, but portable ZIP will still be built.'
-          }
+          $isccCandidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "Inno Setup installation failed: ISCC.exe not found." }
+          Write-Host "Inno Setup found: $iscc"
 
       - name: Build Windows EXE
         shell: cmd
@@ -181,7 +185,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $portableZip = "FoxAir_Phnix_Control_v$env:VERSION`_Windows_Portable.zip"
           $onedirPath = 'dist/FoxAir_Phnix_Control'
-          $onefilePath = 'dist/FoxAir_Phnix_Control.exe'
           if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
           if (Test-Path $onedirPath -PathType Container) {
             Compress-Archive -Path $onedirPath -DestinationPath $portableZip -Force
@@ -191,23 +194,9 @@ jobs:
             }
             Add-Content -Path $env:GITHUB_ENV -Value "PORTABLE_ZIP=$portableZip"
             Write-Host "Created portable ZIP $portableZip ($zipSize bytes)."
-          } elseif (Test-Path $onefilePath -PathType Leaf) {
-            Add-Content -Path $env:GITHUB_ENV -Value "ONEFILE_EXE=$onefilePath"
-            Write-Host 'PyInstaller onefile executable found; it will be released because no onedir folder exists.'
           } else {
-            throw 'Neither dist/FoxAir_Phnix_Control/ nor dist/FoxAir_Phnix_Control.exe exists after the Windows EXE build.'
+            throw 'dist/FoxAir_Phnix_Control/ does not exist after the Windows EXE build; portable ZIP cannot be created.'
           }
-
-      - name: Build source ZIP
-        shell: pwsh
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $zip = "FoxAir_Phnix_Control_PUBLIC_V$env:VERSION`_source.zip"
-          if (Test-Path $zip) { Remove-Item $zip -Force }
-          git archive --format=zip --output=$zip HEAD
-          Add-Content -Path $env:GITHUB_ENV -Value "SOURCE_ZIP=$zip"
 
       - name: Push target branch and tag
         shell: pwsh
@@ -233,20 +222,16 @@ jobs:
           $assetDir = 'release-assets'
           if (Test-Path $assetDir) { Remove-Item $assetDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
-          Copy-Item $env:SOURCE_ZIP $assetDir
-          if ($env:PORTABLE_ZIP) {
-            Copy-Item $env:PORTABLE_ZIP $assetDir
-          } elseif ($env:ONEFILE_EXE) {
-            Copy-Item $env:ONEFILE_EXE $assetDir
-          } else {
-            throw 'No portable ZIP or onefile EXE was prepared for release.'
+          if (-not $env:PORTABLE_ZIP) {
+            throw 'No portable ZIP was prepared for release.'
           }
+          Copy-Item $env:PORTABLE_ZIP $assetDir
           $setupName = "FoxAir_Phnix_Control_Setup_v$env:VERSION.exe"
           $setup = Get-ChildItem -Path 'installer','.' -Recurse -File -Filter $setupName -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($setup) {
             Copy-Item $setup.FullName -Destination (Join-Path $assetDir $setupName) -Force
           } else {
-            Write-Warning "Setup EXE $setupName was not found. Continuing with source and portable assets."
+            Write-Warning "Setup EXE $setupName was not found. Continuing with portable assets only."
           }
           $assets = Get-ChildItem -Path $assetDir -File
           if (-not $assets) { throw 'No release assets were collected.' }
