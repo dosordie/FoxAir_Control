@@ -60,6 +60,7 @@ class WarmLinkCloudWorker(QObject):
     @Slot()
     def run(self) -> None:
         backoff_s = 5.0
+        api: WarmLinkCloudApi | None = None
         try:
             api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s)
             self.status.emit("Login ...")
@@ -166,6 +167,18 @@ class WarmLinkCloudWorker(QObject):
                     if self._sleep_interruptible(backoff_s):
                         break
                     backoff_s = min(300.0, backoff_s * 2.0)
+        except Exception as exc:
+            msg = str(exc)
+            self.error.emit(msg)
+            self.status.emit("Fehler: " + msg)
+            self.log.emit("WarmLink Cloud: Login/Start Fehler: " + msg)
+            if api is not None and getattr(api, "last_login_attempts", None):
+                attempts = "; ".join(
+                    f"{a.get('attempt')}={a.get('error_code') or a.get('http_status') or a.get('message') or 'fail'}"
+                    for a in api.last_login_attempts
+                )
+                if attempts:
+                    self.log.emit("WarmLink Cloud: Login-Versuche: " + attempts)
         finally:
             self.finished.emit()
 
