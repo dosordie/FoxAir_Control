@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - work
+      - main
+  push:
+    branches:
+      - work
+      - main
+
+jobs:
+  compile:
+    name: Compile on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile all Python files
+        run: python -m compileall .
+
+      - name: Compile main entry points
+        shell: pwsh
+        run: |
+          $files = @(
+            'foxair_phnix_control.py',
+            'cloud/warmlink_api.py',
+            'workers/warmlink_cloud_worker.py',
+            'dialogs/cloud_dialog.py'
+          )
+
+          foreach ($file in $files) {
+            if (Test-Path $file) {
+              python -m py_compile $file
+            } else {
+              Write-Host "Optional compile target not found: $file"
+            }
+          }
