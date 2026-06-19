@@ -120,18 +120,41 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall .
 
-      - name: Install Inno Setup
+      - name: Install or locate Inno Setup
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          choco install innosetup -y
-          $isccCandidates = @(
-            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          )
-          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $iscc) { throw "Inno Setup installation failed: ISCC.exe not found." }
-          Write-Host "Inno Setup found: $iscc"
+          choco upgrade innosetup -y --no-progress
+
+          $iscc = $null
+          $isccCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($isccCommand) {
+            $iscc = $isccCommand.Source
+          }
+
+          if (-not $iscc) {
+            $isccCandidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+              'C:\ProgramData\chocolatey\bin\ISCC.exe',
+              'C:\ProgramData\chocolatey\lib\innosetup\tools\ISCC.exe'
+            )
+            $iscc = $isccCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          }
+
+          if (-not $iscc) {
+            $iscc = Get-ChildItem 'C:\Program Files*', 'C:\ProgramData\chocolatey' -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+
+          if ($iscc) {
+            $iscc = (Resolve-Path $iscc).Path
+            $isccDir = Split-Path -Parent $iscc
+            Write-Host "Inno Setup found: $iscc"
+            Add-Content -Path $env:GITHUB_PATH -Value $isccDir
+            Add-Content -Path $env:GITHUB_ENV -Value "ISCC_EXE=$iscc"
+          } else {
+            Write-Warning 'ISCC.exe was not found after installing/upgrading Inno Setup. Setup build will be skipped; portable ZIP will still be released.'
+          }
 
       - name: Build Windows EXE
         shell: cmd
@@ -147,15 +170,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $isccCandidates = @(
-            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          )
-          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if ((Test-Path 'build_windows_setup.bat') -and $iscc) {
+          $iscc = $env:ISCC_EXE
+          if (-not $iscc) {
+            $isccCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+            if ($isccCommand) {
+              $iscc = $isccCommand.Source
+            }
+          }
+
+          if ((Test-Path 'build_windows_setup.bat') -and $iscc -and (Test-Path $iscc)) {
+            $isccDir = Split-Path -Parent $iscc
+            Write-Host "Using Inno Setup compiler: $iscc"
+            $env:PATH = "$isccDir;$env:PATH"
             cmd /c call build_windows_setup.bat
-          } elseif (-not $iscc) {
-            Write-Warning 'Inno Setup 6 is not available on this runner. Skipping setup build; portable ZIP will still be released.'
+          } elseif (-not $iscc -or -not (Test-Path $iscc)) {
+            Write-Warning 'ISCC.exe is not available on this runner. Skipping setup build; portable ZIP will still be released.'
           } else {
             Write-Warning 'build_windows_setup.bat not found. Skipping setup build.'
           }
