@@ -74,13 +74,24 @@ class WarmLinkCloudResponse:
 
 
 class WarmLinkCloudApi:
-    def __init__(self, username: str, password: str, base_url: str = BASE_URL, timeout: float = 15.0) -> None:
+    TOKEN_MAX_AGE_S = 24 * 60 * 60
+
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        base_url: str = BASE_URL,
+        timeout: float = 15.0,
+        initial_token: str | None = None,
+        initial_login_at: float | None = None,
+    ) -> None:
         self.username = str(username or "").strip()
         self.password = str(password or "")
         self.base_url = str(base_url or BASE_URL).rstrip("/")
         self.timeout = float(timeout)
-        self.token: str | None = None
-        self.last_login_at: float = 0.0
+        self.token: str | None = str(initial_token or "").strip() or None
+        self.last_login_at: float = float(initial_login_at or 0.0)
+        self.reused_initial_token: bool = False
         self.last_login_attempts: list[dict[str, Any]] = []
         self.last_login_method: str | None = None
         self.preferred_login_method: str | None = "md5"
@@ -164,6 +175,9 @@ class WarmLinkCloudApi:
         msg = WarmLinkCloudApi._message(data).lower()
         return code == "404" or "not found" in msg
 
+    def has_fresh_token(self) -> bool:
+        return bool(self.token) and self.last_login_at > 0 and (time.time() - self.last_login_at) < self.TOKEN_MAX_AGE_S
+
     def _login_payload(self, password_value: str, extended: bool = False) -> dict[str, Any]:
         payload: dict[str, Any] = {"userName": self.username, "password": password_value}
         if extended:
@@ -237,8 +251,11 @@ class WarmLinkCloudApi:
         raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + fallback_txt + (f" ({detail})" if detail else ""))
 
     def post(self, endpoint: str, payload: dict[str, Any], relogin: bool = True) -> dict[str, Any]:
-        if not self.token:
+        if not self.has_fresh_token():
+            self.token = None
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
+        else:
+            self.reused_initial_token = True
         data = self._request_json(endpoint, payload, token=self.token)
         if relogin and self._token_expired(data):
             self.token = None
