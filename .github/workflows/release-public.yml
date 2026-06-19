@@ -1,0 +1,231 @@
+name: Release Public
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, for example 0.2.47'
+        required: true
+        type: string
+      source_branch:
+        description: 'Branch to merge from'
+        required: true
+        default: work
+        type: string
+      target_branch:
+        description: 'Branch to release from'
+        required: true
+        default: main
+        type: string
+      prerelease:
+        description: 'Mark GitHub Release as prerelease'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish public release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout full repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.target_branch }}
+
+      - name: Configure Git user
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch release branches and verify tag is new
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git fetch origin $env:SOURCE_BRANCH $env:TARGET_BRANCH --tags
+          $null = git rev-parse -q --verify "refs/tags/v$env:VERSION"
+          if ($LASTEXITCODE -eq 0) {
+            throw "Tag v$env:VERSION already exists. Aborting without overwriting the existing release tag."
+          }
+
+      - name: Checkout target branch and merge source branch
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git checkout -B $env:TARGET_BRANCH "origin/$env:TARGET_BRANCH"
+          git merge --no-ff --no-commit "origin/$env:SOURCE_BRANCH"
+
+      - name: Set release version
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $today = Get-Date -Format 'yyyy-MM-dd'
+
+          $appFile = 'foxair_phnix_control.py'
+          $app = Get-Content $appFile -Raw
+          $app = $app -replace '(?m)^APP_VERSION\s*=\s*"[^"]*"', "APP_VERSION = `"$env:VERSION`""
+          $app = $app -replace '(?m)^BUILD_DATE\s*=\s*"[^"]*"', "BUILD_DATE = `"$today`""
+          Set-Content -Path $appFile -Value $app -NoNewline
+
+          $apiFile = 'cloud/warmlink_api.py'
+          $api = Get-Content $apiFile -Raw
+          $api = $api -replace 'FoxAir-Phnix-Control-WarmLinkCloud/[0-9]+\.[0-9]+\.[0-9]+', "FoxAir-Phnix-Control-WarmLinkCloud/$env:VERSION"
+          Set-Content -Path $apiFile -Value $api -NoNewline
+
+          Get-ChildItem -Path 'installer' -Filter '*.iss' -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            $content = $content -replace '(?m)^#define\s+MyAppVersion\s+"[^"]*"', "#define MyAppVersion `"$env:VERSION`""
+            Set-Content -Path $_.FullName -Value $content -NoNewline
+          }
+
+      - name: Verify release version
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $appVersionLine = Select-String -Path 'foxair_phnix_control.py' -Pattern '^APP_VERSION\s*=\s*"(.+)"$'
+          if (-not $appVersionLine -or $appVersionLine.Matches[0].Groups[1].Value -ne $env:VERSION) {
+            throw "APP_VERSION must be '$env:VERSION' in foxair_phnix_control.py before releasing."
+          }
+
+          $installerVersionLine = Select-String -Path 'installer/FoxAir_Phnix_Control.iss' -Pattern '^#define\s+MyAppVersion\s+"(.+)"$'
+          if (-not $installerVersionLine -or $installerVersionLine.Matches[0].Groups[1].Value -ne $env:VERSION) {
+            throw "MyAppVersion must be '$env:VERSION' in installer/FoxAir_Phnix_Control.iss before releasing."
+          }
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compile Python sources
+        run: python -m compileall .
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y
+
+      - name: Build Windows EXE
+        shell: cmd
+        run: |
+          if exist build_windows_exe.bat (
+            call build_windows_exe.bat
+          ) else (
+            echo build_windows_exe.bat not found.
+            exit /b 1
+          )
+
+      - name: Build Windows setup if Inno Setup is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $isccCandidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ((Test-Path 'build_windows_setup.bat') -and $iscc) {
+            cmd /c call build_windows_setup.bat
+          } elseif (-not $iscc) {
+            Write-Warning 'Inno Setup 6 is not available on this runner. Skipping setup build; EXE assets will still be released.'
+          } else {
+            Write-Warning 'build_windows_setup.bat not found. Skipping setup build.'
+          }
+
+      - name: Commit release changes
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git add foxair_phnix_control.py cloud/warmlink_api.py installer/*.iss
+          $PSNativeCommandUseErrorActionPreference = $false
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            throw "No release changes to commit after merge/version update. Aborting before push/tag."
+          }
+          git commit -m "Release v$env:VERSION"
+
+      - name: Build source ZIP
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = "FoxAir_Phnix_Control_Source_v$env:VERSION.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          git archive --format=zip --output=$zip HEAD
+          Add-Content -Path $env:GITHUB_ENV -Value "SOURCE_ZIP=$zip"
+
+      - name: Push target branch and tag
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git push origin "HEAD:$env:TARGET_BRANCH"
+          git tag "v$env:VERSION"
+          git push origin "v$env:VERSION"
+
+      - name: Collect release assets
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assetDir = 'release-assets'
+          New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
+          Copy-Item $env:SOURCE_ZIP $assetDir
+          Get-ChildItem -Path 'dist' -Recurse -File -Include '*.exe','*.zip' -ErrorAction SilentlyContinue | Copy-Item -Destination $assetDir -Force
+          Get-ChildItem -Path 'installer' -Recurse -File -Include '*Setup*.exe','*.exe' -ErrorAction SilentlyContinue | Copy-Item -Destination $assetDir -Force
+          $assets = Get-ChildItem -Path $assetDir -File
+          if (-not $assets) { throw 'No release assets were collected.' }
+          $assets.FullName | Set-Content release-assets.txt
+
+      - name: Prepare release notes
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseNotes = "RELEASE_PUBLIC_V$env:VERSION.md"
+          if (Test-Path $releaseNotes) {
+            Copy-Item $releaseNotes release-notes.md
+          } elseif (Test-Path 'CHANGELOG.md') {
+            Copy-Item 'CHANGELOG.md' release-notes.md
+          } else {
+            "Public release v$env:VERSION" | Set-Content release-notes.md
+          }
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $args = @('release', 'create', "v$env:VERSION", '--title', "FoxAir Control v$env:VERSION", '--notes-file', 'release-notes.md')
+          if ($env:PRERELEASE -eq 'true') { $args += '--prerelease' }
+          $args += Get-Content release-assets.txt
+          gh @args
