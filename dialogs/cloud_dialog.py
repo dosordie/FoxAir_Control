@@ -55,6 +55,9 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.devices: list[dict[str, Any]] = []
         self.data_rows: list[dict[str, Any]] = []
+        self._cloud_token: str | None = None
+        self._cloud_token_login_at: float = 0.0
+        self._cloud_token_username: str = ""
         self._build_ui()
         self._load_settings()
 
@@ -403,6 +406,8 @@ class WarmLinkCloudDialog(QDialog):
             poll_once=bool(poll_once or just_login),
             preferred_login_method=preferred_login_method,
             login_fallbacks=login_fallbacks,
+            initial_token=self._cloud_token if self._cloud_token_username == user else None,
+            initial_login_at=self._cloud_token_login_at if self._cloud_token_username == user else 0.0,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
         self.cloud_thread.started.connect(self.cloud_worker.run)
@@ -412,6 +417,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.data.connect(self._on_data)
         self.cloud_worker.error.connect(self._on_worker_error)
         self.cloud_worker.login_method.connect(self._on_login_method)
+        self.cloud_worker.token_updated.connect(self._on_token_updated)
         self.cloud_worker.finished.connect(self.cloud_thread.quit)
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
@@ -436,6 +442,14 @@ class WarmLinkCloudDialog(QDialog):
 
     def _on_worker_log(self, text: str):
         self.main_window._log(str(text))
+
+    def _on_token_updated(self, token: str, login_at: float):
+        token = str(token or "").strip()
+        if not token:
+            return
+        self._cloud_token = token
+        self._cloud_token_login_at = float(login_at or time.time())
+        self._cloud_token_username = self.username_edit.text().strip()
 
     def _on_login_method(self, method: str):
         method = str(method or "").strip()

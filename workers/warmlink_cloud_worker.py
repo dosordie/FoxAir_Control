@@ -27,6 +27,7 @@ class WarmLinkCloudWorker(QObject):
     data = Signal(list)
     error = Signal(str)
     login_method = Signal(str)
+    token_updated = Signal(str, float)
     finished = Signal()
 
     def __init__(
@@ -40,6 +41,8 @@ class WarmLinkCloudWorker(QObject):
         timeout_s: float = 15.0,
         preferred_login_method: str | None = "md5",
         login_fallbacks: bool = False,
+        initial_token: str | None = None,
+        initial_login_at: float | None = None,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -51,6 +54,8 @@ class WarmLinkCloudWorker(QObject):
         self.timeout_s = float(timeout_s)
         self.preferred_login_method = str(preferred_login_method or "md5").strip() or "md5"
         self.login_fallbacks = bool(login_fallbacks)
+        self.initial_token = str(initial_token or "").strip() or None
+        self.initial_login_at = float(initial_login_at or 0.0)
         self._stop_event = threading.Event()
         self._last_good_rows: list[dict[str, Any]] = []
         self._last_good_by_code: dict[str, dict[str, Any]] = {}
@@ -67,17 +72,29 @@ class WarmLinkCloudWorker(QObject):
         backoff_s = 5.0
         api: WarmLinkCloudApi | None = None
         try:
-            api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s)
-            self.status.emit("Login ...")
-            self.log.emit("WarmLink Cloud: Login wird versucht ...")
-            api.login(preferred_method=self.preferred_login_method, use_fallbacks=self.login_fallbacks)
+            api = WarmLinkCloudApi(
+                self.username,
+                self.password,
+                timeout=self.timeout_s,
+                initial_token=self.initial_token,
+                initial_login_at=self.initial_login_at,
+            )
+            api.preferred_login_method = self.preferred_login_method
+            api.use_login_fallbacks = self.login_fallbacks
+            self.status.emit("verbunden" if api.has_fresh_token() else "Login ...")
+            if not api.has_fresh_token():
+                self.log.emit("WarmLink Cloud: Login wird versucht ...")
+
+            devices_response = api.get_devices()
+            if api.reused_initial_token and not api.last_login_method:
+                self.log.emit("WarmLink Cloud: vorhandenen Token verwendet")
             if api.last_login_method:
                 self.preferred_login_method = api.last_login_method
                 self.login_method.emit(api.last_login_method)
+                self.log.emit(f"WarmLink Cloud: Login OK via {api.last_login_method}")
+            if api.token and api.last_login_at:
+                self.token_updated.emit(api.token, float(api.last_login_at))
             self.status.emit("verbunden")
-            self.log.emit(f"WarmLink Cloud: Login OK via {api.last_login_method or self.preferred_login_method}")
-
-            devices_response = api.get_devices()
             devs = normalize_device_list(devices_response)
             self.devices.emit(devs)
             self.log.emit(f"WarmLink Cloud: {len(devs)} Gerät(e) gefunden")
@@ -104,6 +121,8 @@ class WarmLinkCloudWorker(QObject):
                 started = time.time()
                 try:
                     response = api.get_data_by_code(self.device_code, self.codes)
+                    if api.token and api.last_login_at:
+                        self.token_updated.emit(api.token, float(api.last_login_at))
                     rows_raw = normalize_data_values(response, self.codes)
                     now_txt = time.strftime("%Y-%m-%d %H:%M:%S")
                     rows: list[dict[str, Any]] = []
