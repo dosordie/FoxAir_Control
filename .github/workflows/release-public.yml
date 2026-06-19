@@ -120,6 +120,10 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall .
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y
+
       - name: Build Windows EXE
         shell: cmd
         run: |
