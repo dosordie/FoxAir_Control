@@ -104,7 +104,7 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.46"
+APP_VERSION = "0.2.47"
 BUILD_DATE = "2026-06-19"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
