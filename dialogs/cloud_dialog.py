@@ -26,6 +26,7 @@ from cloud.warmlink_codes import (
     code_display_name,
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudWorker, WarmLinkCloudCommandWorker
+from core.settings_manager import ensure_warmlink_cloud_defaults
 
 class WarmLinkCloudDialog(QDialog):
     """Optionale WarmLink/Linked-Go Cloud-Anbindung mit Overlay/Compare.
@@ -65,15 +66,7 @@ class WarmLinkCloudDialog(QDialog):
         self._load_settings()
 
     def _cloud_settings(self) -> dict[str, Any]:
-        cfg = self.main_window.settings.setdefault("warmlink_cloud", {})
-        if not isinstance(cfg, dict):
-            cfg = {}
-            self.main_window.settings["warmlink_cloud"] = cfg
-        cfg.setdefault("show_cloud_only", True)
-        cfg.setdefault("login_method", "md5")
-        cfg.setdefault("login_fallbacks", False)
-        cfg.setdefault("save_token", True)
-        return cfg
+        return ensure_warmlink_cloud_defaults(self.main_window.settings)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -311,10 +304,7 @@ class WarmLinkCloudDialog(QDialog):
             self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
             self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
             self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
-            cfg.setdefault("login_method", "md5")
-            cfg.setdefault("login_fallbacks", False)
             self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
-            cfg.setdefault("save_token", True)
             self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
             selected = str(cfg.get("selected_device_code", ""))
             if selected:
