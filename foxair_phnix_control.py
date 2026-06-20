@@ -5954,6 +5954,7 @@ class MainWindow(QMainWindow):
         self.knowledge_path = os.path.join(self.user_data_dir, "data/foxair_phnix_knowledge.json")
         self.bundled_knowledge_path = os.path.join(resource_dir, "data/foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
+        self._restore_main_window_size()
         apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "system")))
         self.knowledge_defs = self._load_knowledge_defs()
         self.regmap = RegisterMap(self.regmap_path)
@@ -6696,12 +6697,44 @@ class MainWindow(QMainWindow):
             "display_write_mode": str(self.settings.get("display_write_mode", "fc16")),
             "show_dual_logger_button_display": bool(self.settings.get("show_dual_logger_button_display", False)),
             "log_level": int(self.settings.get("log_level", 2)),
+            "main_window": self.settings.get("main_window", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
         }
 
     def _write_settings_file(self):
         data = save_settings(self.settings_path, self._settings_data_snapshot())
         self.settings.update(data)
+
+    def _restore_main_window_size(self):
+        cfg = self.settings.get("main_window", {})
+        if not isinstance(cfg, dict):
+            cfg = {}
+        try:
+            width = max(900, int(cfg.get("width", 1400) or 1400))
+        except Exception:
+            width = 1400
+        try:
+            height = max(600, int(cfg.get("height", 900) or 900))
+        except Exception:
+            height = 900
+        self.settings["main_window"] = {
+            "width": width,
+            "height": height,
+            "maximized": bool(cfg.get("maximized", False)),
+        }
+        if self.settings["main_window"]["maximized"]:
+            QTimer.singleShot(0, self.showMaximized)
+        else:
+            self.resize(width, height)
+
+    def _update_main_window_settings(self):
+        maximized = bool(self.isMaximized())
+        size_source = self.normalGeometry().size() if maximized and self.normalGeometry().isValid() else self.size()
+        self.settings["main_window"] = {
+            "width": max(900, int(size_source.width())),
+            "height": max(600, int(size_source.height())),
+            "maximized": maximized,
+        }
 
     def current_device_model(self) -> str:
         dev = str(self.settings.get("device_model", DEFAULT_DEVICE_MODEL))
@@ -11368,6 +11401,7 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        self._update_main_window_settings()
         self._save_settings()
         if self.warmlink_cloud_dialog is not None:
             try:
