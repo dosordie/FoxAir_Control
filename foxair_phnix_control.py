@@ -17,6 +17,7 @@ import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
+from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
 from ui.theme import (
     APP_ICON_FILE,
     PUBLIC_WARNING_TEXT,
@@ -61,7 +62,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
-    QMenu,
     QPushButton,
     QSpinBox,
     QScrollArea,
@@ -9400,26 +9400,18 @@ class MainWindow(QMainWindow):
         except Exception:
             row_slave_addr = DEFAULT_BUS_ADDR
 
-        menu = QMenu(self)
-        act_quick_write = menu.addAction(f"Register {reg_no} schnell schreiben ...")
-        cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
-        act_cloud_write = None
-        if cloud_code:
-            act_cloud_write = menu.addAction(f"Wert per Cloud schreiben ... ({cloud_code})")
-        menu.addSeparator()
-        act_read_one = menu.addAction(f"Register {reg_no} lesen")
-        act_read_ten = menu.addAction(f"10 Register ab {reg_no} lesen")
-        act_use_write = menu.addAction("Adresse ins Schreib-/Lesefeld übernehmen")
-        action = menu.exec(self.register_table.viewport().mapToGlobal(pos))
-        if action == act_quick_write:
+        result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
+        if result is None:
+            return
+        if result.action == RegisterContextAction.QUICK_WRITE:
             self.open_register_quick_write(reg_no, row_slave_addr)
-        elif act_cloud_write is not None and action == act_cloud_write:
+        elif result.action == RegisterContextAction.CLOUD_WRITE:
             self.open_cloud_write_for_register(reg_no)
-        elif action == act_read_one:
+        elif result.action == RegisterContextAction.READ_ONE:
             self.send_read_request(reg_no, 1, slave_addr=row_slave_addr, label="Rechtsklick")
-        elif action == act_read_ten:
+        elif result.action == RegisterContextAction.READ_TEN:
             self.send_read_request(reg_no, 10, slave_addr=row_slave_addr, label="Rechtsklick 10er")
-        elif action == act_use_write:
+        elif result.action == RegisterContextAction.USE_WRITE_ADDRESS:
             self.write_addr_edit.setText(str(reg_no))
 
 
