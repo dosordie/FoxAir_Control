@@ -31,6 +31,13 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.token_store import get_password, get_token
+from cloud.cloud_write_helpers import (
+    cloud_code_for_register,
+    cloud_write_choice_options,
+    cloud_write_value_from_label,
+    cloud_write_values_for_code,
+    current_raw_text_for_cloud_write,
+)
 from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
@@ -74,12 +81,10 @@ from workers.dual_logger_worker import DualLoggerWorkerController
 
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES,
-    WARMLINK_CLOUD_WRITE_TEST_CODES,
     cloud_hint,
     cloud_modbus_register,
     code_confidence,
     code_unit,
-    WARMLINK_CLOUD_CODE_HINTS,
     WARMLINK_CLOUD_CREDIT,
     code_display_name,
 )
@@ -9397,7 +9402,7 @@ class MainWindow(QMainWindow):
 
         menu = QMenu(self)
         act_quick_write = menu.addAction(f"Register {reg_no} schnell schreiben ...")
-        cloud_code = self._cloud_code_for_register(reg_no, require_write_allowed=True)
+        cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         act_cloud_write = None
         if cloud_code:
             act_cloud_write = menu.addAction(f"Wert per Cloud schreiben ... ({cloud_code})")
@@ -9417,53 +9422,6 @@ class MainWindow(QMainWindow):
         elif action == act_use_write:
             self.write_addr_edit.setText(str(reg_no))
 
-
-    def _cloud_code_is_write_candidate(self, code: str, hint: dict[str, Any]) -> bool:
-        """Cloud-Schreiben freigeben, wenn das bekannte protocolCode-Format nutzbar ist.
-
-        Explizites write_allowed bleibt bevorzugt. Zusaetzlich erlauben wir
-        gemappte Parameter-/Sollwert-Codes mit Range oder ValueMap. Reine Live-/
-        Fehler-/Ausgangsstatus-Codes bleiben damit im Hauptfenster read-only.
-        """
-        if bool(hint.get("write_allowed")):
-            return True
-        if not hint.get("modbus_register"):
-            return False
-        confidence = str(hint.get("confidence") or "").lower()
-        if confidence not in {"confirmed", "candidate"}:
-            return False
-        code_text = str(code or "")
-        # T/O/S/F/E sind in unserer Liste ueberwiegend Livewerte, Ausgaenge,
-        # Schalter-/Fehlerstatus. Die werden nicht automatisch beschreibbar.
-        if code_text.startswith(("T", "O", "S", "F", "E")):
-            return False
-        if hint.get("write_values") or hint.get("rangeStart") not in (None, "") or hint.get("rangeEnd") not in (None, ""):
-            return True
-        data_type = str(hint.get("cloud_dataType") or "").upper()
-        return data_type in {"ENUM", "TEMP", "DIGI1", "DIGI5"} and code_text[:1] in {"A", "H", "P", "R", "Z", "C", "D", "G", "M"}
-
-    def _cloud_code_for_register(self, reg_no: int, require_write_allowed: bool = False) -> str | None:
-        """Findet den gemappten WarmLink-Cloud-Code zu einem lokalen Register."""
-        try:
-            target = int(reg_no)
-        except Exception:
-            return None
-        best: tuple[int, str] | None = None
-        rank = {"confirmed": 0, "candidate": 1, "": 2, "unknown": 3}
-        for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
-            try:
-                mapped = int(hint.get("modbus_register")) if hint.get("modbus_register") not in (None, "") else None
-            except Exception:
-                mapped = None
-            if mapped != target:
-                continue
-            if require_write_allowed and not self._cloud_code_is_write_candidate(str(code), hint):
-                continue
-            confidence = str(hint.get("confidence") or "")
-            item = (rank.get(confidence, 5), str(code))
-            if best is None or item < best:
-                best = item
-        return best[1] if best else None
 
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
         """Zugangsdaten fuer Cloud-Schreiben aus Dialog/Settings/Keyring holen."""
@@ -9513,23 +9471,11 @@ class MainWindow(QMainWindow):
         return user, pw, None, device_code or None
 
     def _ask_cloud_value(self, reg_no: int, cloud_code: str) -> str | None:
-        hint = cloud_hint(cloud_code)
-        values = hint.get("write_values") or WARMLINK_CLOUD_WRITE_TEST_CODES.get(cloud_code, {}).get("values")
-        current_raw = ""
-        reg = self.latest_regs.get(int(reg_no))
-        if reg is not None:
-            try:
-                current_raw = str(int(getattr(reg, "raw_value")))
-            except Exception:
-                current_raw = str(getattr(reg, "raw_value", "") or "")
-        if isinstance(values, dict) and values:
-            options: list[tuple[str, str]] = [(str(v), f"{v} - {label}") for v, label in values.items()]
+        values = cloud_write_values_for_code(cloud_code)
+        current_raw = current_raw_text_for_cloud_write(self.latest_regs.get(int(reg_no)))
+        options, current_index = cloud_write_choice_options(values, current_raw)
+        if options:
             labels = [label for _value, label in options]
-            current_index = 0
-            for i, (value, _label) in enumerate(options):
-                if current_raw and value == current_raw:
-                    current_index = i
-                    break
             item, ok = QInputDialog.getItem(
                 self,
                 "Wert per Cloud schreiben",
@@ -9540,10 +9486,7 @@ class MainWindow(QMainWindow):
             )
             if not ok:
                 return None
-            for value, label in options:
-                if label == item:
-                    return value
-            return None
+            return cloud_write_value_from_label(options, item)
 
         text, ok = QInputDialog.getText(
             self,
@@ -9557,7 +9500,7 @@ class MainWindow(QMainWindow):
         return text if text != "" else None
 
     def open_cloud_write_for_register(self, reg_no: int):
-        cloud_code = self._cloud_code_for_register(reg_no, require_write_allowed=True)
+        cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         if not cloud_code:
             QMessageBox.information(self, "WarmLink Cloud", f"Für Register {reg_no} ist kein freigegebener Cloud-Schreibcode gemappt.")
             return
