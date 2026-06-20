@@ -6348,7 +6348,6 @@ class MainWindow(QMainWindow):
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
-        self.register_table.itemClicked.connect(self.open_manual_register_dialog_from_table_item)
         self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
         upper.addWidget(self.register_table)
 
@@ -9414,7 +9413,6 @@ class MainWindow(QMainWindow):
         except Exception:
             row_slave_addr = DEFAULT_BUS_ADDR
 
-        self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
         result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
         if result is None:
             return
