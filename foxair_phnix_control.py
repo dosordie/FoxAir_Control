@@ -6348,6 +6348,9 @@ class MainWindow(QMainWindow):
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
+        self.register_table.itemClicked.connect(self.select_register_for_read_write_from_table_item)
+        self.register_table.cellClicked.connect(self.select_register_for_read_write_from_table_cell)
+        self.register_table.currentCellChanged.connect(self.select_register_for_read_write_from_current_cell)
         self.register_table.itemDoubleClicked.connect(self.open_register_quick_write_from_table_item)
         upper.addWidget(self.register_table)
 
@@ -6358,6 +6361,7 @@ class MainWindow(QMainWindow):
         side_layout.setSpacing(6)
 
         side_scroll = QScrollArea()
+        self.side_scroll = side_scroll
         side_scroll.setWidgetResizable(True)
         side_scroll.setWidget(side)
         side_scroll.setMinimumWidth(420)
@@ -6366,6 +6370,7 @@ class MainWindow(QMainWindow):
         upper.setStretchFactor(1, 1)
 
         manual_box = QGroupBox("Lesen / Schreiben")
+        self.manual_box = manual_box
         side_layout.addWidget(manual_box)
         manual_layout = QGridLayout(manual_box)
         manual_layout.setContentsMargins(8, 8, 8, 8)
@@ -6394,6 +6399,17 @@ class MainWindow(QMainWindow):
         manual_layout.addWidget(QLabel("Pause:"), 0, 1)
         manual_layout.addWidget(self.init_pause_spin, 0, 2)
         manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
+        manual_layout.addWidget(QLabel("Bus:"), 2, 0)
+        manual_layout.addWidget(self.write_bus_edit, 2, 1)
+        manual_layout.addWidget(QLabel("Reg:"), 2, 2)
+        manual_layout.addWidget(self.write_addr_edit, 2, 3)
+        manual_layout.addWidget(QLabel("Wert:"), 3, 0)
+        manual_layout.addWidget(self.write_value_edit, 3, 1)
+        manual_layout.addWidget(self.write_dry_btn, 3, 2)
+        manual_layout.addWidget(self.write_send_btn, 3, 3)
+        manual_layout.addWidget(QLabel("Anzahl:"), 4, 0)
+        manual_layout.addWidget(self.read_count_spin, 4, 1)
+        manual_layout.addWidget(self.read_btn, 4, 2, 1, 2)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -9364,6 +9380,64 @@ class MainWindow(QMainWindow):
 
     # V0.2.38: alter generischer Init-Timerpfad entfernt. Warmlink/Standard/Display nutzen eigene Controller.
 
+    def _register_row_address_and_bus(self, row: int) -> tuple[int, int] | None:
+        """Adresse und Bus aus einer Registertabellen-Zeile lesen."""
+        if row < 0:
+            return None
+        reg_item = self.register_table.item(row, 0)
+        if reg_item is None:
+            return None
+        try:
+            reg_no = int(str(reg_item.text()).strip(), 0)
+        except Exception:
+            return None
+        try:
+            bus_item = self.register_table.item(row, 9)
+            bus_text = bus_item.text() if bus_item is not None and bus_item.text().strip() else self.write_bus_edit.text()
+            slave_addr = self._parse_int_text(bus_text)
+        except Exception:
+            slave_addr = DEFAULT_BUS_ADDR
+        return reg_no, slave_addr
+
+    def _select_register_for_read_write(self, reg_no: int, slave_addr: int | None = None) -> None:
+        """Registeradresse in Lesen-/Schreiben-Felder übernehmen, ohne I/O auszulösen."""
+        reg_no = int(reg_no)
+        if slave_addr is not None:
+            self.write_bus_edit.setText(f"0x{int(slave_addr):02X}")
+        self.write_addr_edit.setText(str(reg_no))
+
+        manual_box = getattr(self, "manual_box", None)
+        if manual_box is not None:
+            manual_box.setVisible(True)
+        side_scroll = getattr(self, "side_scroll", None)
+        if side_scroll is not None:
+            side_scroll.setVisible(True)
+            if manual_box is not None:
+                QTimer.singleShot(0, lambda: side_scroll.ensureWidgetVisible(manual_box))
+
+        if self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
+            self.manual_register_dialog.set_address(reg_no, slave_addr if slave_addr is not None else DEFAULT_BUS_ADDR)
+
+    def select_register_for_read_write_from_table_item(self, item):
+        if item is None:
+            return
+        row_data = self._register_row_address_and_bus(item.row())
+        if row_data is None:
+            return
+        self._select_register_for_read_write(*row_data)
+
+    def select_register_for_read_write_from_table_cell(self, row: int, _column: int):
+        row_data = self._register_row_address_and_bus(row)
+        if row_data is None:
+            return
+        self._select_register_for_read_write(*row_data)
+
+    def select_register_for_read_write_from_current_cell(self, current_row: int, _current_column: int, _previous_row: int, _previous_column: int):
+        row_data = self._register_row_address_and_bus(current_row)
+        if row_data is None:
+            return
+        self._select_register_for_read_write(*row_data)
+
     def open_register_quick_write_from_table_item(self, item):
         if item is None:
             return
@@ -9412,7 +9486,7 @@ class MainWindow(QMainWindow):
         elif result.action == RegisterContextAction.READ_TEN:
             self.send_read_request(reg_no, 10, slave_addr=row_slave_addr, label="Rechtsklick 10er")
         elif result.action == RegisterContextAction.USE_WRITE_ADDRESS:
-            self.write_addr_edit.setText(str(reg_no))
+            self._select_register_for_read_write(reg_no, row_slave_addr)
 
 
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
