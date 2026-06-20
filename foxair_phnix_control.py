@@ -17,7 +17,14 @@ import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
-from ui.theme import APP_ICON_FILE, PUBLIC_WARNING_TEXT
+from ui.theme import (
+    APP_ICON_FILE,
+    PUBLIC_WARNING_TEXT,
+    get_app_stylesheet,
+    get_splash_close_button_stylesheet,
+    get_splash_label_stylesheet,
+    get_splash_stylesheet,
+)
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
@@ -81,6 +88,7 @@ from cloud.warmlink_codes import (
     WARMLINK_CLOUD_CREDIT,
     code_display_name,
 )
+from core.settings_manager import ensure_defaults, load_settings, save_settings
 from core.foxair_phnix_core import (
     DEFAULT_BUS_ADDR,
     DecodedRegister,
@@ -198,45 +206,6 @@ def app_icon_pixmap(size: int = 96) -> QPixmap:
     return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
 
-LIGHT_THEME_QSS = """
-QWidget { background: #f2f2f2; color: #111111; }
-QMainWindow, QDialog { background: #f2f2f2; color: #111111; }
-QLabel { color: #111111; }
-QGroupBox { color: #111111; border: 1px solid #c8c8c8; border-radius: 4px; margin-top: 10px; padding-top: 8px; }
-QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; background: #f2f2f2; }
-QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #ffffff; color: #111111; border: 1px solid #b8b8b8; selection-background-color: #2a82da; selection-color: #ffffff; }
-QPushButton { background: #f8f8f8; color: #111111; border: 1px solid #b8b8b8; border-radius: 3px; padding: 3px 8px; }
-QPushButton:hover { background: #e9f2ff; border-color: #7aa7d9; }
-QPushButton:checked { background: #ffd7c2; border-color: #c36a3a; }
-QPushButton:disabled { background: #e4e4e4; color: #777777; }
-QCheckBox { color: #111111; }
-QHeaderView::section { background: #e9e9e9; color: #111111; border: 1px solid #c8c8c8; padding: 3px; }
-QTableWidget, QTableView { background: #fff4a8; alternate-background-color: #fff0c6; color: #111111; gridline-color: #d0c78a; selection-background-color: #2a82da; selection-color: #ffffff; }
-QTableWidget::item, QTableView::item { color: #111111; }
-QTextEdit#log_view { background: #ffffff; color: #111111; border: 1px solid #b8b8b8; }
-QScrollArea { background: #f2f2f2; }
-"""
-
-DARK_THEME_QSS = """
-QWidget { background: #202124; color: #eeeeee; }
-QMainWindow, QDialog { background: #202124; color: #eeeeee; }
-QLabel { color: #eeeeee; }
-QGroupBox { color: #eeeeee; border: 1px solid #555555; border-radius: 4px; margin-top: 10px; padding-top: 8px; }
-QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; background: #202124; }
-QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #2b2b2b; color: #eeeeee; border: 1px solid #666666; selection-background-color: #4a6984; selection-color: #ffffff; }
-QPushButton { background: #303134; color: #eeeeee; border: 1px solid #666666; border-radius: 3px; padding: 3px 8px; }
-QPushButton:hover { background: #3a3d41; border-color: #8ab4f8; }
-QPushButton:checked { background: #7a3f2a; border-color: #d98b5f; }
-QPushButton:disabled { background: #2a2a2a; color: #888888; }
-QCheckBox { color: #eeeeee; }
-QHeaderView::section { background: #303134; color: #ffffff; border: 1px solid #555555; padding: 3px; }
-QTableWidget, QTableView { background: #252525; alternate-background-color: #2d2d2d; color: #eeeeee; gridline-color: #444444; selection-background-color: #4a6984; selection-color: #ffffff; }
-QTableWidget::item, QTableView::item { color: #eeeeee; }
-QTextEdit#log_view { background: #111111; color: #e6e6e6; }
-QScrollArea { background: #202124; }
-"""
-
-
 def windows_apps_use_light_theme() -> Optional[bool]:
     """Windows-Appmodus erkennen. True=hell, False=dunkel, None=unbekannt/nicht Windows."""
     if sys.platform != "win32":
@@ -273,9 +242,9 @@ def apply_app_theme(target: Any, theme: str = "light") -> str:
             pass
         app.setProperty("foxair_theme_request", requested)
         app.setProperty("foxair_theme", selected)
-        app.setStyleSheet(DARK_THEME_QSS if selected == "dark" else LIGHT_THEME_QSS)
+        app.setStyleSheet(get_app_stylesheet(selected))
     elif hasattr(target, "setStyleSheet"):
-        target.setStyleSheet(DARK_THEME_QSS if selected == "dark" else LIGHT_THEME_QSS)
+        target.setStyleSheet(get_app_stylesheet(selected))
     return selected
 
 
@@ -360,14 +329,7 @@ class StartupSplash(QDialog):
         self.setModal(False)
         self.setAttribute(Qt.WA_DeleteOnClose, False)
         self.setObjectName("StartupSplash")
-        self.setStyleSheet("""
-            QDialog#StartupSplash { background: #111820; border: 1px solid #2d3b48; }
-            QDialog#StartupSplash QLabel { background: transparent; border: none; }
-            QDialog#StartupSplash QLabel#title { color: #ffffff; font-size: 24px; font-weight: bold; background: transparent; }
-            QDialog#StartupSplash QLabel#version { color: #d7e6f5; font-size: 14px; background: transparent; }
-            QDialog#StartupSplash QLabel#hint { color: #9fb2c4; font-size: 11px; background: transparent; }
-            QDialog#StartupSplash QLabel#brand { color: #d7e6f5; font-size: 13px; font-weight: bold; background: transparent; }
-        """)
+        self.setStyleSheet(get_splash_stylesheet())
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 14, 18, 18)
@@ -378,24 +340,14 @@ class StartupSplash(QDialog):
         close_btn = QPushButton("×")
         close_btn.setFixedSize(28, 24)
         close_btn.setToolTip("Splash schließen")
-        close_btn.setStyleSheet("""
-            QPushButton {
-                color: #d7e6f5;
-                background: transparent;
-                border: 1px solid #53677a;
-                border-radius: 4px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background: #263747; }
-        """)
+        close_btn.setStyleSheet(get_splash_close_button_stylesheet())
         close_btn.clicked.connect(self._skip)
         top.addWidget(close_btn, 0, Qt.AlignRight | Qt.AlignTop)
         root.addLayout(top)
 
         logo_label = QLabel()
         logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setStyleSheet("background: transparent; border: none;")
+        logo_label.setStyleSheet(get_splash_label_stylesheet("logo"))
         pix = QPixmap(resource_path(APP_ICON_FILE))
         if not pix.isNull():
             logo_label.setPixmap(pix.scaled(260, 260, Qt.KeepAspectRatio, Qt.SmoothTransformation))
@@ -404,13 +356,13 @@ class StartupSplash(QDialog):
         title = QLabel("FoxAir / Phnix Control")
         title.setObjectName("title")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("background: transparent; color: #ffffff; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(get_splash_label_stylesheet("title"))
         root.addWidget(title)
 
         version = QLabel(f"Version V{APP_VERSION}  •  {BUILD_DATE}")
         version.setObjectName("version")
         version.setAlignment(Qt.AlignCenter)
-        version.setStyleSheet("background: transparent; color: #d7e6f5; font-size: 14px;")
+        version.setStyleSheet(get_splash_label_stylesheet("version"))
         root.addWidget(version)
 
         bottom = QHBoxLayout()
@@ -418,7 +370,7 @@ class StartupSplash(QDialog):
         brand = QLabel("FoxAir Control\nby DosOrDie")
         brand.setObjectName("brand")
         brand.setAlignment(Qt.AlignRight | Qt.AlignBottom)
-        brand.setStyleSheet("background: transparent; color: #d7e6f5; font-size: 13px; font-weight: bold;")
+        brand.setStyleSheet(get_splash_label_stylesheet("brand"))
         bottom.addWidget(brand, 0, Qt.AlignRight | Qt.AlignBottom)
         root.addLayout(bottom)
 
@@ -6711,15 +6663,11 @@ class MainWindow(QMainWindow):
 
     def _load_settings(self) -> dict:
         for path in (self.settings_path, getattr(self, "old_settings_path", "")):
-            try:
-                if path and os.path.exists(path):
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    if isinstance(data, dict):
-                        return data
-            except Exception:
-                pass
-        return {}
+            if path and os.path.exists(path):
+                data = load_settings(path)
+                if isinstance(data, dict):
+                    return ensure_defaults(data)
+        return ensure_defaults({})
 
     def _settings_data_snapshot(self) -> dict:
         """Erzeugt die persistente Settings-Struktur.
@@ -6752,12 +6700,7 @@ class MainWindow(QMainWindow):
         }
 
     def _write_settings_file(self):
-        os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
-        data = self._settings_data_snapshot()
-        tmp_path = self.settings_path + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, self.settings_path)
+        data = save_settings(self.settings_path, self._settings_data_snapshot())
         self.settings.update(data)
 
     def current_device_model(self) -> str:
