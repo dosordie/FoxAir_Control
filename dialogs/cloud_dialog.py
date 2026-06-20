@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 from typing import Any, Optional
 
@@ -23,8 +22,12 @@ from cloud.token_store import (
 )
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
-    cloud_modbus_register, code_confidence, code_unit, WARMLINK_CLOUD_CREDIT,
-    code_display_name,
+    cloud_modbus_register, WARMLINK_CLOUD_CREDIT, code_display_name,
+)
+from dialogs.cloud_table_helpers import (
+    compare_source_rows, compare_table_values, data_table_values, device_combo_label,
+    device_table_value, filtered_cloud_rows, finder_cloud_row, finder_code_label,
+    mask_cloud_value, value_finder_matches,
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudWorker, WarmLinkCloudCommandWorker
 from core.settings_manager import ensure_warmlink_cloud_defaults
@@ -549,20 +552,14 @@ class WarmLinkCloudDialog(QDialog):
         self._apply_overlay_to_main()
 
     def _mask(self, value: Any) -> str:
-        text = str(value or "")
-        if self.ids_cb.isChecked() or len(text) <= 8:
-            return text
-        return text[:4] + "…" + text[-4:]
+        return mask_cloud_value(value, show_ids=self.ids_cb.isChecked())
 
     def refresh_devices(self):
         current = str(self.device_combo.currentData() or "")
         self.device_combo.blockSignals(True)
         self.device_combo.clear()
         for dev in self.devices:
-            code = str(dev.get("deviceCode") or "")
-            nick = str(dev.get("deviceNickName") or dev.get("model") or dev.get("custModel") or "Gerät")
-            status = str(dev.get("deviceStatus", ""))
-            label = f"{nick} | {status} | {self._mask(code)}"
+            label, code = device_combo_label(dev, show_ids=self.ids_cb.isChecked())
             self.device_combo.addItem(label, code)
         idx = self.device_combo.findData(current)
         if idx < 0:
@@ -575,48 +572,19 @@ class WarmLinkCloudDialog(QDialog):
         self.device_table.setRowCount(len(self.devices))
         for row, dev in enumerate(self.devices):
             for col, key in enumerate(self.DEVICE_COLUMNS):
-                val = dev.get(key, "")
-                if key in self.SENSITIVE_DEVICE_FIELDS:
-                    val = self._mask(val)
-                self.device_table.setItem(row, col, QTableWidgetItem(str(val)))
+                val = device_table_value(dev, key, self.SENSITIVE_DEVICE_FIELDS, show_ids=self.ids_cb.isChecked())
+                self.device_table.setItem(row, col, QTableWidgetItem(val))
         self.device_table.resizeColumnsToContents()
 
     def refresh_data(self):
-        needle = self.filter_edit.text().strip().lower()
-        unsupported_only = self.unsupported_only_cb.isChecked()
-        rows = []
-        for row in self.data_rows:
-            code = str(row.get("code", ""))
-            hint = cloud_hint(code)
-            name = code_display_name(code)
-            note = str(hint.get("note", ""))
-            value = row.get("value", "")
-            supported = bool(row.get("supported"))
-            if unsupported_only and supported:
-                continue
-            hay = " ".join(str(x) for x in (code, name, value, row.get("dataType", ""), note)).lower()
-            if needle and needle not in hay:
-                continue
-            rows.append(row)
+        rows = filtered_cloud_rows(
+            self.data_rows,
+            self.filter_edit.text(),
+            self.unsupported_only_cb.isChecked(),
+        )
         self.data_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            code = str(row.get("code", ""))
-            hint = cloud_hint(code)
-            reg = cloud_modbus_register(code)
-            mapping = str(reg) if reg is not None else str(hint.get("confidence") or "")
-            status = "veraltet" if row.get("stale") else ("OK" if row.get("supported") else "leer/unsupported")
-            vals = [
-                code,
-                code_display_name(code),
-                row.get("value", ""),
-                row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
-                row.get("rangeStart", ""),
-                row.get("rangeEnd", ""),
-                row.get("lastFetch", ""),
-                status,
-                mapping,
-                hint.get("note", ""),
-            ]
+            vals, status = data_table_values(row)
             for c, val in enumerate(vals):
                 item = QTableWidgetItem(str(val))
                 if status != "OK":
@@ -624,69 +592,18 @@ class WarmLinkCloudDialog(QDialog):
                 self.data_table.setItem(r, c, item)
         self.data_table.resizeColumnsToContents()
 
-    def _try_float(self, value: Any) -> Optional[float]:
-        try:
-            return float(str(value).replace(",", "."))
-        except Exception:
-            return None
-
-    def _local_display_value(self, reg_no: int) -> tuple[str, Optional[float]]:
-        reg = self.main_window.latest_regs.get(int(reg_no))
-        if reg is None:
-            return "", None
-        text = str(getattr(reg, "display_value", ""))
-        # ersten numerischen Anteil fuer groben Diff extrahieren
-        m = re.search(r"[-+]?\d+(?:[\.,]\d+)?", text)
-        return text, self._try_float(m.group(0)) if m else self._try_float(getattr(reg, "signed_value", ""))
-
     def refresh_compare(self):
-        rows = []
-        for row in self.data_rows:
-            code = str(row.get("code", ""))
-            hint = cloud_hint(code)
-            reg_no = cloud_modbus_register(code)
-            if reg_no is None:
-                if str(hint.get("confidence") or "") == "unknown" or code in ("SG Status",):
-                    rows.append((row, None))
-                continue
-            rows.append((row, reg_no))
+        rows = compare_source_rows(self.data_rows)
         self.compare_table.setRowCount(len(rows))
         for r, (row, reg_no) in enumerate(rows):
-            code = str(row.get("code", ""))
-            hint = cloud_hint(code)
-            cloud_val = row.get("value", "")
-            unit = code_unit(code)
-            cloud_txt = self.main_window._cloud_display_text(code, cloud_val)
-            local_txt, local_num = ("", None)
-            diff_txt = ""
-            status = "cloud-only"
-            local_code = ""
-            if reg_no is not None:
-                info = self.main_window.regmap.get(int(reg_no))
-                _block, local_code, _clean = self.main_window._display_parts_for_register(int(reg_no), info.name)
-                local_txt, local_num = self._local_display_value(int(reg_no))
-                cloud_num = self._try_float(cloud_val)
-                if local_txt:
-                    status = "OK" if row.get("supported") else "leer"
-                else:
-                    status = "kein lokaler Wert"
-                if local_num is not None and cloud_num is not None:
-                    diff_txt = f"{cloud_num - local_num:+.3g}"
-            elif not row.get("supported"):
-                status = "leer/unsupported"
-            vals = [
-                code,
-                "" if reg_no is None else str(reg_no),
-                local_code,
-                code_display_name(code),
-                local_txt,
-                cloud_txt,
-                diff_txt,
-                unit,
-                code_confidence(code),
-                status,
-                hint.get("note", ""),
-            ]
+            vals, status = compare_table_values(
+                row,
+                reg_no,
+                latest_regs=self.main_window.latest_regs,
+                regmap=self.main_window.regmap,
+                display_parts_for_register=self.main_window._display_parts_for_register,
+                cloud_display_text=self.main_window._cloud_display_text,
+            )
             for c, val in enumerate(vals):
                 item = QTableWidgetItem(str(val))
                 if status not in ("OK", ""):
@@ -702,8 +619,10 @@ class WarmLinkCloudDialog(QDialog):
             code = str(row.get("code", ""))
             if not code:
                 continue
-            value = row.get("value", "")
-            label = f"{code} = {value} ({code_confidence(code) or 'unknown'})"
+            label_code = finder_code_label(row)
+            if label_code is None:
+                continue
+            label, code = label_code
             self.finder_code_combo.addItem(label, code)
         idx = self.finder_code_combo.findData(current)
         if idx >= 0:
@@ -711,19 +630,7 @@ class WarmLinkCloudDialog(QDialog):
         self.finder_code_combo.blockSignals(False)
 
     def _finder_cloud_row(self, code: str) -> dict[str, Any] | None:
-        for row in self.data_rows:
-            if str(row.get("code", "")) == str(code):
-                return row
-        return None
-
-    def _binary_to_int(self, value: Any) -> Optional[int]:
-        text = str(value or "").strip()
-        if text and set(text) <= {"0", "1"} and len(text) <= 32:
-            try:
-                return int(text, 2)
-            except Exception:
-                return None
-        return None
+        return finder_cloud_row(self.data_rows, code)
 
     def run_value_finder(self):
         # V0.2.44 fix4: Button sofort deaktivieren und Suche per Timer starten,
@@ -744,58 +651,18 @@ class WarmLinkCloudDialog(QDialog):
                 QMessageBox.information(self, "Wertefinder", "Kein Cloud-Code ausgewählt oder noch keine Cloud-Daten vorhanden.")
                 return
             cloud_raw = row.get("value", "")
-            cloud_num = self._try_float(cloud_raw)
-            cloud_bin = self._binary_to_int(cloud_raw)
             tolerance = float(self.finder_tolerance_spin.value())
             hide_zero = bool(self.finder_nonzero_cb.isChecked())
-            matches: list[list[str]] = []
             regs_snapshot = list(sorted(self.main_window.latest_regs.items()))
-            for reg_no, reg in regs_snapshot:
-                raw = getattr(reg, "raw_value", None)
-                signed = getattr(reg, "signed_value", None)
-                display = str(getattr(reg, "display_value", ""))
-                info = self.main_window.regmap.get(int(reg_no))
-                try:
-                    raw_i = int(raw) if raw is not None else None
-                except Exception:
-                    raw_i = None
-                try:
-                    signed_i = int(signed) if signed is not None else None
-                except Exception:
-                    signed_i = None
-                if hide_zero and cloud_num == 0 and (raw_i == 0 or signed_i == 0):
-                    continue
-                reasons: list[str] = []
-                if cloud_bin is not None and raw_i is not None and (raw_i & 0xFFFF) == cloud_bin:
-                    reasons.append("binary==raw")
-                if cloud_num is not None:
-                    for label, candidate in (("raw", raw_i), ("signed", signed_i)):
-                        if candidate is None:
-                            continue
-                        if abs(float(candidate) - cloud_num) <= tolerance:
-                            reasons.append(f"{label}==cloud")
-                        if abs(float(candidate) / 10.0 - cloud_num) <= tolerance:
-                            reasons.append(f"{label}/10==cloud")
-                        if abs(float(candidate) / 100.0 - cloud_num) <= tolerance:
-                            reasons.append(f"{label}/100==cloud")
-                    m = re.search(r"[-+]?\d+(?:[\.,]\d+)?", display)
-                    local_num = self._try_float(m.group(0)) if m else None
-                    if local_num is not None and abs(local_num - cloud_num) <= tolerance:
-                        reasons.append("display==cloud")
-                if str(cloud_raw) and str(cloud_raw) in display:
-                    reasons.append("Text in Anzeige")
-                if reasons:
-                    _block, local_code, _clean = self.main_window._display_parts_for_register(int(reg_no), info.name if info else f"Reg {reg_no}")
-                    matches.append([
-                        code,
-                        str(cloud_raw),
-                        str(reg_no),
-                        local_code,
-                        str(info.name if info else getattr(reg, "name", "")),
-                        display,
-                        ", ".join(sorted(set(reasons))),
-                        "candidate",
-                    ])
+            matches = value_finder_matches(
+                code=code,
+                cloud_raw=cloud_raw,
+                latest_regs_items=regs_snapshot,
+                regmap=self.main_window.regmap,
+                display_parts_for_register=self.main_window._display_parts_for_register,
+                tolerance=tolerance,
+                hide_zero=hide_zero,
+            )
             self.finder_table.setSortingEnabled(False)
             self.finder_table.setRowCount(len(matches))
             for r, vals in enumerate(matches):
