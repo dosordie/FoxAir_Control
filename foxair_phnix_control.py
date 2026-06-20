@@ -6348,7 +6348,8 @@ class MainWindow(QMainWindow):
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
-        self.register_table.itemDoubleClicked.connect(self.open_register_quick_write_from_table_item)
+        self.register_table.itemClicked.connect(self.open_manual_register_dialog_from_table_item)
+        self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
         upper.addWidget(self.register_table)
 
         side = QWidget()
@@ -8415,13 +8416,26 @@ class MainWindow(QMainWindow):
 
 
     def open_manual_register_dialog(self):
+        self._show_manual_register_dialog()
+
+    def _show_manual_register_dialog(self) -> ManualRegisterDialog:
         if self.manual_register_dialog is None or not self.manual_register_dialog.isVisible():
             self.manual_register_dialog = ManualRegisterDialog(self)
             self.manual_register_dialog.finished.connect(lambda _=None: setattr(self, "manual_register_dialog", None))
             self.manual_register_dialog.show()
         else:
+            self.manual_register_dialog.show()
             self.manual_register_dialog.raise_()
             self.manual_register_dialog.activateWindow()
+        return self.manual_register_dialog
+
+    def _open_manual_register_dialog_for_register(self, reg_no: int, slave_addr: int | None = None):
+        dialog = self._show_manual_register_dialog()
+        if slave_addr is None:
+            slave_addr = DEFAULT_BUS_ADDR
+        dialog.set_address(int(reg_no), int(slave_addr))
+        dialog.raise_()
+        dialog.activateWindow()
 
     def open_bus_addresses(self):
         if self.bus_dialog is None or not self.bus_dialog.isVisible():
@@ -9364,7 +9378,7 @@ class MainWindow(QMainWindow):
 
     # V0.2.38: alter generischer Init-Timerpfad entfernt. Warmlink/Standard/Display nutzen eigene Controller.
 
-    def open_register_quick_write_from_table_item(self, item):
+    def open_manual_register_dialog_from_table_item(self, item):
         if item is None:
             return
         row = item.row()
@@ -9380,7 +9394,7 @@ class MainWindow(QMainWindow):
             slave_addr = self._parse_int_text(bus_text)
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
-        self.open_register_quick_write(reg_no, slave_addr)
+        self._open_manual_register_dialog_for_register(reg_no, slave_addr)
 
     def open_register_context_menu(self, pos):
         item = self.register_table.itemAt(pos)
@@ -9400,6 +9414,7 @@ class MainWindow(QMainWindow):
         except Exception:
             row_slave_addr = DEFAULT_BUS_ADDR
 
+        self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
         result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
         if result is None:
             return
@@ -9412,7 +9427,7 @@ class MainWindow(QMainWindow):
         elif result.action == RegisterContextAction.READ_TEN:
             self.send_read_request(reg_no, 10, slave_addr=row_slave_addr, label="Rechtsklick 10er")
         elif result.action == RegisterContextAction.USE_WRITE_ADDRESS:
-            self.write_addr_edit.setText(str(reg_no))
+            self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
 
 
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
