@@ -45,6 +45,19 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     settings.setdefault("display_write_mode", "fc16")
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)
+    main_window = settings.setdefault("main_window", {})
+    if not isinstance(main_window, dict):
+        main_window = {}
+        settings["main_window"] = main_window
+    try:
+        main_window["width"] = max(900, int(main_window.get("width", 1400) or 1400))
+    except Exception:
+        main_window["width"] = 1400
+    try:
+        main_window["height"] = max(600, int(main_window.get("height", 900) or 900))
+    except Exception:
+        main_window["height"] = 900
+    main_window["maximized"] = bool(main_window.get("maximized", False))
     ensure_warmlink_cloud_defaults(settings)
     return settings
 
