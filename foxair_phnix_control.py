@@ -28,14 +28,9 @@ from ui.theme import (
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
-    keyring_delete_password,
-    keyring_delete_token,
-    keyring_get_password,
-    keyring_get_token,
-    keyring_set_password,
-    keyring_set_token,
     translate_cloud_error_message,
 )
+from cloud.token_store import get_password, get_token
 from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
@@ -9496,14 +9491,14 @@ class MainWindow(QMainWindow):
             return None, None, None, device_code or None
         if use_token and not token:
             try:
-                token = keyring_get_token(user)
+                token = get_token(user)
             except Exception as exc:
                 self._log("WarmLink Cloud: Token konnte nicht aus dem OS-Keyring gelesen werden: " + str(exc))
                 token = None
         if token:
             if not pw:
                 try:
-                    pw = keyring_get_password(user)
+                    pw = get_password(user)
                 except Exception as exc:
                     self._log("WarmLink Cloud: Passwort konnte nicht für Token-Fallback gelesen werden: " + str(exc))
                     pw = None
@@ -9511,7 +9506,7 @@ class MainWindow(QMainWindow):
         if pw:
             return user, pw, None, device_code or None
         try:
-            pw = keyring_get_password(user)
+            pw = get_password(user)
         except Exception as exc:
             QMessageBox.warning(self, "WarmLink Cloud", f"Passwort konnte nicht aus dem OS-Keyring gelesen werden:\n{exc}")
             return user, None, None, device_code or None

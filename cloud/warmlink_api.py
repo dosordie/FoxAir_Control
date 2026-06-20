@@ -55,8 +55,6 @@ EXPERT_WRITE_ENDPOINT_CANDIDATES = [
     ENDPOINT_WRITE_APP_MODEL_VALUE,
 ]
 
-KEYRING_SERVICE = "warmlink_gui"
-
 
 _CLOUD_ERROR_TRANSLATIONS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("密码错误",), "Passwort falsch"),
@@ -523,55 +521,3 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
                 "supported": False,
             })
     return rows
-
-
-def keyring_module():
-    try:
-        import keyring  # type: ignore
-        return keyring
-    except Exception as exc:
-        raise WarmLinkCloudError(
-            "Python keyring ist nicht installiert. Bitte installieren mit: pip install keyring"
-        ) from exc
-
-
-def _token_key(username: str) -> str:
-    return f"{str(username or '').strip()}:token"
-
-
-def keyring_set_password(username: str, password: str) -> None:
-    kr = keyring_module()
-    kr.set_password(KEYRING_SERVICE, username, password)
-
-
-def keyring_get_password(username: str) -> str | None:
-    kr = keyring_module()
-    return kr.get_password(KEYRING_SERVICE, username)
-
-
-def keyring_delete_password(username: str) -> None:
-    kr = keyring_module()
-    try:
-        kr.delete_password(KEYRING_SERVICE, username)
-    except Exception:
-        # Kein gespeichertes Passwort ist kein fataler Fehler.
-        pass
-
-
-def keyring_set_token(username: str, token: str) -> None:
-    kr = keyring_module()
-    kr.set_password(KEYRING_SERVICE, _token_key(username), token)
-
-
-def keyring_get_token(username: str) -> str | None:
-    kr = keyring_module()
-    return kr.get_password(KEYRING_SERVICE, _token_key(username))
-
-
-def keyring_delete_token(username: str) -> None:
-    kr = keyring_module()
-    try:
-        kr.delete_password(KEYRING_SERVICE, _token_key(username))
-    except Exception:
-        # Kein gespeicherter Token ist kein fataler Fehler.
-        pass

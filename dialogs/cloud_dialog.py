@@ -15,10 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from cloud.warmlink_api import (
-    ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, KEYRING_SERVICE,
-    keyring_delete_password, keyring_delete_token, keyring_get_password,
-    keyring_get_token, keyring_set_password, keyring_set_token,
-    translate_cloud_error_message,
+    ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, translate_cloud_error_message,
+)
+from cloud.token_store import (
+    KEYRING_SERVICE, delete_password, delete_token, get_password, get_token,
+    set_password, set_token,
 )
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
@@ -341,7 +342,7 @@ class WarmLinkCloudDialog(QDialog):
         user = self.username_edit.text().strip()
         if user:
             try:
-                keyring_delete_token(user)
+                delete_token(user)
             except Exception as exc:
                 self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
         self._cloud_token = None
@@ -369,7 +370,7 @@ class WarmLinkCloudDialog(QDialog):
         if not user:
             return None
         try:
-            return keyring_get_password(user)
+            return get_password(user)
         except Exception as exc:
             QMessageBox.warning(self, "Keyring fehlt", str(exc))
             return None
@@ -382,7 +383,7 @@ class WarmLinkCloudDialog(QDialog):
             return
         if pw:
             try:
-                keyring_set_password(user, pw)
+                set_password(user, pw)
             except Exception as exc:
                 QMessageBox.warning(self, "Keyring fehlt", str(exc))
                 return
@@ -396,8 +397,8 @@ class WarmLinkCloudDialog(QDialog):
         user = self.username_edit.text().strip()
         if user:
             try:
-                keyring_delete_password(user)
-                keyring_delete_token(user)
+                delete_password(user)
+                delete_token(user)
             except Exception as exc:
                 QMessageBox.warning(self, "Keyring", str(exc))
                 return
@@ -435,7 +436,7 @@ class WarmLinkCloudDialog(QDialog):
                 initial_login_at = self._cloud_token_login_at
             else:
                 try:
-                    initial_token = keyring_get_token(user)
+                    initial_token = get_token(user)
                     initial_login_at = time.time() if initial_token else 0.0
                 except Exception as exc:
                     self.main_window._log("WarmLink Cloud: Token-Keyring nicht verfügbar: " + str(exc))
@@ -503,7 +504,7 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token_username = user
         if self.save_token_cb.isChecked():
             try:
-                keyring_set_token(user, token)
+                set_token(user, token)
             except Exception as exc:
                 self.main_window._log("WarmLink Cloud: Token konnte nicht gespeichert werden: " + str(exc))
 
@@ -531,7 +532,7 @@ class WarmLinkCloudDialog(QDialog):
             self._cloud_token_username = ""
             if user:
                 try:
-                    keyring_delete_token(user)
+                    delete_token(user)
                 except Exception as exc:
                     self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
 
