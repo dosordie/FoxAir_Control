@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import csv
 import json
 import time
 from typing import Any, Optional
@@ -22,12 +23,13 @@ from cloud.token_store import (
 )
 from cloud.warmlink_codes import (
     DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
-    cloud_modbus_register, WARMLINK_CLOUD_CREDIT, code_display_name,
+    cloud_modbus_register, WARMLINK_CLOUD_CREDIT, code_confidence,
+    code_display_name, code_unit,
 )
 from dialogs.cloud_table_helpers import (
     compare_source_rows, compare_table_values, data_table_values, device_combo_label,
     device_table_value, filtered_cloud_rows, finder_cloud_row, finder_code_label,
-    mask_cloud_value, value_finder_matches,
+    local_display_value, mask_cloud_value, try_float, value_finder_matches,
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudWorker, WarmLinkCloudCommandWorker
 from core.settings_manager import ensure_warmlink_cloud_defaults
@@ -176,6 +178,12 @@ class WarmLinkCloudDialog(QDialog):
         compare_hint = QLabel("Vergleicht gemappte Cloud-Codes mit lokalen Registerwerten. Unknown/Candidate bleibt sichtbar, damit neue Register gefunden werden können.")
         compare_hint.setWordWrap(True)
         compare_layout.addWidget(compare_hint)
+        compare_btn_row = QHBoxLayout()
+        self.export_mapping_candidates_btn = QPushButton("Mapping-Kandidaten exportieren")
+        self.export_mapping_candidates_btn.setToolTip("Exportiert alle aktuellen Cloud-Daten mit bekannten lokalen Mappings und optionalen Wertefinder-Kandidaten als CSV.")
+        compare_btn_row.addStretch(1)
+        compare_btn_row.addWidget(self.export_mapping_candidates_btn)
+        compare_layout.addLayout(compare_btn_row)
         self.compare_table = QTableWidget(0, len(self.COMPARE_COLUMNS))
         self.compare_table.setHorizontalHeaderLabels(self.COMPARE_COLUMNS)
         self.compare_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -280,6 +288,7 @@ class WarmLinkCloudDialog(QDialog):
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
         self.export_csv_btn.clicked.connect(self.export_csv)
         self.export_json_btn.clicked.connect(self.export_json)
+        self.export_mapping_candidates_btn.clicked.connect(self.export_mapping_candidates_csv)
         self.write_enable_cb.toggled.connect(self._update_write_controls)
         self.write_code_combo.currentIndexChanged.connect(lambda _=None: self._refresh_write_values())
         self.write_btn.clicked.connect(self.run_write_test)
@@ -774,7 +783,6 @@ class WarmLinkCloudDialog(QDialog):
         path, _ = QFileDialog.getSaveFileName(self, "WarmLink Cloud CSV exportieren", self.main_window.user_data_dir, "CSV (*.csv)")
         if not path:
             return
-        import csv
         with open(path, "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f, delimiter=";")
             w.writerow(self.DATA_COLUMNS)
@@ -788,6 +796,115 @@ class WarmLinkCloudDialog(QDialog):
                     "OK" if row.get("supported") else "leer/unsupported", str(reg) if reg is not None else hint.get("confidence", ""), hint.get("note", ""),
                 ])
         self.main_window._log(f"WarmLink Cloud: CSV exportiert: {path}")
+
+
+    MAPPING_CANDIDATE_COLUMNS = [
+        "cloud_code", "cloud_name", "cloud_value", "cloud_datatype", "cloud_unit",
+        "range_start", "range_end", "supported", "stale", "last_fetch",
+        "mapped_register", "local_code", "local_name", "local_raw", "local_signed",
+        "local_display", "diff", "confidence", "note",
+    ]
+
+    def _mapping_candidate_cloud_values(self, row: dict[str, Any]) -> list[Any]:
+        code = str(row.get("code", ""))
+        hint = cloud_hint(code)
+        return [
+            code,
+            code_display_name(code),
+            row.get("value", ""),
+            row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
+            code_unit(code) or hint.get("unit", ""),
+            row.get("rangeStart", hint.get("rangeStart", "")),
+            row.get("rangeEnd", hint.get("rangeEnd", "")),
+            "1" if row.get("supported") else "0",
+            "1" if row.get("stale") else "0",
+            row.get("lastFetch", ""),
+        ]
+
+    def _mapping_candidate_local_values(self, reg_no: int | None, cloud_value: Any) -> list[Any]:
+        if reg_no is None:
+            return ["", "", "", "", "", "", ""]
+        info = self.main_window.regmap.get(int(reg_no))
+        reg = self.main_window.latest_regs.get(int(reg_no))
+        local_code = ""
+        local_name = str(getattr(info, "name", "") or "")
+        if info is not None:
+            _block, local_code, _clean = self.main_window._display_parts_for_register(int(reg_no), local_name)
+        raw = getattr(reg, "raw_value", "") if reg is not None else ""
+        signed = getattr(reg, "signed_value", "") if reg is not None else ""
+        display = str(getattr(reg, "display_value", "") or "") if reg is not None else ""
+        diff = ""
+        cloud_num = try_float(cloud_value)
+        local_num = None
+        if reg is not None:
+            local_txt, local_num = local_display_value(self.main_window.latest_regs, int(reg_no))
+            display = display or local_txt
+        if cloud_num is not None and local_num is not None:
+            diff = f"{cloud_num - local_num:+.3g}"
+        return [str(reg_no), local_code, local_name, raw, signed, display, diff]
+
+    def _unknown_mapping_candidates(self, row: dict[str, Any]) -> list[list[str]]:
+        code = str(row.get("code", ""))
+        if cloud_modbus_register(code) is not None or not row.get("supported"):
+            return []
+        return value_finder_matches(
+            code=code,
+            cloud_raw=row.get("value", ""),
+            latest_regs_items=list(sorted(self.main_window.latest_regs.items())),
+            regmap=self.main_window.regmap,
+            display_parts_for_register=self.main_window._display_parts_for_register,
+            tolerance=0.0,
+            hide_zero=True,
+        )[:20]
+
+    def export_mapping_candidates_csv(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "WarmLink Mapping-Kandidaten exportieren",
+            self.main_window.user_data_dir,
+            "CSV (*.csv)",
+        )
+        if not path:
+            return
+        exported_rows = 0
+        with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(self.MAPPING_CANDIDATE_COLUMNS)
+            for row in self.data_rows:
+                code = str(row.get("code", ""))
+                hint = cloud_hint(code)
+                cloud_values = self._mapping_candidate_cloud_values(row)
+                reg_no = cloud_modbus_register(code)
+                if reg_no is not None:
+                    writer.writerow(
+                        cloud_values
+                        + self._mapping_candidate_local_values(reg_no, row.get("value", ""))
+                        + [code_confidence(code), hint.get("note", "")]
+                    )
+                    exported_rows += 1
+                    continue
+                matches = self._unknown_mapping_candidates(row)
+                if matches:
+                    for match in matches:
+                        candidate_reg = int(match[2])
+                        note = str(hint.get("note", "") or "")
+                        reason = str(match[6] or "")
+                        if reason:
+                            note = (note + "; " if note else "") + f"Wertefinder: {reason}"
+                        writer.writerow(
+                            cloud_values
+                            + self._mapping_candidate_local_values(candidate_reg, row.get("value", ""))
+                            + ["candidate", note]
+                        )
+                        exported_rows += 1
+                else:
+                    writer.writerow(
+                        cloud_values
+                        + self._mapping_candidate_local_values(None, row.get("value", ""))
+                        + [code_confidence(code) or str(hint.get("confidence") or "unknown"), hint.get("note", "")]
+                    )
+                    exported_rows += 1
+        self.main_window._log(f"WarmLink Cloud: Mapping-Kandidaten CSV exportiert: {path} ({exported_rows} Zeilen)")
 
     def export_json(self):
         path, _ = QFileDialog.getSaveFileName(self, "WarmLink Cloud JSON exportieren", self.main_window.user_data_dir, "JSON (*.json)")
