@@ -4,11 +4,32 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from cloud.warmlink_codes import (
-    WARMLINK_CLOUD_CODE_HINTS,
-    WARMLINK_CLOUD_WRITE_TEST_CODES,
-    cloud_hint,
-)
+from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
+
+try:
+    from cloud.warmlink_codes import WARMLINK_CLOUD_WRITE_TEST_CODES
+except ImportError:
+    # Backwards-compatible fallback: older/generated mapping files may not
+    # contain this optional helper table. Keep startup working and still offer
+    # the small, explicit write choices for Mode/Power.
+    WARMLINK_CLOUD_WRITE_TEST_CODES: dict[str, dict[str, object]] = {
+        "Mode": {
+            "name": "Betriebsart umschalten",
+            "values": {
+                "0": "Warmwasser",
+                "1": "Heizen",
+                "2": "Kühlen",
+                "3": "WW+Heizen",
+                "4": "WW+Kühlen",
+            },
+            "note": "Testcode fuer Heizen/Kuehlen/WW-Umschaltung. Nur mit Extra-Bestaetigung senden.",
+        },
+        "Power": {
+            "name": "WP Ein/Aus",
+            "values": {"0": "Aus", "1": "Ein"},
+            "note": "Optionaler Schreibtest.",
+        },
+    }
 
 
 def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
