@@ -64,5 +64,12 @@ def _ensure_warmlink_compat() -> None:
     if not hasattr(warmlink_codes, "cloud_modbus_register"):
         warmlink_codes.cloud_modbus_register = warmlink_codes.code_modbus_register
 
+    hints = getattr(warmlink_codes, "WARMLINK_CLOUD_CODE_HINTS", {})
+    if isinstance(hints, dict):
+        hints["H40"] = {"cloud_dataType": "ENUM", "confidence": "confirmed", "local_code": "H40", "modbus_register": 1345, "name": "H40 / Anlagenparameter", "rangeEnd": "3", "rangeStart": "0", "write_allowed": True}
+        hints["H42"] = {"cloud_dataType": "TEMP", "confidence": "confirmed", "local_code": "H42", "modbus_register": 1356, "name": "H42 / Anlagenparameter", "rangeEnd": "20.0", "rangeStart": "-20.0", "unit": "C", "write_allowed": True}
+        hints["H43"] = {"confidence": "unknown", "name": "H43 / Anlagenparameter", "write_allowed": False}
+        hints["H45"] = {"cloud_dataType": "ENUM", "confidence": "unknown", "name": "H45 / Anlagenparameter", "rangeEnd": "1", "rangeStart": "0", "write_allowed": False}
+
 
 _ensure_warmlink_compat()
