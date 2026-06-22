@@ -70,20 +70,9 @@ def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
         return False
     if not _cloud_mapping_is_valid_for_register(str(code), hint, mapped_register):
         return False
-    if bool(hint.get("write_allowed")):
-        return True
-    confidence = str(hint.get("confidence") or "").lower()
-    if confidence not in {"confirmed", "candidate"}:
+    if str(hint.get("confidence") or "").lower() != "confirmed":
         return False
-    code_text = str(code or "")
-    # T/O/S/F/E are mostly live values, outputs, switch/error states in our
-    # mapping list. Do not auto-enable write actions for those codes.
-    if code_text.startswith(("T", "O", "S", "F", "E")):
-        return False
-    if hint.get("write_values") or hint.get("rangeStart") not in (None, "") or hint.get("rangeEnd") not in (None, ""):
-        return True
-    data_type = str(hint.get("cloud_dataType") or "").upper()
-    return data_type in {"ENUM", "TEMP", "DIGI1", "DIGI5"} and code_text[:1] in {"A", "H", "P", "R", "Z", "C", "D", "G", "M"}
+    return bool(hint.get("write_allowed"))
 
 
 def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) -> str | None:
@@ -93,7 +82,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     except Exception:
         return None
     best: tuple[int, str] | None = None
-    rank = {"confirmed": 0, "candidate": 1, "": 2, "unknown": 3}
+    rank = {"confirmed": 0}
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
         try:
             mapped = int(hint.get("modbus_register")) if hint.get("modbus_register") not in (None, "") else None
@@ -106,6 +95,8 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
             continue
         confidence = str(hint.get("confidence") or "")
+        if confidence != "confirmed":
+            continue
         item = (rank.get(confidence, 5), str(code))
         if best is None or item < best:
             best = item
