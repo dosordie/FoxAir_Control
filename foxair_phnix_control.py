@@ -2232,7 +2232,7 @@ class RegisterQuickWriteDialog(QDialog):
 
 
 class SGReadyEditorDialog(QDialog):
-    SG_REGS = set(range(1334, 1342))
+    SG_REGS = set(range(1334, 1342)) | {2133}
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -2245,7 +2245,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -2280,6 +2280,10 @@ class SGReadyEditorDialog(QDialog):
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
             form.addRow(f"{label} ({reg_no}):", spin)
+
+        self.sg_status_label = QLabel("--")
+        self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
+        form.addRow("SG Status (2133, read-only):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(1200); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
@@ -2332,6 +2336,9 @@ class SGReadyEditorDialog(QDialog):
                 spin = self.temp_spins[reg_no]
                 if force or not self._has_focus(spin):
                     spin.setValue(s16(raw) / 10.0)
+            elif reg_no == 2133:
+                label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
+                self.sg_status_label.setText(f"{raw} - {label}")
         finally:
             self._programmatic = False
 
@@ -2348,6 +2355,7 @@ class SGReadyEditorDialog(QDialog):
         try:
             slave_addr = DEFAULT_BUS_ADDR
             self.main_window.send_read_request(1334, 8, slave_addr=slave_addr, label="SG Ready 1334-1341")
+            self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label="SG Status 2133")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige SG-Leseanforderung", str(exc))
 
@@ -2687,6 +2695,7 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.source_combo.addItem("Display/DWIN", "display")
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("nach Name/App-Name/Beschreibung suchen ...")
+        self.search_edit.setText(str(self.main_window.settings.get("offline_register_browser_search", "")))
         self.regex_cb = QCheckBox("Regex")
         self.app_name_cb = QCheckBox("App-Name anzeigen")
         self.count_label = QLabel("0 Register")
@@ -2730,7 +2739,7 @@ class OfflineRegisterBrowserDialog(QDialog):
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
         self.source_combo.currentIndexChanged.connect(lambda _=None: self._switch_source())
-        self.search_edit.textChanged.connect(lambda _=None: self.refresh())
+        self.search_edit.textChanged.connect(self._search_text_changed)
         self.regex_cb.stateChanged.connect(lambda _=None: self.refresh())
         self.app_name_cb.stateChanged.connect(lambda _=None: self.refresh())
         self.table.itemDoubleClicked.connect(lambda _=None: self.write_selected())
@@ -2739,6 +2748,11 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.read_btn.clicked.connect(self.read_selected)
         self.edit_info_btn.clicked.connect(self.edit_selected_description)
         self.close_btn.clicked.connect(self.close)
+        self.refresh()
+
+    def _search_text_changed(self, text: str):
+        self.main_window.settings["offline_register_browser_search"] = str(text)
+        self.main_window._save_settings(sync_main_fields=False)
         self.refresh()
 
     def _current_source(self) -> str:
