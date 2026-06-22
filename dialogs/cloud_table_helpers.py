@@ -80,7 +80,7 @@ def filtered_cloud_rows(data_rows: list[dict[str, Any]], needle: str, unsupporte
     return rows
 
 
-def data_table_values(row: dict[str, Any]) -> tuple[list[Any], str]:
+def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[list[Any], str]:
     code = str(row.get("code", ""))
     hint = cloud_hint(code)
     reg = cloud_modbus_register(code)
@@ -96,6 +96,7 @@ def data_table_values(row: dict[str, Any]) -> tuple[list[Any], str]:
         row.get("lastFetch", ""),
         status,
         mapping,
+        mapping_status,
         hint.get("note", ""),
     ]
     return vals, status

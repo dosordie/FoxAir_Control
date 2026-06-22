@@ -48,7 +48,7 @@ class WarmLinkCloudDialog(QDialog):
         "wifiSoftwareCode", "wifiSoftwareVer",
     ]
     SENSITIVE_DEVICE_FIELDS = {"deviceCode", "dtuIccid", "sn", "deviceId"}
-    DATA_COLUMNS = ["code", "name", "value", "dataType", "rangeStart", "rangeEnd", "letzter Abruf", "Status", "Mapping", "Hinweis"]
+    DATA_COLUMNS = ["code", "name", "value", "dataType", "rangeStart", "rangeEnd", "letzter Abruf", "Status", "Mapping", "Mapping-Status", "Hinweis"]
     COMPARE_COLUMNS = ["Cloud-Code", "Reg", "Code", "Name", "Lokal", "Cloud", "Diff", "Einheit", "Confidence", "Status", "Hinweis"]
     FINDER_COLUMNS = ["Cloud-Code", "Cloud-Wert", "Reg", "Code", "Name", "Lokal", "Match", "Hinweis"]
 
@@ -157,12 +157,16 @@ class WarmLinkCloudDialog(QDialog):
         self.filter_edit = QLineEdit()
         self.filter_edit.setPlaceholderText("Filter/Suche in code/name/value ...")
         self.unsupported_only_cb = QCheckBox("nur leer/unsupported")
+        self.mapping_issues_only_cb = QCheckBox("Nur ungemappte / unsichere anzeigen")
         self.export_csv_btn = QPushButton("CSV Export")
+        self.export_mapping_check_btn = QPushButton("Mapping-Prüfliste exportieren")
         self.export_json_btn = QPushButton("JSON Export")
         filter_row.addWidget(QLabel("Filter:"))
         filter_row.addWidget(self.filter_edit, 1)
         filter_row.addWidget(self.unsupported_only_cb)
+        filter_row.addWidget(self.mapping_issues_only_cb)
         filter_row.addWidget(self.export_csv_btn)
+        filter_row.addWidget(self.export_mapping_check_btn)
         filter_row.addWidget(self.export_json_btn)
         data_layout.addLayout(filter_row)
         self.data_table = QTableWidget(0, len(self.DATA_COLUMNS))
@@ -286,7 +290,9 @@ class WarmLinkCloudDialog(QDialog):
         self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
+        self.mapping_issues_only_cb.toggled.connect(lambda _=None: self.refresh_data())
         self.export_csv_btn.clicked.connect(self.export_csv)
+        self.export_mapping_check_btn.clicked.connect(self.export_mapping_check_csv)
         self.export_json_btn.clicked.connect(self.export_json)
         self.export_mapping_candidates_btn.clicked.connect(self.export_mapping_candidates_csv)
         self.write_enable_cb.toggled.connect(self._update_write_controls)
@@ -591,9 +597,11 @@ class WarmLinkCloudDialog(QDialog):
             self.filter_edit.text(),
             self.unsupported_only_cb.isChecked(),
         )
+        if self.mapping_issues_only_cb.isChecked():
+            rows = [row for row in rows if self._mapping_status(str(row.get("code", "")))["mapping_status"] != "OK"]
         self.data_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
-            vals, status = data_table_values(row)
+            vals, status = data_table_values(row, mapping_status=self._mapping_status(str(row.get("code", "")))["mapping_status"])
             for c, val in enumerate(vals):
                 item = QTableWidgetItem(str(val))
                 if status != "OK":
@@ -793,9 +801,79 @@ class WarmLinkCloudDialog(QDialog):
                 w.writerow([
                     code, code_display_name(code), row.get("value", ""), row.get("dataType") or hint.get("dataType", ""),
                     row.get("rangeStart", ""), row.get("rangeEnd", ""), row.get("lastFetch", ""),
-                    "OK" if row.get("supported") else "leer/unsupported", str(reg) if reg is not None else hint.get("confidence", ""), hint.get("note", ""),
+                    "OK" if row.get("supported") else "leer/unsupported", str(reg) if reg is not None else hint.get("confidence", ""),
+                    self._mapping_status(code)["mapping_status"], hint.get("note", ""),
                 ])
         self.main_window._log(f"WarmLink Cloud: CSV exportiert: {path}")
+
+
+    MAPPING_CHECK_COLUMNS = [
+        "cloud_code", "cloud_name", "cloud_value", "confidence", "modbus_register",
+        "local_code_hint", "register_json_code", "mapping_status", "write_allowed", "note",
+    ]
+
+    def _mapping_status(self, code: str) -> dict[str, Any]:
+        code = str(code or "").strip()
+        hint = cloud_hint(code)
+        confidence = str(hint.get("confidence") or code_confidence(code) or "")
+        local_code_hint = str(hint.get("local_code") or "")
+        write_allowed = bool(hint.get("write_allowed", False))
+        reg = hint.get("modbus_register")
+        if reg in (None, ""):
+            return {"mapping_status": "Cloud-only" if not hint else "Kein Register", "modbus_register": "", "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
+        try:
+            reg_no = int(reg)
+        except Exception:
+            return {"mapping_status": "Kein Register", "modbus_register": str(reg), "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
+        register_json_code = ""
+        if reg_no in getattr(self.main_window.regmap, "items", {}):
+            register_json_code = self.main_window._code_for_register(reg_no)
+        if confidence != "confirmed":
+            status = "Nicht bestätigt"
+        elif not register_json_code:
+            status = "Kein Register"
+        elif not self.main_window._is_safe_cloud_local_mapping(code, register_json_code, hint):
+            status = "Code-Mismatch"
+        else:
+            status = "OK"
+        return {
+            "mapping_status": status,
+            "modbus_register": str(reg_no),
+            "local_code_hint": local_code_hint,
+            "register_json_code": register_json_code,
+            "confidence": confidence,
+            "write_allowed": write_allowed,
+        }
+
+    def export_mapping_check_csv(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "WarmLink Mapping-Prüfliste exportieren",
+            self.main_window.user_data_dir,
+            "CSV (*.csv)",
+        )
+        if not path:
+            return
+        with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(self.MAPPING_CHECK_COLUMNS)
+            for row in self.data_rows:
+                code = str(row.get("code", ""))
+                hint = cloud_hint(code)
+                status = self._mapping_status(code)
+                writer.writerow([
+                    code,
+                    code_display_name(code),
+                    row.get("value", ""),
+                    status["confidence"],
+                    status["modbus_register"],
+                    status["local_code_hint"],
+                    status["register_json_code"],
+                    status["mapping_status"],
+                    "1" if status["write_allowed"] else "0",
+                    hint.get("note", ""),
+                ])
+        self.main_window._log(f"WarmLink Cloud: Mapping-Prüfliste CSV exportiert: {path}")
 
 
     MAPPING_CANDIDATE_COLUMNS = [
