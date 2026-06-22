@@ -8194,6 +8194,13 @@ class MainWindow(QMainWindow):
         except Exception:
             return False
 
+    def _has_local_register_entry(self, reg_no: int) -> bool:
+        """True, wenn die Haupttabelle bereits eine echte lokale Registerzeile hat."""
+        reg = self.latest_regs.get(int(reg_no))
+        if reg is None:
+            return False
+        return not self._is_cloud_only_register(int(reg_no))
+
     def _apply_cloud_only_visibility_for_reg(self, reg_no: int) -> None:
         row = self.table_rows.get(int(reg_no))
         if row is None:
@@ -8230,13 +8237,22 @@ class MainWindow(QMainWindow):
         self.cloud_last_rows = [dict(r) for r in rows if isinstance(r, dict)]
         show_cloud_only = bool(show_cloud_only and self._cloud_only_enabled())
         changed_regs: list[int] = []
+        seen_cloud_codes: set[str] = set()
+        seen_registers: set[int] = set()
         for row in rows:
             if not isinstance(row, dict) or not row.get("supported"):
                 continue
             code = str(row.get("code", "")).strip()
+            if not code or code in seen_cloud_codes:
+                continue
+            seen_cloud_codes.add(code)
             reg_no = cloud_modbus_register(code)
             if reg_no is None:
                 continue
+            reg_no = int(reg_no)
+            if reg_no in seen_registers:
+                continue
+            seen_registers.add(reg_no)
             value = row.get("value", "")
             info = {
                 "code": code,
@@ -8246,13 +8262,17 @@ class MainWindow(QMainWindow):
                 "confidence": code_confidence(code),
                 "dataType": row.get("dataType", ""),
             }
-            self.cloud_overlay_by_reg[int(reg_no)] = info
-            changed_regs.append(int(reg_no))
-            if show_cloud_only and int(reg_no) not in self.latest_regs:
-                reg_info = self.regmap.get(int(reg_no))
+            self.cloud_overlay_by_reg[reg_no] = info
+            changed_regs.append(reg_no)
+            has_local_register = self._has_local_register_entry(reg_no)
+            has_existing_row = reg_no in self.table_rows
+            if show_cloud_only and not has_local_register and not has_existing_row:
+                reg_info = self.regmap.get(reg_no)
                 raw_int, display_text = self._parse_cloud_numeric_value(value)
-                name = str(cloud_hint(code).get("name") or reg_info.name or f"Cloud {code}")
-                dtype = str(reg_info.dtype or row.get("dataType") or "CLOUD")
+                mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
+                mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
+                name = str(cloud_hint(code).get("name") or mapped_name or f"Cloud {code}")
+                dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
                 disp = self._cloud_display_text(code, value)
                 try:
                     signed = s16(raw_int & 0xFFFF)
