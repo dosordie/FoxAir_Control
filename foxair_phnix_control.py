@@ -2289,7 +2289,7 @@ class SGReadyEditorDialog(QDialog):
         self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
         form.addRow("SG Status (2133, read-only):", self.sg_status_label)
 
-        self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(1200); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
+        self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
 
         buttons = QHBoxLayout()
