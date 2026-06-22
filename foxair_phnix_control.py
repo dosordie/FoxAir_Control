@@ -11,6 +11,7 @@ import re
 import socket
 import sys
 import time
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
@@ -2053,7 +2054,8 @@ class RegisterQuickWriteDialog(QDialog):
         self.current_raw_label = QLabel("--")
         self.current_decoded_label = QLabel("--")
         self.write_value_edit = QLineEdit()
-        self.write_value_edit.setPlaceholderText("z.B. 55 oder 0x0037")
+        scale_hint = self.main_window._write_scale_hint(self.reg_no)
+        self.write_value_edit.setPlaceholderText("z.B. 1,5" if scale_hint else "z.B. 55")
         self.write_value_edit.textEdited.connect(self._write_value_text_edited)
         form.addRow("aktueller Rohwert:", self.current_raw_label)
         form.addRow("aktueller Wert:", self.current_decoded_label)
@@ -2068,7 +2070,10 @@ class RegisterQuickWriteDialog(QDialog):
         else:
             self.value_combo = None
 
-        form.addRow("zu schreibender Wert:", self.write_value_edit)
+        label = "zu schreibender Benutzerwert:" if scale_hint else "zu schreibender Wert:"
+        if scale_hint:
+            label += f" ({scale_hint})"
+        form.addRow(label, self.write_value_edit)
 
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("Lesen")
@@ -2110,7 +2115,7 @@ class RegisterQuickWriteDialog(QDialog):
         value = int(data) & 0xFFFF
         self._programmatic = True
         try:
-            self.write_value_edit.setText(str(value))
+            self.write_value_edit.setText(self.main_window._display_write_input_for_register(self.reg_no, value))
         finally:
             self._programmatic = False
 
@@ -2118,7 +2123,7 @@ class RegisterQuickWriteDialog(QDialog):
         if self._programmatic:
             return
         try:
-            raw = self.main_window._parse_int_text(self.write_value_edit.text()) & 0xFFFF
+            raw = self.main_window.parse_register_write_value(self.reg_no, self.write_value_edit.text()) & 0xFFFF
         except Exception:
             if self.value_combo is not None:
                 self._programmatic = True
@@ -2147,7 +2152,7 @@ class RegisterQuickWriteDialog(QDialog):
         self.current_decoded_label.setText(decoded)
         self._select_combo_value(raw)
         if not self.write_value_edit.text().strip() and not self.write_value_edit.hasFocus():
-            self.write_value_edit.setText(str(raw))
+            self.write_value_edit.setText(self.main_window._display_write_input_for_register(self.reg_no, raw))
 
     def update_from_live_register(self, reg):
         if int(reg.reg) == self.reg_no:
@@ -2161,8 +2166,10 @@ class RegisterQuickWriteDialog(QDialog):
 
     def write_register(self):
         try:
-            value = self.main_window._parse_int_text(self.write_value_edit.text()) & 0xFFFF
+            value = self.main_window.parse_register_write_value(self.reg_no, self.write_value_edit.text()) & 0xFFFF
             self.main_window.send_register_write(self.reg_no, value, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
+        except ValueError as exc:
+            QMessageBox.warning(self, "Ungültiger Schreibwert", str(exc))
         except Exception as exc:
             QMessageBox.warning(self, "Ungültiger Schreibwert", str(exc))
 
@@ -2315,7 +2322,7 @@ class ManualRegisterDialog(QDialog):
         self.count_spin.setValue(1)
         form.addRow("Bus-Adresse:", self.bus_edit)
         form.addRow("Register-Adresse:", self.addr_edit)
-        form.addRow("Wert:", self.value_edit)
+        form.addRow("Raw-Wert:", self.value_edit)
         form.addRow("Lesen Anzahl:", self.count_spin)
         layout.addLayout(form)
 
@@ -7291,6 +7298,70 @@ class MainWindow(QMainWindow):
         if any(c in "abcdefABCDEF" for c in text):
             return sign * int(text, 16)
         return sign * int(text, 10)
+
+    def _write_scale_for_dtype(self, dtype: str) -> Decimal | None:
+        dtype = (dtype or "RAW").upper()
+        if dtype in ("TEMP", "TEMP1", "DIGI5", "POWER_KW_X10", "KW_X10", "BAR_X10", "PRESSURE_BAR_X10", "FLOW_M3H_X10", "FLOW_X10", "AMP_X10", "CURRENT_A_X10"):
+            return Decimal("10")
+        if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C", "AMP_X2", "CURRENT_A_X2"):
+            return Decimal("2")
+        if dtype in ("FLOW_M3H_X100", "FLOW_X100", "COP_X100", "COP100", "DIGI19"):
+            return Decimal("100")
+        if dtype == "DIGI6":
+            return Decimal("1000")
+        if dtype == "DIGI4":
+            return Decimal("5")
+        return None
+
+    def _write_scale_hint(self, reg_no: int) -> str:
+        info = self.regmap.get(int(reg_no))
+        dtype = info.dtype if info else "RAW"
+        scale = self._write_scale_for_dtype(dtype)
+        if scale is None:
+            return ""
+        return f"{dtype}: Benutzerwert, raw×{scale}"
+
+    def _parse_decimal_text(self, text: str) -> Decimal:
+        original = str(text).strip()
+        normalized = original.replace("_", "").replace(",", ".")
+        if not normalized:
+            raise ValueError("Leere Eingabe")
+        try:
+            return Decimal(normalized)
+        except InvalidOperation as exc:
+            raise ValueError(f"Ungültiger Zahlenwert: {original}") from exc
+
+    def parse_register_write_value(self, reg_no: int, text: str, *, raw: bool = False) -> int:
+        """Parst Schreibwerte aus Register-Kontexten.
+
+        Standard ist der Benutzerwert des bekannten Registertyps (z. B. TEMP1:
+        1,5 °C -> raw 15). Explizite Raw-Schreibpfade rufen diese Methode mit
+        raw=True auf oder verwenden weiterhin _parse_int_text().
+        """
+        if raw:
+            return self._parse_int_text(text)
+        info = self.regmap.get(int(reg_no))
+        dtype = info.dtype if info else "RAW"
+        scale = self._write_scale_for_dtype(dtype)
+        if scale is None:
+            try:
+                return self._parse_int_text(text)
+            except ValueError as exc:
+                original = str(text).strip()
+                if "," in original or "." in original:
+                    raise ValueError(f"Ungültiger Zahlenwert: {original}") from exc
+                raise
+        dec = self._parse_decimal_text(text)
+        raw_dec = (dec * scale).to_integral_value(rounding=ROUND_HALF_UP)
+        return int(raw_dec)
+
+    def _display_write_input_for_register(self, reg_no: int, raw_value: int) -> str:
+        info = self.regmap.get(int(reg_no))
+        dtype = info.dtype if info else "RAW"
+        if self._write_scale_for_dtype(dtype) is None:
+            return str(int(raw_value) & 0xFFFF)
+        value = numeric_value_by_type(int(raw_value) & 0xFFFF, dtype)
+        return f"{value:.3f}".rstrip("0").rstrip(".")
 
     def current_backend_key(self) -> str:
         if hasattr(self, "backend_combo"):
