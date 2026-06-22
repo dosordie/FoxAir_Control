@@ -4,16 +4,11 @@
 from __future__ import annotations
 
 import ctypes
-import json
 import os
 import queue
-import re
 import socket
 import sys
 import time
-import urllib.error
-import urllib.request
-import webbrowser
 from typing import Any, Dict, Optional, BinaryIO
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
@@ -89,6 +84,13 @@ from cloud.warmlink_codes import (
     code_display_name,
 )
 from core.settings_manager import ensure_defaults, load_settings, save_settings
+from core.update_checker import (
+    UPDATE_RELEASES_URL,
+    UPDATE_REPO,
+    UpdateCheckWorker,
+    open_update_url,
+    parse_version_tuple,
+)
 from core.foxair_phnix_core import (
     DEFAULT_BUS_ADDR,
     DecodedRegister,
@@ -133,11 +135,6 @@ LOG_LEVEL_LABELS = [
 ]
 DEFAULT_HOST = "192.168.10.43"
 DEFAULT_PORT = 2001
-UPDATE_REPO = "dosordie/FoxAir_Control"
-UPDATE_API_URL = f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest"
-UPDATE_RELEASES_URL = f"https://github.com/{UPDATE_REPO}/releases/latest"
-
-
 def app_program_dir() -> str:
     """Ordner der EXE bzw. des Scripts."""
     return _app_program_dir(__file__)
@@ -480,62 +477,6 @@ def set_windows_app_id() -> None:
     except Exception:
         pass
 
-
-def parse_version_tuple(text: str) -> tuple[int, ...]:
-    """Versionsvergleich fuer Tags wie v0.2.30 oder 0.2.30."""
-    m = re.search(r"(\d+(?:\.\d+){0,4})", str(text or ""))
-    if not m:
-        return (0,)
-    parts = []
-    for part in m.group(1).split("."):
-        try:
-            parts.append(int(part))
-        except Exception:
-            parts.append(0)
-    while len(parts) < 3:
-        parts.append(0)
-    return tuple(parts)
-
-
-class UpdateCheckWorker(QObject):
-    result = Signal(dict)
-    error = Signal(str)
-    finished = Signal()
-
-    @Slot()
-    def run(self):
-        try:
-            req = urllib.request.Request(
-                UPDATE_API_URL,
-                headers={
-                    "Accept": "application/vnd.github+json",
-                    "User-Agent": f"FoxAir-Phnix-Control/{APP_VERSION}",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                raw = resp.read().decode("utf-8", "replace")
-            data = json.loads(raw)
-            if not isinstance(data, dict):
-                raise RuntimeError("GitHub-Antwort war kein Objekt")
-            assets = []
-            for asset in data.get("assets", []) or []:
-                if isinstance(asset, dict):
-                    name = str(asset.get("name", "")).strip()
-                    url = str(asset.get("browser_download_url", "")).strip()
-                    if name and url:
-                        assets.append({"name": name, "url": url})
-            self.result.emit({
-                "tag": str(data.get("tag_name", "")).strip(),
-                "name": str(data.get("name", "")).strip(),
-                "html_url": str(data.get("html_url", UPDATE_RELEASES_URL)).strip() or UPDATE_RELEASES_URL,
-                "assets": assets,
-            })
-        except urllib.error.HTTPError as exc:
-            self.error.emit(f"GitHub HTTP-Fehler {exc.code}: {exc.reason}")
-        except Exception as exc:
-            self.error.emit(str(exc))
-        finally:
-            self.finished.emit()
 
 
 class ReaderWorker(QObject):
@@ -5386,7 +5327,7 @@ class AboutDialog(QDialog):
         layout.addLayout(btn_row)
 
         self.update_btn.clicked.connect(main_window.check_for_updates)
-        repo_btn.clicked.connect(lambda: webbrowser.open(f"https://github.com/{UPDATE_REPO}"))
+        repo_btn.clicked.connect(lambda: open_update_url(f"https://github.com/{UPDATE_REPO}"))
         close_btn.clicked.connect(self.accept)
 
 
@@ -7073,7 +7014,7 @@ class MainWindow(QMainWindow):
         self._log(f"Update-Prüfung: {UPDATE_REPO} Releases ...")
 
         self.update_thread = QThread(self)
-        self.update_worker = UpdateCheckWorker()
+        self.update_worker = UpdateCheckWorker(APP_VERSION)
         self.update_worker.moveToThread(self.update_thread)
         self.update_thread.started.connect(self.update_worker.run)
         self.update_worker.result.connect(self._update_check_finished)
@@ -7144,7 +7085,7 @@ class MainWindow(QMainWindow):
             box.addButton("Später", QMessageBox.RejectRole)
             box.exec()
             if box.clickedButton() == open_btn:
-                webbrowser.open(primary_url)
+                open_update_url(primary_url)
             self._log(f"Update verfügbar: {tag} ({url})")
         else:
             if not getattr(self, "update_check_silent_no_update", False):
