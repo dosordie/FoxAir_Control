@@ -43,6 +43,7 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     settings.setdefault("tab_auto_poll", False)
     settings.setdefault("tab_poll_interval_s", 30)
     settings.setdefault("display_write_mode", "fc16")
+    settings.setdefault("manual_register_dialog", {})
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)
     main_window = settings.setdefault("main_window", {})
