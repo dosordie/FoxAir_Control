@@ -3165,7 +3165,7 @@ class ParameterSettingsDialog(QDialog):
     def _description_detail_text(self, item: dict[str, Any], include_title: bool = True) -> str:
         parts: list[str] = []
         if include_title:
-            technical_name = self._name_without_code(item.get("name", ""))
+            technical_name = self._display_name_for_item(item)
             title = f"{item.get('code', '')} / Register {item.get('reg')}: {technical_name}"
             parts.append(title)
             app_label = str(item.get("app_label") or "").strip()
@@ -3212,9 +3212,7 @@ class ParameterSettingsDialog(QDialog):
         self.table.setRowCount(len(items))
         for row, item in enumerate(items):
             value_text, raw_text = self._display_for_item(item)
-            technical_name = self._name_without_code(item.get("name", ""))
-            app_name = item.get("app_label") or technical_name
-            name_text = app_name if self.app_name_cb.isChecked() else technical_name
+            name_text = self._display_name_for_item(item)
             row_values = [
                 int(item["reg"]),
                 item.get("code") or item.get("block", ""),
@@ -3248,10 +3246,24 @@ class ParameterSettingsDialog(QDialog):
         self.table.sortItems(1, Qt.AscendingOrder)
         self.count_label.setText(f"{len(items)} Parameter")
 
-    def _name_without_code(self, name: str) -> str:
-        if "/" in name:
-            return name.split("/", 1)[1].strip()
-        return name
+    def _display_name_for_item(self, item: dict[str, Any]) -> str:
+        """Return the visible parameter name without splitting on punctuation.
+
+        The mapping name is already normalized when items are collected.  Do not
+        strip at '/', '-/', '-' or ':' here because valid names such as
+        "Standby-/Abschalt-Temperaturdifferenz" must remain intact.
+        """
+        name = str(item.get("name") or "").strip()
+        if name:
+            return name
+        app_label = str(item.get("app_label") or "").strip()
+        if app_label:
+            return app_label
+        code = str(item.get("code") or item.get("block") or "").strip()
+        if code:
+            return code
+        reg = item.get("reg")
+        return f"Register {reg}" if reg is not None else ""
 
     def update_from_live_register(self, reg):
         if not self.live_update_cb.isChecked():
