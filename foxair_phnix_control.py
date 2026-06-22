@@ -29,6 +29,7 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.token_store import get_password, get_token
+from cloud.mapping_validation import cloud_hint_matches_local_code
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
     cloud_write_choice_options,
@@ -8229,17 +8230,29 @@ class MainWindow(QMainWindow):
         self, cloud_code: str, local_code: str, hint: dict[str, Any] | None = None
     ) -> bool:
         """Return True only for fachlich passende Cloud-/Lokal-Code-Mappings."""
-        cloud_code = str(cloud_code or "").strip()
-        local_code = str(local_code or "").strip()
-        if not cloud_code or not local_code:
-            return False
+        return cloud_hint_matches_local_code(cloud_code, hint or cloud_hint(cloud_code), local_code)
+
+    def _validated_cloud_modbus_register(self, cloud_code: str, hint: dict[str, Any] | None = None) -> tuple[int | None, str, str]:
+        """Validate a Cloud hint against the static local register map.
+
+        This intentionally uses data/foxair_phnix_registers.json via the loaded
+        RegisterMap/register_defs and does not depend on already-read Modbus
+        rows.
+        """
         hint = hint or cloud_hint(cloud_code)
-        if bool(hint.get("manual_confirmed")) or bool(hint.get("allow_code_mismatch")):
-            return True
-        if cloud_code == local_code:
-            return True
-        hinted_local_code = str(hint.get("local_code") or "").strip()
-        return bool(hinted_local_code and hinted_local_code == local_code)
+        reg_no = cloud_modbus_register(cloud_code)
+        if reg_no is None:
+            return None, "", "no_register"
+        try:
+            reg_no = int(reg_no)
+        except Exception:
+            return None, "", "invalid_register"
+        if reg_no not in getattr(self.regmap, "items", {}):
+            return None, "", "unknown_register"
+        local_code = self._code_for_register(reg_no)
+        if not self._is_safe_cloud_local_mapping(cloud_code, local_code, hint):
+            return None, local_code, "code_mismatch"
+        return reg_no, local_code, ""
 
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
         """Cloud-Werte als Overlay in der Haupttabelle anzeigen.
@@ -8262,28 +8275,29 @@ class MainWindow(QMainWindow):
             if not code or code in seen_cloud_codes:
                 continue
             seen_cloud_codes.add(code)
-            reg_no = cloud_modbus_register(code)
+            hint = cloud_hint(code)
+            reg_no, local_code, validation_error = self._validated_cloud_modbus_register(code, hint)
+            raw_reg_no = cloud_modbus_register(code)
             if reg_no is None:
+                try:
+                    stale_reg = int(raw_reg_no) if raw_reg_no is not None else None
+                except Exception:
+                    stale_reg = None
+                if stale_reg is not None and stale_reg in self.cloud_overlay_by_reg:
+                    self.cloud_overlay_by_reg.pop(stale_reg, None)
+                    changed_regs.append(stale_reg)
+                if validation_error == "code_mismatch":
+                    self._log(
+                        f"Cloud mapping skipped: code mismatch cloud={code} "
+                        f"local={local_code or '?'} reg={raw_reg_no}",
+                        level=2,
+                    )
                 continue
-            reg_no = int(reg_no)
             if reg_no in seen_registers:
                 continue
             seen_registers.add(reg_no)
-            hint = cloud_hint(code)
             has_local_register = self._has_local_register_entry(reg_no)
             has_existing_row = reg_no in self.table_rows
-            local_code = self._code_for_register(reg_no) if (has_local_register or has_existing_row) else ""
-            has_local_row = has_local_register or has_existing_row
-            if has_local_row and not self._is_safe_cloud_local_mapping(code, local_code, hint):
-                if reg_no in self.cloud_overlay_by_reg:
-                    self.cloud_overlay_by_reg.pop(reg_no, None)
-                    changed_regs.append(reg_no)
-                self._log(
-                    f"Cloud mapping skipped: code mismatch cloud={code} "
-                    f"local={local_code or '?'} reg={reg_no}",
-                    level=2,
-                )
-                continue
             value = row.get("value", "")
             info = {
                 "code": code,
