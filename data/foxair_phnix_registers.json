@@ -3629,6 +3629,7 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung",
+    "notes": "Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.",
     "type": "TEMP1"
   },
   "1341": {

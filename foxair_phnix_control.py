@@ -2414,11 +2414,11 @@ class ManualRegisterDialog(QDialog):
         layout = QVBoxLayout(self)
         form = QFormLayout()
         self.bus_edit = QLineEdit(f"0x{DEFAULT_BUS_ADDR:02X}")
-        self.addr_edit = QLineEdit("1334")
+        self.addr_edit = QLineEdit(str(self._saved_int("last_register", 1334)))
         self.value_edit = QLineEdit("0")
         self.count_spin = QSpinBox()
         self.count_spin.setRange(1, 125)
-        self.count_spin.setValue(1)
+        self.count_spin.setValue(self._saved_count())
         form.addRow("Bus-Adresse:", self.bus_edit)
         form.addRow("Register-Adresse:", self.addr_edit)
         form.addRow("Raw-Wert:", self.value_edit)
@@ -2441,6 +2441,57 @@ class ManualRegisterDialog(QDialog):
 
         self.read_btn.clicked.connect(self.read_registers)
         self.send_btn.clicked.connect(self.send_write_frame)
+        self.addr_edit.editingFinished.connect(self._remember_current_register_if_valid)
+        self.count_spin.valueChanged.connect(lambda _=None: self._remember_current_count())
+
+    def _state(self) -> dict[str, Any]:
+        state = self.main_window.settings.setdefault("manual_register_dialog", {})
+        if not isinstance(state, dict):
+            state = {}
+            self.main_window.settings["manual_register_dialog"] = state
+        return state
+
+    def _saved_int(self, key: str, default: int) -> int:
+        try:
+            value = int(self._state().get(key, default))
+            if 0 <= value <= 0xFFFF:
+                return value
+        except Exception:
+            pass
+        return int(default)
+
+    def _saved_count(self) -> int:
+        try:
+            return min(125, max(1, int(self._state().get("last_read_count", 1) or 1)))
+        except Exception:
+            return 1
+
+    def _remember_register(self, addr: int, *, for_read: bool = False, for_write: bool = False) -> None:
+        addr = int(addr)
+        if not (0 <= addr <= 0xFFFF):
+            raise ValueError("Register-Adresse außerhalb 0..65535")
+        state = self._state()
+        state["last_register"] = addr
+        if for_read:
+            state["last_read_register"] = addr
+            state["last_read_count"] = int(self.count_spin.value())
+        if for_write:
+            state["last_write_register"] = addr
+        self.main_window._save_settings(sync_main_fields=False)
+
+    def _remember_current_register_if_valid(self) -> None:
+        try:
+            text = self.addr_edit.text().strip()
+            if not text:
+                return
+            self._remember_register(self.main_window._parse_int_text(text))
+        except Exception:
+            return
+
+    def _remember_current_count(self) -> None:
+        state = self._state()
+        state["last_read_count"] = int(self.count_spin.value())
+        self.main_window._save_settings(sync_main_fields=False)
 
     def _bus(self) -> int:
         return self.main_window._parse_int_text(self.bus_edit.text())
@@ -2454,11 +2505,13 @@ class ManualRegisterDialog(QDialog):
     def set_address(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
         self.addr_edit.setText(str(int(reg_no)))
         self.bus_edit.setText(f"0x{int(slave_addr):02X}")
+        self._remember_register(int(reg_no))
 
     def read_registers(self):
         try:
             addr = self._addr()
             quantity = int(self.count_spin.value())
+            self._remember_register(addr, for_read=True)
             self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
             self.main_window.send_read_request(addr, quantity, slave_addr=self._bus(), label="manuelles Popup")
         except Exception as exc:
@@ -2503,9 +2556,16 @@ class ManualRegisterDialog(QDialog):
 
     def send_write_frame(self):
         try:
-            self.main_window.send_register_write(self._addr(), self._value(), slave_addr=self._bus(), label="manuelles Popup")
+            addr = self._addr()
+            value = self._value()
+            self._remember_register(addr, for_write=True)
+            self.main_window.send_register_write(addr, value, slave_addr=self._bus(), label="manuelles Popup")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Schreibdaten", str(exc))
+
+    def closeEvent(self, event):
+        self._remember_current_register_if_valid()
+        super().closeEvent(event)
 
 
 def display_bus_address_info(addr: int) -> tuple[str, str, str]:
@@ -6771,6 +6831,7 @@ class MainWindow(QMainWindow):
             "tab_auto_poll": bool(self.settings.get("tab_auto_poll", False)),
             "tab_poll_interval_s": int(self.settings.get("tab_poll_interval_s", 30)),
             "display_write_mode": str(self.settings.get("display_write_mode", "fc16")),
+            "manual_register_dialog": self.settings.get("manual_register_dialog", {}),
             "show_dual_logger_button_display": bool(self.settings.get("show_dual_logger_button_display", False)),
             "log_level": int(self.settings.get("log_level", 2)),
             "main_window": self.settings.get("main_window", {}),
