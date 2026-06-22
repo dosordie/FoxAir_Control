@@ -2427,4 +2427,11 @@ def code_unit(code: str) -> str:
 
 
 def code_confidence(code: str) -> str:
-    return str(cloud_hint(code).get("confidence") or "")
+    hint = cloud_hint(code)
+    confidence = str(hint.get("confidence") or "")
+    if confidence == "confirmed":
+        local_code = str(hint.get("local_code") or "").strip()
+        manual_mismatch = hint.get("manual_confirmed") or hint.get("allow_code_mismatch")
+        if local_code and local_code != str(code).strip() and not manual_mismatch:
+            return "candidate"
+    return confidence
