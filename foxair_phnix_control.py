@@ -513,6 +513,8 @@ class ReaderWorker(QObject):
         self.last_send_desc = ""
         self.rx_after_last_send = True
         self.rx_timeout_logged = False
+        self.total_rx_bytes = 0
+        self.rx_restbuffer_since_monotonic = 0.0
 
     @Slot()
     def run(self):
@@ -539,6 +541,7 @@ class ReaderWorker(QObject):
                         break
 
                     self.raw_chunk.emit(chunk)
+                    self.total_rx_bytes += len(chunk)
                     if self.transport == "serial":
                         self.log.emit(f"SERIAL RX Rohdaten: {len(chunk)} Byte, HEX={hexdump(chunk, -1)}")
                     self.rx_after_last_send = True
@@ -546,22 +549,43 @@ class ReaderWorker(QObject):
                     self.buf.extend(chunk)
                     before_parse_len = len(self.buf)
                     parsed_frames = find_frames(self.buf, max_len=512)
+                    after_parse_len = len(self.buf)
                     if parsed_frames:
                         self.log.emit(
                             f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
-                            f"Buffer {before_parse_len}->{len(self.buf)} Byte"
+                            f"Buffer {before_parse_len}->{after_parse_len} Byte"
                         )
+                        if after_parse_len:
+                            self.rx_restbuffer_since_monotonic = time.monotonic()
+                            self.log.emit(
+                                f"RX-Restbuffer nach Frame-Verarbeitung behalten: {after_parse_len} Byte, "
+                                f"HEX={hexdump(bytes(self.buf), -1)}"
+                            )
+                        else:
+                            self.rx_restbuffer_since_monotonic = 0.0
                     elif before_parse_len:
-                        self.log.emit(
-                            f"DEBUG RX-Parser: nach Eingang noch kein vollstaendiges Frame, "
-                            f"Buffer={len(self.buf)} Byte"
-                        )
+                        if after_parse_len:
+                            if self.rx_restbuffer_since_monotonic <= 0.0:
+                                self.rx_restbuffer_since_monotonic = time.monotonic()
+                            self.log.emit(
+                                f"DEBUG RX-Parser: nach Eingang noch kein vollstaendiges Frame, "
+                                f"Restbuffer behalten: {after_parse_len} Byte, HEX={hexdump(bytes(self.buf), -1)}"
+                            )
+                        else:
+                            self.rx_restbuffer_since_monotonic = 0.0
+                            self.log.emit(
+                                f"DEBUG RX-Parser: nach Eingang kein gueltiges Frame; "
+                                f"Restdaten verworfen: {before_parse_len} Byte"
+                            )
+
+                    self._discard_stale_rx_restbuffer()
 
                     for parsed in parsed_frames:
                         frame = decode_frame(parsed, self.regmap)
                         self.frame_decoded.emit(frame)
 
                 except socket.timeout:
+                    self._discard_stale_rx_restbuffer()
                     self._check_rx_timeout()
                     self._flush_write_queue()
                     continue
@@ -574,6 +598,23 @@ class ReaderWorker(QObject):
                 self.client.close()
             self.running = False
             self.disconnected.emit()
+
+    def _discard_stale_rx_restbuffer(self) -> None:
+        if not self.buf:
+            self.rx_restbuffer_since_monotonic = 0.0
+            return
+        if self.rx_restbuffer_since_monotonic <= 0.0:
+            self.rx_restbuffer_since_monotonic = time.monotonic()
+            return
+        if time.monotonic() - self.rx_restbuffer_since_monotonic < 3.0:
+            return
+        rest = bytes(self.buf)
+        self.buf.clear()
+        self.rx_restbuffer_since_monotonic = 0.0
+        self.log.emit(
+            f"RX-Restbuffer verworfen: {len(rest)} Byte, kein gültiges Frame; "
+            f"HEX={hexdump(rest, -1)}"
+        )
 
     @Slot()
     def stop(self):
@@ -9305,7 +9346,24 @@ class MainWindow(QMainWindow):
             qty = int(req.get("quantity", 1))
             label = f" ({req.get('label')})" if req.get("label") else ""
             qty_text = "" if qty == 1 else f", {qty} Register"
-            self._log(f"READ Timeout{label}: {addr}{qty_text}", force=True)
+            rx_bytes_at_send = int(req.get("rx_count_at_send", 0))
+            rx_bytes_now = rx_bytes_at_send
+            restbuffer_present = bool(req.get("restbuffer_at_send", False))
+            restbuffer_len = int(req.get("restbuffer_len_at_send", 0))
+            worker = self._manual_io_worker()
+            if worker is not None:
+                rx_bytes_now = int(getattr(worker, "total_rx_bytes", rx_bytes_at_send))
+                restbuffer_len = len(getattr(worker, "buf", b"") or b"")
+                restbuffer_present = restbuffer_present or restbuffer_len > 0
+            rx_during_wait = rx_bytes_now > rx_bytes_at_send
+            self._log(
+                f"READ Timeout{label}: {addr}{qty_text}; "
+                f"RX waehrend Wartezeit: {'ja' if rx_during_wait else 'nein'} "
+                f"({max(0, rx_bytes_now - rx_bytes_at_send)} Byte); "
+                f"Restbuffer vorhanden: {'ja' if restbuffer_present else 'nein'}"
+                f"{f' ({restbuffer_len} Byte)' if restbuffer_present else ''}",
+                force=True,
+            )
             if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 try:
                     self.manual_register_dialog.show_read_timeout(addr, qty)
@@ -9485,6 +9543,9 @@ class MainWindow(QMainWindow):
                 "quantity": quantity,
                 "label": label,
                 "time": time.time(),
+                "rx_count_at_send": int(getattr(io_worker, "total_rx_bytes", 0)),
+                "restbuffer_at_send": bool(getattr(io_worker, "buf", None)),
+                "restbuffer_len_at_send": len(getattr(io_worker, "buf", b"") or b""),
             })
             self._log(
                 f"DEBUG Pending-Read offen: bus=0x{int(wire_slave):02X}, "
