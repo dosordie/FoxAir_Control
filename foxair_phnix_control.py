@@ -544,7 +544,18 @@ class ReaderWorker(QObject):
                     self.rx_after_last_send = True
                     self.rx_timeout_logged = False
                     self.buf.extend(chunk)
+                    before_parse_len = len(self.buf)
                     parsed_frames = find_frames(self.buf, max_len=512)
+                    if parsed_frames:
+                        self.log.emit(
+                            f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
+                            f"Buffer {before_parse_len}->{len(self.buf)} Byte"
+                        )
+                    elif before_parse_len:
+                        self.log.emit(
+                            f"DEBUG RX-Parser: nach Eingang noch kein vollstaendiges Frame, "
+                            f"Buffer={len(self.buf)} Byte"
+                        )
 
                     for parsed in parsed_frames:
                         frame = decode_frame(parsed, self.regmap)
@@ -611,6 +622,11 @@ class ReaderWorker(QObject):
                 return
 
             try:
+                if self.buf:
+                    self.log.emit(
+                        f"DEBUG RX-Buffer erst beim naechsten Send-Zyklus gesehen: "
+                        f"{len(self.buf)} Byte stehen vor {kind.upper()} noch im Parser-Buffer"
+                    )
                 if kind == "read":
                     frame = build_read_frame(addr, value_or_quantity, slave_addr=slave_addr)
                     action = (
@@ -2376,11 +2392,15 @@ class ManualRegisterDialog(QDialog):
         for reg in registers:
             name = f"  {reg.name}" if reg.name else ""
             lines.append(
-                f"{reg.reg} / 0x{reg.reg:04X}: {reg.raw_value} / 0x{reg.raw_value:04X} -> {reg.display_value}{name}"
+                f"{reg.reg} = {reg.raw_value} / 0x{reg.raw_value:04X} -> {reg.display_value}{name}"
             )
         self.result_box.setPlainText("\n".join(lines))
         if len(registers) == 1:
             self.value_edit.setText(str(int(registers[0].raw_value) & 0xFFFF))
+
+    def show_read_timeout(self, start_addr: int, quantity: int):
+        qty_text = "" if int(quantity) == 1 else f", Anzahl {int(quantity)}"
+        self.result_box.setPlainText(f"READ Timeout: {int(start_addr)}{qty_text}")
 
     def show_write_frame(self):
         try:
@@ -5953,6 +5973,10 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
+        self.pending_read_timeout_timer = QTimer(self)
+        self.pending_read_timeout_timer.setInterval(500)
+        self.pending_read_timeout_timer.timeout.connect(self._check_pending_read_timeouts)
+        self.pending_read_timeout_timer.start()
         self.display_last_frame_monotonic = 0.0
         self.display_init_retry_items: list[tuple[int, int, str, int, int]] = []
         self.display_init_retry_round = False
@@ -7629,6 +7653,16 @@ class MainWindow(QMainWindow):
     @Slot(bytes)
     def on_raw_chunk(self, chunk: bytes):
         self.raw_dump.extend(chunk)
+        pending_count = len(getattr(self, "pending_read_requests", []) or [])
+        if pending_count:
+            pending_preview = ", ".join(
+                f"0x{int(r.get('slave_addr', 0)):02X}:{int(r.get('addr', 0))}/{int(r.get('quantity', 0))}"
+                for r in list(getattr(self, "pending_read_requests", []) or [])[:4]
+            )
+            more = "" if pending_count <= 4 else f" ... (+{pending_count - 4})"
+            self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, Pending-Read offen: {pending_preview}{more}", level=7, force=True)
+        else:
+            self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, kein Pending-Read offen", level=7)
         if self.raw_file_cb.isChecked():
             if not self.raw_file:
                 self._open_raw_file()
@@ -9251,11 +9285,39 @@ class MainWindow(QMainWindow):
             )
         return False
 
+    def _pending_read_timeout_s(self, req: dict[str, Any]) -> float:
+        label = str(req.get("label", ""))
+        if label.startswith("manuell") or label.startswith("manuelles Popup"):
+            return 5.0
+        return 15.0
+
+    def _check_pending_read_timeouts(self) -> None:
+        now = time.time()
+        for req in list(getattr(self, "pending_read_requests", []) or []):
+            timeout_s = self._pending_read_timeout_s(req)
+            if now - float(req.get("time", now)) < timeout_s:
+                continue
+            try:
+                self.pending_read_requests.remove(req)
+            except ValueError:
+                continue
+            addr = int(req.get("addr", req.get("wire_addr", 0)))
+            qty = int(req.get("quantity", 1))
+            label = f" ({req.get('label')})" if req.get("label") else ""
+            qty_text = "" if qty == 1 else f", {qty} Register"
+            self._log(f"READ Timeout{label}: {addr}{qty_text}", force=True)
+            if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
+                try:
+                    self.manual_register_dialog.show_read_timeout(addr, qty)
+                except AttributeError:
+                    pass
+
     def _apply_pending_read_response(self, frame) -> bool:
         if frame.mode != "read-response":
             return False
-        now = time.time()
-        self.pending_read_requests = [r for r in self.pending_read_requests if now - float(r.get("time", now)) < 15.0]
+        if self.pending_read_requests:
+            self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=True)
+        self._check_pending_read_timeouts()
         for req in list(self.pending_read_requests):
             if int(req["slave_addr"]) != int(frame.slave_addr):
                 continue
@@ -9424,6 +9486,17 @@ class MainWindow(QMainWindow):
                 "label": label,
                 "time": time.time(),
             })
+            self._log(
+                f"DEBUG Pending-Read offen: bus=0x{int(wire_slave):02X}, "
+                f"addr={int(addr)}/0x{int(addr):04X}, qty={int(quantity)}, label={label or '-'}",
+                level=7, force=True,
+            )
+            if getattr(io_worker, "buf", None):
+                self._log(
+                    f"DEBUG RX-Buffer vor neuem Send nicht leer: {len(io_worker.buf)} Byte; "
+                    "wird durch den laufenden Reader/Parser verarbeitet.",
+                    level=7, force=True,
+                )
         io_worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
 
     # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
