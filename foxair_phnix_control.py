@@ -2233,11 +2233,15 @@ class RegisterQuickWriteDialog(QDialog):
 
 class SGReadyEditorDialog(QDialog):
     SG_REGS = set(range(1334, 1342)) | {2133}
+    READ_LABEL_VALUES = "SG Ready 1334-1341"
+    READ_LABEL_STATUS = "SG Status 2133"
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
         self.main_window = main_window
         self._programmatic = False
+        self._sg_status_read_pending = False
+        self._sg_read_generation = 0
         self.setWindowTitle("SG Ready Editor")
         self.setMinimumWidth(620)
         self._build_ui()
@@ -2339,8 +2343,13 @@ class SGReadyEditorDialog(QDialog):
             elif reg_no == 2133:
                 label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
                 self.sg_status_label.setText(f"{raw} - {label}")
+                self._sg_status_read_pending = False
         finally:
             self._programmatic = False
+
+    def show_sg_status_timeout(self):
+        self._sg_status_read_pending = False
+        self.sg_status_label.setText("Timeout / keine Antwort")
 
     def sg_values(self) -> list[tuple[int, int, str]]:
         values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG01 Funktion")]
@@ -2354,10 +2363,35 @@ class SGReadyEditorDialog(QDialog):
     def read_from_wp(self):
         try:
             slave_addr = DEFAULT_BUS_ADDR
-            self.main_window.send_read_request(1334, 8, slave_addr=slave_addr, label="SG Ready 1334-1341")
-            self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label="SG Status 2133")
+            self.main_window.remove_pending_read_requests_by_label(
+                {self.READ_LABEL_VALUES, self.READ_LABEL_STATUS},
+                log_prefix="SG Ready Editor",
+            )
+            self._sg_read_generation += 1
+            generation = self._sg_read_generation
+            self._sg_status_read_pending = False
+            self.main_window.send_read_request(1334, 8, slave_addr=slave_addr, label=self.READ_LABEL_VALUES)
+            QTimer.singleShot(0, lambda: self._send_status_read_after_values(slave_addr, generation))
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige SG-Leseanforderung", str(exc))
+
+    def _send_status_read_after_values(self, slave_addr: int, generation: int):
+        if not self.isVisible() or generation != self._sg_read_generation:
+            return
+        if self.main_window.has_pending_read_request(self.READ_LABEL_VALUES, slave_addr=slave_addr):
+            QTimer.singleShot(250, lambda: self._send_status_read_after_values(slave_addr, generation))
+            return
+        try:
+            self.main_window.remove_pending_read_requests_by_label(
+                {self.READ_LABEL_STATUS},
+                log_prefix="SG Ready Editor",
+            )
+            self.sg_status_label.setText("wird gelesen ...")
+            self._sg_status_read_pending = True
+            self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label=self.READ_LABEL_STATUS)
+        except Exception as exc:
+            self._sg_status_read_pending = False
+            QMessageBox.warning(self, "Ungültige SG-Status-Leseanforderung", str(exc))
 
     def send_values(self):
         try:
@@ -9346,6 +9380,36 @@ class MainWindow(QMainWindow):
             return 5.0
         return 15.0
 
+    def has_pending_read_request(self, label: str, slave_addr: Optional[int] = None) -> bool:
+        for req in list(getattr(self, "pending_read_requests", []) or []):
+            if str(req.get("label", "")) != str(label):
+                continue
+            if slave_addr is not None and int(req.get("slave_addr", -1)) != int(slave_addr):
+                continue
+            return True
+        return False
+
+    def remove_pending_read_requests_by_label(self, labels: set[str], log_prefix: str = "READ") -> int:
+        labels = {str(label) for label in labels}
+        removed = 0
+        for req in list(getattr(self, "pending_read_requests", []) or []):
+            if str(req.get("label", "")) not in labels:
+                continue
+            try:
+                self.pending_read_requests.remove(req)
+                removed += 1
+            except ValueError:
+                pass
+        dlg = getattr(self, "dual_logger_dialog", None)
+        display_pending = getattr(dlg, "display_pending_reads", None) if dlg is not None else None
+        if isinstance(display_pending, list):
+            keep = [req for req in display_pending if str(req.get("label", "")) not in labels]
+            removed += len(display_pending) - len(keep)
+            display_pending[:] = keep
+        if removed:
+            self._log(f"{log_prefix}: {removed} alte Pending-Read(s) entfernt: {', '.join(sorted(labels))}", force=True)
+        return removed
+
     def _check_pending_read_timeouts(self) -> None:
         now = time.time()
         for req in list(getattr(self, "pending_read_requests", []) or []):
@@ -9364,7 +9428,7 @@ class MainWindow(QMainWindow):
             rx_bytes_now = rx_bytes_at_send
             restbuffer_present = bool(req.get("restbuffer_at_send", False))
             restbuffer_len = int(req.get("restbuffer_len_at_send", 0))
-            worker = self._manual_io_worker()
+            worker = self._active_io_worker()
             if worker is not None:
                 rx_bytes_now = int(getattr(worker, "total_rx_bytes", rx_bytes_at_send))
                 restbuffer_len = len(getattr(worker, "buf", b"") or b"")
@@ -9383,6 +9447,10 @@ class MainWindow(QMainWindow):
                     self.manual_register_dialog.show_read_timeout(addr, qty)
                 except AttributeError:
                     pass
+            if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
+                sg_dialog = getattr(self, "sg_dialog", None)
+                if sg_dialog is not None and sg_dialog.isVisible():
+                    sg_dialog.show_sg_status_timeout()
 
     def _apply_pending_read_response(self, frame) -> bool:
         if frame.mode != "read-response":
@@ -9460,6 +9528,13 @@ class MainWindow(QMainWindow):
                 self._log("READ Werte: " + "; ".join(value_lines) + more)
             if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
+            if req_label == SGReadyEditorDialog.READ_LABEL_STATUS:
+                sg_dialog = getattr(self, "sg_dialog", None)
+                if sg_dialog is not None and sg_dialog.isVisible():
+                    for reg in frame.registers:
+                        if int(reg.reg) == 2133:
+                            sg_dialog.update_from_live_register(reg, force=True)
+                            break
             if self.current_backend_key() != "display_modbus":
                 for controller_name in ("warmlink_init_controller", "standard_modbus_init_controller"):
                     controller = getattr(self, controller_name, None)
