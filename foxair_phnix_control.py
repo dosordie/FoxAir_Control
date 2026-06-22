@@ -8225,6 +8225,22 @@ class MainWindow(QMainWindow):
             self._apply_cloud_only_visibility()
         self._log(f"Cloud-only Zeilen: {'ein' if self._cloud_only_enabled() else 'aus'}", level=2)
 
+    def _is_safe_cloud_local_mapping(
+        self, cloud_code: str, local_code: str, hint: dict[str, Any] | None = None
+    ) -> bool:
+        """Return True only for fachlich passende Cloud-/Lokal-Code-Mappings."""
+        cloud_code = str(cloud_code or "").strip()
+        local_code = str(local_code or "").strip()
+        if not cloud_code or not local_code:
+            return False
+        hint = hint or cloud_hint(cloud_code)
+        if bool(hint.get("manual_confirmed")) or bool(hint.get("allow_code_mismatch")):
+            return True
+        if cloud_code == local_code:
+            return True
+        hinted_local_code = str(hint.get("local_code") or "").strip()
+        return bool(hinted_local_code and hinted_local_code == local_code)
+
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
         """Cloud-Werte als Overlay in der Haupttabelle anzeigen.
 
@@ -8253,6 +8269,21 @@ class MainWindow(QMainWindow):
             if reg_no in seen_registers:
                 continue
             seen_registers.add(reg_no)
+            hint = cloud_hint(code)
+            has_local_register = self._has_local_register_entry(reg_no)
+            has_existing_row = reg_no in self.table_rows
+            local_code = self._code_for_register(reg_no) if (has_local_register or has_existing_row) else ""
+            has_local_row = has_local_register or has_existing_row
+            if has_local_row and not self._is_safe_cloud_local_mapping(code, local_code, hint):
+                if reg_no in self.cloud_overlay_by_reg:
+                    self.cloud_overlay_by_reg.pop(reg_no, None)
+                    changed_regs.append(reg_no)
+                self._log(
+                    f"Cloud mapping skipped: code mismatch cloud={code} "
+                    f"local={local_code or '?'} reg={reg_no}",
+                    level=2,
+                )
+                continue
             value = row.get("value", "")
             info = {
                 "code": code,
@@ -8264,14 +8295,12 @@ class MainWindow(QMainWindow):
             }
             self.cloud_overlay_by_reg[reg_no] = info
             changed_regs.append(reg_no)
-            has_local_register = self._has_local_register_entry(reg_no)
-            has_existing_row = reg_no in self.table_rows
             if show_cloud_only and not has_local_register and not has_existing_row:
                 reg_info = self.regmap.get(reg_no)
                 raw_int, display_text = self._parse_cloud_numeric_value(value)
                 mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
                 mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
-                name = str(cloud_hint(code).get("name") or mapped_name or f"Cloud {code}")
+                name = str(hint.get("name") or mapped_name or f"Cloud {code}")
                 dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
                 disp = self._cloud_display_text(code, value)
                 try:
