@@ -2392,7 +2392,7 @@ class ManualRegisterDialog(QDialog):
         for reg in registers:
             name = f"  {reg.name}" if reg.name else ""
             lines.append(
-                f"{reg.reg} = {reg.raw_value} / 0x{reg.raw_value:04X} -> {reg.display_value}{name}"
+                f"{reg.reg} / 0x{reg.reg:04X} = {reg.raw_value} / 0x{reg.raw_value:04X} -> {reg.display_value}{name}"
             )
         self.result_box.setPlainText("\n".join(lines))
         if len(registers) == 1:
