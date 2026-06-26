@@ -330,6 +330,13 @@ def _temperature_unit(unit: Optional[str]) -> str:
     return "°C"
 
 
+def _append_display_unit(text: str, unit: Optional[str]) -> str:
+    unit = str(unit or "").strip()
+    if not unit:
+        return text
+    return f"{text} {unit}".strip()
+
+
 def format_value_by_type(
     raw_value: int,
     dtype: str,
@@ -396,18 +403,18 @@ def format_value_by_type(
     if dtype in ("TIMER_MODE", "MODE_0_4", "SG_MODE", "RUN_MODE"):
         return f"{signed}"
     if dtype in ("DIGI5",):
-        return f"{signed / 10.0:.1f}"
+        return _append_display_unit(f"{signed / 10.0:.1f}", unit)
     if dtype == "DIGI6":
-        return f"{signed / 1000.0:.3f}"
+        return _append_display_unit(f"{signed / 1000.0:.3f}", unit)
     if dtype == "DIGI19":
-        return f"{signed / 100.0:.2f}"
+        return _append_display_unit(f"{signed / 100.0:.2f}", unit)
     if dtype == "DIGI4":
-        return f"{signed / 5.0:.1f}"
+        return _append_display_unit(f"{signed / 5.0:.1f}", unit)
     if dtype == "DIGI1":
-        return f"{signed}"
+        return _append_display_unit(f"{signed}", unit)
     if dtype == "DIGI9":
-        return f"{signed} raw / evtl. {signed / 10.0:.1f}"
-    return str(signed)
+        return _append_display_unit(f"{signed} raw / evtl. {signed / 10.0:.1f}", unit)
+    return _append_display_unit(str(signed), unit)
 
 
 def is_possible_bus_addr(value: int) -> bool:

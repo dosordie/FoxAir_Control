@@ -8661,7 +8661,7 @@ class MainWindow(QMainWindow):
             f"{reg.raw_value} / 0x{reg.raw_value:04X}",
             self.previous_value_texts.get(reg.reg, "--"),
             str(reg.signed_value),
-            self._display_value_with_register_unit(reg.reg, self._display_value_for_main_table(reg)),
+            self._display_value_for_main_table(reg),
             f"0x{reg.frame_type:04X}",
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
