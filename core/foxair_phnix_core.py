@@ -44,22 +44,22 @@ WORD_LEN_TYPES = {
 }
 
 CONTACT_BIT_MAP_2034 = {
-    0: ("S01 Hochdruckschalter", "0=ein / 1=aus"),
-    1: ("S02 Niederdruckschalter", "0=ein / 1=aus"),
-    2: ("S03 Wasserflussschalter", "0=ein / 1=aus"),
-    3: ("S04 Überhitzungsschalter elektrischer Heizer", "0=ein / 1=aus"),
-    4: ("S05 Fern-AN/AUS", "0=ein / 1=aus"),
-    5: ("S06 Fernheizung/Kühlung", "0=ein / 1=aus"),
-    6: ("S07 Warmwasserschalter", "0=ein / 1=aus"),
-    7: ("S08 Reserviert / unbekannt", ""),
-    8: ("S09 Reserviert / unbekannt", ""),
-    9: ("S10 Heizen/Kühlen AN/AUS", "0=ein / 1=aus"),
-    10: ("S11 Reserviert / unbekannt", ""),
-    11: ("S12 Reserviert / unbekannt", ""),
-    12: ("SG Kontakt 1", "DWIN 14.bin Seite 238, Maske 0x1000; 0=AUS / 1=EIN"),
-    13: ("SG Kontakt 2", "DWIN 14.bin Seite 237/238, Maske 0x2000; 0=AUS / 1=EIN"),
-    14: ("S15 Reserviert / unbekannt", ""),
-    15: ("S16 Reserviert / unbekannt", ""),
+    0: ("S01 Hochdruckschalter", "0=ein / 1=aus", True),
+    1: ("S02 Niederdruckschalter", "0=ein / 1=aus", True),
+    2: ("S03 Wasserflussschalter", "0=ein / 1=aus", True),
+    3: ("S04 Überhitzungsschalter elektrischer Heizer", "0=ein / 1=aus", True),
+    4: ("S05 Fern-AN/AUS", "0=ein / 1=aus", True),
+    5: ("S06 Fernheizung/Kühlung", "0=ein / 1=aus", True),
+    6: ("S07 Warmwasserschalter", "0=ein / 1=aus", True),
+    7: ("S08 Reserviert / unbekannt", "", False),
+    8: ("S09 Reserviert / unbekannt", "", False),
+    9: ("S10 Heizen/Kühlen AN/AUS", "0=ein / 1=aus", True),
+    10: ("S11 Reserviert / unbekannt", "", False),
+    11: ("S12 Reserviert / unbekannt", "", False),
+    12: ("SG Kontakt 1", "DWIN 14.bin Seite 238, Maske 0x1000; 0=AUS / 1=EIN", False),
+    13: ("SG Kontakt 2", "DWIN 14.bin Seite 237/238, Maske 0x2000; 0=AUS / 1=EIN", False),
+    14: ("S15 Reserviert / unbekannt", "", False),
+    15: ("S16 Reserviert / unbekannt", "", False),
 }
 
 
@@ -728,15 +728,10 @@ def decode_contact_bits(value: int) -> List[Tuple[int, int, str, str, str]]:
     rows = []
     for bit in range(16):
         bit_value = (value >> bit) & 1
-        name, meaning = CONTACT_BIT_MAP_2034.get(bit, (f"Bit{bit}", ""))
-        if meaning:
-            meaning_upper = meaning.upper()
-            if "0=AUS" in meaning_upper and "1=EIN" in meaning_upper:
-                state = "EIN/aktiv" if bit_value == 1 else "AUS/inaktiv"
-            else:
-                state = "ein/aktiv" if bit_value == 0 else "aus/inaktiv"
-        else:
-            state = "0 / LOW" if bit_value == 0 else "1 / HIGH"
+        name, meaning, zero_is_on = CONTACT_BIT_MAP_2034.get(bit, (f"Bit {bit} / unbekannt", "", False))
+        status_on = bit_value == 0 if zero_is_on else bit_value == 1
+        state = "Ein" if status_on else "Aus"
+        if not meaning:
             meaning = "reserviert / Bedeutung unbekannt"
         rows.append((bit, bit_value, name, state, meaning))
     return rows

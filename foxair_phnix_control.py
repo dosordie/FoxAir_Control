@@ -768,7 +768,7 @@ class ContactDecoderDialog(QDialog):
         self.table = QTableWidget(16, 5)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(24)
-        self.table.setHorizontalHeaderLabels(["Bit", "Wert", "Name", "Status", "Bedeutung"])
+        self.table.setHorizontalHeaderLabels(["Bit", "Roh", "Name", "Status", "Bedeutung"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -809,11 +809,10 @@ class ContactDecoderDialog(QDialog):
 
         self.value_label.setText(f"2034: {value} / 0x{value:04X} / bin={value:016b}")
         rows = decode_contact_bits(value)
-        for bit, bit_value, name, _state, meaning in rows:
-            status = "Ein" if bit_value else "Aus"
+        for bit, bit_value, name, state, meaning in rows:
             display_name = name if name else f"Bit {bit} / unbekannt"
-            vals = [str(bit), str(bit_value), display_name, status, meaning]
-            row_color = QColor(220, 255, 220) if bit_value else QColor(245, 245, 245)
+            vals = [str(bit), str(bit_value), display_name, state, meaning]
+            row_color = QColor(220, 255, 220) if state == "Ein" else QColor(245, 245, 245)
             for col, val in enumerate(vals):
                 item = self.table.item(bit, col)
                 if item is None:
