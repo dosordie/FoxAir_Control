@@ -119,10 +119,17 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.49"
-BUILD_DATE = "2026-06-22"
+APP_VERSION = "0.2.50"
+BUILD_DATE = "2026-06-26"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
+
+FLASH_CHANGED_ROW_MS = 2000
+FLASH_CHANGED_ROW_COLOR = QColor(255, 255, 130)
+FLASH_CHANGED_ROW_FADE_STEPS = [
+    (0, QColor(255, 255, 130)),
+    (850, QColor(255, 255, 185)),
+]
 
 # V0.2.46 PUBLIC: Cloud-only-Schalter nur noch im Cloud-Fenster; Log-Drosselung bleibt aktiv.
 # 1 = sehr ruhig, 7 = Debug/alles. Die eigentliche Einordnung erfolgt
@@ -740,12 +747,17 @@ class ContactDecoderDialog(QDialog):
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
         self.main_window = parent
+        self._last_value: Optional[int] = None
+        self._flash_tokens: dict[int, int] = {}
+        self._flash_colors: dict[int, QColor] = {}
         self.setWindowTitle("Kontaktdecoder Register 2034 / 0x07F2")
         self.resize(1030, 560)
         layout = QVBoxLayout(self)
 
         top = QHBoxLayout()
         self.value_label = QLabel("2034: --")
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         self.poll_cb = QCheckBox("poll aktiv")
         self.poll_interval_spin = QSpinBox()
         self.poll_interval_spin.setRange(1, 3600)
@@ -753,6 +765,7 @@ class ContactDecoderDialog(QDialog):
         self.poll_interval_spin.setSuffix(" s")
         self.read_now_btn = QPushButton("jetzt lesen")
         top.addWidget(self.value_label, 1)
+        top.addWidget(self.status_label)
         top.addWidget(self.poll_cb)
         top.addWidget(QLabel("Intervall:"))
         top.addWidget(self.poll_interval_spin)
@@ -768,7 +781,7 @@ class ContactDecoderDialog(QDialog):
         self.table = QTableWidget(16, 5)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(24)
-        self.table.setHorizontalHeaderLabels(["Bit", "Wert", "Name", "Status", "Bedeutung"])
+        self.table.setHorizontalHeaderLabels(["Bit", "Roh", "Name", "Status", "Bedeutung"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -788,36 +801,94 @@ class ContactDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.status_label.setText("Lese Register 2034 ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
         self.main_window.send_read_request(2034, 1, slave_addr=slave_addr, label="Kontaktdecoder 2034")
 
+    def _contact_status_for_bit(self, bit: int, bit_value: int) -> str:
+        for row_bit, row_bit_value, _name, state, _meaning in decode_contact_bits(1 << bit if bit_value else 0):
+            if row_bit == bit and row_bit_value == bit_value:
+                return state
+        return "Ein" if bit_value else "Aus"
+
+    def _contact_row_color(self, bit: int, bit_value: int, value_known: bool, state: Optional[str] = None) -> QColor:
+        if bit in self._flash_tokens:
+            return self._flash_colors.get(bit, FLASH_CHANGED_ROW_COLOR)
+        if not value_known:
+            return QColor(245, 245, 245)
+        status = state if state is not None else self._contact_status_for_bit(bit, bit_value)
+        return QColor(220, 255, 220) if status == "Ein" else QColor(245, 245, 245)
+
+    def _apply_contact_row_background(self, bit: int, bit_value: int, value_known: bool, state: Optional[str] = None) -> None:
+        color = self._contact_row_color(bit, bit_value, value_known, state)
+        for col in range(self.table.columnCount()):
+            item = self.table.item(bit, col)
+            if item is not None:
+                item.setBackground(color)
+
+    def _flash_contact_bit_row(self, bit: int, bit_value: int) -> None:
+        token = self._flash_tokens.get(bit, 0) + 1
+        self._flash_tokens[bit] = token
+
+        def apply_flash_step(color: QColor) -> None:
+            if self._flash_tokens.get(bit) != token:
+                return
+            self._flash_colors[bit] = color
+            current = self._last_value
+            current_bit = ((int(current) >> bit) & 1) if current is not None else bit_value
+            self._apply_contact_row_background(bit, current_bit, current is not None)
+
+        for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
+            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+
+        def clear_flash() -> None:
+            if self._flash_tokens.get(bit) != token:
+                return
+            self._flash_tokens.pop(bit, None)
+            self._flash_colors.pop(bit, None)
+            current = self._last_value
+            current_bit = ((int(current) >> bit) & 1) if current is not None else bit_value
+            self._apply_contact_row_background(bit, current_bit, current is not None)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def set_value(self, value: Optional[int]):
+        old_value = self._last_value
+        changed_bits: set[int] = set()
+        if value is not None and old_value is not None:
+            diff = (int(old_value) ^ int(value)) & 0xFFFF
+            changed_bits = {bit for bit in range(16) if diff & (1 << bit)}
+        self._last_value = value
         if value is None:
             self.value_label.setText("2034: --")
+            self.status_label.setText("Noch nicht gelesen.")
             rows = decode_contact_bits(0)
             for bit, _bit_value, name, _state, meaning in rows:
-                vals = [str(bit), "--", name, "--", meaning]
+                display_name = name if name else f"Bit {bit} / unbekannt"
+                vals = [str(bit), "--", display_name, "--", meaning]
                 for col, val in enumerate(vals):
-                    self.table.setItem(bit, col, QTableWidgetItem(val))
+                    item = QTableWidgetItem(val)
+                    item.setBackground(QColor(245, 245, 245))
+                    self.table.setItem(bit, col, item)
             return
 
         self.value_label.setText(f"2034: {value} / 0x{value:04X} / bin={value:016b}")
+        self.status_label.setText("Erfolgreich gelesen." if not changed_bits else f"Erfolgreich gelesen, {len(changed_bits)} Bit(s) geändert.")
         rows = decode_contact_bits(value)
         for bit, bit_value, name, state, meaning in rows:
-            vals = [str(bit), str(bit_value), name, state, meaning]
+            display_name = name if name else f"Bit {bit} / unbekannt"
+            vals = [str(bit), str(bit_value), display_name, state, meaning]
             for col, val in enumerate(vals):
                 item = self.table.item(bit, col)
                 if item is None:
                     item = QTableWidgetItem()
                     self.table.setItem(bit, col, item)
                 item.setText(val)
-                # Kontakt-/Statusbits mit 1=EIN grün markieren, alte Sxx-Schalter mit 0=ein ebenfalls grün.
-                active_is_one = ("1=EIN" in meaning.upper()) or ("1=EIN" in state.upper())
-                is_active = bool(bit_value) if active_is_one else (bit_value == 0 if meaning else bool(bit_value))
-                item.setBackground(QColor(220, 255, 220) if is_active else QColor(245, 245, 245))
+                item.setBackground(self._contact_row_color(bit, bit_value, True, state))
+            if bit in changed_bits:
+                self._flash_contact_bit_row(bit, bit_value)
 
 
 class LoadOutputDecoderDialog(QDialog):
@@ -2041,6 +2112,8 @@ class RegisterQuickWriteDialog(QDialog):
         self.slave_addr = int(slave_addr)
         self.value_map = self._value_map_for_register()
         self._programmatic = False
+        self._last_raw: Optional[int] = None
+        self._flash_token = 0
         self.setWindowTitle(f"Register {self.reg_no} schnell schreiben")
         self.setMinimumWidth(560)
         self._build_ui()
@@ -2131,6 +2204,9 @@ class RegisterQuickWriteDialog(QDialog):
         if scale_hint:
             label += f" ({scale_hint})"
         form.addRow(label, self.write_value_edit)
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setWordWrap(True)
+        form.addRow("Status:", self.status_label)
 
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("Lesen")
@@ -2191,7 +2267,21 @@ class RegisterQuickWriteDialog(QDialog):
             return
         self._select_combo_value(raw)
 
+    def _flash_value_labels(self) -> None:
+        self._flash_token += 1
+        token = self._flash_token
+        style = "QLabel { background: #ffff82; padding: 2px; }"
+        self.current_raw_label.setStyleSheet(style)
+        self.current_decoded_label.setStyleSheet(style)
+        def clear_flash() -> None:
+            if self._flash_token != token:
+                return
+            self.current_raw_label.setStyleSheet("")
+            self.current_decoded_label.setStyleSheet("")
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def refresh_from_live(self):
+        old_raw = self._last_raw
         reg = self.main_window.latest_regs.get(self.reg_no)
         if reg is None:
             value = self.main_window.last_values.get(self.reg_no)
@@ -2207,6 +2297,9 @@ class RegisterQuickWriteDialog(QDialog):
             decoded = str(reg.display_value)
         self.current_raw_label.setText(f"{raw} / 0x{raw:04X} / signed={s16(raw)}")
         self.current_decoded_label.setText(decoded)
+        if old_raw is not None and old_raw != raw:
+            self._flash_value_labels()
+        self._last_raw = raw
         self._select_combo_value(raw)
         if not self.write_value_edit.text().strip() and not self.write_value_edit.hasFocus():
             self.write_value_edit.setText(self.main_window._display_write_input_for_register(self.reg_no, raw))
@@ -2214,9 +2307,11 @@ class RegisterQuickWriteDialog(QDialog):
     def update_from_live_register(self, reg):
         if int(reg.reg) == self.reg_no:
             self.refresh_from_live()
+            self.status_label.setText("Gelesener Rohwert aktualisiert.")
 
     def read_register(self):
         try:
+            self.status_label.setText("Lese Register ...")
             self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
@@ -2224,11 +2319,26 @@ class RegisterQuickWriteDialog(QDialog):
     def write_register(self):
         try:
             value = self.main_window.parse_register_write_value(self.reg_no, self.write_value_edit.text()) & 0xFFFF
+            self.status_label.setText("Schreibe Register ...")
             self.main_window.send_register_write(self.reg_no, value, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
         except ValueError as exc:
             QMessageBox.warning(self, "Ungültiger Schreibwert", str(exc))
         except Exception as exc:
             QMessageBox.warning(self, "Ungültiger Schreibwert", str(exc))
+
+    def show_write_ack(self, wire_addr: int, value: int):
+        self.status_label.setText(
+            f"Schreiben bestätigt: Register {self.reg_no} / 0x{self.reg_no:04X} "
+            f"(wire 0x{int(wire_addr):04X}) = {int(value) & 0xFFFF} / 0x{int(value) & 0xFFFF:04X}. Lese Wert erneut ..."
+        )
+        try:
+            self.read_register()
+        except Exception:
+            # ACK ist bereits der Schreiberfolg; ein ausbleibender Readback darf das nicht als Fehler darstellen.
+            self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen konnte nicht gestartet werden.")
+
+    def show_write_readback_timeout(self):
+        self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen ohne Antwort.")
 
 
 class SGReadyEditorDialog(QDialog):
@@ -2242,6 +2352,8 @@ class SGReadyEditorDialog(QDialog):
         self._programmatic = False
         self._sg_status_read_pending = False
         self._sg_read_generation = 0
+        self._last_raw_values: dict[int, int] = {}
+        self._flash_tokens: dict[int, int] = {}
         self.setWindowTitle("SG Ready Editor")
         self.setMinimumWidth(620)
         self._build_ui()
@@ -2249,14 +2361,19 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
         layout.addLayout(form)
+        status_row = QHBoxLayout()
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
-        form.addRow("Live:", self.auto_update_cb)
+        status_row.addWidget(self.status_label, 1)
+        status_row.addWidget(self.auto_update_cb)
+        form.addRow("Status:", status_row)
 
         self.sg_mode_combo = QComboBox()
         self.sg_mode_combo.addItem("Aus", 0)
@@ -2318,6 +2435,35 @@ class SGReadyEditorDialog(QDialog):
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
 
+    def _widget_for_reg(self, reg_no: int) -> Optional[QWidget]:
+        if reg_no == 1334:
+            return self.sg_mode_combo
+        if reg_no in self.raw_spins:
+            return self.raw_spins[reg_no]
+        if reg_no in self.temp_spins:
+            return self.temp_spins[reg_no]
+        if reg_no == 2133:
+            return self.sg_status_label
+        return None
+
+    def _flash_sg_widget(self, reg_no: int) -> None:
+        widget = self._widget_for_reg(reg_no)
+        if widget is None:
+            return
+        token = self._flash_tokens.get(reg_no, 0) + 1
+        self._flash_tokens[reg_no] = token
+        old_style = widget.property("_foxair_normal_style")
+        if old_style is None:
+            widget.setProperty("_foxair_normal_style", widget.styleSheet())
+        widget.setStyleSheet("background-color: #ffff82;")
+        def clear_flash() -> None:
+            if self._flash_tokens.get(reg_no) != token:
+                return
+            self._flash_tokens.pop(reg_no, None)
+            widget.setStyleSheet(str(widget.property("_foxair_normal_style") or ""))
+            widget.setProperty("_foxair_normal_style", None)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def update_from_live_register(self, reg, force: bool = False):
         reg_no = int(reg.reg)
         if reg_no not in self.SG_REGS:
@@ -2325,6 +2471,8 @@ class SGReadyEditorDialog(QDialog):
         if not force and not self.auto_update_cb.isChecked():
             return
         raw = int(reg.raw_value) & 0xFFFF
+        old_raw = self._last_raw_values.get(reg_no)
+        should_flash = old_raw is not None and old_raw != raw
         self._programmatic = True
         try:
             if reg_no == 1334:
@@ -2344,12 +2492,17 @@ class SGReadyEditorDialog(QDialog):
                 label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
                 self.sg_status_label.setText(f"{raw} - {label}")
                 self._sg_status_read_pending = False
+                self.status_label.setText("SG Ready / SG Status erfolgreich gelesen.")
         finally:
             self._programmatic = False
+        if should_flash:
+            self._flash_sg_widget(reg_no)
+        self._last_raw_values[reg_no] = raw
 
     def show_sg_status_timeout(self):
         self._sg_status_read_pending = False
         self.sg_status_label.setText("Timeout / keine Antwort")
+        self.status_label.setText("SG Status Timeout / keine Antwort.")
 
     def sg_values(self) -> list[tuple[int, int, str]]:
         values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG01 Funktion")]
@@ -2370,6 +2523,7 @@ class SGReadyEditorDialog(QDialog):
             self._sg_read_generation += 1
             generation = self._sg_read_generation
             self._sg_status_read_pending = False
+            self.status_label.setText("Lese SG Ready Werte ...")
             self.main_window.send_read_request(1334, 8, slave_addr=slave_addr, label=self.READ_LABEL_VALUES)
             QTimer.singleShot(0, lambda: self._send_status_read_after_values(slave_addr, generation))
         except Exception as exc:
@@ -2386,6 +2540,7 @@ class SGReadyEditorDialog(QDialog):
                 {self.READ_LABEL_STATUS},
                 log_prefix="SG Ready Editor",
             )
+            self.status_label.setText("SG Ready Werte gelesen. Lese SG Status ...")
             self.sg_status_label.setText("wird gelesen ...")
             self._sg_status_read_pending = True
             self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label=self.READ_LABEL_STATUS)
@@ -2396,7 +2551,9 @@ class SGReadyEditorDialog(QDialog):
     def send_values(self):
         try:
             slave_addr = DEFAULT_BUS_ADDR
+            self.status_label.setText("Schreibe SG Ready Werte ...")
             self.main_window.send_timer_values(slave_addr, self.sg_values(), int(self.delay_ms.value()), title="SG Ready")
+            self.status_label.setText("SG Ready Schreiben gesendet.")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige SG-Werte", str(exc))
 
@@ -2419,10 +2576,20 @@ class ManualRegisterDialog(QDialog):
         self.count_spin = QSpinBox()
         self.count_spin.setRange(1, 125)
         self.count_spin.setValue(self._saved_count())
+        self.cyclic_read_cb = QCheckBox("Zyklisch abfragen")
+        self.cyclic_interval_spin = QSpinBox()
+        self.cyclic_interval_spin.setRange(1, 3600)
+        self.cyclic_interval_spin.setValue(self._saved_cyclic_interval())
+        self.cyclic_interval_spin.setSuffix(" s")
+        self.cyclic_interval_spin.setToolTip("Abfragezeit fuer zyklisches FC03-Lesen in Sekunden.")
+        self.cyclic_read_timer = QTimer(self)
+        self.cyclic_read_timer.setSingleShot(False)
         form.addRow("Bus-Adresse:", self.bus_edit)
         form.addRow("Register-Adresse:", self.addr_edit)
         form.addRow("Raw-Wert:", self.value_edit)
         form.addRow("Lesen Anzahl:", self.count_spin)
+        form.addRow(self.cyclic_read_cb)
+        form.addRow("Abfragezeit:", self.cyclic_interval_spin)
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
@@ -2443,6 +2610,9 @@ class ManualRegisterDialog(QDialog):
         self.send_btn.clicked.connect(self.send_write_frame)
         self.addr_edit.editingFinished.connect(self._remember_current_register_if_valid)
         self.count_spin.valueChanged.connect(lambda _=None: self._remember_current_count())
+        self.cyclic_read_cb.toggled.connect(self._cyclic_read_toggled)
+        self.cyclic_interval_spin.valueChanged.connect(self._cyclic_interval_changed)
+        self.cyclic_read_timer.timeout.connect(self._cyclic_read_tick)
 
     def _state(self) -> dict[str, Any]:
         state = self.main_window.settings.setdefault("manual_register_dialog", {})
@@ -2465,6 +2635,12 @@ class ManualRegisterDialog(QDialog):
             return min(125, max(1, int(self._state().get("last_read_count", 1) or 1)))
         except Exception:
             return 1
+
+    def _saved_cyclic_interval(self) -> int:
+        try:
+            return min(3600, max(1, int(self._state().get("cyclic_read_interval_s", 10) or 10)))
+        except Exception:
+            return 10
 
     def _remember_register(self, addr: int, *, for_read: bool = False, for_write: bool = False) -> None:
         addr = int(addr)
@@ -2493,6 +2669,11 @@ class ManualRegisterDialog(QDialog):
         state["last_read_count"] = int(self.count_spin.value())
         self.main_window._save_settings(sync_main_fields=False)
 
+    def _remember_cyclic_interval(self) -> None:
+        state = self._state()
+        state["cyclic_read_interval_s"] = int(self.cyclic_interval_spin.value())
+        self.main_window._save_settings(sync_main_fields=False)
+
     def _bus(self) -> int:
         return self.main_window._parse_int_text(self.bus_edit.text())
 
@@ -2507,15 +2688,59 @@ class ManualRegisterDialog(QDialog):
         self.bus_edit.setText(f"0x{int(slave_addr):02X}")
         self._remember_register(int(reg_no))
 
+    def _read_pending(self, addr: int, quantity: int, slave_addr: int) -> bool:
+        frame, wire_addr, wire_slave, _note = self.main_window._build_read_frame_for_backend(addr, quantity, slave_addr)
+        del frame
+        for req in list(getattr(self.main_window, "pending_read_requests", []) or []):
+            if str(req.get("label", "")) != "manuelles Popup":
+                continue
+            if int(req.get("slave_addr", -1)) != int(wire_slave):
+                continue
+            if int(req.get("addr", -1)) == int(addr) and int(req.get("wire_addr", -1)) == int(wire_addr) and int(req.get("quantity", -1)) == int(quantity):
+                return True
+        return False
+
+    def _send_current_read(self, *, cyclic: bool = False) -> None:
+        addr = self._addr()
+        quantity = int(self.count_spin.value())
+        slave_addr = self._bus()
+        self._remember_register(addr, for_read=True)
+        if cyclic and self._read_pending(addr, quantity, slave_addr):
+            self.main_window._log(
+                f"Zyklisches Popup-Lesen übersprungen: identischer READ noch offen ({addr}/0x{addr:04X}, Anzahl {quantity}).",
+                level=6,
+            )
+            return
+        self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
+        self.main_window.send_read_request(addr, quantity, slave_addr=slave_addr, label="manuelles Popup")
+
     def read_registers(self):
         try:
-            addr = self._addr()
-            quantity = int(self.count_spin.value())
-            self._remember_register(addr, for_read=True)
-            self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
-            self.main_window.send_read_request(addr, quantity, slave_addr=self._bus(), label="manuelles Popup")
+            self._send_current_read(cyclic=False)
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
+
+    def _cyclic_read_toggled(self, checked: bool) -> None:
+        if checked:
+            self._remember_cyclic_interval()
+            self.cyclic_read_timer.start(int(self.cyclic_interval_spin.value()) * 1000)
+            self._cyclic_read_tick()
+        else:
+            self.cyclic_read_timer.stop()
+
+    def _cyclic_interval_changed(self, _value: int) -> None:
+        self._remember_cyclic_interval()
+        if self.cyclic_read_timer.isActive():
+            self.cyclic_read_timer.start(int(self.cyclic_interval_spin.value()) * 1000)
+
+    def _cyclic_read_tick(self) -> None:
+        if not self.cyclic_read_cb.isChecked():
+            self.cyclic_read_timer.stop()
+            return
+        try:
+            self._send_current_read(cyclic=True)
+        except Exception as exc:
+            self.main_window._log(f"Zyklisches Popup-Lesen nicht ausgeführt: {exc}")
 
     def show_read_response(self, start_addr: int, quantity: int, registers: list[DecodedRegister]):
         if not registers:
@@ -2564,7 +2789,9 @@ class ManualRegisterDialog(QDialog):
             QMessageBox.warning(self, "Ungültige Schreibdaten", str(exc))
 
     def closeEvent(self, event):
+        self.cyclic_read_timer.stop()
         self._remember_current_register_if_valid()
+        self._remember_cyclic_interval()
         super().closeEvent(event)
 
 
@@ -6102,6 +6329,8 @@ class MainWindow(QMainWindow):
         self.latest_regs: Dict[int, object] = {}
         self.last_values: Dict[int, int] = {}
         self.previous_value_texts: Dict[int, str] = {}
+        self.register_flash_tokens: Dict[int, int] = {}
+        self.register_flash_colors: Dict[int, QColor] = {}
         # Display-/DWIN-Diagnosewerte strikt getrennt von der Warmlink-Hauptliste.
         self.display_latest_regs: Dict[int, object] = {}
         self.display_last_values: Dict[int, int] = {}
@@ -6122,6 +6351,7 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
+        self.pending_write_requests: list[dict[str, Any]] = []
         self.pending_read_timeout_timer = QTimer(self)
         self.pending_read_timeout_timer.setInterval(500)
         self.pending_read_timeout_timer.timeout.connect(self._check_pending_read_timeouts)
@@ -7083,6 +7313,69 @@ class MainWindow(QMainWindow):
         _block, _code, clean = self._display_parts_for_register(int(reg_no), fallback_name)
         return clean or fallback_name
 
+    def _unit_for_register(self, reg_no: int) -> str:
+        data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        if isinstance(data, dict):
+            return str(data.get("unit", "") or "").strip()
+        return ""
+
+
+    def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
+        info = self.regmap.get(int(reg.reg))
+        unit = self._unit_for_register(int(reg.reg))
+        dtype = info.dtype if info else getattr(reg, "dtype", "RAW")
+        value_map = info.value_map if info else None
+        bit_map = info.bit_map if info else None
+        return format_value_by_type(
+            int(reg.raw_value),
+            dtype,
+            value_map,
+            bit_map,
+            unit=unit or None,
+        )
+
+    def _display_value_with_register_unit(self, reg_no: int, display_value: str) -> str:
+        unit = self._unit_for_register(int(reg_no))
+        text = str(display_value)
+        if not unit:
+            return text
+
+        known_units = (
+            "m³/h",
+            "kW/h",
+            "days",
+            "kWh",
+            "rpm",
+            "bar",
+            "°C",
+            "kW",
+            "COP",
+            "K",
+            "%",
+            "A",
+            "V",
+            "W",
+            "Hz",
+            "min",
+            "s",
+            "h",
+            "N",
+        )
+        suffix_match = re.search(
+            rf"(^|\s)({'|'.join(re.escape(suffix) for suffix in known_units)})$",
+            text,
+        )
+        if suffix_match:
+            display_unit = suffix_match.group(2)
+            if display_unit != unit:
+                self._log(
+                    f"Einheit nicht angehängt, display_value enthält bereits Einheit: "
+                    f"reg={int(reg_no)}, display_value={text!r}, register_unit={unit!r}",
+                    level=7,
+                )
+            return text
+        return f"{text} {unit}".strip()
+
     def _cached_register_from_snapshot(self, item: dict) -> Optional[DecodedRegister]:
         try:
             reg_no = int(item["reg"])
@@ -7993,6 +8286,7 @@ class MainWindow(QMainWindow):
                 f"addr={frame.typ} / 0x{frame.typ:04X}, anzahl={frame.length_field}"
             )
             self._remember_display_write_ack(frame)
+            self._apply_pending_write_ack(frame)
 
 
         if self.current_backend_key() == "display_modbus":
@@ -8302,7 +8596,7 @@ class MainWindow(QMainWindow):
         if row is None:
             return
         active_changed = bool(force_changed or self._register_change_highlight_active(reg_no))
-        color = self._background_for_register(reg_no, active_changed)
+        color = self.register_flash_colors.get(reg_no, FLASH_CHANGED_ROW_COLOR) if reg_no in self.register_flash_tokens else self._background_for_register(reg_no, active_changed)
         reg = self.latest_regs.get(reg_no)
         is_block_row = is_block_dtype(getattr(reg, "dtype", ""))
         for col in range(self.register_table.columnCount()):
@@ -8321,6 +8615,28 @@ class MainWindow(QMainWindow):
                 # Suchtreffer zusätzlich mit kontrastreicher Schriftfarbe darstellen.
                 item.setForeground(QColor(0, 0, 0) if not app_theme_is_dark() else QColor(255, 255, 255))
             self._set_table_item_background(item, color)
+
+    def flash_register_row(self, reg_no: int) -> None:
+        reg_no = int(reg_no)
+        token = self.register_flash_tokens.get(reg_no, 0) + 1
+        self.register_flash_tokens[reg_no] = token
+
+        def apply_flash_step(color: QColor) -> None:
+            if self.register_flash_tokens.get(reg_no) != token:
+                return
+            self.register_flash_colors[reg_no] = color
+            self._apply_register_row_visual_state(reg_no)
+
+        for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
+            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+
+        def clear_flash() -> None:
+            if self.register_flash_tokens.get(reg_no) != token:
+                return
+            self.register_flash_tokens.pop(reg_no, None)
+            self.register_flash_colors.pop(reg_no, None)
+            self._apply_register_row_visual_state(reg_no)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def _apply_persistent_change_backgrounds(self, only_regs: Optional[list[int]] = None) -> None:
         """PRIVATE fix51: geaenderte Zeilen nach Refreshes erneut sichtbar machen."""
@@ -8345,7 +8661,7 @@ class MainWindow(QMainWindow):
             f"{reg.raw_value} / 0x{reg.raw_value:04X}",
             self.previous_value_texts.get(reg.reg, "--"),
             str(reg.signed_value),
-            reg.display_value,
+            self._display_value_for_main_table(reg),
             f"0x{reg.frame_type:04X}",
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
@@ -8363,6 +8679,7 @@ class MainWindow(QMainWindow):
         self.register_table.setRowHeight(row, 19 if is_block_row else 24)
         if changed:
             self._mark_register_changed_for_color(reg.reg)
+            self.flash_register_row(reg.reg)
 
         for col, value in enumerate(values):
             item = self.register_table.item(row, col)
@@ -9503,15 +9820,27 @@ class MainWindow(QMainWindow):
                 f"{f' ({restbuffer_len} Byte)' if restbuffer_present else ''}",
                 force=True,
             )
-            if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
+            req_label = str(req.get("label", ""))
+            if req_label.startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 try:
                     self.manual_register_dialog.show_read_timeout(addr, qty)
                 except AttributeError:
                     pass
-            if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
+            if req_label.startswith("Popup Register"):
+                key = (int(req.get("slave_addr", DEFAULT_BUS_ADDR)), int(req.get("addr", addr)))
+                dialog = getattr(self, "register_write_dialogs", {}).get(key)
+                if dialog is not None and dialog.isVisible():
+                    try:
+                        dialog.show_write_readback_timeout()
+                    except AttributeError:
+                        pass
+            if str(req.get("label", "")) in (SGReadyEditorDialog.READ_LABEL_VALUES, SGReadyEditorDialog.READ_LABEL_STATUS):
                 sg_dialog = getattr(self, "sg_dialog", None)
                 if sg_dialog is not None and sg_dialog.isVisible():
-                    sg_dialog.show_sg_status_timeout()
+                    if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
+                        sg_dialog.show_sg_status_timeout()
+                    else:
+                        sg_dialog.status_label.setText("SG Ready Werte Timeout / keine Antwort.")
 
     def _apply_pending_read_response(self, frame) -> bool:
         if frame.mode != "read-response":
@@ -9672,6 +10001,19 @@ class MainWindow(QMainWindow):
                 routed_to_aux_display = True
                 try:
                     map_key = "display" if (int(wire_addr) >= 3000 or int(wire_slave) in {0x02, 0x03, 0x05}) else "warmlink"
+                    if any(
+                        int(req.get("slave", -1)) == int(wire_slave)
+                        and int(req.get("addr", -1)) == int(wire_addr)
+                        and int(req.get("qty", -1)) == int(quantity)
+                        for req in list(dlg.display_pending_reads)
+                    ):
+                        self._log(
+                            f"DISPLAY READ nicht doppelt gestapelt: bus=0x{int(wire_slave):02X}, "
+                            f"wire=0x{int(wire_addr):04X}, qty={int(quantity)}.",
+                            level=6,
+                            force=True,
+                        )
+                        return
                     dlg.display_pending_reads.append({
                         "slave": int(wire_slave),
                         "addr": int(wire_addr),
@@ -9686,6 +10028,20 @@ class MainWindow(QMainWindow):
                     self._log(f"DISPLAY WARN: Pending-Read im DisplayWorker konnte nicht eingetragen werden: {exc}")
 
         if not routed_to_aux_display:
+            for req in list(getattr(self, "pending_read_requests", []) or []):
+                if (
+                    int(req.get("slave_addr", -1)) == int(wire_slave)
+                    and int(req.get("wire_addr", -1)) == int(wire_addr)
+                    and int(req.get("quantity", -1)) == int(quantity)
+                ):
+                    self._log(
+                        f"READ nicht doppelt gestapelt: identischer Pending-Read bereits offen "
+                        f"(bus=0x{int(wire_slave):02X}, addr={int(addr)}/0x{int(addr):04X}, qty={int(quantity)}, "
+                        f"bestehend={req.get('label') or '-'}, neu={label or '-'}).",
+                        level=6,
+                        force=True,
+                    )
+                    return
             self.pending_read_requests.append({
                 "slave_addr": wire_slave,
                 "addr": addr,
@@ -10405,6 +10761,35 @@ class MainWindow(QMainWindow):
         io_worker.enqueue_write(addr, value, slave_addr=0x03, post_delay_ms=post_delay_ms, write_single=False)
         return True
 
+    def _apply_pending_write_ack(self, frame) -> bool:
+        if getattr(frame, "mode", "") != "write-response":
+            return False
+        for req in list(getattr(self, "pending_write_requests", []) or []):
+            if int(req.get("slave_addr", -1)) != int(getattr(frame, "slave_addr", -2)):
+                continue
+            if int(req.get("wire_addr", -1)) != int(getattr(frame, "typ", -2)):
+                continue
+            qty = int(getattr(frame, "length_field", 1) or 1)
+            if qty != int(req.get("quantity", 1)):
+                continue
+            try:
+                self.pending_write_requests.remove(req)
+            except ValueError:
+                pass
+            label = str(req.get("label", ""))
+            self._log(
+                f"WRITE/ACK passt zu Anfrage ({label or 'ohne Label'}): "
+                f"addr={int(req.get('addr', frame.typ))} / 0x{int(req.get('addr', frame.typ)):04X}, "
+                f"wire=0x{int(req.get('wire_addr', frame.typ)):04X}"
+            )
+            if label.startswith("Popup Register"):
+                key = (int(req.get("requested_slave_addr", req.get("slave_addr", DEFAULT_BUS_ADDR))), int(req.get("addr", -1)))
+                dialog = getattr(self, "register_write_dialogs", {}).get(key)
+                if dialog is not None and dialog.isVisible():
+                    dialog.show_write_ack(int(req.get("wire_addr", frame.typ)), int(req.get("value", 0)))
+            return True
+        return False
+
     def _remember_display_write_ack(self, frame) -> None:
         """Merkt FC16-ACKs fuer die Display-PRIVATE-Tests.
 
@@ -10743,6 +11128,9 @@ class MainWindow(QMainWindow):
         passiert, setzt die ACK-State-Machine das Flag als Fallback.
         """
         if self.current_backend_key() != "display_modbus":
+            return None
+        info = self.regmap.get(int(addr))
+        if not info or not str(getattr(info, "name", "") or "").strip():
             return None
         try:
             wire_slave = self._wire_slave_addr(slave_addr)
@@ -11211,6 +11599,19 @@ class MainWindow(QMainWindow):
         if io_worker is None:
             self._log("WRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
+        if label:
+            self.pending_write_requests.append({
+                "slave_addr": int(wire_slave),
+                "requested_slave_addr": int(slave_addr),
+                "addr": int(addr),
+                "wire_addr": int(wire_addr),
+                "quantity": 1,
+                "value": int(value) & 0xFFFF,
+                "label": str(label),
+                "time": time.time(),
+            })
+            if len(self.pending_write_requests) > 100:
+                del self.pending_write_requests[:len(self.pending_write_requests) - 100]
         io_worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
 
     def show_write_frame(self):
