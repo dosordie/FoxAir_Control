@@ -124,6 +124,9 @@ BUILD_DATE = "2026-06-21"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
+FLASH_CHANGED_ROW_MS = 800
+FLASH_CHANGED_ROW_COLOR = QColor(255, 255, 130)
+
 # V0.2.46 PUBLIC: Cloud-only-Schalter nur noch im Cloud-Fenster; Log-Drosselung bleibt aktiv.
 # 1 = sehr ruhig, 7 = Debug/alles. Die eigentliche Einordnung erfolgt
 # absichtlich per Textklassifikation in MainWindow._infer_log_level(), damit
@@ -740,12 +743,16 @@ class ContactDecoderDialog(QDialog):
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
         self.main_window = parent
+        self._last_value: Optional[int] = None
+        self._flash_tokens: dict[int, int] = {}
         self.setWindowTitle("Kontaktdecoder Register 2034 / 0x07F2")
         self.resize(1030, 560)
         layout = QVBoxLayout(self)
 
         top = QHBoxLayout()
         self.value_label = QLabel("2034: --")
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         self.poll_cb = QCheckBox("poll aktiv")
         self.poll_interval_spin = QSpinBox()
         self.poll_interval_spin.setRange(1, 3600)
@@ -753,6 +760,7 @@ class ContactDecoderDialog(QDialog):
         self.poll_interval_spin.setSuffix(" s")
         self.read_now_btn = QPushButton("jetzt lesen")
         top.addWidget(self.value_label, 1)
+        top.addWidget(self.status_label)
         top.addWidget(self.poll_cb)
         top.addWidget(QLabel("Intervall:"))
         top.addWidget(self.poll_interval_spin)
@@ -788,15 +796,48 @@ class ContactDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.status_label.setText("Lese Register 2034 ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
         self.main_window.send_read_request(2034, 1, slave_addr=slave_addr, label="Kontaktdecoder 2034")
 
+    def _contact_row_color(self, bit: int, bit_value: int, value_known: bool) -> QColor:
+        if bit in self._flash_tokens:
+            return FLASH_CHANGED_ROW_COLOR
+        return QColor(220, 255, 220) if bit_value and value_known else QColor(245, 245, 245)
+
+    def _apply_contact_row_background(self, bit: int, bit_value: int, value_known: bool) -> None:
+        color = self._contact_row_color(bit, bit_value, value_known)
+        for col in range(self.table.columnCount()):
+            item = self.table.item(bit, col)
+            if item is not None:
+                item.setBackground(color)
+
+    def _flash_contact_bit_row(self, bit: int, bit_value: int) -> None:
+        token = self._flash_tokens.get(bit, 0) + 1
+        self._flash_tokens[bit] = token
+        self._apply_contact_row_background(bit, bit_value, True)
+        def clear_flash() -> None:
+            if self._flash_tokens.get(bit) != token:
+                return
+            self._flash_tokens.pop(bit, None)
+            current = self._last_value
+            current_bit = ((int(current) >> bit) & 1) if current is not None else bit_value
+            self._apply_contact_row_background(bit, current_bit, current is not None)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def set_value(self, value: Optional[int]):
+        old_value = self._last_value
+        changed_bits: set[int] = set()
+        if value is not None and old_value is not None:
+            diff = (int(old_value) ^ int(value)) & 0xFFFF
+            changed_bits = {bit for bit in range(16) if diff & (1 << bit)}
+        self._last_value = value
         if value is None:
             self.value_label.setText("2034: --")
+            self.status_label.setText("Noch nicht gelesen.")
             rows = decode_contact_bits(0)
             for bit, _bit_value, name, _state, meaning in rows:
                 display_name = name if name else f"Bit {bit} / unbekannt"
@@ -808,18 +849,20 @@ class ContactDecoderDialog(QDialog):
             return
 
         self.value_label.setText(f"2034: {value} / 0x{value:04X} / bin={value:016b}")
+        self.status_label.setText("Erfolgreich gelesen." if not changed_bits else f"Erfolgreich gelesen, {len(changed_bits)} Bit(s) geändert.")
         rows = decode_contact_bits(value)
         for bit, bit_value, name, state, meaning in rows:
             display_name = name if name else f"Bit {bit} / unbekannt"
             vals = [str(bit), str(bit_value), display_name, state, meaning]
-            row_color = QColor(220, 255, 220) if state == "Ein" else QColor(245, 245, 245)
             for col, val in enumerate(vals):
                 item = self.table.item(bit, col)
                 if item is None:
                     item = QTableWidgetItem()
                     self.table.setItem(bit, col, item)
                 item.setText(val)
-                item.setBackground(row_color)
+                item.setBackground(self._contact_row_color(bit, bit_value, True))
+            if bit in changed_bits:
+                self._flash_contact_bit_row(bit, bit_value)
 
 
 class LoadOutputDecoderDialog(QDialog):
@@ -2043,6 +2086,8 @@ class RegisterQuickWriteDialog(QDialog):
         self.slave_addr = int(slave_addr)
         self.value_map = self._value_map_for_register()
         self._programmatic = False
+        self._last_raw: Optional[int] = None
+        self._flash_token = 0
         self.setWindowTitle(f"Register {self.reg_no} schnell schreiben")
         self.setMinimumWidth(560)
         self._build_ui()
@@ -2196,7 +2241,21 @@ class RegisterQuickWriteDialog(QDialog):
             return
         self._select_combo_value(raw)
 
+    def _flash_value_labels(self) -> None:
+        self._flash_token += 1
+        token = self._flash_token
+        style = "QLabel { background: #ffff82; padding: 2px; }"
+        self.current_raw_label.setStyleSheet(style)
+        self.current_decoded_label.setStyleSheet(style)
+        def clear_flash() -> None:
+            if self._flash_token != token:
+                return
+            self.current_raw_label.setStyleSheet("")
+            self.current_decoded_label.setStyleSheet("")
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def refresh_from_live(self):
+        old_raw = self._last_raw
         reg = self.main_window.latest_regs.get(self.reg_no)
         if reg is None:
             value = self.main_window.last_values.get(self.reg_no)
@@ -2212,6 +2271,9 @@ class RegisterQuickWriteDialog(QDialog):
             decoded = str(reg.display_value)
         self.current_raw_label.setText(f"{raw} / 0x{raw:04X} / signed={s16(raw)}")
         self.current_decoded_label.setText(decoded)
+        if old_raw is not None and old_raw != raw:
+            self._flash_value_labels()
+        self._last_raw = raw
         self._select_combo_value(raw)
         if not self.write_value_edit.text().strip() and not self.write_value_edit.hasFocus():
             self.write_value_edit.setText(self.main_window._display_write_input_for_register(self.reg_no, raw))
@@ -2264,6 +2326,8 @@ class SGReadyEditorDialog(QDialog):
         self._programmatic = False
         self._sg_status_read_pending = False
         self._sg_read_generation = 0
+        self._last_raw_values: dict[int, int] = {}
+        self._flash_tokens: dict[int, int] = {}
         self.setWindowTitle("SG Ready Editor")
         self.setMinimumWidth(620)
         self._build_ui()
@@ -2340,6 +2404,35 @@ class SGReadyEditorDialog(QDialog):
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
 
+    def _widget_for_reg(self, reg_no: int) -> Optional[QWidget]:
+        if reg_no == 1334:
+            return self.sg_mode_combo
+        if reg_no in self.raw_spins:
+            return self.raw_spins[reg_no]
+        if reg_no in self.temp_spins:
+            return self.temp_spins[reg_no]
+        if reg_no == 2133:
+            return self.sg_status_label
+        return None
+
+    def _flash_sg_widget(self, reg_no: int) -> None:
+        widget = self._widget_for_reg(reg_no)
+        if widget is None:
+            return
+        token = self._flash_tokens.get(reg_no, 0) + 1
+        self._flash_tokens[reg_no] = token
+        old_style = widget.property("_foxair_normal_style")
+        if old_style is None:
+            widget.setProperty("_foxair_normal_style", widget.styleSheet())
+        widget.setStyleSheet("background-color: #ffff82;")
+        def clear_flash() -> None:
+            if self._flash_tokens.get(reg_no) != token:
+                return
+            self._flash_tokens.pop(reg_no, None)
+            widget.setStyleSheet(str(widget.property("_foxair_normal_style") or ""))
+            widget.setProperty("_foxair_normal_style", None)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+
     def update_from_live_register(self, reg, force: bool = False):
         reg_no = int(reg.reg)
         if reg_no not in self.SG_REGS:
@@ -2347,6 +2440,8 @@ class SGReadyEditorDialog(QDialog):
         if not force and not self.auto_update_cb.isChecked():
             return
         raw = int(reg.raw_value) & 0xFFFF
+        old_raw = self._last_raw_values.get(reg_no)
+        should_flash = old_raw is not None and old_raw != raw
         self._programmatic = True
         try:
             if reg_no == 1334:
@@ -2368,6 +2463,9 @@ class SGReadyEditorDialog(QDialog):
                 self._sg_status_read_pending = False
         finally:
             self._programmatic = False
+        if should_flash:
+            self._flash_sg_widget(reg_no)
+        self._last_raw_values[reg_no] = raw
 
     def show_sg_status_timeout(self):
         self._sg_status_read_pending = False
@@ -6194,6 +6292,7 @@ class MainWindow(QMainWindow):
         self.latest_regs: Dict[int, object] = {}
         self.last_values: Dict[int, int] = {}
         self.previous_value_texts: Dict[int, str] = {}
+        self.register_flash_tokens: Dict[int, int] = {}
         # Display-/DWIN-Diagnosewerte strikt getrennt von der Warmlink-Hauptliste.
         self.display_latest_regs: Dict[int, object] = {}
         self.display_last_values: Dict[int, int] = {}
@@ -8396,7 +8495,7 @@ class MainWindow(QMainWindow):
         if row is None:
             return
         active_changed = bool(force_changed or self._register_change_highlight_active(reg_no))
-        color = self._background_for_register(reg_no, active_changed)
+        color = FLASH_CHANGED_ROW_COLOR if reg_no in self.register_flash_tokens else self._background_for_register(reg_no, active_changed)
         reg = self.latest_regs.get(reg_no)
         is_block_row = is_block_dtype(getattr(reg, "dtype", ""))
         for col in range(self.register_table.columnCount()):
@@ -8415,6 +8514,18 @@ class MainWindow(QMainWindow):
                 # Suchtreffer zusätzlich mit kontrastreicher Schriftfarbe darstellen.
                 item.setForeground(QColor(0, 0, 0) if not app_theme_is_dark() else QColor(255, 255, 255))
             self._set_table_item_background(item, color)
+
+    def flash_register_row(self, reg_no: int) -> None:
+        reg_no = int(reg_no)
+        token = self.register_flash_tokens.get(reg_no, 0) + 1
+        self.register_flash_tokens[reg_no] = token
+        self._apply_register_row_visual_state(reg_no)
+        def clear_flash() -> None:
+            if self.register_flash_tokens.get(reg_no) != token:
+                return
+            self.register_flash_tokens.pop(reg_no, None)
+            self._apply_register_row_visual_state(reg_no)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def _apply_persistent_change_backgrounds(self, only_regs: Optional[list[int]] = None) -> None:
         """PRIVATE fix51: geaenderte Zeilen nach Refreshes erneut sichtbar machen."""
@@ -8457,6 +8568,7 @@ class MainWindow(QMainWindow):
         self.register_table.setRowHeight(row, 19 if is_block_row else 24)
         if changed:
             self._mark_register_changed_for_color(reg.reg)
+            self.flash_register_row(reg.reg)
 
         for col, value in enumerate(values):
             item = self.register_table.item(row, col)
