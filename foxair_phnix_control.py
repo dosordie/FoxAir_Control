@@ -2419,10 +2419,20 @@ class ManualRegisterDialog(QDialog):
         self.count_spin = QSpinBox()
         self.count_spin.setRange(1, 125)
         self.count_spin.setValue(self._saved_count())
+        self.cyclic_read_cb = QCheckBox("Zyklisch abfragen")
+        self.cyclic_interval_spin = QSpinBox()
+        self.cyclic_interval_spin.setRange(1, 3600)
+        self.cyclic_interval_spin.setValue(self._saved_cyclic_interval())
+        self.cyclic_interval_spin.setSuffix(" s")
+        self.cyclic_interval_spin.setToolTip("Abfragezeit fuer zyklisches FC03-Lesen in Sekunden.")
+        self.cyclic_read_timer = QTimer(self)
+        self.cyclic_read_timer.setSingleShot(False)
         form.addRow("Bus-Adresse:", self.bus_edit)
         form.addRow("Register-Adresse:", self.addr_edit)
         form.addRow("Raw-Wert:", self.value_edit)
         form.addRow("Lesen Anzahl:", self.count_spin)
+        form.addRow(self.cyclic_read_cb)
+        form.addRow("Abfragezeit:", self.cyclic_interval_spin)
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
@@ -2443,6 +2453,9 @@ class ManualRegisterDialog(QDialog):
         self.send_btn.clicked.connect(self.send_write_frame)
         self.addr_edit.editingFinished.connect(self._remember_current_register_if_valid)
         self.count_spin.valueChanged.connect(lambda _=None: self._remember_current_count())
+        self.cyclic_read_cb.toggled.connect(self._cyclic_read_toggled)
+        self.cyclic_interval_spin.valueChanged.connect(self._cyclic_interval_changed)
+        self.cyclic_read_timer.timeout.connect(self._cyclic_read_tick)
 
     def _state(self) -> dict[str, Any]:
         state = self.main_window.settings.setdefault("manual_register_dialog", {})
@@ -2465,6 +2478,12 @@ class ManualRegisterDialog(QDialog):
             return min(125, max(1, int(self._state().get("last_read_count", 1) or 1)))
         except Exception:
             return 1
+
+    def _saved_cyclic_interval(self) -> int:
+        try:
+            return min(3600, max(1, int(self._state().get("cyclic_read_interval_s", 10) or 10)))
+        except Exception:
+            return 10
 
     def _remember_register(self, addr: int, *, for_read: bool = False, for_write: bool = False) -> None:
         addr = int(addr)
@@ -2493,6 +2512,11 @@ class ManualRegisterDialog(QDialog):
         state["last_read_count"] = int(self.count_spin.value())
         self.main_window._save_settings(sync_main_fields=False)
 
+    def _remember_cyclic_interval(self) -> None:
+        state = self._state()
+        state["cyclic_read_interval_s"] = int(self.cyclic_interval_spin.value())
+        self.main_window._save_settings(sync_main_fields=False)
+
     def _bus(self) -> int:
         return self.main_window._parse_int_text(self.bus_edit.text())
 
@@ -2507,15 +2531,59 @@ class ManualRegisterDialog(QDialog):
         self.bus_edit.setText(f"0x{int(slave_addr):02X}")
         self._remember_register(int(reg_no))
 
+    def _read_pending(self, addr: int, quantity: int, slave_addr: int) -> bool:
+        frame, wire_addr, wire_slave, _note = self.main_window._build_read_frame_for_backend(addr, quantity, slave_addr)
+        del frame
+        for req in list(getattr(self.main_window, "pending_read_requests", []) or []):
+            if str(req.get("label", "")) != "manuelles Popup":
+                continue
+            if int(req.get("slave_addr", -1)) != int(wire_slave):
+                continue
+            if int(req.get("addr", -1)) == int(addr) and int(req.get("wire_addr", -1)) == int(wire_addr) and int(req.get("quantity", -1)) == int(quantity):
+                return True
+        return False
+
+    def _send_current_read(self, *, cyclic: bool = False) -> None:
+        addr = self._addr()
+        quantity = int(self.count_spin.value())
+        slave_addr = self._bus()
+        self._remember_register(addr, for_read=True)
+        if cyclic and self._read_pending(addr, quantity, slave_addr):
+            self.main_window._log(
+                f"Zyklisches Popup-Lesen übersprungen: identischer READ noch offen ({addr}/0x{addr:04X}, Anzahl {quantity}).",
+                level=6,
+            )
+            return
+        self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
+        self.main_window.send_read_request(addr, quantity, slave_addr=slave_addr, label="manuelles Popup")
+
     def read_registers(self):
         try:
-            addr = self._addr()
-            quantity = int(self.count_spin.value())
-            self._remember_register(addr, for_read=True)
-            self.result_box.setPlainText(f"Lese Register {addr} / 0x{addr:04X}, Anzahl {quantity} ...")
-            self.main_window.send_read_request(addr, quantity, slave_addr=self._bus(), label="manuelles Popup")
+            self._send_current_read(cyclic=False)
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
+
+    def _cyclic_read_toggled(self, checked: bool) -> None:
+        if checked:
+            self._remember_cyclic_interval()
+            self.cyclic_read_timer.start(int(self.cyclic_interval_spin.value()) * 1000)
+            self._cyclic_read_tick()
+        else:
+            self.cyclic_read_timer.stop()
+
+    def _cyclic_interval_changed(self, _value: int) -> None:
+        self._remember_cyclic_interval()
+        if self.cyclic_read_timer.isActive():
+            self.cyclic_read_timer.start(int(self.cyclic_interval_spin.value()) * 1000)
+
+    def _cyclic_read_tick(self) -> None:
+        if not self.cyclic_read_cb.isChecked():
+            self.cyclic_read_timer.stop()
+            return
+        try:
+            self._send_current_read(cyclic=True)
+        except Exception as exc:
+            self.main_window._log(f"Zyklisches Popup-Lesen nicht ausgeführt: {exc}")
 
     def show_read_response(self, start_addr: int, quantity: int, registers: list[DecodedRegister]):
         if not registers:
@@ -2564,7 +2632,9 @@ class ManualRegisterDialog(QDialog):
             QMessageBox.warning(self, "Ungültige Schreibdaten", str(exc))
 
     def closeEvent(self, event):
+        self.cyclic_read_timer.stop()
         self._remember_current_register_if_valid()
+        self._remember_cyclic_interval()
         super().closeEvent(event)
 
 

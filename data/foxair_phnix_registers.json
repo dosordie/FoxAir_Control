@@ -5142,9 +5142,9 @@
   "2116": {
     "function": "16",
     "mode": "write",
-    "name": "Merker 2116: unbestätigter Wert / evtl. Spreizung-Kandidat",
+    "name": "Funktion unbekannt",
     "type": "RAW",
-    "note": "Passte nicht sauber zur Einlass-Auslass-Spreizung; beobachtet 30/28/26 bei real ca. 3.3/3.7/3.5 K. Nicht als gesichert anzeigen."
+    "note": "Beobachtung: Der Wert wird kleiner, wenn die aktuelle UP-PWM (Register 2115) kleiner wird. Bedeutung/Skalierung noch unbekannt."
   },
   "2117": {
     "function": "16",
@@ -5258,10 +5258,13 @@
     "name": "SG Status",
     "type": "DIGI1",
     "value_map": {
-      "0": "kein SG Ready aktiv",
-      "4": "SG Ready aktiv"
+      "0": "kein SG Ready aktiv oder WP aus",
+      "1": "evtl. SG Mode 1 (unbestätigt)",
+      "2": "evtl. SG Mode 2 (unbestätigt)",
+      "3": "evtl. SG Mode 3 (unbestätigt)",
+      "4": "SG Ready aktiv - Mode 4"
     },
-    "notes": "Werte 1-3 aktuell unbekannt."
+    "notes": "0 und 4 beobachtet/bestätigt. Werte 1-3 sind evtl. SG Mode 1-3 und unbestätigt."
   },
   "91105": {
     "block": "DWINV",
