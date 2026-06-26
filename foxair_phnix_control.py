@@ -128,8 +128,7 @@ FLASH_CHANGED_ROW_MS = 2000
 FLASH_CHANGED_ROW_COLOR = QColor(255, 255, 130)
 FLASH_CHANGED_ROW_FADE_STEPS = [
     (0, QColor(255, 255, 130)),
-    (700, QColor(255, 255, 180)),
-    (1400, QColor(255, 255, 220)),
+    (850, QColor(255, 255, 185)),
 ]
 
 # V0.2.46 PUBLIC: Cloud-only-Schalter nur noch im Cloud-Fenster; Log-Drosselung bleibt aktiv.
@@ -2362,7 +2361,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird je Register angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -2375,7 +2374,7 @@ class SGReadyEditorDialog(QDialog):
         self.sg_mode_combo.addItem("Aus", 0)
         self.sg_mode_combo.addItem("Einfach - 1 Kontakt", 1)
         self.sg_mode_combo.addItem("Zweifach - 2 Kontakte", 2)
-        form.addRow("SG01 Funktion (1334):", self.sg_mode_combo)
+        form.addRow(f"SG01 Funktion (1334, {self._access_status_text(1334)}):", self.sg_mode_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
         for reg_no, label in [
@@ -2386,7 +2385,7 @@ class SGReadyEditorDialog(QDialog):
         ]:
             spin = QSpinBox(); spin.setRange(0, 0xFFFF)
             self.raw_spins[reg_no] = spin
-            form.addRow(f"{label} ({reg_no}):", spin)
+            form.addRow(f"{label} ({reg_no}, {self._access_status_text(reg_no)}):", spin)
 
         self.temp_spins: dict[int, QDoubleSpinBox] = {}
         for reg_no, label in [
@@ -2396,11 +2395,11 @@ class SGReadyEditorDialog(QDialog):
         ]:
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
-            form.addRow(f"{label} ({reg_no}):", spin)
+            form.addRow(f"{label} ({reg_no}, {self._access_status_text(reg_no)}):", spin)
 
         self.sg_status_label = QLabel("--")
         self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
-        form.addRow("SG Status (2133, read-only):", self.sg_status_label)
+        form.addRow(f"SG Status (2133, {self._access_status_text(2133)}):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
@@ -2418,6 +2417,17 @@ class SGReadyEditorDialog(QDialog):
             buttons.addWidget(b)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+
+    def _access_status_text(self, reg_no: int) -> str:
+        data = getattr(self.main_window, "register_defs", {}).get(str(int(reg_no)), {})
+        mode = str(data.get("mode", "")).lower() if isinstance(data, dict) else ""
+        if "read" in mode and "write" in mode:
+            return "lesen/schreiben"
+        if "write" in mode or mode == "w":
+            return "schreiben"
+        if "read" in mode or mode == "r":
+            return "lesen"
+        return "Status unbekannt"
 
     def _has_focus(self, *widgets: QWidget) -> bool:
         focus = QApplication.focusWidget()

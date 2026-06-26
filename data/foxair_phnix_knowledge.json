@@ -1892,20 +1892,22 @@
     "description": "17"
   },
   "2029": {
-    "description": "0 bis 255"
+    "description": "Registergruppe A (Ampere). Eingangsstromwert in A."
   },
   "203": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; vermutlich Kennung/String/Logo-/Seitenpuffer, Bedeutung noch nicht sicher. Nicht als WP-Parameter verwenden.",
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2030": {
-    "description": "0 bis 255"
+    "description": "Registergruppe A (Ampere). Eingangsstromwert in A."
   },
   "2031": {
-    "description": "0 bis 255 Einheit Minuten.",
+    "description": "Registergruppe A (Ampere). Möglicherweise Eingangsstrom 2; Bezeichnung ist noch zu prüfen.",
     "source": "User correction 2026-06-19"
   },
-  "2032": {},
+  "2032": {
+    "description": "Registergruppe h (Stunden). Laufzeitwert in Stunden."
+  },
   "2033": {
     "description": "0"
   },
