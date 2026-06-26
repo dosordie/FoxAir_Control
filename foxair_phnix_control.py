@@ -7324,7 +7324,43 @@ class MainWindow(QMainWindow):
         text = str(display_value)
         if not unit:
             return text
-        if re.search(rf"(^|\s){re.escape(unit)}$", text):
+
+        known_units = (
+            "m³/h",
+            "kW/h",
+            "days",
+            "kWh",
+            "rpm",
+            "bar",
+            "°C",
+            "kW",
+            "COP",
+            "K",
+            "%",
+            "A",
+            "V",
+            "W",
+            "Hz",
+            "min",
+            "s",
+            "h",
+            "N",
+        )
+        suffix_match = re.search(
+            rf"(^|\s)({'|'.join(re.escape(suffix) for suffix in known_units)})$",
+            text,
+        )
+        if suffix_match:
+            display_unit = suffix_match.group(2)
+            if display_unit == unit:
+                return text
+            if unit == "K" and display_unit == "°C":
+                return re.sub(r"(^|\s)°C$", r"\1K", text)
+            self._log(
+                f"Einheit nicht angehängt, display_value enthält bereits Einheit: "
+                f"reg={int(reg_no)}, display_value={text!r}, register_unit={unit!r}",
+                level=7,
+            )
             return text
         return f"{text} {unit}".strip()
 
