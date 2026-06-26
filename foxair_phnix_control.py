@@ -7319,6 +7319,21 @@ class MainWindow(QMainWindow):
             return str(data.get("unit", "") or "").strip()
         return ""
 
+
+    def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
+        info = self.regmap.get(int(reg.reg))
+        unit = self._unit_for_register(int(reg.reg))
+        dtype = info.dtype if info else getattr(reg, "dtype", "RAW")
+        value_map = info.value_map if info else None
+        bit_map = info.bit_map if info else None
+        return format_value_by_type(
+            int(reg.raw_value),
+            dtype,
+            value_map,
+            bit_map,
+            unit=unit or None,
+        )
+
     def _display_value_with_register_unit(self, reg_no: int, display_value: str) -> str:
         unit = self._unit_for_register(int(reg_no))
         text = str(display_value)
@@ -7352,15 +7367,12 @@ class MainWindow(QMainWindow):
         )
         if suffix_match:
             display_unit = suffix_match.group(2)
-            if display_unit == unit:
-                return text
-            if unit == "K" and display_unit == "°C":
-                return re.sub(r"(^|\s)°C$", r"\1K", text)
-            self._log(
-                f"Einheit nicht angehängt, display_value enthält bereits Einheit: "
-                f"reg={int(reg_no)}, display_value={text!r}, register_unit={unit!r}",
-                level=7,
-            )
+            if display_unit != unit:
+                self._log(
+                    f"Einheit nicht angehängt, display_value enthält bereits Einheit: "
+                    f"reg={int(reg_no)}, display_value={text!r}, register_unit={unit!r}",
+                    level=7,
+                )
             return text
         return f"{text} {unit}".strip()
 
@@ -8649,7 +8661,7 @@ class MainWindow(QMainWindow):
             f"{reg.raw_value} / 0x{reg.raw_value:04X}",
             self.previous_value_texts.get(reg.reg, "--"),
             str(reg.signed_value),
-            self._display_value_with_register_unit(reg.reg, reg.display_value),
+            self._display_value_with_register_unit(reg.reg, self._display_value_for_main_table(reg)),
             f"0x{reg.frame_type:04X}",
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),

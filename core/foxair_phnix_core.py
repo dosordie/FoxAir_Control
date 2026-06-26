@@ -323,7 +323,20 @@ def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]]) -> str:
         return "0"
     return f"0x{raw_value:04X}: " + "; ".join(hits)
 
-def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[int, str]] = None, bit_map: Optional[Dict[int, str]] = None) -> str:
+def _temperature_unit(unit: Optional[str]) -> str:
+    unit = str(unit or "").strip()
+    if unit == "K":
+        return "K"
+    return "°C"
+
+
+def format_value_by_type(
+    raw_value: int,
+    dtype: str,
+    value_map: Optional[Dict[int, str]] = None,
+    bit_map: Optional[Dict[int, str]] = None,
+    unit: Optional[str] = None,
+) -> str:
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
     if value_map and raw_value in value_map:
@@ -333,9 +346,9 @@ def format_value_by_type(raw_value: int, dtype: str, value_map: Optional[Dict[in
     if bit_map or dtype in ("FAULT_BITS", "BITFIELD"):
         return _decode_bit_map(raw_value, bit_map)
     if dtype in ("TEMP", "TEMP1"):
-        return f"{signed / 10.0:.1f} °C"
+        return f"{signed / 10.0:.1f} {_temperature_unit(unit)}"
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
-        return f"{signed / 2.0:.1f} °C"
+        return f"{signed / 2.0:.1f} {_temperature_unit(unit)}"
     if dtype in ("TIME_HHMM", "HHMM"):
         return _decode_hhmm_value(raw_value)
     if dtype in ("POWER_KW_X10", "KW_X10"):
