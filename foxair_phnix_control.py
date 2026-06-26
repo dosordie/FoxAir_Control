@@ -2361,20 +2361,25 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird je Register angezeigt.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
         layout.addLayout(form)
+        status_row = QHBoxLayout()
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
-        form.addRow("Live:", self.auto_update_cb)
+        status_row.addWidget(self.status_label, 1)
+        status_row.addWidget(self.auto_update_cb)
+        form.addRow("Status:", status_row)
 
         self.sg_mode_combo = QComboBox()
         self.sg_mode_combo.addItem("Aus", 0)
         self.sg_mode_combo.addItem("Einfach - 1 Kontakt", 1)
         self.sg_mode_combo.addItem("Zweifach - 2 Kontakte", 2)
-        form.addRow(f"SG01 Funktion (1334, {self._access_status_text(1334)}):", self.sg_mode_combo)
+        form.addRow("SG01 Funktion (1334):", self.sg_mode_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
         for reg_no, label in [
@@ -2385,7 +2390,7 @@ class SGReadyEditorDialog(QDialog):
         ]:
             spin = QSpinBox(); spin.setRange(0, 0xFFFF)
             self.raw_spins[reg_no] = spin
-            form.addRow(f"{label} ({reg_no}, {self._access_status_text(reg_no)}):", spin)
+            form.addRow(f"{label} ({reg_no}):", spin)
 
         self.temp_spins: dict[int, QDoubleSpinBox] = {}
         for reg_no, label in [
@@ -2395,11 +2400,11 @@ class SGReadyEditorDialog(QDialog):
         ]:
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
-            form.addRow(f"{label} ({reg_no}, {self._access_status_text(reg_no)}):", spin)
+            form.addRow(f"{label} ({reg_no}):", spin)
 
         self.sg_status_label = QLabel("--")
         self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
-        form.addRow(f"SG Status (2133, {self._access_status_text(2133)}):", self.sg_status_label)
+        form.addRow("SG Status (2133, read-only):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
@@ -2417,17 +2422,6 @@ class SGReadyEditorDialog(QDialog):
             buttons.addWidget(b)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
-
-    def _access_status_text(self, reg_no: int) -> str:
-        data = getattr(self.main_window, "register_defs", {}).get(str(int(reg_no)), {})
-        mode = str(data.get("mode", "")).lower() if isinstance(data, dict) else ""
-        if "read" in mode and "write" in mode:
-            return "lesen/schreiben"
-        if "write" in mode or mode == "w":
-            return "schreiben"
-        if "read" in mode or mode == "r":
-            return "lesen"
-        return "Status unbekannt"
 
     def _has_focus(self, *widgets: QWidget) -> bool:
         focus = QApplication.focusWidget()
@@ -2498,6 +2492,7 @@ class SGReadyEditorDialog(QDialog):
                 label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
                 self.sg_status_label.setText(f"{raw} - {label}")
                 self._sg_status_read_pending = False
+                self.status_label.setText("SG Ready / SG Status erfolgreich gelesen.")
         finally:
             self._programmatic = False
         if should_flash:
@@ -2507,6 +2502,7 @@ class SGReadyEditorDialog(QDialog):
     def show_sg_status_timeout(self):
         self._sg_status_read_pending = False
         self.sg_status_label.setText("Timeout / keine Antwort")
+        self.status_label.setText("SG Status Timeout / keine Antwort.")
 
     def sg_values(self) -> list[tuple[int, int, str]]:
         values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG01 Funktion")]
@@ -2527,6 +2523,7 @@ class SGReadyEditorDialog(QDialog):
             self._sg_read_generation += 1
             generation = self._sg_read_generation
             self._sg_status_read_pending = False
+            self.status_label.setText("Lese SG Ready Werte ...")
             self.main_window.send_read_request(1334, 8, slave_addr=slave_addr, label=self.READ_LABEL_VALUES)
             QTimer.singleShot(0, lambda: self._send_status_read_after_values(slave_addr, generation))
         except Exception as exc:
@@ -2543,6 +2540,7 @@ class SGReadyEditorDialog(QDialog):
                 {self.READ_LABEL_STATUS},
                 log_prefix="SG Ready Editor",
             )
+            self.status_label.setText("SG Ready Werte gelesen. Lese SG Status ...")
             self.sg_status_label.setText("wird gelesen ...")
             self._sg_status_read_pending = True
             self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label=self.READ_LABEL_STATUS)
@@ -2553,7 +2551,9 @@ class SGReadyEditorDialog(QDialog):
     def send_values(self):
         try:
             slave_addr = DEFAULT_BUS_ADDR
+            self.status_label.setText("Schreibe SG Ready Werte ...")
             self.main_window.send_timer_values(slave_addr, self.sg_values(), int(self.delay_ms.value()), title="SG Ready")
+            self.status_label.setText("SG Ready Schreiben gesendet.")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige SG-Werte", str(exc))
 
@@ -7313,6 +7313,21 @@ class MainWindow(QMainWindow):
         _block, _code, clean = self._display_parts_for_register(int(reg_no), fallback_name)
         return clean or fallback_name
 
+    def _unit_for_register(self, reg_no: int) -> str:
+        data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        if isinstance(data, dict):
+            return str(data.get("unit", "") or "").strip()
+        return ""
+
+    def _display_value_with_register_unit(self, reg_no: int, display_value: str) -> str:
+        unit = self._unit_for_register(int(reg_no))
+        text = str(display_value)
+        if not unit:
+            return text
+        if re.search(rf"(^|\s){re.escape(unit)}$", text):
+            return text
+        return f"{text} {unit}".strip()
+
     def _cached_register_from_snapshot(self, item: dict) -> Optional[DecodedRegister]:
         try:
             reg_no = int(item["reg"])
@@ -8598,7 +8613,7 @@ class MainWindow(QMainWindow):
             f"{reg.raw_value} / 0x{reg.raw_value:04X}",
             self.previous_value_texts.get(reg.reg, "--"),
             str(reg.signed_value),
-            reg.display_value,
+            self._display_value_with_register_unit(reg.reg, reg.display_value),
             f"0x{reg.frame_type:04X}",
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
@@ -9771,10 +9786,13 @@ class MainWindow(QMainWindow):
                         dialog.show_write_readback_timeout()
                     except AttributeError:
                         pass
-            if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
+            if str(req.get("label", "")) in (SGReadyEditorDialog.READ_LABEL_VALUES, SGReadyEditorDialog.READ_LABEL_STATUS):
                 sg_dialog = getattr(self, "sg_dialog", None)
                 if sg_dialog is not None and sg_dialog.isVisible():
-                    sg_dialog.show_sg_status_timeout()
+                    if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
+                        sg_dialog.show_sg_status_timeout()
+                    else:
+                        sg_dialog.status_label.setText("SG Ready Werte Timeout / keine Antwort.")
 
     def _apply_pending_read_response(self, frame) -> bool:
         if frame.mode != "read-response":
