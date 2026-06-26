@@ -124,8 +124,13 @@ BUILD_DATE = "2026-06-21"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
-FLASH_CHANGED_ROW_MS = 800
+FLASH_CHANGED_ROW_MS = 2000
 FLASH_CHANGED_ROW_COLOR = QColor(255, 255, 130)
+FLASH_CHANGED_ROW_FADE_STEPS = [
+    (0, QColor(255, 255, 130)),
+    (700, QColor(255, 255, 180)),
+    (1400, QColor(255, 255, 220)),
+]
 
 # V0.2.46 PUBLIC: Cloud-only-Schalter nur noch im Cloud-Fenster; Log-Drosselung bleibt aktiv.
 # 1 = sehr ruhig, 7 = Debug/alles. Die eigentliche Einordnung erfolgt
@@ -745,6 +750,7 @@ class ContactDecoderDialog(QDialog):
         self.main_window = parent
         self._last_value: Optional[int] = None
         self._flash_tokens: dict[int, int] = {}
+        self._flash_colors: dict[int, QColor] = {}
         self.setWindowTitle("Kontaktdecoder Register 2034 / 0x07F2")
         self.resize(1030, 560)
         layout = QVBoxLayout(self)
@@ -803,13 +809,22 @@ class ContactDecoderDialog(QDialog):
             slave_addr = DEFAULT_BUS_ADDR
         self.main_window.send_read_request(2034, 1, slave_addr=slave_addr, label="Kontaktdecoder 2034")
 
-    def _contact_row_color(self, bit: int, bit_value: int, value_known: bool) -> QColor:
-        if bit in self._flash_tokens:
-            return FLASH_CHANGED_ROW_COLOR
-        return QColor(220, 255, 220) if bit_value and value_known else QColor(245, 245, 245)
+    def _contact_status_for_bit(self, bit: int, bit_value: int) -> str:
+        for row_bit, row_bit_value, _name, state, _meaning in decode_contact_bits(1 << bit if bit_value else 0):
+            if row_bit == bit and row_bit_value == bit_value:
+                return state
+        return "Ein" if bit_value else "Aus"
 
-    def _apply_contact_row_background(self, bit: int, bit_value: int, value_known: bool) -> None:
-        color = self._contact_row_color(bit, bit_value, value_known)
+    def _contact_row_color(self, bit: int, bit_value: int, value_known: bool, state: Optional[str] = None) -> QColor:
+        if bit in self._flash_tokens:
+            return self._flash_colors.get(bit, FLASH_CHANGED_ROW_COLOR)
+        if not value_known:
+            return QColor(245, 245, 245)
+        status = state if state is not None else self._contact_status_for_bit(bit, bit_value)
+        return QColor(220, 255, 220) if status == "Ein" else QColor(245, 245, 245)
+
+    def _apply_contact_row_background(self, bit: int, bit_value: int, value_known: bool, state: Optional[str] = None) -> None:
+        color = self._contact_row_color(bit, bit_value, value_known, state)
         for col in range(self.table.columnCount()):
             item = self.table.item(bit, col)
             if item is not None:
@@ -818,11 +833,23 @@ class ContactDecoderDialog(QDialog):
     def _flash_contact_bit_row(self, bit: int, bit_value: int) -> None:
         token = self._flash_tokens.get(bit, 0) + 1
         self._flash_tokens[bit] = token
-        self._apply_contact_row_background(bit, bit_value, True)
+
+        def apply_flash_step(color: QColor) -> None:
+            if self._flash_tokens.get(bit) != token:
+                return
+            self._flash_colors[bit] = color
+            current = self._last_value
+            current_bit = ((int(current) >> bit) & 1) if current is not None else bit_value
+            self._apply_contact_row_background(bit, current_bit, current is not None)
+
+        for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
+            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+
         def clear_flash() -> None:
             if self._flash_tokens.get(bit) != token:
                 return
             self._flash_tokens.pop(bit, None)
+            self._flash_colors.pop(bit, None)
             current = self._last_value
             current_bit = ((int(current) >> bit) & 1) if current is not None else bit_value
             self._apply_contact_row_background(bit, current_bit, current is not None)
@@ -860,7 +887,7 @@ class ContactDecoderDialog(QDialog):
                     item = QTableWidgetItem()
                     self.table.setItem(bit, col, item)
                 item.setText(val)
-                item.setBackground(self._contact_row_color(bit, bit_value, True))
+                item.setBackground(self._contact_row_color(bit, bit_value, True, state))
             if bit in changed_bits:
                 self._flash_contact_bit_row(bit, bit_value)
 
@@ -6293,6 +6320,7 @@ class MainWindow(QMainWindow):
         self.last_values: Dict[int, int] = {}
         self.previous_value_texts: Dict[int, str] = {}
         self.register_flash_tokens: Dict[int, int] = {}
+        self.register_flash_colors: Dict[int, QColor] = {}
         # Display-/DWIN-Diagnosewerte strikt getrennt von der Warmlink-Hauptliste.
         self.display_latest_regs: Dict[int, object] = {}
         self.display_last_values: Dict[int, int] = {}
@@ -8495,7 +8523,7 @@ class MainWindow(QMainWindow):
         if row is None:
             return
         active_changed = bool(force_changed or self._register_change_highlight_active(reg_no))
-        color = FLASH_CHANGED_ROW_COLOR if reg_no in self.register_flash_tokens else self._background_for_register(reg_no, active_changed)
+        color = self.register_flash_colors.get(reg_no, FLASH_CHANGED_ROW_COLOR) if reg_no in self.register_flash_tokens else self._background_for_register(reg_no, active_changed)
         reg = self.latest_regs.get(reg_no)
         is_block_row = is_block_dtype(getattr(reg, "dtype", ""))
         for col in range(self.register_table.columnCount()):
@@ -8519,11 +8547,21 @@ class MainWindow(QMainWindow):
         reg_no = int(reg_no)
         token = self.register_flash_tokens.get(reg_no, 0) + 1
         self.register_flash_tokens[reg_no] = token
-        self._apply_register_row_visual_state(reg_no)
+
+        def apply_flash_step(color: QColor) -> None:
+            if self.register_flash_tokens.get(reg_no) != token:
+                return
+            self.register_flash_colors[reg_no] = color
+            self._apply_register_row_visual_state(reg_no)
+
+        for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
+            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+
         def clear_flash() -> None:
             if self.register_flash_tokens.get(reg_no) != token:
                 return
             self.register_flash_tokens.pop(reg_no, None)
+            self.register_flash_colors.pop(reg_no, None)
             self._apply_register_row_visual_state(reg_no)
         QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
