@@ -5512,6 +5512,21 @@ class CommunicationSettingsDialog(QDialog):
         self.display_dual_logger_label = QLabel("Display-Diagnose:")
         form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
 
+        self.comm_locked_label = QLabel(
+            "Aktive Verbindung: Kommunikationsparameter sind gesperrt; Änderungen werden erst nach Neuverbindung wirksam. "
+            "Capture-Optionen bleiben bedienbar."
+        )
+        self.comm_locked_label.setWordWrap(True)
+        self.comm_locked_label.setVisible(bool(main_window.connected))
+        form.addRow("Verbindung:", self.comm_locked_label)
+        if main_window.connected:
+            for w in (
+                self.backend_combo, self.transport_combo, self.host_edit, self.port_spin,
+                self.serial_port_edit, self.baud_spin, self.parity_combo, self.bytesize_combo,
+                self.stopbits_combo, self.unit_spin,
+            ):
+                w.setEnabled(False)
+
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
         self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
@@ -5709,7 +5724,9 @@ class CommunicationSettingsDialog(QDialog):
             w.setVisible(is_serial)
 
     def accept(self):
-        self._save_current_fields_to_selected_backend()
+        comm_locked = bool(self.main_window.connected)
+        if not comm_locked:
+            self._save_current_fields_to_selected_backend()
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
         self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
@@ -5739,8 +5756,9 @@ class CommunicationSettingsDialog(QDialog):
         if hasattr(self.main_window, "public_warning_label"):
             self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
         self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
-        backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.main_window.apply_communication_settings(backend)
+        if not comm_locked:
+            backend = str(self.backend_combo.currentData() or "warmlink_raw")
+            self.main_window.apply_communication_settings(backend)
         self.main_window._apply_live_poll_timer_state()
         self.main_window._update_dual_logger_button_visibility()
         self.main_window._refresh_search_highlights()
@@ -7285,9 +7303,6 @@ class MainWindow(QMainWindow):
         self._log(f"Kommunikation eingestellt: {self._communication_summary_text()}")
 
     def open_communication_settings(self):
-        if self.connected:
-            QMessageBox.information(self, "Kommunikation", "Bitte erst trennen, bevor die Kommunikationsart geändert wird.")
-            return
         dlg = CommunicationSettingsDialog(self)
         dlg.exec()
 
