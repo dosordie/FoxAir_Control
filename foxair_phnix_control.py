@@ -2361,7 +2361,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only aktiver SG-Modus 2133. SG01: Aus / 1 Kontakt / 2 Kontakte. Kontaktstatus wird sofort über Register 2034 angezeigt. Der aktive SG-Modus in Register 2133 kann zeitverzögert umschalten. SG Kontakt 1: Klemme 1–2 / AI-DI16 / Fernschalter. SG Kontakt 2: Klemme 7–8 / DIN_1 / Heat/Cool On/Off / PV-Kontakt. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -2377,16 +2377,16 @@ class SGReadyEditorDialog(QDialog):
 
         self.sg_mode_combo = QComboBox()
         self.sg_mode_combo.addItem("Aus", 0)
-        self.sg_mode_combo.addItem("Einfach - 1 Kontakt", 1)
-        self.sg_mode_combo.addItem("Zweifach - 2 Kontakte", 2)
-        form.addRow("SG01 Funktion (1334):", self.sg_mode_combo)
+        self.sg_mode_combo.addItem("1 Kontakt", 1)
+        self.sg_mode_combo.addItem("2 Kontakte", 2)
+        form.addRow("SG Ready Auswahl (1334):", self.sg_mode_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
         for reg_no, label in [
             (1335, "SG02 Schlafmodus Zeit"),
-            (1336, "SG03 Mode2 Verzögerung"),
-            (1337, "SG04 Mode3 Verzögerung"),
-            (1341, "SG08 Elektroheizstab bei Mode4"),
+            (1336, "SG03 Mode 2 Leistung / wenig PV (RAW / 10 kW)"),
+            (1337, "SG04 Mode 3 Leistung / mittel PV (RAW / 10 kW)"),
+            (1341, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"),
         ]:
             spin = QSpinBox(); spin.setRange(0, 0xFFFF)
             self.raw_spins[reg_no] = spin
@@ -2394,17 +2394,17 @@ class SGReadyEditorDialog(QDialog):
 
         self.temp_spins: dict[int, QDoubleSpinBox] = {}
         for reg_no, label in [
-            (1338, "SG05 WW-Anhebung"),
-            (1339, "SG06 HZ-Anhebung"),
-            (1340, "SG07 Kühlen-Anhebung"),
+            (1338, "SG05 Mode 4 WW-Sollwertanhebung"),
+            (1339, "SG06 Mode 4 HZ-Sollwertanhebung"),
+            (1340, "SG07 Mode 4 Kühlen-Sollwertanhebung"),
         ]:
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
             form.addRow(f"{label} ({reg_no}):", spin)
 
         self.sg_status_label = QLabel("--")
-        self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
-        form.addRow("SG Status (2133, read-only):", self.sg_status_label)
+        self.sg_status_label.setToolTip("Read-only: Register 2133 / aktiver SG-Modus. 0=WP aus oder SG deaktiviert, 1=SG Mode 1 / Schlafmodus, 2=SG Mode 2 / wenig PV, 3=SG Mode 3 / mittel PV, 4=SG Mode 4 / High PV. Kontaktstatus wird sofort über Register 2034 angezeigt; Register 2133 kann zeitverzögert umschalten.")
+        form.addRow("Aktiver SG-Modus (2133, read-only):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
@@ -2489,7 +2489,7 @@ class SGReadyEditorDialog(QDialog):
                 if force or not self._has_focus(spin):
                     spin.setValue(s16(raw) / 10.0)
             elif reg_no == 2133:
-                label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
+                label = {0: "WP aus oder SG deaktiviert", 1: "SG Mode 1 / Schlafmodus", 2: "SG Mode 2 / wenig PV", 3: "SG Mode 3 / mittel PV", 4: "SG Mode 4 / High PV"}.get(raw, "unbekannt / nicht interpretiert")
                 self.sg_status_label.setText(f"{raw} - {label}")
                 self._sg_status_read_pending = False
                 self.status_label.setText("SG Ready / SG Status erfolgreich gelesen.")
@@ -2505,12 +2505,12 @@ class SGReadyEditorDialog(QDialog):
         self.status_label.setText("SG Status Timeout / keine Antwort.")
 
     def sg_values(self) -> list[tuple[int, int, str]]:
-        values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG01 Funktion")]
+        values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG Ready Auswahl")]
         for reg_no in (1335, 1336, 1337):
             values.append((reg_no, int(self.raw_spins[reg_no].value()) & 0xFFFF, f"SG Register {reg_no}"))
         for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kuehlen-Anhebung")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
-        values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 Elektroheizstab bei Mode4"))
+        values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"))
         return values
 
     def read_from_wp(self):
