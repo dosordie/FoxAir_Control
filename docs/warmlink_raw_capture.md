@@ -8,6 +8,8 @@ Es wird **keine** Firmware-Update-, Replay- oder Schreibfunktion implementiert. 
 ## Aktivierung
 Die Funktion befindet sich in `Programm-Einstellungen` im Expertenbereich `Warmlink RAW Langzeit-Capture`. Dort können RX/TX-Binärdateien, Events/Index, Rotation, Größenlimits, Aufbewahrung und Anomalie-Erkennung konfiguriert werden.
 
+Der Langzeit-Capture ist aktuell nur für den Warmlink-Modbus/LTE-Stream verfügbar. Bei anderen Kommunikationsarten wird der Expertenbereich ausgeblendet und der Capture startet nicht. Gespeicherte Capture-Einstellungen bleiben erhalten, werden aber nur bei Warmlink-Backend verwendet.
+
 ## Dateiformate
 Pro Segment werden Dateien nach folgendem Schema erzeugt:
 
