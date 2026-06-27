@@ -5513,19 +5513,17 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
 
         self.comm_locked_label = QLabel(
-            "Aktive Verbindung: Kommunikationsparameter sind gesperrt; Änderungen werden erst nach Neuverbindung wirksam. "
-            "Capture-Optionen bleiben bedienbar."
+            "Verbindung aktiv: Kommunikationsart, Host, Port und Unit-ID sind gesperrt. "
+            "Bitte erst trennen, um diese Werte zu ändern. Andere Einstellungen können gespeichert werden."
         )
         self.comm_locked_label.setWordWrap(True)
-        self.comm_locked_label.setVisible(bool(main_window.connected))
+        self.comm_locked_label.setStyleSheet(
+            "QLabel { background-color: #fff3cd; color: #664d03; border: 1px solid #ffec99; "
+            "border-radius: 4px; padding: 6px; font-weight: bold; }"
+        )
+        self.comm_locked_label.setVisible(False)
         form.addRow("Verbindung:", self.comm_locked_label)
-        if main_window.connected:
-            for w in (
-                self.backend_combo, self.transport_combo, self.host_edit, self.port_spin,
-                self.serial_port_edit, self.baud_spin, self.parity_combo, self.bytesize_combo,
-                self.stopbits_combo, self.unit_spin,
-            ):
-                w.setEnabled(False)
+        self._apply_communication_lock_state()
 
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
@@ -5649,6 +5647,32 @@ class CommunicationSettingsDialog(QDialog):
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.capture_expert_box.setVisible(self._is_warmlink_backend_key(backend))
 
+    def _communication_lock_widgets(self) -> tuple[QWidget, ...]:
+        return (
+            self.backend_combo, self.transport_combo, self.host_edit, self.port_spin,
+            self.serial_port_edit, self.baud_spin, self.parity_combo, self.bytesize_combo,
+            self.stopbits_combo, self.unit_spin,
+            self.host_label, self.port_label, self.serial_port_label, self.baud_label,
+            self.parity_label, self.bytesize_label, self.stopbits_label, self.unit_label,
+        )
+
+    def _apply_communication_lock_state(self):
+        comm_locked = bool(getattr(self.main_window, "connected", False))
+        locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen."
+        self.comm_locked_label.setVisible(comm_locked)
+        for widget in self._communication_lock_widgets():
+            widget.setEnabled(not comm_locked)
+            if comm_locked:
+                widget.setToolTip(locked_tooltip)
+            elif widget.toolTip() == locked_tooltip:
+                widget.setToolTip("")
+        if not comm_locked:
+            self.unit_spin.setToolTip(
+                "Modbus-Slave-Adresse für aktive manuelle Lese-/Schreibbefehle. "
+                "Standard-Modbus meist Unit 1; Display/HMI meist Unit 3. "
+                "Passive Displaybus-Rollen wie 0x00 Broadcast oder 0x01 Rohstatus werden automatisch erkannt."
+            )
+
     def _backend_settings(self, backend: str) -> dict:
         return self.main_window._backend_settings(backend)
 
@@ -5703,6 +5727,7 @@ class CommunicationSettingsDialog(QDialog):
             self.display_dual_logger_label.setVisible(backend == "display_modbus")
         self._update_capture_settings_visibility()
         self._transport_changed()
+        self._apply_communication_lock_state()
         if backend == "warmlink_raw":
             self.info_label.setText("Modbus Warmlink LTE: Bus/Modem im Außengerät am Mainboard. WP-Busadresse bleibt intern 0x63.")
         elif backend == "standard_modbus":
