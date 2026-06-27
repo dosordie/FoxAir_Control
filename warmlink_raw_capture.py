@@ -16,8 +16,6 @@ DEFAULT_CAPTURE_SETTINGS = {
     "max_total_size_mb": 10240,
     "retention_days": 14,
     "anomaly_detection": True,
-    "poll_2104": False,
-    "poll_2104_interval_min": 60,
 }
 
 @dataclass
@@ -84,6 +82,10 @@ class WarmlinkRawCapture:
         self.fc16_window: list[tuple[float,int,int,int]] = []; self.firmware_baseline: Optional[tuple[int,str]] = None; self.firmware_changed = False
         self._drop_event_pending = False; self._last_drop_event_total = 0
         self._continuation: dict[str, Any] = {"dir": None, "remaining": 0, "addr": None, "qty": None}
+        self._frame_index_buffers: dict[str, dict[str, Any]] = {
+            "rx": {"offset": 0, "data": bytearray()},
+            "tx": {"offset": 0, "data": bytearray()},
+        }
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -162,6 +164,7 @@ class WarmlinkRawCapture:
         off=self.offsets[direction]; self.offsets[direction]+=len(data)
         ev={"ts":utc_iso(),"mono_s":now,"dir":direction,"offset":off,"len":len(data),"hex_head":data[:32].hex()}
         ev.update(self._parse_capture_chunk(direction, data)); self._write_event(ev)
+        self._index_complete_frames(direction, off, data)
         with self.lock:
             if direction=="rx": self.status.rx_size=self.offsets["rx"]; self.status.last_rx=ev["ts"]
             else: self.status.tx_size=self.offsets["tx"]; self.status.last_tx=ev["ts"]
@@ -188,6 +191,101 @@ class WarmlinkRawCapture:
                 parsed["expected_len"] = expected
                 parsed["continuation_remaining"] = expected - len(data)
         return parsed
+
+    def _index_complete_frames(self, direction: str, offset: int, data: bytes):
+        buf_state = self._frame_index_buffers[direction]
+        buf = buf_state["data"]
+        if not buf:
+            buf_state["offset"] = offset
+        elif int(buf_state["offset"]) + len(buf) != offset:
+            buf.clear()
+            buf_state["offset"] = offset
+        buf.extend(data)
+        while True:
+            found = self._find_complete_frame(bytes(buf))
+            if found is None:
+                if len(buf) > 4096:
+                    drop = len(buf) - 512
+                    del buf[:drop]
+                    buf_state["offset"] = int(buf_state["offset"]) + drop
+                return
+            start, frame, meta = found
+            if start:
+                del buf[:start]
+                buf_state["offset"] = int(buf_state["offset"]) + start
+            frame_start = int(buf_state["offset"])
+            self._write_frame_complete_event(direction, frame_start, frame, meta)
+            del buf[:len(frame)]
+            buf_state["offset"] = frame_start + len(frame)
+
+    def _find_complete_frame(self, data: bytes) -> Optional[tuple[int, bytes, dict[str, Any]]]:
+        addrs = set(KNOWN_BUS_ADDRS)
+        unit = self._expected_unit_id()
+        if unit is not None:
+            addrs.add(unit & 0xFF)
+        for start in range(len(data)):
+            if data[start] not in addrs or start + 4 > len(data):
+                continue
+            fc = data[start + 1]
+            if fc not in KNOWN_FUNCTIONS:
+                continue
+            tail = data[start:]
+            candidates: list[tuple[int, dict[str, Any]]] = []
+            if fc == 0x03:
+                if len(tail) >= 3:
+                    bc = tail[2]
+                    if bc % 2 == 0 and 5 + bc <= 260:
+                        candidates.append((5 + bc, {"byte_count": bc, "payload_rel": 3, "payload_len": bc, "qty": bc // 2}))
+                candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+            elif fc == 0x06:
+                candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": 1}))
+            elif fc == 0x10:
+                if len(tail) >= 7:
+                    bc = tail[6]
+                    if bc % 2 == 0 and bc > 0 and 9 + bc <= 260:
+                        candidates.append((9 + bc, {"addr": int.from_bytes(tail[2:4], "big"), "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
+                candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+            for length, meta in candidates:
+                if len(tail) < length:
+                    continue
+                frame = tail[:length]
+                if self._modbus_crc_ok(frame):
+                    meta.update({"bus": frame[0], "function": f"0x{fc:02X}", "crc": int.from_bytes(frame[-2:], "little"), "crc_ok": True})
+                    return start, frame, meta
+        return None
+
+    @staticmethod
+    def _modbus_crc_ok(frame: bytes) -> bool:
+        if len(frame) < 4:
+            return False
+        crc = 0xFFFF
+        for b in frame[:-2]:
+            crc ^= b
+            for _ in range(8):
+                crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+        return crc == int.from_bytes(frame[-2:], "little")
+
+    def _write_frame_complete_event(self, direction: str, offset_start: int, frame: bytes, meta: dict[str, Any]):
+        ev = {
+            "ts": utc_iso(),
+            "event": "frame_complete",
+            "dir": direction,
+            "file": os.path.basename(getattr(self.rx if direction == "rx" else self.tx, "name", "")),
+            "offset_start": offset_start,
+            "offset_end": offset_start + len(frame),
+            "len": len(frame),
+            "bus": meta.get("bus"),
+            "function": meta.get("function"),
+            "crc_ok": bool(meta.get("crc_ok")),
+            "crc": f"0x{int(meta.get('crc', 0)):04X}",
+        }
+        for key in ("addr", "qty", "byte_count"):
+            if meta.get(key) is not None:
+                ev[key] = meta.get(key)
+        if meta.get("payload_rel") is not None:
+            ev["payload_offset"] = offset_start + int(meta.get("payload_rel", 0))
+            ev["payload_len"] = int(meta.get("payload_len", 0))
+        self._write_event(ev)
     def _write_event(self, ev: dict[str,Any]):
         if self.events: self.events.write(json.dumps(ev, ensure_ascii=False, separators=(",",":"))+"\n")
     def _anomaly(self, direction, data, ev, now):

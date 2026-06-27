@@ -6,7 +6,7 @@ Der Warmlink RAW Langzeit-Capture ist eine Experten-/Sonderfunktion, um über la
 Es wird **keine** Firmware-Update-, Replay- oder Schreibfunktion implementiert. Der Capture ist passiv.
 
 ## Aktivierung
-Die Funktion befindet sich in `Programm-Einstellungen` im Expertenbereich `Warmlink RAW Langzeit-Capture`. Dort können RX/TX-Binärdateien, Events/Index, Rotation, Größenlimits, Aufbewahrung, Anomalie-Erkennung und ein optionales seltenes 2104-Polling konfiguriert werden.
+Die Funktion befindet sich in `Programm-Einstellungen` im Expertenbereich `Warmlink RAW Langzeit-Capture`. Dort können RX/TX-Binärdateien, Events/Index, Rotation, Größenlimits, Aufbewahrung und Anomalie-Erkennung konfiguriert werden.
 
 ## Dateiformate
 Pro Segment werden Dateien nach folgendem Schema erzeugt:
@@ -17,7 +17,7 @@ Pro Segment werden Dateien nach folgendem Schema erzeugt:
 - `warmlink_capture_YYYY-MM-DD_NNN.summary.txt`: Segment-Zusammenfassung.
 - `warmlink_capture_YYYY-MM-DD_NNN.UPDATE_DETECTED.txt`: Marker, falls Register 2104 geändert wurde.
 
-Die `.bin`-Dateien sind echte Binärdateien, kein Hex-Text. `events.jsonl` ist nur ein Hilfsindex/Kommentarstrom; Quelle der Wahrheit bleiben RX/TX-Binärdateien. Parser-Metadaten in `events.jsonl` basieren auf TCP-Chunks und sind nicht die Quelle der Wahrheit für vollständige Modbus-/Warmlink-Frames.
+Die `.bin`-Dateien sind echte Binärdateien, kein Hex-Text. `events.jsonl` ist nur ein Hilfsindex/Kommentarstrom; Quelle der Wahrheit bleiben RX/TX-Binärdateien. Chunk-Metadaten in `events.jsonl` basieren auf TCP-Chunks. Zusätzlich schreibt der Capture schlanke `frame_complete`-Events für vollständig und plausibel erkannte Modbus-/Warmlink-Frames mit Dateioffsets, Funktionscode, Registeradresse, Payloadbereich und CRC-Status. Die Frame-Events sind nur ein Analyseindex; Quelle der Wahrheit bleiben RX/TX-Binärdateien.
 
 ## Rotation und Limits
 Tagessegmente werden mit `_001`, `_002`, ... nummeriert. Ein neues Segment kann manuell gestartet werden. Die Größenbegrenzung pro Einzeldatei startet sofort ein neues Segment. Die konfigurierte Tagesrotation nach Inaktivität ist für lange Captures vorgesehen, damit nicht mitten in einer Übertragung rotiert wird.
@@ -37,7 +37,7 @@ Events:
 - `firmware_version_increased`: numerisch sicher höherer Rohwert.
 - `firmware_update_suspected`: kann mit Datenburst-/FC16-/Reconnect-Anomalien korreliert werden.
 
-Register 2104 wird nicht geschrieben. Optionales Polling soll nur selten erfolgen (z. B. 30–60 Minuten), damit normale Kommunikation nicht gestört wird; passive Erkennung aus vorhandenen Blöcken reicht aus, wenn 2104 regelmäßig enthalten ist.
+Register 2104 wird nicht aktiv gepollt. Die App erkennt Änderungen passiv, sobald 2104 im normalen Warmlink-Datenstrom auftaucht.
 
 ## Datenschutz
 RAW-Captures können Device-IDs, Tokens, Betriebsdaten oder andere sensible Informationen enthalten. Nicht öffentlich hochladen und nur gezielt mit vertrauenswürdigen Personen teilen.
@@ -50,5 +50,5 @@ Capture-Logmeldungen im normalen GUI-Log sind ausschließlich kurze Statusmeldun
 
 Wenn `capture_drop` in `events.jsonl` erscheint oder der Drop-Zähler im Status/Summary größer als 0 ist, ist der Capture ab diesem Zeitpunkt möglicherweise nicht mehr vollständig. Ursache ist eine volle Capture-Queue; die normale Wärmepumpen-Kommunikation wird dann bewusst nicht blockiert, damit die App weiterläuft.
 
-## 2104-Polling
-Die Hauptsoftwareversion `2104 / 0x0838` wird passiv erkannt, sobald sie in normalen Statusframes auftaucht. Zusätzlich kann im Expertenbereich ein seltenes aktives Read-only-Polling aktiviert werden. Dieses Polling läuft nur bei aktivem Capture, nutzt das konfigurierte Intervall (Default 60 Minuten, mindestens 30 Minuten) und verwendet die bestehende Read-Queue/Pending-Logik. Es schreibt niemals auf Register 2104.
+## Passive 2104-Erkennung
+Register 2104 wird nicht aktiv gepollt. Die App erkennt Änderungen passiv, sobald 2104 im normalen Warmlink-Datenstrom auftaucht.
