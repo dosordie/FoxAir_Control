@@ -5568,6 +5568,14 @@ class CommunicationSettingsDialog(QDialog):
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
 
+        self.active_connection_hint = QLabel(
+            "Aktive Verbindung: Kommunikationsparameter werden gespeichert, aber erst nach Neuverbindung wirksam. "
+            "Capture-/Diagnoseoptionen bleiben während der Verbindung bedienbar."
+        )
+        self.active_connection_hint.setWordWrap(True)
+        self.active_connection_hint.setVisible(bool(getattr(main_window, "connected", False)))
+        layout.addWidget(self.active_connection_hint)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
         buttons.accepted.connect(self.accept)
@@ -5576,9 +5584,26 @@ class CommunicationSettingsDialog(QDialog):
         self.backend_combo.currentIndexChanged.connect(lambda _=None: self._backend_changed(load_values=True))
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
         self._backend_changed(load_values=True)
+        self._apply_active_connection_locks()
 
     def _backend_settings(self, backend: str) -> dict:
         return self.main_window._backend_settings(backend)
+
+    def _apply_active_connection_locks(self):
+        if not bool(getattr(self.main_window, "connected", False)):
+            return
+        locked_widgets = (
+            self.backend_combo, self.transport_combo, self.host_edit, self.port_spin,
+            self.serial_port_edit, self.baud_spin, self.parity_combo, self.bytesize_combo,
+            self.stopbits_combo, self.unit_spin, self.device_combo,
+        )
+        for widget in locked_widgets:
+            widget.setEnabled(False)
+            widget.setToolTip("Aktive Verbindung: Änderung wird erst nach Neuverbindung wirksam.")
+        self.info_label.setText(
+            (self.info_label.text() + "\n\n" if self.info_label.text() else "")
+            + "Aktive Verbindung: Kommunikationsparameter sind gesperrt; Änderungen werden erst nach Neuverbindung wirksam."
+        )
 
     def _load_cfg_to_fields(self, cfg: dict, backend: str):
         transport = str(cfg.get("transport", "tcp"))
@@ -5675,7 +5700,10 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
         self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.main_window.apply_communication_settings(backend)
+        if bool(getattr(self.main_window, "connected", False)):
+            self.main_window._log("Programm-Einstellungen gespeichert; Kommunikationsparameter werden erst nach Neuverbindung wirksam.")
+        else:
+            self.main_window.apply_communication_settings(backend)
         self.main_window._apply_live_poll_timer_state()
         self.main_window._update_dual_logger_button_visibility()
         self.main_window._refresh_search_highlights()
@@ -7213,9 +7241,6 @@ class MainWindow(QMainWindow):
         self._log(f"Kommunikation eingestellt: {self._communication_summary_text()}")
 
     def open_communication_settings(self):
-        if self.connected:
-            QMessageBox.information(self, "Kommunikation", "Bitte erst trennen, bevor die Kommunikationsart geändert wird.")
-            return
         dlg = CommunicationSettingsDialog(self)
         dlg.exec()
 
