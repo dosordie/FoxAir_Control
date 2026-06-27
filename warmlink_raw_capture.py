@@ -136,14 +136,37 @@ class WarmlinkRawCapture:
     def _open_segment(self, force=False):
         self._close_files(); d=self._dir(); today=datetime.date.today().isoformat()
         if today != self.segment_date: self.segment_date=today; self.segment_no=0
-        self.segment_no += 1; prefix=f"warmlink_capture_{today}_{self.segment_no:03d}"; self.offsets={"rx":0,"tx":0}
-        self.rx=open(d/(prefix+".rx.bin"),"ab") if self.cfg.get("capture_rx",True) else None
-        self.tx=open(d/(prefix+".tx.bin"),"ab") if self.cfg.get("capture_tx",True) else None
-        self.events=open(d/(prefix+".events.jsonl"),"a",encoding="utf-8") if self.cfg.get("write_events",True) else None
-        self.summary_path=str(d/(prefix+".summary.txt")); Path(self.summary_path).write_text("Warmlink RAW Capture Segment\nFirmware update suspected: no\n", encoding="utf-8")
+        prefix, segment_no = self._next_free_segment_prefix(d, today, self.segment_no + 1)
+        self.segment_no = segment_no
+        self.offsets={"rx":0,"tx":0}
+        self._reset_frame_index_buffers()
+        self.rx=open(d/(prefix+".rx.bin"),"xb") if self.cfg.get("capture_rx",True) else None
+        self.tx=open(d/(prefix+".tx.bin"),"xb") if self.cfg.get("capture_tx",True) else None
+        self.events=open(d/(prefix+".events.jsonl"),"x",encoding="utf-8") if self.cfg.get("write_events",True) else None
+        self.summary_path=str(d/(prefix+".summary.txt"))
+        with open(self.summary_path, "x", encoding="utf-8") as summary:
+            summary.write("Warmlink RAW Capture Segment\nFirmware update suspected: no\n")
         self.active_paths={str(x) for x in (getattr(self.rx,'name',None),getattr(self.tx,'name',None),getattr(self.events,'name',None),self.summary_path) if x}
         with self.lock: self.status.segment=prefix; self.status.rx_size=0; self.status.tx_size=0
         self.log_cb(f"Warmlink Capture: neues Segment {prefix}")
+
+    @staticmethod
+    def _segment_prefix_exists(directory: Path, prefix: str) -> bool:
+        suffixes = (".rx.bin", ".tx.bin", ".events.jsonl", ".summary.txt", ".UPDATE_DETECTED.txt")
+        return any((directory / (prefix + suffix)).exists() for suffix in suffixes)
+
+    def _next_free_segment_prefix(self, directory: Path, today: str, start_no: int) -> tuple[str, int]:
+        segment_no = max(1, int(start_no))
+        while True:
+            prefix = f"warmlink_capture_{today}_{segment_no:03d}"
+            if not self._segment_prefix_exists(directory, prefix):
+                return prefix, segment_no
+            segment_no += 1
+
+    def _reset_frame_index_buffers(self):
+        for state in self._frame_index_buffers.values():
+            state["offset"] = 0
+            state["data"].clear()
     def _close_files(self):
         for f in (self.rx,self.tx,self.events):
             if f:
