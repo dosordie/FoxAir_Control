@@ -37,15 +37,36 @@ def utc_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
-def parse_modbus(data: bytes) -> dict[str, Any]:
-    ev: dict[str, Any] = {"parser": "partial"}
+KNOWN_BUS_ADDRS = {0x63}
+KNOWN_FUNCTIONS = {0x03, 0x06, 0x10}
+NORMAL_FC16_BLOCKS = {
+    (0x0443, 90),
+    (0x07D1, 90),
+    (0x082B, 90),
+}
+
+
+def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[str, Any]:
+    """Conservatively classify a TCP chunk without assuming frame alignment."""
+    ev: dict[str, Any] = {"parser": "partial" if len(data) < 4 else "chunk"}
+    addrs = set(KNOWN_BUS_ADDRS)
+    if expected_unit_id is not None:
+        try:
+            addrs.add(int(expected_unit_id) & 0xFF)
+        except Exception:
+            pass
     if len(data) < 2:
         return ev
+    if data[0] not in addrs:
+        return ev
     fc = data[1]
-    ev["function"] = f"0x{fc:02X}"
+    if fc not in KNOWN_FUNCTIONS:
+        ev.update({"parser": "frame_start", "function": f"0x{fc:02X}", "bus": data[0]})
+        return ev
+    ev.update({"parser": "frame_start", "function": f"0x{fc:02X}", "bus": data[0]})
     try:
         if fc == 0x03 and len(data) >= 8:
-            ev.update({"parser": "modbus_read", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
+            ev.update({"parser": "frame", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
         elif fc in (0x06, 0x10) and len(data) >= 8:
             ev.update({"parser": "frame", "frame_type": f"0x{int.from_bytes(data[2:4], 'big'):04X}", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
     except Exception:
@@ -62,6 +83,7 @@ class WarmlinkRawCapture:
         self.last_data_mono = 0.0; self.last_flush = 0.0; self.recent_rx: list[tuple[float,int]] = []; self.recent_tx: list[tuple[float,int]] = []; self.last_prune = 0.0
         self.fc16_window: list[tuple[float,int,int,int]] = []; self.firmware_baseline: Optional[tuple[int,str]] = None; self.firmware_changed = False
         self._drop_event_pending = False; self._last_drop_event_total = 0
+        self._continuation: dict[str, Any] = {"dir": None, "remaining": 0, "addr": None, "qty": None}
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -139,11 +161,33 @@ class WarmlinkRawCapture:
         if f: f.write(data)
         off=self.offsets[direction]; self.offsets[direction]+=len(data)
         ev={"ts":utc_iso(),"mono_s":now,"dir":direction,"offset":off,"len":len(data),"hex_head":data[:32].hex()}
-        ev.update(parse_modbus(data)); self._write_event(ev)
+        ev.update(self._parse_capture_chunk(direction, data)); self._write_event(ev)
         with self.lock:
             if direction=="rx": self.status.rx_size=self.offsets["rx"]; self.status.last_rx=ev["ts"]
             else: self.status.tx_size=self.offsets["tx"]; self.status.last_tx=ev["ts"]
         self._anomaly(direction, data, ev, now)
+    def _expected_unit_id(self) -> Optional[int]:
+        try:
+            return int(self.cfg.get("unit_id")) if self.cfg.get("unit_id") is not None else None
+        except Exception:
+            return None
+    def _parse_capture_chunk(self, direction: str, data: bytes) -> dict[str, Any]:
+        cont = self._continuation
+        parsed = parse_modbus(data, self._expected_unit_id())
+        if cont.get("remaining", 0) > 0 and cont.get("dir") == direction and parsed.get("parser") != "frame":
+            remaining = max(0, int(cont.get("remaining", 0)) - len(data))
+            out = {"parser": "continuation", "continuation_addr": cont.get("addr"), "continuation_qty": cont.get("qty"), "continuation_remaining": remaining}
+            cont["remaining"] = remaining
+            return out
+        if parsed.get("function") == "0x10" and parsed.get("parser") == "frame":
+            qty = int(parsed.get("qty", 0)); addr = int(parsed.get("addr", -1))
+            expected = 1 + 1 + 2 + 2 + 1 + (qty * 2) + 2 if qty > 0 and len(data) >= 7 and data[6] == (qty * 2) & 0xFF else 0
+            if expected and len(data) < expected:
+                cont.update({"dir": direction, "remaining": expected - len(data), "addr": addr, "qty": qty})
+                parsed["parser"] = "frame_start"
+                parsed["expected_len"] = expected
+                parsed["continuation_remaining"] = expected - len(data)
+        return parsed
     def _write_event(self, ev: dict[str,Any]):
         if self.events: self.events.write(json.dumps(ev, ensure_ascii=False, separators=(",",":"))+"\n")
     def _anomaly(self, direction, data, ev, now):
@@ -152,10 +196,15 @@ class WarmlinkRawCapture:
         rx_bytes=sum(n for t,n in self.recent_rx if now-t<=10); tx_bytes=sum(n for t,n in self.recent_tx if now-t<=10)
         kind=None
         if direction=="rx" and rx_bytes>50*1024: kind="large_rx_burst"
-        if ev.get("function") and ev.get("function") not in {"0x03","0x06","0x10"}: kind="unknown_function"
+        if ev.get("parser") == "frame_start" and ev.get("function") and ev.get("function") not in {"0x03","0x06","0x10"} and len(data) >= 4 and ev.get("bus") in KNOWN_BUS_ADDRS:
+            kind="unknown_function"
         if ev.get("function")=="0x10":
             self.fc16_window.append((now, int(ev.get("addr",-1)), int(ev.get("qty",0)), len(data))); self.fc16_window=[x for x in self.fc16_window if now-x[0]<=60]
-            if len(self.fc16_window)>=20 or sum(x[3] for x in self.fc16_window)>50*1024: kind="firmware_like_fc16_sequence"
+            normal = (int(ev.get("addr",-1)), int(ev.get("qty",0))) in NORMAL_FC16_BLOCKS
+            unknown_addrs = {x[1] for x in self.fc16_window if (x[1], x[2]) not in NORMAL_FC16_BLOCKS}
+            fc16_bytes = sum(x[3] for x in self.fc16_window)
+            if (unknown_addrs and (len(self.fc16_window) >= 20 or fc16_bytes > 50*1024)) or fc16_bytes > 200*1024 or (self.firmware_changed and len(self.fc16_window) >= 10 and not normal):
+                kind="firmware_like_fc16_sequence"
         if kind: self._mark_anomaly(kind, now, rx_bytes, tx_bytes, ev)
     def _mark_anomaly(self, kind, now, rx_bytes, tx_bytes, ev):
         with self.lock: self.status.anomalies += 1

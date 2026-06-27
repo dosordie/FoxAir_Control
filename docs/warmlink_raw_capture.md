@@ -17,7 +17,7 @@ Pro Segment werden Dateien nach folgendem Schema erzeugt:
 - `warmlink_capture_YYYY-MM-DD_NNN.summary.txt`: Segment-Zusammenfassung.
 - `warmlink_capture_YYYY-MM-DD_NNN.UPDATE_DETECTED.txt`: Marker, falls Register 2104 geändert wurde.
 
-Die `.bin`-Dateien sind echte Binärdateien, kein Hex-Text. `events.jsonl` ist nur ein Index/Kommentarstrom; Quelle der Wahrheit bleiben RX/TX-Binärdateien.
+Die `.bin`-Dateien sind echte Binärdateien, kein Hex-Text. `events.jsonl` ist nur ein Hilfsindex/Kommentarstrom; Quelle der Wahrheit bleiben RX/TX-Binärdateien. Parser-Metadaten in `events.jsonl` basieren auf TCP-Chunks und sind nicht die Quelle der Wahrheit für vollständige Modbus-/Warmlink-Frames.
 
 ## Rotation und Limits
 Tagessegmente werden mit `_001`, `_002`, ... nummeriert. Ein neues Segment kann manuell gestartet werden. Die Größenbegrenzung pro Einzeldatei startet sofort ein neues Segment. Die konfigurierte Tagesrotation nach Inaktivität ist für lange Captures vorgesehen, damit nicht mitten in einer Übertragung rotiert wird.
@@ -25,7 +25,7 @@ Tagessegmente werden mit `_001`, `_002`, ... nummeriert. Ein neues Segment kann 
 Maximaler Gesamtspeicher und Aufbewahrungstage dienen dazu, alte abgeschlossene Segmente zu entfernen bzw. den Capture bei nicht auflösbaren Limits sicher zu stoppen. Aktive Segmente dürfen nicht gelöscht werden.
 
 ## Anomalien und Firmware-Verdacht
-Stufe 1 markiert einfache Heuristiken, z. B. unbekannte Funktionscodes, ungewöhnlich große RX-Datenmengen, viele FC16-/Write-Multiple-Register-Frames, fortlaufende Adressen oder unbekannte Datenfolgen. Im normalen GUI-Log erscheinen nur kurze Statuszeilen, keine Rohdaten.
+Stufe 1 markiert einfache Heuristiken, z. B. unbekannte Funktionscodes, ungewöhnlich große RX-Datenmengen, viele FC16-/Write-Multiple-Register-Frames, fortlaufende Adressen oder unbekannte Datenfolgen. `unknown_function` bedeutet nur dann auffällig, wenn ein plausibler neuer Frame mit erwarteter Busadresse, aber unbekanntem Function Code erkannt wurde. Partial-, Chunk- und Continuation-Daten großer Warmlink-Statusblöcke werden nicht als `unknown_function` gewertet. Normale FC16-Statusblöcke wie `0x0443`, `0x07D1` und `0x082B` mit 90 Registern gelten nicht als Firmware-Verdacht. Im normalen GUI-Log erscheinen nur kurze Statuszeilen, keine Rohdaten.
 
 ## Firmware-/Update-Watch Register 2104
 Register `2104 / 0x0838` ist als Hauptsoftwareversion bekannt. Eine Änderung von Register 2104 gilt als starkes Indiz für ein abgeschlossenes oder laufendes Firmwareupdate. Ob der Wert numerisch höher wird, hängt vom Versionsformat ab; daher wird jede Änderung erfasst.
