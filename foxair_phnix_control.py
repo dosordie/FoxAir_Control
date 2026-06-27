@@ -5599,8 +5599,6 @@ class CommunicationSettingsDialog(QDialog):
         self.cap_total_spin = QSpinBox(); self.cap_total_spin.setRange(1, 10485760); self.cap_total_spin.setValue(int(cap.get("max_total_size_mb", 10240))); self.cap_total_spin.setSuffix(" MB")
         self.cap_retention_spin = QSpinBox(); self.cap_retention_spin.setRange(1, 3650); self.cap_retention_spin.setValue(int(cap.get("retention_days", 14))); self.cap_retention_spin.setSuffix(" Tage")
         self.cap_anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.cap_anomaly_cb.setChecked(bool(cap.get("anomaly_detection", True)))
-        self.cap_poll2104_cb = QCheckBox("Register 2104 optional selten pollen"); self.cap_poll2104_cb.setChecked(bool(cap.get("poll_2104", False)))
-        self.cap_poll2104_interval_spin = QSpinBox(); self.cap_poll2104_interval_spin.setRange(30, 1440); self.cap_poll2104_interval_spin.setValue(int(cap.get("poll_2104_interval_min", 60))); self.cap_poll2104_interval_spin.setSuffix(" min")
         self.cap_status_label = QLabel("Status wird nach dem Speichern/Verbinden aktualisiert.")
         self.cap_status_label.setWordWrap(True)
         self.cap_open_btn = QPushButton("Capture-Ordner öffnen")
@@ -5615,8 +5613,7 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout.addRow("Max. Einzeldateigröße:", self.cap_file_spin)
         expert_layout.addRow("Max. Gesamtspeicher:", self.cap_total_spin)
         expert_layout.addRow("Aufbewahrung:", self.cap_retention_spin)
-        expert_layout.addRow(self.cap_anomaly_cb); expert_layout.addRow(self.cap_poll2104_cb)
-        expert_layout.addRow("2104-Polling-Intervall:", self.cap_poll2104_interval_spin)
+        expert_layout.addRow(self.cap_anomaly_cb)
         expert_layout.addRow("Status:", self.cap_status_label)
         expert_layout.addRow(cap_btn_row)
         layout.addWidget(expert_box)
@@ -5746,8 +5743,6 @@ class CommunicationSettingsDialog(QDialog):
             "max_total_size_mb": int(self.cap_total_spin.value()),
             "retention_days": int(self.cap_retention_spin.value()),
             "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
-            "poll_2104": bool(self.cap_poll2104_cb.isChecked()),
-            "poll_2104_interval_min": int(self.cap_poll2104_interval_spin.value()),
         }
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
@@ -6431,7 +6426,6 @@ class MainWindow(QMainWindow):
         self.raw_file_path: Optional[str] = None
         self.warmlink_capture: Optional[WarmlinkRawCapture] = None
         self.capture_log_queue: queue.Queue[str] = queue.Queue()
-        self.capture_2104_poll_timer: Optional[QTimer] = None
         self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
@@ -8177,8 +8171,6 @@ class MainWindow(QMainWindow):
         self.capture_gui_log_timer.setInterval(500)
         self.capture_gui_log_timer.timeout.connect(self._drain_capture_gui_log_queue)
         self.capture_gui_log_timer.start()
-        self.capture_2104_poll_timer = QTimer(self)
-        self.capture_2104_poll_timer.timeout.connect(self._capture_2104_poll_tick)
 
     def _capture_thread_log(self, text: str):
         try:
@@ -8194,31 +8186,6 @@ class MainWindow(QMainWindow):
             except queue.Empty:
                 break
             self._log(text)
-
-    def _apply_capture_2104_poll_timer(self):
-        timer = getattr(self, "capture_2104_poll_timer", None)
-        if timer is None:
-            return
-        cfg = self._capture_settings()
-        active = getattr(self, "warmlink_capture", None) is not None and bool(getattr(self.warmlink_capture, "status", None) and self.warmlink_capture.status.active)
-        if active and bool(cfg.get("poll_2104", False)) and self.connected:
-            interval_min = max(30, int(cfg.get("poll_2104_interval_min", 60) or 60))
-            timer.start(interval_min * 60 * 1000)
-        else:
-            timer.stop()
-
-    @Slot()
-    def _capture_2104_poll_tick(self):
-        cap = getattr(self, "warmlink_capture", None)
-        if cap is None or not bool(getattr(cap.status, "active", False)):
-            self._apply_capture_2104_poll_timer()
-            return
-        cfg = self._capture_settings()
-        if not bool(cfg.get("poll_2104", False)):
-            self._apply_capture_2104_poll_timer()
-            return
-        # Seltenes, passives Read-only Polling ueber die bestehende Read-Queue/Pending-Logik.
-        self.send_read_request(2104, 1, slave_addr=DEFAULT_BUS_ADDR, label="Warmlink Capture 2104 Watch", delay_ms=0)
 
     def _capture_settings(self) -> dict:
         cfg = dict(DEFAULT_CAPTURE_SETTINGS)
@@ -8240,14 +8207,12 @@ class MainWindow(QMainWindow):
             baseline = None
         self.warmlink_capture = WarmlinkRawCapture(cfg, getattr(self, "user_data_dir", self.base_dir), self._capture_thread_log)
         self.warmlink_capture.start(baseline=baseline)
-        self._apply_capture_2104_poll_timer()
 
     def _stop_warmlink_capture(self, reason: str = "gestoppt"):
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.stop(reason, join=True, timeout=3.0)
             self.warmlink_capture = None
-        self._apply_capture_2104_poll_timer()
         self._drain_capture_gui_log_queue()
 
     def _open_raw_file(self):
