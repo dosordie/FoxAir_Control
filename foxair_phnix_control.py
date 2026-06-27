@@ -13,6 +13,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
+from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
@@ -497,6 +498,7 @@ class ReaderWorker(QObject):
     log = Signal(str)
     frame_decoded = Signal(object)
     raw_chunk = Signal(bytes)
+    tx_chunk = Signal(bytes)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
         super().__init__()
@@ -708,6 +710,7 @@ class ReaderWorker(QObject):
                 if not self.client or not self.client.is_connected():
                     self.error.emit("Nicht verbunden, kann nicht senden.")
                     continue
+                self.tx_chunk.emit(frame)
                 self.client.send(frame)
                 self.last_send_monotonic = time.monotonic()
                 self.last_send_desc = action
@@ -5564,6 +5567,52 @@ class CommunicationSettingsDialog(QDialog):
         tab_poll_layout.addStretch(1)
         form.addRow("Parameter:", tab_poll_row)
 
+        cap = dict(DEFAULT_CAPTURE_SETTINGS)
+        saved_cap = main_window.settings.get("warmlink_raw_capture", {})
+        if isinstance(saved_cap, dict):
+            cap.update(saved_cap)
+        expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
+        expert_layout = QFormLayout(expert_box)
+        self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
+        self.cap_enabled_cb.setChecked(bool(cap.get("enabled", False)))
+        self.cap_dir_edit = QLineEdit(str(cap.get("directory", "warmlink_captures")))
+        self.cap_rx_cb = QCheckBox("RX mitschreiben"); self.cap_rx_cb.setChecked(bool(cap.get("capture_rx", True)))
+        self.cap_tx_cb = QCheckBox("TX mitschreiben"); self.cap_tx_cb.setChecked(bool(cap.get("capture_tx", True)))
+        self.cap_events_cb = QCheckBox("Events/Index schreiben"); self.cap_events_cb.setChecked(bool(cap.get("write_events", True)))
+        self.cap_idle_spin = QSpinBox(); self.cap_idle_spin.setRange(1, 1440); self.cap_idle_spin.setValue(int(cap.get("idle_rotation_minutes", 5))); self.cap_idle_spin.setSuffix(" min")
+        self.cap_file_spin = QSpinBox(); self.cap_file_spin.setRange(1, 1048576); self.cap_file_spin.setValue(int(cap.get("max_file_size_mb", 1024))); self.cap_file_spin.setSuffix(" MB")
+        self.cap_total_spin = QSpinBox(); self.cap_total_spin.setRange(1, 10485760); self.cap_total_spin.setValue(int(cap.get("max_total_size_mb", 10240))); self.cap_total_spin.setSuffix(" MB")
+        self.cap_retention_spin = QSpinBox(); self.cap_retention_spin.setRange(1, 3650); self.cap_retention_spin.setValue(int(cap.get("retention_days", 14))); self.cap_retention_spin.setSuffix(" Tage")
+        self.cap_anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.cap_anomaly_cb.setChecked(bool(cap.get("anomaly_detection", True)))
+        self.cap_poll2104_cb = QCheckBox("Register 2104 optional selten pollen"); self.cap_poll2104_cb.setChecked(bool(cap.get("poll_2104", False)))
+        self.cap_status_label = QLabel("Status wird nach dem Speichern/Verbinden aktualisiert.")
+        self.cap_status_label.setWordWrap(True)
+        self.cap_open_btn = QPushButton("Capture-Ordner öffnen")
+        self.cap_rotate_btn = QPushButton("Neues Segment starten")
+        self.cap_stop_btn = QPushButton("Capture stoppen")
+        cap_btn_row = QWidget(); cap_btn_layout = QHBoxLayout(cap_btn_row); cap_btn_layout.setContentsMargins(0,0,0,0)
+        cap_btn_layout.addWidget(self.cap_open_btn); cap_btn_layout.addWidget(self.cap_rotate_btn); cap_btn_layout.addWidget(self.cap_stop_btn); cap_btn_layout.addStretch(1)
+        expert_layout.addRow(self.cap_enabled_cb)
+        expert_layout.addRow("Capture-Verzeichnis:", self.cap_dir_edit)
+        expert_layout.addRow(self.cap_rx_cb); expert_layout.addRow(self.cap_tx_cb); expert_layout.addRow(self.cap_events_cb)
+        expert_layout.addRow("Tagesrotation nach Inaktivität:", self.cap_idle_spin)
+        expert_layout.addRow("Max. Einzeldateigröße:", self.cap_file_spin)
+        expert_layout.addRow("Max. Gesamtspeicher:", self.cap_total_spin)
+        expert_layout.addRow("Aufbewahrung:", self.cap_retention_spin)
+        expert_layout.addRow(self.cap_anomaly_cb); expert_layout.addRow(self.cap_poll2104_cb)
+        expert_layout.addRow("Status:", self.cap_status_label)
+        expert_layout.addRow(cap_btn_row)
+        layout.addWidget(expert_box)
+        self.cap_open_btn.clicked.connect(lambda: open_update_url(os.path.abspath(os.path.join(getattr(main_window, "user_data_dir", main_window.base_dir), self.cap_dir_edit.text().strip() or "warmlink_captures"))))
+        self.cap_rotate_btn.clicked.connect(lambda: getattr(main_window, "warmlink_capture", None) and main_window.warmlink_capture.force_new_segment())
+        self.cap_stop_btn.clicked.connect(lambda: main_window._stop_warmlink_capture("per Einstellungen gestoppt"))
+        try:
+            st = getattr(main_window, "warmlink_capture", None).get_status() if getattr(main_window, "warmlink_capture", None) else None
+            if st:
+                self.cap_status_label.setText(f"{'aktiv' if st.active else 'inaktiv'} | Segment {st.segment} | RX {st.rx_size} B | TX {st.tx_size} B | letzter RX {st.last_rx} | letzter TX {st.last_tx} | Anomalien {st.anomalies} | Drops {st.drops} | Fehler {st.error or '--'}")
+        except Exception:
+            pass
+
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
@@ -5667,6 +5716,20 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        self.main_window.settings["warmlink_raw_capture"] = {
+            "enabled": bool(self.cap_enabled_cb.isChecked()),
+            "directory": self.cap_dir_edit.text().strip() or "warmlink_captures",
+            "capture_rx": bool(self.cap_rx_cb.isChecked()),
+            "capture_tx": bool(self.cap_tx_cb.isChecked()),
+            "write_events": bool(self.cap_events_cb.isChecked()),
+            "idle_rotation_minutes": int(self.cap_idle_spin.value()),
+            "max_file_size_mb": int(self.cap_file_spin.value()),
+            "max_total_size_mb": int(self.cap_total_spin.value()),
+            "retention_days": int(self.cap_retention_spin.value()),
+            "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
+            "poll_2104": bool(self.cap_poll2104_cb.isChecked()),
+            "poll_2104_interval_min": 60,
+        }
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
@@ -7066,6 +7129,7 @@ class MainWindow(QMainWindow):
             "log_level": int(self.settings.get("log_level", 2)),
             "main_window": self.settings.get("main_window", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
+            "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
         }
 
     def _write_settings_file(self):
@@ -7666,6 +7730,17 @@ class MainWindow(QMainWindow):
             return
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
+        self._trim_gui_log()
+
+    def _trim_gui_log(self):
+        max_lines = int(self.settings.get("max_log_lines", 3000)) if hasattr(self, "settings") else 3000
+        doc = self.log_text.document()
+        while doc.blockCount() > max_lines:
+            cursor = self.log_text.textCursor()
+            cursor.movePosition(cursor.Start)
+            cursor.select(cursor.BlockUnderCursor)
+            cursor.removeSelectedText()
+            cursor.deleteChar()
 
     def _log_throttled(
         self,
@@ -7976,6 +8051,7 @@ class MainWindow(QMainWindow):
         self.worker.log.connect(self._log)
         self.worker.frame_decoded.connect(self.on_frame_decoded)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
+        self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.disconnected.connect(self.thread.quit)
         self.worker.disconnected.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
@@ -8023,6 +8099,7 @@ class MainWindow(QMainWindow):
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
         self._update_init_read_button_state()
+        self._start_warmlink_capture_if_enabled()
         if self.raw_file_cb.isChecked():
             self._open_raw_file()
         if bool(self.settings.get("auto_read_init_on_startup", False)):
@@ -8059,10 +8136,38 @@ class MainWindow(QMainWindow):
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         self._close_raw_file()
+        self._stop_warmlink_capture("gestoppt")
 
     @Slot(str)
     def on_error(self, text: str):
         self._log(f"FEHLER: {text}")
+
+    def _capture_settings(self) -> dict:
+        cfg = dict(DEFAULT_CAPTURE_SETTINGS)
+        saved = self.settings.get("warmlink_raw_capture", {})
+        if isinstance(saved, dict):
+            cfg.update(saved)
+        return cfg
+
+    def _start_warmlink_capture_if_enabled(self):
+        cfg = self._capture_settings()
+        if not bool(cfg.get("enabled", False)):
+            self.warmlink_capture = None
+            return
+        baseline = None
+        try:
+            if 2104 in self.latest_regs:
+                baseline = int(self.latest_regs[2104].raw_value)
+        except Exception:
+            baseline = None
+        self.warmlink_capture = WarmlinkRawCapture(cfg, getattr(self, "user_data_dir", self.base_dir), self._log)
+        self.warmlink_capture.start(baseline=baseline)
+
+    def _stop_warmlink_capture(self, reason: str = "gestoppt"):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.stop(reason)
+            self.warmlink_capture = None
 
     def _open_raw_file(self):
         if self.raw_file:
@@ -8094,7 +8199,16 @@ class MainWindow(QMainWindow):
             self._close_raw_file()
 
     @Slot(bytes)
+    def on_tx_chunk(self, chunk: bytes):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.capture_tx(chunk)
+
+    @Slot(bytes)
     def on_raw_chunk(self, chunk: bytes):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.capture_rx(chunk)
         self.raw_dump.extend(chunk)
         pending_count = len(getattr(self, "pending_read_requests", []) or [])
         if pending_count:
@@ -8311,6 +8425,10 @@ class MainWindow(QMainWindow):
         display_hmi_frame_had_true_2012 = False
 
         for reg in (frame.registers if apply_register_values else []):
+            if int(getattr(reg, "reg", -1)) == 2104:
+                cap = getattr(self, "warmlink_capture", None)
+                if cap is not None:
+                    cap.note_register_2104(getattr(reg, "raw_value", 0), str(getattr(reg, "display_value", getattr(reg, "raw_value", ""))))
             if self.known_only_cb.isChecked() and not reg.name:
                 continue
 
