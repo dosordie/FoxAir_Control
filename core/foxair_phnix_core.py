@@ -56,8 +56,8 @@ CONTACT_BIT_MAP_2034 = {
     9: ("S10 Heizen/Kühlen AN/AUS", "0=ein / 1=aus", True),
     10: ("S11 Reserviert / unbekannt", "", False),
     11: ("S12 Reserviert / unbekannt", "", False),
-    12: ("SG Kontakt 1", "DWIN 14.bin Seite 238, Maske 0x1000; 0=AUS / 1=EIN", False),
-    13: ("SG Kontakt 2", "DWIN 14.bin Seite 237/238, Maske 0x2000; 0=AUS / 1=EIN", False),
+    12: ("SG Kontakt 1", "Klemme 1–2 / AI-DI16 / Remote On/Off / Fernschalter; 0=Aus / 1=Ein", False),
+    13: ("SG Kontakt 2", "Klemme 7–8 / DIN_1 / Heat/Cool On/Off / PV-Kontakt; 0=Aus / 1=Ein", False),
     14: ("S15 Reserviert / unbekannt", "", False),
     15: ("S16 Reserviert / unbekannt", "", False),
 }

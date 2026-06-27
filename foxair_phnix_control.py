@@ -13,6 +13,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
+from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
@@ -119,8 +120,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.48"
-BUILD_DATE = "2026-06-21"
+APP_VERSION = "0.2.50"
+BUILD_DATE = "2026-06-26"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -497,6 +498,7 @@ class ReaderWorker(QObject):
     log = Signal(str)
     frame_decoded = Signal(object)
     raw_chunk = Signal(bytes)
+    tx_chunk = Signal(bytes)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
         super().__init__()
@@ -708,6 +710,7 @@ class ReaderWorker(QObject):
                 if not self.client or not self.client.is_connected():
                     self.error.emit("Nicht verbunden, kann nicht senden.")
                     continue
+                self.tx_chunk.emit(frame)
                 self.client.send(frame)
                 self.last_send_monotonic = time.monotonic()
                 self.last_send_desc = action
@@ -2361,7 +2364,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only SG Status 2133. SG01: Aus / Einfach (1 Kontakt) / Zweifach (2 Kontakte). SG08: Elektroheizstab Ein/Aus bei Mode4. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only aktiver SG-Modus 2133. SG01: Aus / 1 Kontakt / 2 Kontakte. Kontaktstatus wird sofort über Register 2034 angezeigt. Der aktive SG-Modus in Register 2133 kann zeitverzögert umschalten. SG Kontakt 1: Klemme 1–2 / AI-DI16 / Fernschalter. SG Kontakt 2: Klemme 7–8 / DIN_1 / Heat/Cool On/Off / PV-Kontakt. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -2377,16 +2380,16 @@ class SGReadyEditorDialog(QDialog):
 
         self.sg_mode_combo = QComboBox()
         self.sg_mode_combo.addItem("Aus", 0)
-        self.sg_mode_combo.addItem("Einfach - 1 Kontakt", 1)
-        self.sg_mode_combo.addItem("Zweifach - 2 Kontakte", 2)
-        form.addRow("SG01 Funktion (1334):", self.sg_mode_combo)
+        self.sg_mode_combo.addItem("1 Kontakt", 1)
+        self.sg_mode_combo.addItem("2 Kontakte", 2)
+        form.addRow("SG Ready Auswahl (1334):", self.sg_mode_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
         for reg_no, label in [
             (1335, "SG02 Schlafmodus Zeit"),
-            (1336, "SG03 Mode2 Verzögerung"),
-            (1337, "SG04 Mode3 Verzögerung"),
-            (1341, "SG08 Elektroheizstab bei Mode4"),
+            (1336, "SG03 Mode 2 Leistung / wenig PV (RAW / 10 kW)"),
+            (1337, "SG04 Mode 3 Leistung / mittel PV (RAW / 10 kW)"),
+            (1341, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"),
         ]:
             spin = QSpinBox(); spin.setRange(0, 0xFFFF)
             self.raw_spins[reg_no] = spin
@@ -2394,17 +2397,17 @@ class SGReadyEditorDialog(QDialog):
 
         self.temp_spins: dict[int, QDoubleSpinBox] = {}
         for reg_no, label in [
-            (1338, "SG05 WW-Anhebung"),
-            (1339, "SG06 HZ-Anhebung"),
-            (1340, "SG07 Kühlen-Anhebung"),
+            (1338, "SG05 Mode 4 WW-Sollwertanhebung"),
+            (1339, "SG06 Mode 4 HZ-Sollwertanhebung"),
+            (1340, "SG07 Mode 4 Kühlen-Sollwertanhebung"),
         ]:
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
             form.addRow(f"{label} ({reg_no}):", spin)
 
         self.sg_status_label = QLabel("--")
-        self.sg_status_label.setToolTip("Read-only: Register 2133 / SG Status. Bekannte Werte: 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.")
-        form.addRow("SG Status (2133, read-only):", self.sg_status_label)
+        self.sg_status_label.setToolTip("Read-only: Register 2133 / aktiver SG-Modus. 0=WP aus oder SG deaktiviert, 1=SG Mode 1 / Schlafmodus, 2=SG Mode 2 / wenig PV, 3=SG Mode 3 / mittel PV, 4=SG Mode 4 / High PV. Kontaktstatus wird sofort über Register 2034 angezeigt; Register 2133 kann zeitverzögert umschalten.")
+        form.addRow("Aktiver SG-Modus (2133, read-only):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
         form.addRow("Pause zwischen Writes:", self.delay_ms)
@@ -2489,7 +2492,7 @@ class SGReadyEditorDialog(QDialog):
                 if force or not self._has_focus(spin):
                     spin.setValue(s16(raw) / 10.0)
             elif reg_no == 2133:
-                label = {0: "kein SG Ready aktiv", 4: "SG Ready aktiv"}.get(raw, "unbekannt / nicht interpretiert")
+                label = {0: "WP aus oder SG deaktiviert", 1: "SG Mode 1 / Schlafmodus", 2: "SG Mode 2 / wenig PV", 3: "SG Mode 3 / mittel PV", 4: "SG Mode 4 / High PV"}.get(raw, "unbekannt / nicht interpretiert")
                 self.sg_status_label.setText(f"{raw} - {label}")
                 self._sg_status_read_pending = False
                 self.status_label.setText("SG Ready / SG Status erfolgreich gelesen.")
@@ -2505,12 +2508,12 @@ class SGReadyEditorDialog(QDialog):
         self.status_label.setText("SG Status Timeout / keine Antwort.")
 
     def sg_values(self) -> list[tuple[int, int, str]]:
-        values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG01 Funktion")]
+        values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG Ready Auswahl")]
         for reg_no in (1335, 1336, 1337):
             values.append((reg_no, int(self.raw_spins[reg_no].value()) & 0xFFFF, f"SG Register {reg_no}"))
         for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kuehlen-Anhebung")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
-        values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 Elektroheizstab bei Mode4"))
+        values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"))
         return values
 
     def read_from_wp(self):
@@ -5564,6 +5567,54 @@ class CommunicationSettingsDialog(QDialog):
         tab_poll_layout.addStretch(1)
         form.addRow("Parameter:", tab_poll_row)
 
+        cap = dict(DEFAULT_CAPTURE_SETTINGS)
+        saved_cap = main_window.settings.get("warmlink_raw_capture", {})
+        if isinstance(saved_cap, dict):
+            cap.update(saved_cap)
+        expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
+        expert_layout = QFormLayout(expert_box)
+        self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
+        self.cap_enabled_cb.setChecked(bool(cap.get("enabled", False)))
+        self.cap_dir_edit = QLineEdit(str(cap.get("directory", "warmlink_captures")))
+        self.cap_rx_cb = QCheckBox("RX mitschreiben"); self.cap_rx_cb.setChecked(bool(cap.get("capture_rx", True)))
+        self.cap_tx_cb = QCheckBox("TX mitschreiben"); self.cap_tx_cb.setChecked(bool(cap.get("capture_tx", True)))
+        self.cap_events_cb = QCheckBox("Events/Index schreiben"); self.cap_events_cb.setChecked(bool(cap.get("write_events", True)))
+        self.cap_idle_spin = QSpinBox(); self.cap_idle_spin.setRange(1, 1440); self.cap_idle_spin.setValue(int(cap.get("idle_rotation_minutes", 5))); self.cap_idle_spin.setSuffix(" min")
+        self.cap_file_spin = QSpinBox(); self.cap_file_spin.setRange(1, 1048576); self.cap_file_spin.setValue(int(cap.get("max_file_size_mb", 1024))); self.cap_file_spin.setSuffix(" MB")
+        self.cap_total_spin = QSpinBox(); self.cap_total_spin.setRange(1, 10485760); self.cap_total_spin.setValue(int(cap.get("max_total_size_mb", 10240))); self.cap_total_spin.setSuffix(" MB")
+        self.cap_retention_spin = QSpinBox(); self.cap_retention_spin.setRange(1, 3650); self.cap_retention_spin.setValue(int(cap.get("retention_days", 14))); self.cap_retention_spin.setSuffix(" Tage")
+        self.cap_anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.cap_anomaly_cb.setChecked(bool(cap.get("anomaly_detection", True)))
+        self.cap_poll2104_cb = QCheckBox("Register 2104 optional selten pollen"); self.cap_poll2104_cb.setChecked(bool(cap.get("poll_2104", False)))
+        self.cap_poll2104_interval_spin = QSpinBox(); self.cap_poll2104_interval_spin.setRange(30, 1440); self.cap_poll2104_interval_spin.setValue(int(cap.get("poll_2104_interval_min", 60))); self.cap_poll2104_interval_spin.setSuffix(" min")
+        self.cap_status_label = QLabel("Status wird nach dem Speichern/Verbinden aktualisiert.")
+        self.cap_status_label.setWordWrap(True)
+        self.cap_open_btn = QPushButton("Capture-Ordner öffnen")
+        self.cap_rotate_btn = QPushButton("Neues Segment starten")
+        self.cap_stop_btn = QPushButton("Capture stoppen")
+        cap_btn_row = QWidget(); cap_btn_layout = QHBoxLayout(cap_btn_row); cap_btn_layout.setContentsMargins(0,0,0,0)
+        cap_btn_layout.addWidget(self.cap_open_btn); cap_btn_layout.addWidget(self.cap_rotate_btn); cap_btn_layout.addWidget(self.cap_stop_btn); cap_btn_layout.addStretch(1)
+        expert_layout.addRow(self.cap_enabled_cb)
+        expert_layout.addRow("Capture-Verzeichnis:", self.cap_dir_edit)
+        expert_layout.addRow(self.cap_rx_cb); expert_layout.addRow(self.cap_tx_cb); expert_layout.addRow(self.cap_events_cb)
+        expert_layout.addRow("Tagesrotation nach Inaktivität:", self.cap_idle_spin)
+        expert_layout.addRow("Max. Einzeldateigröße:", self.cap_file_spin)
+        expert_layout.addRow("Max. Gesamtspeicher:", self.cap_total_spin)
+        expert_layout.addRow("Aufbewahrung:", self.cap_retention_spin)
+        expert_layout.addRow(self.cap_anomaly_cb); expert_layout.addRow(self.cap_poll2104_cb)
+        expert_layout.addRow("2104-Polling-Intervall:", self.cap_poll2104_interval_spin)
+        expert_layout.addRow("Status:", self.cap_status_label)
+        expert_layout.addRow(cap_btn_row)
+        layout.addWidget(expert_box)
+        self.cap_open_btn.clicked.connect(lambda: open_update_url(os.path.abspath(os.path.join(getattr(main_window, "user_data_dir", main_window.base_dir), self.cap_dir_edit.text().strip() or "warmlink_captures"))))
+        self.cap_rotate_btn.clicked.connect(lambda: getattr(main_window, "warmlink_capture", None) and main_window.warmlink_capture.force_new_segment())
+        self.cap_stop_btn.clicked.connect(lambda: main_window._stop_warmlink_capture("per Einstellungen gestoppt"))
+        try:
+            st = getattr(main_window, "warmlink_capture", None).get_status() if getattr(main_window, "warmlink_capture", None) else None
+            if st:
+                self.cap_status_label.setText(f"{'aktiv' if st.active else 'inaktiv'} | Segment {st.segment} | RX {st.rx_size} B | TX {st.tx_size} B | letzter RX {st.last_rx} | letzter TX {st.last_tx} | Anomalien {st.anomalies} | Drops {st.drops} | Fehler {st.error or '--'}")
+        except Exception:
+            pass
+
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
@@ -5667,6 +5718,20 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        self.main_window.settings["warmlink_raw_capture"] = {
+            "enabled": bool(self.cap_enabled_cb.isChecked()),
+            "directory": self.cap_dir_edit.text().strip() or "warmlink_captures",
+            "capture_rx": bool(self.cap_rx_cb.isChecked()),
+            "capture_tx": bool(self.cap_tx_cb.isChecked()),
+            "write_events": bool(self.cap_events_cb.isChecked()),
+            "idle_rotation_minutes": int(self.cap_idle_spin.value()),
+            "max_file_size_mb": int(self.cap_file_spin.value()),
+            "max_total_size_mb": int(self.cap_total_spin.value()),
+            "retention_days": int(self.cap_retention_spin.value()),
+            "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
+            "poll_2104": bool(self.cap_poll2104_cb.isChecked()),
+            "poll_2104_interval_min": int(self.cap_poll2104_interval_spin.value()),
+        }
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
@@ -6346,6 +6411,9 @@ class MainWindow(QMainWindow):
         self.log_throttle_state: Dict[tuple[Any, ...], dict[str, Any]] = {}
         self.raw_file: Optional[BinaryIO] = None
         self.raw_file_path: Optional[str] = None
+        self.warmlink_capture: Optional[WarmlinkRawCapture] = None
+        self.capture_log_queue: queue.Queue[str] = queue.Queue()
+        self.capture_2104_poll_timer: Optional[QTimer] = None
         self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
@@ -6440,6 +6508,7 @@ class MainWindow(QMainWindow):
         self._suppress_name_resize = False
 
         self._build_ui()
+        self._setup_capture_gui_log_timer()
         self._setup_help_actions()
         # V0.2.38: alter GUI-Init-Timer entfernt.
         # Init-Lesen wird jetzt je Backend durch eigene Controller gesteuert.
@@ -6968,6 +7037,8 @@ class MainWindow(QMainWindow):
         self.log_text = QTextEdit()
         self.log_text.setObjectName("log_view")
         self.log_text.setReadOnly(True)
+        if hasattr(self.log_text.document(), "setMaximumBlockCount"):
+            self.log_text.document().setMaximumBlockCount(int(self.settings.get("max_log_lines", 3000)))
         splitter.addWidget(self.log_text)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
@@ -7066,6 +7137,7 @@ class MainWindow(QMainWindow):
             "log_level": int(self.settings.get("log_level", 2)),
             "main_window": self.settings.get("main_window", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
+            "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
         }
 
     def _write_settings_file(self):
@@ -7666,6 +7738,24 @@ class MainWindow(QMainWindow):
             return
         stamp = time.strftime("%H:%M:%S")
         self.log_text.append(f"[{stamp}] {text}")
+        self._trim_gui_log()
+
+    def _trim_gui_log(self):
+        max_lines = int(self.settings.get("max_log_lines", 3000)) if hasattr(self, "settings") else 3000
+        doc = self.log_text.document()
+        if hasattr(doc, "setMaximumBlockCount"):
+            if int(doc.maximumBlockCount()) != max_lines:
+                doc.setMaximumBlockCount(max_lines)
+            return
+        overflow = doc.blockCount() - max_lines
+        if overflow <= 0:
+            return
+        cursor = self.log_text.textCursor()
+        cursor.movePosition(cursor.Start)
+        for _ in range(min(overflow, 500)):
+            cursor.select(cursor.BlockUnderCursor)
+            cursor.removeSelectedText()
+            cursor.deleteChar()
 
     def _log_throttled(
         self,
@@ -7976,6 +8066,7 @@ class MainWindow(QMainWindow):
         self.worker.log.connect(self._log)
         self.worker.frame_decoded.connect(self.on_frame_decoded)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
+        self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.disconnected.connect(self.thread.quit)
         self.worker.disconnected.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
@@ -8023,6 +8114,7 @@ class MainWindow(QMainWindow):
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
         self._update_init_read_button_state()
+        self._start_warmlink_capture_if_enabled()
         if self.raw_file_cb.isChecked():
             self._open_raw_file()
         if bool(self.settings.get("auto_read_init_on_startup", False)):
@@ -8059,10 +8151,89 @@ class MainWindow(QMainWindow):
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         self._close_raw_file()
+        self._stop_warmlink_capture("gestoppt")
 
     @Slot(str)
     def on_error(self, text: str):
         self._log(f"FEHLER: {text}")
+
+    def _setup_capture_gui_log_timer(self):
+        self.capture_gui_log_timer = QTimer(self)
+        self.capture_gui_log_timer.setInterval(500)
+        self.capture_gui_log_timer.timeout.connect(self._drain_capture_gui_log_queue)
+        self.capture_gui_log_timer.start()
+        self.capture_2104_poll_timer = QTimer(self)
+        self.capture_2104_poll_timer.timeout.connect(self._capture_2104_poll_tick)
+
+    def _capture_thread_log(self, text: str):
+        try:
+            self.capture_log_queue.put_nowait(str(text))
+        except queue.Full:
+            pass
+
+    @Slot()
+    def _drain_capture_gui_log_queue(self):
+        for _ in range(50):
+            try:
+                text = self.capture_log_queue.get_nowait()
+            except queue.Empty:
+                break
+            self._log(text)
+
+    def _apply_capture_2104_poll_timer(self):
+        timer = getattr(self, "capture_2104_poll_timer", None)
+        if timer is None:
+            return
+        cfg = self._capture_settings()
+        active = getattr(self, "warmlink_capture", None) is not None and bool(getattr(self.warmlink_capture, "status", None) and self.warmlink_capture.status.active)
+        if active and bool(cfg.get("poll_2104", False)) and self.connected:
+            interval_min = max(30, int(cfg.get("poll_2104_interval_min", 60) or 60))
+            timer.start(interval_min * 60 * 1000)
+        else:
+            timer.stop()
+
+    @Slot()
+    def _capture_2104_poll_tick(self):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is None or not bool(getattr(cap.status, "active", False)):
+            self._apply_capture_2104_poll_timer()
+            return
+        cfg = self._capture_settings()
+        if not bool(cfg.get("poll_2104", False)):
+            self._apply_capture_2104_poll_timer()
+            return
+        # Seltenes, passives Read-only Polling ueber die bestehende Read-Queue/Pending-Logik.
+        self.send_read_request(2104, 1, slave_addr=DEFAULT_BUS_ADDR, label="Warmlink Capture 2104 Watch", delay_ms=0)
+
+    def _capture_settings(self) -> dict:
+        cfg = dict(DEFAULT_CAPTURE_SETTINGS)
+        saved = self.settings.get("warmlink_raw_capture", {})
+        if isinstance(saved, dict):
+            cfg.update(saved)
+        return cfg
+
+    def _start_warmlink_capture_if_enabled(self):
+        cfg = self._capture_settings()
+        if not bool(cfg.get("enabled", False)):
+            self.warmlink_capture = None
+            return
+        baseline = None
+        try:
+            if 2104 in self.latest_regs:
+                baseline = int(self.latest_regs[2104].raw_value)
+        except Exception:
+            baseline = None
+        self.warmlink_capture = WarmlinkRawCapture(cfg, getattr(self, "user_data_dir", self.base_dir), self._capture_thread_log)
+        self.warmlink_capture.start(baseline=baseline)
+        self._apply_capture_2104_poll_timer()
+
+    def _stop_warmlink_capture(self, reason: str = "gestoppt"):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.stop(reason, join=True, timeout=3.0)
+            self.warmlink_capture = None
+        self._apply_capture_2104_poll_timer()
+        self._drain_capture_gui_log_queue()
 
     def _open_raw_file(self):
         if self.raw_file:
@@ -8094,7 +8265,16 @@ class MainWindow(QMainWindow):
             self._close_raw_file()
 
     @Slot(bytes)
+    def on_tx_chunk(self, chunk: bytes):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.capture_tx(chunk)
+
+    @Slot(bytes)
     def on_raw_chunk(self, chunk: bytes):
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.capture_rx(chunk)
         self.raw_dump.extend(chunk)
         pending_count = len(getattr(self, "pending_read_requests", []) or [])
         if pending_count:
@@ -8311,6 +8491,10 @@ class MainWindow(QMainWindow):
         display_hmi_frame_had_true_2012 = False
 
         for reg in (frame.registers if apply_register_values else []):
+            if int(getattr(reg, "reg", -1)) == 2104:
+                cap = getattr(self, "warmlink_capture", None)
+                if cap is not None:
+                    cap.note_register_2104(getattr(reg, "raw_value", 0), str(getattr(reg, "display_value", getattr(reg, "raw_value", ""))))
             if self.known_only_cb.isChecked() and not reg.name:
                 continue
 
@@ -12131,6 +12315,7 @@ class MainWindow(QMainWindow):
         if self.cache_save_exit_cb.isChecked():
             self.save_value_cache(silent=False)
         self.disconnect_from_device()
+        self._stop_warmlink_capture("App wird beendet")
         event.accept()
 
 
