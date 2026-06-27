@@ -3575,13 +3575,14 @@
     "code": "SG01",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Ready Funktion",
+    "name": "SG Ready Auswahl",
     "type": "SG_MODE",
     "value_map": {
       "0": "Aus",
       "1": "Einfach / 1 Kontakt",
-      "2": "Erweitert / 2 Kontakte"
-    }
+      "2": "2 Kontakte"
+    },
+    "description": "Aktivierung/Auswahl SG Ready: Aus / 1 Kontakt / 2 Kontakte"
   },
   "1335": {
     "block": "SG",
@@ -3589,23 +3590,31 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 1 Schlafmodus Zeit",
-    "type": "RAW"
+    "type": "RAW",
+    "unit": "min",
+    "description": "Zeitdauer Schlafmodus bei SG Mode 1"
   },
   "1336": {
     "block": "SG",
     "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 2 Einschaltverzögerung",
-    "type": "RAW"
+    "name": "SG Mode 2 Leistung / wenig PV",
+    "type": "POWER_KW_X10",
+    "unit": "kW",
+    "scale": "RAW / 10",
+    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 2 / wenig PV"
   },
   "1337": {
     "block": "SG",
     "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 3 Einschaltverzögerung",
-    "type": "RAW"
+    "name": "SG Mode 3 Leistung / mittel PV",
+    "type": "POWER_KW_X10",
+    "unit": "kW",
+    "scale": "RAW / 10",
+    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 3 / mittel PV"
   },
   "1338": {
     "block": "SG",
@@ -3613,7 +3622,8 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 WW-Zieltemperatur-Anhebung",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
   },
   "1339": {
     "block": "SG",
@@ -3621,7 +3631,8 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
   },
   "1340": {
     "block": "SG",
@@ -3630,14 +3641,15 @@
     "mode": "r/w",
     "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung",
     "notes": "Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV. Im Kühlbetrieb kann ein positiver Wert den Kühl-Sollwert effektiv senken, weil der Offset vom Kühl-Sollwert abgezogen wird."
   },
   "1341": {
     "block": "SG",
     "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Heizstab ein bei SG Mode4",
+    "name": "SG Mode 4 E-Heizer / Zusatzfunktion",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
@@ -3648,7 +3660,8 @@
       "1": "YES"
     },
     "app_label": "Electric Heater On in SG Mode4",
-    "last_review": "v0.2.41 fix8 user confirmed"
+    "last_review": "v0.2.41 fix8 user confirmed",
+    "description": "Zusatzfunktion/E-Heizer-Freigabe für SG Mode 4"
   },
   "1342": {
     "app_current_video_value": "0.0 bar",
@@ -4420,8 +4433,8 @@
       "1": "S02 Niederdruckschalter",
       "10": "S11 Reserviert / unbekannt",
       "11": "S12 Reserviert / unbekannt",
-      "12": "SG Kontakt 1 (DWIN 14.bin Seite 238, Maske 0x1000)",
-      "13": "SG Kontakt 2 (DWIN 14.bin Seite 237/238, Maske 0x2000)",
+      "12": "SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2 (active-high: 0=Aus, 1=Ein)",
+      "13": "SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8 (active-high: 0=Aus, 1=Ein)",
       "14": "S15 Reserviert / unbekannt",
       "15": "S16 Reserviert / unbekannt",
       "2": "S03 Wasserflussschalter",
@@ -4437,8 +4450,9 @@
     "code": "S01",
     "function": "03",
     "mode": "read-only",
-    "name": "bis S16 / Schalterzustand / Kontakte Bitfeld inkl. SG-Kontakte",
-    "type": "BITFIELD"
+    "name": "Schalterzustände / Kontakte / SG Ready",
+    "type": "BITFIELD",
+    "description": "Bitfeld der Eingangskontakte. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10 Kontaktlogik bleibt active-low."
   },
   "2035": {
     "block": "T",
@@ -5265,17 +5279,17 @@
     "block": "SG",
     "code": "SGstatus",
     "function": "03",
-    "mode": "read",
-    "name": "SG Status",
-    "type": "DIGI1",
+    "mode": "read-only",
+    "name": "SG Ready aktiver Modus",
+    "type": "RAW",
     "value_map": {
-      "0": "kein SG Ready aktiv oder WP aus",
-      "1": "evtl. SG Mode 1 (unbestätigt)",
-      "2": "evtl. SG Mode 2 (unbestätigt)",
-      "3": "evtl. SG Mode 3 (unbestätigt)",
-      "4": "SG Ready aktiv - Mode 4"
+      "0": "WP aus oder SG deaktiviert",
+      "1": "SG Mode 1 / Schlafmodus",
+      "2": "SG Mode 2 / wenig PV",
+      "3": "SG Mode 3 / mittel PV",
+      "4": "SG Mode 4 / High PV"
     },
-    "notes": "0 und 4 beobachtet/bestätigt. Werte 1-3 sind evtl. SG Mode 1-3 und unbestätigt."
+    "description": "Zeigt den aktiven SG-Ready-Modus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
   "91105": {
     "block": "DWINV",
