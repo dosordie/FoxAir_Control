@@ -44,3 +44,11 @@ RAW-Captures können Device-IDs, Tokens, Betriebsdaten oder andere sensible Info
 
 ## Offline-Analyse
 `tools/analyze_warmlink_capture.py` liest `events.jsonl` und fasst Zeitraum, RX/TX-Bytes, Frames nach Typ, unbekannte Frames, Anomalien, RX-Bursts und Reconnects zusammen.
+
+## GUI-Statusmeldungen und Vollständigkeit
+Capture-Logmeldungen im normalen GUI-Log sind ausschließlich kurze Statusmeldungen wie Start, Stop, Segmentwechsel, Anomalie, Speicherlimit, Schreibfehler oder eine Änderung von Register 2104. Rohdaten werden dort nicht ausgegeben; die vollständigen Bytes liegen nur in den RX/TX-Binärdateien.
+
+Wenn `capture_drop` in `events.jsonl` erscheint oder der Drop-Zähler im Status/Summary größer als 0 ist, ist der Capture ab diesem Zeitpunkt möglicherweise nicht mehr vollständig. Ursache ist eine volle Capture-Queue; die normale Wärmepumpen-Kommunikation wird dann bewusst nicht blockiert, damit die App weiterläuft.
+
+## 2104-Polling
+Die Hauptsoftwareversion `2104 / 0x0838` wird passiv erkannt, sobald sie in normalen Statusframes auftaucht. Zusätzlich kann im Expertenbereich ein seltenes aktives Read-only-Polling aktiviert werden. Dieses Polling läuft nur bei aktivem Capture, nutzt das konfigurierte Intervall (Default 60 Minuten, mindestens 30 Minuten) und verwendet die bestehende Read-Queue/Pending-Logik. Es schreibt niemals auf Register 2104.

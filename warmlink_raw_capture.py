@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json, os, queue, threading, time, datetime, math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -61,14 +61,17 @@ class WarmlinkRawCapture:
         self.rx = self.tx = self.events = None; self.summary_path = ""; self.active_paths: set[str] = set(); self.offsets = {"rx":0,"tx":0}
         self.last_data_mono = 0.0; self.last_flush = 0.0; self.recent_rx: list[tuple[float,int]] = []; self.recent_tx: list[tuple[float,int]] = []; self.last_prune = 0.0
         self.fc16_window: list[tuple[float,int,int,int]] = []; self.firmware_baseline: Optional[tuple[int,str]] = None; self.firmware_changed = False
+        self._drop_event_pending = False; self._last_drop_event_total = 0
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
         self.stop_evt.clear(); self.status.active = True; self._open_segment(force=True)
         self.thread = threading.Thread(target=self._run, name="WarmlinkRawCapture", daemon=True); self.thread.start(); self.log_cb("Warmlink Capture: gestartet")
-    def stop(self, reason: str = "gestoppt"):
-        self.stop_evt.set(); self.status.active = False; self._put(("event", {"event":"capture_stopped","reason":reason}))
+    def stop(self, reason: str = "gestoppt", join: bool = False, timeout: float = 3.0):
+        self.stop_evt.set(); self.status.active = False; self._put(("event", {"event":"capture_stopped","reason":reason,"ts":utc_iso()}))
         self.log_cb(f"Warmlink Capture: {reason}")
+        if join and self.thread and self.thread is not threading.current_thread():
+            self.thread.join(timeout=max(0.0, float(timeout)))
     def capture_rx(self, b: bytes): self._put(("rx", bytes(b)))
     def capture_tx(self, b: bytes): self._put(("tx", bytes(b)))
     def force_new_segment(self): self._put(("rotate", {}))
@@ -76,16 +79,26 @@ class WarmlinkRawCapture:
         with self.lock: return CaptureStatus(**self.status.__dict__)
     def _put(self, item):
         if not self.status.active and item[0] not in ("event",): return
-        try: self.q.put_nowait(item)
+        try:
+            if self._drop_event_pending and item[0] != "drop_event":
+                drops = int(self.status.drops)
+                try:
+                    self.q.put_nowait(("drop_event", {"ts": utc_iso(), "event": "capture_drop", "drops_total": drops, "note": "Capture queue full; raw bytes may be incomplete"}))
+                    self._drop_event_pending = False
+                    self._last_drop_event_total = drops
+                except queue.Full:
+                    pass
+            self.q.put_nowait(item)
         except queue.Full:
             with self.lock: self.status.drops += 1
+            self._drop_event_pending = True
     def _run(self):
         while not self.stop_evt.is_set() or not self.q.empty():
             try: kind, payload = self.q.get(timeout=0.5)
             except queue.Empty: self._periodic(); continue
             try:
                 if kind in ("rx","tx"): self._write_chunk(kind, payload)
-                elif kind == "event": self._write_event(payload)
+                elif kind in ("event", "drop_event"): self._write_event(payload)
                 elif kind == "rotate": self._open_segment(force=True)
                 self._periodic()
             except Exception as exc:
@@ -112,6 +125,14 @@ class WarmlinkRawCapture:
             if f:
                 try: f.flush(); os.fsync(f.fileno()); f.close()
                 except Exception: pass
+        if self.summary_path:
+            try:
+                with open(self.summary_path, "a", encoding="utf-8") as f:
+                    f.write(f"Drops total: {int(self.status.drops)}\n")
+                    if int(self.status.drops) > 0:
+                        f.write("Capture complete: no (queue drops occurred)\n")
+            except Exception:
+                pass
         self.rx=self.tx=self.events=None
     def _write_chunk(self, direction, data: bytes):
         now=time.monotonic(); self.last_data_mono=now; f = self.rx if direction=="rx" else self.tx
