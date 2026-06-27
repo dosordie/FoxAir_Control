@@ -2,6 +2,8 @@ import datetime
 import json
 from pathlib import Path
 
+import pytest
+
 from warmlink_raw_capture import WarmlinkRawCapture, parse_modbus
 
 
@@ -168,3 +170,69 @@ def test_rotation_uses_new_segment_and_resets_offsets_and_frame_buffer(tmp_path)
     assert len(frames) == 1
     assert frames[0]["offset_start"] == 0
     assert frames[0]["offset_end"] == len(frame)
+
+
+def test_main_window_does_not_start_capture_for_non_warmlink_backend(monkeypatch, tmp_path):
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    starts = []
+
+    class FakeCapture:
+        def __init__(self, *args, **kwargs):
+            starts.append((args, kwargs))
+        def start(self, baseline=None):
+            starts.append(("start", baseline))
+
+    class FakeMain:
+        settings = {"warmlink_raw_capture": {"enabled": True, "directory": str(tmp_path)}}
+        latest_regs = {}
+        warmlink_capture = "old"
+        user_data_dir = str(tmp_path)
+        base_dir = str(tmp_path)
+        def current_backend_key(self):
+            return "standard_modbus"
+        def _log(self, text):
+            self.logged = text
+        def _capture_thread_log(self, text):
+            pass
+
+    monkeypatch.setattr(app, "WarmlinkRawCapture", FakeCapture)
+    fake = FakeMain()
+
+    app.MainWindow._start_warmlink_capture_if_enabled(fake)
+
+    assert starts == []
+    assert fake.warmlink_capture is None
+    assert "nicht Modbus Warmlink LTE" in fake.logged
+
+
+def test_main_window_starts_capture_for_warmlink_backend(monkeypatch, tmp_path):
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    starts = []
+
+    class FakeCapture:
+        def __init__(self, *args, **kwargs):
+            starts.append(("init", args, kwargs))
+        def start(self, baseline=None):
+            starts.append(("start", baseline))
+
+    class FakeMain:
+        settings = {"warmlink_raw_capture": {"enabled": True, "directory": str(tmp_path)}}
+        latest_regs = {}
+        warmlink_capture = None
+        user_data_dir = str(tmp_path)
+        base_dir = str(tmp_path)
+        def current_backend_key(self):
+            return "warmlink_raw"
+        def _log(self, text):
+            pass
+        def _capture_thread_log(self, text):
+            pass
+
+    monkeypatch.setattr(app, "WarmlinkRawCapture", FakeCapture)
+    fake = FakeMain()
+
+    app.MainWindow._start_warmlink_capture_if_enabled(fake)
+
+    assert [entry[0] for entry in starts] == ["init", "start"]

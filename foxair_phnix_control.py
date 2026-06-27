@@ -5586,8 +5586,8 @@ class CommunicationSettingsDialog(QDialog):
         saved_cap = main_window.settings.get("warmlink_raw_capture", {})
         if isinstance(saved_cap, dict):
             cap.update(saved_cap)
-        expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
-        expert_layout = QFormLayout(expert_box)
+        self.capture_expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
+        expert_layout = QFormLayout(self.capture_expert_box)
         self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
         self.cap_enabled_cb.setChecked(bool(cap.get("enabled", False)))
         self.cap_dir_edit = QLineEdit(str(cap.get("directory", "warmlink_captures")))
@@ -5616,7 +5616,7 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout.addRow(self.cap_anomaly_cb)
         expert_layout.addRow("Status:", self.cap_status_label)
         expert_layout.addRow(cap_btn_row)
-        layout.addWidget(expert_box)
+        layout.addWidget(self.capture_expert_box)
         self.cap_open_btn.clicked.connect(lambda: open_update_url(os.path.abspath(os.path.join(getattr(main_window, "user_data_dir", main_window.base_dir), self.cap_dir_edit.text().strip() or "warmlink_captures"))))
         self.cap_rotate_btn.clicked.connect(lambda: getattr(main_window, "warmlink_capture", None) and main_window.warmlink_capture.force_new_segment())
         self.cap_stop_btn.clicked.connect(lambda: main_window._stop_warmlink_capture("per Einstellungen gestoppt"))
@@ -5639,6 +5639,15 @@ class CommunicationSettingsDialog(QDialog):
         self.backend_combo.currentIndexChanged.connect(lambda _=None: self._backend_changed(load_values=True))
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
         self._backend_changed(load_values=True)
+
+    def _is_warmlink_backend_key(self, key: str) -> bool:
+        return str(key or "") == "warmlink_raw"
+
+    def _update_capture_settings_visibility(self):
+        if not hasattr(self, "capture_expert_box"):
+            return
+        backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        self.capture_expert_box.setVisible(self._is_warmlink_backend_key(backend))
 
     def _backend_settings(self, backend: str) -> dict:
         return self.main_window._backend_settings(backend)
@@ -5692,6 +5701,7 @@ class CommunicationSettingsDialog(QDialog):
             self.display_dual_logger_cb.setVisible(backend == "display_modbus")
         if hasattr(self, "display_dual_logger_label"):
             self.display_dual_logger_label.setVisible(backend == "display_modbus")
+        self._update_capture_settings_visibility()
         self._transport_changed()
         if backend == "warmlink_raw":
             self.info_label.setText("Modbus Warmlink LTE: Bus/Modem im Außengerät am Mainboard. WP-Busadresse bleibt intern 0x63.")
@@ -5732,18 +5742,20 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
-        self.main_window.settings["warmlink_raw_capture"] = {
-            "enabled": bool(self.cap_enabled_cb.isChecked()),
-            "directory": self.cap_dir_edit.text().strip() or "warmlink_captures",
-            "capture_rx": bool(self.cap_rx_cb.isChecked()),
-            "capture_tx": bool(self.cap_tx_cb.isChecked()),
-            "write_events": bool(self.cap_events_cb.isChecked()),
-            "idle_rotation_minutes": int(self.cap_idle_spin.value()),
-            "max_file_size_mb": int(self.cap_file_spin.value()),
-            "max_total_size_mb": int(self.cap_total_spin.value()),
-            "retention_days": int(self.cap_retention_spin.value()),
-            "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
-        }
+        selected_backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        if self._is_warmlink_backend_key(selected_backend):
+            self.main_window.settings["warmlink_raw_capture"] = {
+                "enabled": bool(self.cap_enabled_cb.isChecked()),
+                "directory": self.cap_dir_edit.text().strip() or "warmlink_captures",
+                "capture_rx": bool(self.cap_rx_cb.isChecked()),
+                "capture_tx": bool(self.cap_tx_cb.isChecked()),
+                "write_events": bool(self.cap_events_cb.isChecked()),
+                "idle_rotation_minutes": int(self.cap_idle_spin.value()),
+                "max_file_size_mb": int(self.cap_file_spin.value()),
+                "max_total_size_mb": int(self.cap_total_spin.value()),
+                "retention_days": int(self.cap_retention_spin.value()),
+                "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
+            }
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
@@ -8194,7 +8206,16 @@ class MainWindow(QMainWindow):
             cfg.update(saved)
         return cfg
 
+    def _is_warmlink_backend_key(self, key: str) -> bool:
+        return str(key or "") == "warmlink_raw"
+
     def _start_warmlink_capture_if_enabled(self):
+        if not self._is_warmlink_backend_key(self.current_backend_key()):
+            self.warmlink_capture = None
+            cfg = self._capture_settings()
+            if bool(cfg.get("enabled", False)):
+                self._log("Warmlink Capture nicht gestartet: Backend ist nicht Modbus Warmlink LTE.")
+            return
         cfg = self._capture_settings()
         if not bool(cfg.get("enabled", False)):
             self.warmlink_capture = None
