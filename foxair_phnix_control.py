@@ -2103,9 +2103,18 @@ class DualBusLoggerDialog(QDialog):
                             "Werte wurden ins Hauptfenster uebernommen."
                         )
                         main_window = getattr(self, "main_window", None)
+                        progress_total = int(getattr(self, "display_known_init_progress_total", total * 3 + 2) or (total * 3 + 2))
+                        progress_done = min(progress_total, int(getattr(self, "display_known_init_progress_done", 0) or 0) + 2)
+                        self.display_known_init_progress_done = progress_done
                         if main_window is not None:
                             try:
                                 main_window.init_read_btn.setText(f"Display-Init: {done}/{total} OK")
+                                if hasattr(main_window, "display_init_progress_changed"):
+                                    main_window.display_init_progress_changed(
+                                        progress_done,
+                                        progress_total,
+                                        f"Display-Modbus: Display-Antwort empfangen, Paket {done}/{total} wird verarbeitet ...",
+                                    )
                             except Exception:
                                 pass
                     except Exception:
@@ -2128,6 +2137,9 @@ class DualBusLoggerDialog(QDialog):
                         fail_items.append((int(slave), int(start), int(qty), str(label)))
                         self.display_known_init_fail_items = fail_items
                         self._log(f"DISPLAY-INIT STATUS: ungueltige Antwort fuer Block {start}/0x{start:04X}; wird nur diagnostisch gezaehlt.")
+                        main_window = getattr(self, "main_window", None)
+                        if main_window is not None and hasattr(main_window, "display_init_progress_failed"):
+                            main_window.display_init_progress_failed(f"Display-Modbus: Display-Abfrage Fehler: ungültige Antwort für Paket {start}/0x{start:04X}.")
                     except Exception:
                         pass
             active_kind = str(item.get("active_scan_kind", ""))
@@ -5435,8 +5447,9 @@ class MainWindow(QMainWindow):
             total = len(DISPLAY_KNOWN_PACKET_READS)
             active = bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
             if active:
-                done = len({int(x[1]) for x in (getattr(dlg, "display_known_init_ok_items", []) or [])})
-                return min(done, total), total, True
+                progress_total = int(getattr(dlg, "display_known_init_progress_total", total) or total)
+                progress_done = int(getattr(dlg, "display_known_init_progress_done", 0) or 0)
+                return min(progress_done, progress_total), progress_total, True
             return 0, total, False
         ctrl = getattr(self, "warmlink_init_controller", None)
         total = len(WARMLINK_INIT_BLOCKS)
@@ -5444,6 +5457,42 @@ class MainWindow(QMainWindow):
             remaining = len(getattr(ctrl, "queue", []) or []) + (1 if getattr(ctrl, "current", None) is not None else 0) + len(getattr(ctrl, "retry_items", []) or [])
             return max(0, total - remaining), total, True
         return total if bool(getattr(self, "init_read_active", False)) else 0, total, False
+
+    def display_init_progress_changed(self, done: int, total: int, text: str):
+        if not hasattr(self, "init_progress_bar"):
+            return
+        self.init_progress_bar.setRange(0, max(1, int(total)))
+        self.init_progress_bar.setValue(max(0, min(int(done), max(1, int(total)))))
+        self.init_progress_bar.setFormat(str(text))
+        self.status_label.setText(str(text))
+        self._log(f"Display-Abfrage Progress: {done}/{total} - {text}", level=5)
+
+    def display_init_progress_busy(self, text: str):
+        if not hasattr(self, "init_progress_bar"):
+            return
+        self.init_progress_bar.setRange(0, 0)
+        self.init_progress_bar.setFormat(str(text))
+        self.status_label.setText(str(text))
+        self._log(f"Display-Abfrage: {text}", level=3)
+
+    def display_init_progress_finished(self, text: str):
+        if not hasattr(self, "init_progress_bar"):
+            return
+        total = max(1, int(self.init_progress_bar.maximum() or len(DISPLAY_KNOWN_PACKET_READS)))
+        self.init_progress_bar.setRange(0, total)
+        self.init_progress_bar.setValue(total)
+        self.init_progress_bar.setFormat(str(text))
+        self.status_label.setText(str(text))
+        self._log(str(text), level=2)
+
+    def display_init_progress_failed(self, text: str):
+        if not hasattr(self, "init_progress_bar"):
+            return
+        if self.init_progress_bar.maximum() == 0:
+            self.init_progress_bar.setRange(0, max(1, len(DISPLAY_KNOWN_PACKET_READS)))
+        self.init_progress_bar.setFormat(str(text))
+        self.status_label.setText(str(text))
+        self._log(str(text), level=2, force=True)
 
     def _update_init_read_progress(self):
         if not hasattr(self, "init_progress_bar"):
@@ -5454,9 +5503,14 @@ class MainWindow(QMainWindow):
             return
         done, total, active = self._init_read_progress_counts()
         if active:
-            percent = int((done / max(1, total)) * 100)
-            self.init_progress_bar.setValue(percent)
-            self.init_progress_bar.setFormat(f"{done}/{total} Blöcke")
+            if self.init_progress_bar.maximum() == 0:
+                return
+            self.init_progress_bar.setRange(0, max(1, total))
+            self.init_progress_bar.setValue(done)
+            if self.current_backend_key() == "display_modbus":
+                self.init_progress_bar.setFormat(f"Display-Modbus: {done}/{total} Schritte")
+            else:
+                self.init_progress_bar.setFormat(f"{done}/{total} Blöcke")
         elif self.init_progress_bar.value() and self.init_progress_bar.value() < 100:
             self.init_progress_bar.setValue(100)
             self.init_progress_bar.setFormat("Fertig")
@@ -9664,6 +9718,26 @@ class MainWindow(QMainWindow):
         self._display_timer_batch_send_current_step()
         return True
 
+    def _notify_timer_sg_write_status(self, title: str, text: str) -> None:
+        targets = []
+        if "SG Ready" in str(title):
+            targets.append(getattr(self, "sg_dialog", None))
+        if "Timer" in str(title):
+            targets.extend([
+                getattr(self, "timer_dialog", None),
+                getattr(self, "onoff_timer_dialog", None),
+                getattr(self, "silent_timer_dialog", None),
+            ])
+        for dialog in targets:
+            if dialog is None or not dialog.isVisible():
+                continue
+            label = getattr(dialog, "status_label", None)
+            if label is not None:
+                try:
+                    label.setText(str(text))
+                except Exception:
+                    pass
+
     def _display_timer_batch_send_current_step(self) -> None:
         state = self.display_timer_batch_state
         if not state.get("active"):
@@ -9676,6 +9750,7 @@ class MainWindow(QMainWindow):
                 f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): alle FC16-Schritte quittiert/abgesetzt. "
                 "0BC3-Trigger wurde weich abgesetzt. Bitte frisches passendes Parameterpaket zur Bestätigung prüfen."
             )
+            self._notify_timer_sg_write_status(title, f"{title} erfolgreich geschrieben / Trigger gesendet. Frisches Paket zur Bestätigung prüfen.")
             self.display_timer_batch_state = {}
             return
         step = dict(steps[idx])
@@ -9685,6 +9760,7 @@ class MainWindow(QMainWindow):
         state["current_sent_at"] = time.monotonic()
         kind = str(step.get("kind") or "single")
         label = f"V0.2.41 fix5 ACK Schritt {idx + 1}/{len(steps)} Versuch {retry}: {step.get('label') or ''}"
+        self._notify_timer_sg_write_status(title, f"{title}: schreibe Schritt {idx + 1}/{len(steps)} ...")
         if kind == "block":
             self._enqueue_display_write_block(int(step["addr"]), list(step.get("values") or []), label=label, post_delay_ms=0)
         else:
@@ -9707,6 +9783,7 @@ class MainWindow(QMainWindow):
                 f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): ACK für Schritt {idx + 1}/{len(steps)} "
                 f"Addr 0x{addr:04X} qty={qty} gesehen."
             )
+            self._notify_timer_sg_write_status(title, f"{title}: Schritt {idx + 1}/{len(steps)} bestätigt.")
             state["step_index"] = idx + 1
             state["step_retries"] = 0
             next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
@@ -9720,6 +9797,7 @@ class MainWindow(QMainWindow):
                 self._log(
                     f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): kein ACK für 0BC3, aber 3001 zeigt Flag 0x{mask:04X}; weiter."
                 )
+                self._notify_timer_sg_write_status(title, f"{title}: 0BC3-Trigger über 3001 bestätigt.")
                 state["step_index"] = idx + 1
                 state["step_retries"] = 0
                 next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
@@ -9741,6 +9819,7 @@ class MainWindow(QMainWindow):
                 f"Addr 0x{addr:04X} qty={qty} ohne ACK nach {max_retry} Versuchen. "
                 f"{extra_note}; Übernahme bitte im frischen Paket prüfen."
             )
+            self._notify_timer_sg_write_status(title, f"{title}: optionaler Schritt {idx + 1}/{len(steps)} ohne ACK, fahre fort.")
             state["step_index"] = idx + 1
             state["step_retries"] = 0
             next_pause = int(step.get("post_pause_ms", state.get("pause_ms", 220)) or state.get("pause_ms", 220) or 220)
@@ -9750,6 +9829,7 @@ class MainWindow(QMainWindow):
             f"DISPLAY Timer/Popup V0.2.41 fix5 FEHLER ({title}): Schritt {idx + 1}/{len(steps)} "
             f"Addr 0x{addr:04X} qty={qty} ohne ACK nach {max_retry} Versuchen. Abbruch."
         )
+        self._notify_timer_sg_write_status(title, f"{title}: Schreiben fehlgeschlagen, Schritt {idx + 1}/{len(steps)} ohne ACK.")
         self.display_timer_batch_state = {}
 
     def send_timer_values(self, slave_addr: int, values: list[tuple[int, int, str]], delay_ms: int = 1200, title: str = "Timer"):
