@@ -4387,38 +4387,38 @@
   },
   "2029": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Eingangsstrom 1",
     "type": "DIGI5",
-    "block": "A",
-    "code": "A2029",
+    "block": "T",
+    "code": "T-Diag5",
     "unit": "A"
   },
   "2030": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Eingangsstrom 2",
     "type": "DIGI5",
-    "block": "A",
-    "code": "A2030",
+    "block": "T",
+    "code": "T-Diag6",
     "unit": "A"
   },
   "2031": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Eingangsstrom 2?",
     "type": "DIGI5",
     "unit": "A",
-    "block": "A",
-    "code": "A2031"
+    "block": "T",
+    "code": "T-Diag7"
   },
   "2032": {
     "function": "16",
     "mode": "write",
     "name": "Kompressor-Laufzeit",
     "type": "RAW",
-    "block": "h",
-    "code": "h2032",
+    "block": "T",
+    "code": "T-Diag8",
     "unit": "h"
   },
   "2033": {

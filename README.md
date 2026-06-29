@@ -1,8 +1,21 @@
-# FoxAir / Phnix Control PUBLIC V0.2.46
+# FoxAir / Phnix Control PUBLIC V0.5.51
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
+
+### Warmlink RAW / Firmware-Logging
+
+Ab Version `0.5.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
+Damit können RX/TX-Rohdaten des Modbus-Warmlink/LTE-Datenstroms als Binärdateien gespeichert und über `events.jsonl` sowie `frame_complete` Events für spätere Offline-Analysen indexiert werden.
+
+Die Funktion ist für Diagnose und spätere Firmware-Update-Erkennung vorbereitet:
+- passive Beobachtung von Register `2104 / Hauptsoftwareversion`
+- Erkennung vollständiger Warmlink-/Modbus-Frames mit Offsets in die RAW-Dateien
+- robuste Segmentierung für Langzeitmitschnitte
+- keine aktive Firmware-, Replay- oder Schreibfunktion
+
+RAW-Captures können sensible Geräte-/Betriebsdaten enthalten und sollten nicht öffentlich geteilt werden.
 
 ## PUBLIC V0.2.46 – Struktur-Refactoring
 

@@ -60,6 +60,26 @@ class DisplayKnownReadController:
         except Exception:
             pass
 
+    def _progress(self, done: int, total: int, text: str) -> None:
+        main_window = getattr(self.owner, "main_window", None)
+        if main_window is not None and hasattr(main_window, "display_init_progress_changed"):
+            main_window.display_init_progress_changed(int(done), int(total), str(text))
+
+    def _busy(self, text: str) -> None:
+        main_window = getattr(self.owner, "main_window", None)
+        if main_window is not None and hasattr(main_window, "display_init_progress_busy"):
+            main_window.display_init_progress_busy(str(text))
+
+    def _finished(self, text: str) -> None:
+        main_window = getattr(self.owner, "main_window", None)
+        if main_window is not None and hasattr(main_window, "display_init_progress_finished"):
+            main_window.display_init_progress_finished(str(text))
+
+    def _failed(self, text: str) -> None:
+        main_window = getattr(self.owner, "main_window", None)
+        if main_window is not None and hasattr(main_window, "display_init_progress_failed"):
+            main_window.display_init_progress_failed(str(text))
+
     def start(self, pause_ms: int = 900) -> None:
         owner = self.owner
         if bool(getattr(owner, "display_known_init_active", False)):
@@ -88,7 +108,10 @@ class DisplayKnownReadController:
         owner.display_known_init_timeout_items = []
         owner.display_known_init_fail_items = []
         owner.display_packet_scan_cb.setChecked(False)
+        owner.display_known_init_progress_done = 1
+        owner.display_known_init_progress_total = len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2
         self._update_button_status()
+        self._progress(1, owner.display_known_init_progress_total, "Display-Modbus: Display-Abfrage vorbereitet.")
 
         # Alte Einmal-Init-Pendings entfernen, damit keine falsche Zuordnung bleibt.
         owner.display_pending_reads = [
@@ -105,6 +128,7 @@ class DisplayKnownReadController:
             # Fix33: start(display_only=True) initialisiert ausschliesslich den Display-Reader.
             # Der Warmlink-Bus wird hier bewusst NICHT geoeffnet; DualLogger bleibt getrennt.
             owner.start(display_only=True)
+            self._busy("Display-Modbus: DisplayWorker startet, warte auf Display-Bus ...")
             QTimer.singleShot(1200, self.step)
         else:
             QTimer.singleShot(80, self.step)
@@ -142,6 +166,10 @@ class DisplayKnownReadController:
                 main_window._update_init_read_button_state()
         except Exception:
             pass
+        if timeout_addrs or fail_addrs:
+            self._failed(f"Display-Modbus: Spezialabfrage abgeschlossen mit Timeout/ungültig (OK {len(ok_addrs)}/{total}).")
+        else:
+            self._finished("Display-Modbus: Alle Register/Spezialabfrage abgeschlossen.")
         owner._log(message)
 
     def step(self) -> None:
@@ -149,6 +177,7 @@ class DisplayKnownReadController:
         if owner._stopping or not getattr(owner, "display_known_init_active", False):
             return
         if not owner.display_worker:
+            self._failed("Display-Modbus: Display-Abfrage Fehler: Display-Worker nicht verfügbar.")
             self._finish("DISPLAY-INIT via DisplayWorker abgebrochen: Display-Worker nicht verfügbar.")
             return
 
@@ -158,6 +187,7 @@ class DisplayKnownReadController:
             age = now - float(item.get("queued_at", now))
             timeout_s = float(getattr(owner, "display_known_init_timeout_s", 7.0))
             if age < timeout_s:
+                self._busy("Display-Modbus: Trigger gesendet, warte auf Antwort ...")
                 QTimer.singleShot(300, self.step)
                 return
             try:
@@ -171,6 +201,7 @@ class DisplayKnownReadController:
                 f"start={int(item.get('addr', 0))}/0x{int(item.get('addr', 0)):04X}, "
                 f"qty={int(item.get('qty', 0))}, retry={retry_no}; nächster Block."
             )
+            self._failed(f"Display-Modbus: Timeout nach Trigger, keine Antwort bei Paket {int(item.get('addr', 0))}/0x{int(item.get('addr', 0)):04X}.")
             try:
                 timeout_items = list(getattr(owner, "display_known_init_timeout_items", []) or [])
                 timeout_items.append((int(item.get("slave", 0)), int(item.get("addr", 0)), int(item.get("qty", 0)), retry_no))
@@ -202,6 +233,11 @@ class DisplayKnownReadController:
                     "DISPLAY-INIT via DisplayWorker: starte Retry-Runde fuer "
                     f"{len(retry_items)} Timeout-Block/Blöcke am Ende."
                 )
+                self._progress(
+                    int(getattr(owner, "display_known_init_progress_done", 0) or 0),
+                    int(getattr(owner, "display_known_init_progress_total", len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2) or 1),
+                    f"Display-Modbus: Nächster Display-Block / Retry-Runde ({len(retry_items)} Block/Blöcke) ...",
+                )
                 QTimer.singleShot(max(500, int(getattr(owner, "display_known_init_pause_ms", 900))), self.step)
                 return
             self._finish("DISPLAY-INIT via DisplayWorker fertig / alle bekannten Blöcke inkl. Retry angefordert.")
@@ -210,6 +246,10 @@ class DisplayKnownReadController:
         slave, addr, qty, label, retry_no = queue.pop(0)
 
         owner.display_known_init_queue = queue
+        done_before = int(getattr(owner, "display_known_init_progress_done", 1) or 1)
+        total_steps = int(getattr(owner, "display_known_init_progress_total", len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2) or 1)
+        packet_no = len(DISPLAY_KNOWN_PACKET_READS) - len(queue)
+        self._progress(done_before, total_steps, f"Display-Modbus: Trigger-Bit setzen für Display-Paket {packet_no}/{len(DISPLAY_KNOWN_PACKET_READS)} ...")
         owner.display_pending_reads.append({
             "slave": int(slave),
             "addr": int(addr),
@@ -222,6 +262,8 @@ class DisplayKnownReadController:
             "retry_no": int(retry_no),
         })
         owner.display_worker.enqueue_read(int(addr), int(qty), slave_addr=int(slave), post_delay_ms=0)
+        owner.display_known_init_progress_done = min(total_steps, done_before + 1)
+        self._busy("Display-Modbus: Trigger gesendet, warte auf Antwort ...")
         owner._log(
             f"DISPLAY-INIT via DisplayWorker gesendet: Unit 0x{int(slave):02X}, "
             f"start={int(addr)}/0x{int(addr):04X}, qty={int(qty)}, "
