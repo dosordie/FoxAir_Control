@@ -770,6 +770,8 @@ class OnOffTimerEditorDialog(QDialog):
         self.main_window = main_window
         self._programmatic = False
         self.fields: dict[int, dict[str, Any]] = {}
+        self._timer_read_sequence_active = False
+        self._timer_read_sequence_step = ""
         self.setWindowTitle("WP Ein/Aus / Silentmodus Timer")
         self.setMinimumWidth(650)
         self.setMinimumHeight(540)
@@ -794,8 +796,11 @@ class OnOffTimerEditorDialog(QDialog):
         top = QHBoxLayout()
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         top.addWidget(self.auto_update_cb)
         top.addStretch(1)
+        top.addWidget(self.status_label)
         layout.addLayout(top)
 
         self.tabs = QTabWidget()
@@ -1065,10 +1070,56 @@ class OnOffTimerEditorDialog(QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
+    TIMER_READ_LABEL_SILENT = "Silentmodus Timer 1244-1249"
+    TIMER_READ_LABEL_ONOFF = "WP Ein/Aus Timer 1256-1270"
+    TIMER_READ_STEP_DELAY_MS = 600
+
     def read_from_wp(self):
-        self.main_window.send_read_request(1244, 6, slave_addr=DEFAULT_BUS_ADDR, label="Silentmodus Timer 1244-1249")
-        self.main_window.send_read_request(1256, 15, slave_addr=DEFAULT_BUS_ADDR, label="WP Ein/Aus Timer 1256-1270", delay_ms=600)
-        self.main_window._log("WP Ein/Aus/Silent Timer Lesen angefordert.")
+        self._timer_read_sequence_active = True
+        self._timer_read_sequence_step = "silent"
+        self.main_window.remove_pending_read_requests_by_label(
+            {self.TIMER_READ_LABEL_SILENT, self.TIMER_READ_LABEL_ONOFF},
+            log_prefix="TIMER READ",
+        )
+        self.status_label.setText("Lese Silentmodus Timer 1244-1249 ...")
+        self.main_window.send_read_request(1244, 6, slave_addr=DEFAULT_BUS_ADDR, label=self.TIMER_READ_LABEL_SILENT)
+        self.main_window._log("WP Ein/Aus/Silent Timer Lesen angefordert: Sequenz startet mit Silentmodus Timer 1244-1249.")
+
+    def _start_onoff_timer_read(self, status_text: str):
+        if not self.isVisible():
+            self._timer_read_sequence_active = False
+            self._timer_read_sequence_step = ""
+            return
+        self._timer_read_sequence_active = True
+        self._timer_read_sequence_step = "onoff"
+        self.status_label.setText(status_text)
+        self.main_window.send_read_request(1256, 15, slave_addr=DEFAULT_BUS_ADDR, label=self.TIMER_READ_LABEL_ONOFF)
+
+    def on_timer_read_response(self, label: str, start_addr: int, quantity: int):
+        if label == self.TIMER_READ_LABEL_SILENT and int(start_addr) == 1244 and int(quantity) == 6:
+            if self._timer_read_sequence_active:
+                self.status_label.setText("Silentmodus Timer gelesen. Lese WP Ein/Aus Timer 1256-1270 ...")
+                QTimer.singleShot(self.TIMER_READ_STEP_DELAY_MS, lambda: self._start_onoff_timer_read("Silentmodus Timer gelesen. Lese WP Ein/Aus Timer 1256-1270 ..."))
+            else:
+                self.status_label.setText("Silentmodus Timer gelesen.")
+            return
+        if label == self.TIMER_READ_LABEL_ONOFF and int(start_addr) == 1256 and int(quantity) == 15:
+            self._timer_read_sequence_active = False
+            self._timer_read_sequence_step = ""
+            self.status_label.setText("Timerwerte erfolgreich gelesen.")
+
+    def show_timer_read_timeout(self, label: str, start_addr: int, quantity: int):
+        if label == self.TIMER_READ_LABEL_SILENT and int(start_addr) == 1244 and int(quantity) == 6:
+            if self._timer_read_sequence_active:
+                self.status_label.setText("Silentmodus Timer Timeout. Lese WP Ein/Aus Timer 1256-1270 ...")
+                QTimer.singleShot(self.TIMER_READ_STEP_DELAY_MS, lambda: self._start_onoff_timer_read("Silentmodus Timer Timeout. Lese WP Ein/Aus Timer 1256-1270 ..."))
+            else:
+                self.status_label.setText("Silentmodus Timer Timeout. Timeout; vorhandene Werte bleiben erhalten.")
+            return
+        if label == self.TIMER_READ_LABEL_ONOFF and int(start_addr) == 1256 and int(quantity) == 15:
+            self._timer_read_sequence_active = False
+            self._timer_read_sequence_step = ""
+            self.status_label.setText("WP Ein/Aus Timer Timeout. Vorhandene Live-Werte bleiben erhalten.")
 
     def send_values(self):
         try:
@@ -7397,6 +7448,22 @@ class MainWindow(QMainWindow):
                         dialog.show_write_readback_timeout()
                     except AttributeError:
                         pass
+            timer_labels = {
+                getattr(OnOffTimerEditorDialog, "TIMER_READ_LABEL_SILENT", "Silentmodus Timer 1244-1249"),
+                getattr(OnOffTimerEditorDialog, "TIMER_READ_LABEL_ONOFF", "WP Ein/Aus Timer 1256-1270"),
+            }
+            if req_label in timer_labels:
+                timer_dialog = getattr(self, "onoff_timer_dialog", None)
+                if timer_dialog is not None and timer_dialog.isVisible():
+                    timer_dialog.show_timer_read_timeout(req_label, addr, qty)
+            if req_label == "Lastausgang 2019":
+                load_dialog = getattr(self, "load_output_dialog", None)
+                if load_dialog is not None and load_dialog.isVisible():
+                    load_dialog.show_read_timeout()
+            if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
+                fault_dialog = getattr(self, "fault_dialog", None)
+                if fault_dialog is not None and fault_dialog.isVisible():
+                    fault_dialog.show_read_timeout()
             if str(req.get("label", "")) in (SGReadyEditorDialog.READ_LABEL_VALUES, SGReadyEditorDialog.READ_LABEL_STATUS):
                 sg_dialog = getattr(self, "sg_dialog", None)
                 if sg_dialog is not None and sg_dialog.isVisible():
@@ -7481,6 +7548,26 @@ class MainWindow(QMainWindow):
                 self._log("READ Werte: " + "; ".join(value_lines) + more)
             if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
+            if req_label in {
+                getattr(OnOffTimerEditorDialog, "TIMER_READ_LABEL_SILENT", "Silentmodus Timer 1244-1249"),
+                getattr(OnOffTimerEditorDialog, "TIMER_READ_LABEL_ONOFF", "WP Ein/Aus Timer 1256-1270"),
+            }:
+                timer_dialog = getattr(self, "onoff_timer_dialog", None)
+                if timer_dialog is not None and timer_dialog.isVisible():
+                    for reg in frame.registers:
+                        timer_dialog.update_from_live_register(reg, force=True)
+                    timer_dialog.on_timer_read_response(req_label, start_addr, quantity)
+            if req_label == "Lastausgang 2019":
+                load_dialog = getattr(self, "load_output_dialog", None)
+                if load_dialog is not None and load_dialog.isVisible():
+                    for reg in frame.registers:
+                        if int(reg.reg) == 2019:
+                            load_dialog.set_value(int(reg.raw_value) & 0xFFFF, status_text="Lastausgänge erfolgreich gelesen.")
+                            break
+            if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
+                fault_dialog = getattr(self, "fault_dialog", None)
+                if fault_dialog is not None and fault_dialog.isVisible():
+                    fault_dialog.show_read_success()
             if req_label == SGReadyEditorDialog.READ_LABEL_STATUS:
                 sg_dialog = getattr(self, "sg_dialog", None)
                 if sg_dialog is not None and sg_dialog.isVisible():

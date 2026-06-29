@@ -186,6 +186,8 @@ class LoadOutputDecoderDialog(QDialog):
 
         top = QHBoxLayout()
         self.value_label = QLabel("2019: --")
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         self.poll_cb = QCheckBox("poll aktiv")
         self.poll_interval_spin = QSpinBox()
         self.poll_interval_spin.setRange(1, 3600)
@@ -193,6 +195,7 @@ class LoadOutputDecoderDialog(QDialog):
         self.poll_interval_spin.setSuffix(" s")
         self.read_now_btn = QPushButton("jetzt lesen")
         top.addWidget(self.value_label, 1)
+        top.addWidget(self.status_label)
         top.addWidget(self.poll_cb)
         top.addWidget(QLabel("Intervall:"))
         top.addWidget(self.poll_interval_spin)
@@ -233,13 +236,21 @@ class LoadOutputDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.status_label.setText("Lese Lastausgänge ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
         self.main_window.send_read_request(2019, 1, slave_addr=slave_addr, label="Lastausgang 2019")
 
-    def set_value(self, value: Optional[int]):
+    def show_read_timeout(self):
+        self.status_label.setText("Timeout / keine Antwort.")
+
+    def set_value(self, value: Optional[int], status_text: Optional[str] = None):
+        if status_text is not None:
+            self.status_label.setText(status_text)
+        elif value is not None:
+            self.status_label.setText("Live-Wert aktualisiert.")
         bit_map = self._bit_map()
         if value is None:
             self.value_label.setText("2019: --")
@@ -291,6 +302,8 @@ class FaultDecoderDialog(QDialog):
 
         top = QHBoxLayout()
         self.status_label = QLabel("Sammelstörung: --")
+        self.read_status_label = QLabel("Bereit.")
+        self.read_status_label.setStyleSheet("color: #666;")
         self.poll_cb = QCheckBox("poll aktiv")
         self.poll_interval_spin = QSpinBox()
         self.poll_interval_spin.setRange(1, 3600)
@@ -298,6 +311,7 @@ class FaultDecoderDialog(QDialog):
         self.poll_interval_spin.setSuffix(" s")
         self.read_now_btn = QPushButton("jetzt lesen")
         top.addWidget(self.status_label, 1)
+        top.addWidget(self.read_status_label)
         top.addWidget(self.poll_cb)
         top.addWidget(QLabel("Intervall:"))
         top.addWidget(self.poll_interval_spin)
@@ -332,7 +346,7 @@ class FaultDecoderDialog(QDialog):
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-        self.refresh()
+        self.refresh(update_status=False)
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -341,6 +355,7 @@ class FaultDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.read_status_label.setText("Lese Störungen ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
         except Exception:
@@ -365,7 +380,16 @@ class FaultDecoderDialog(QDialog):
                     rows.append((reg_no, self.FAULT_TITLES.get(reg_no, f"Fehler {reg_no}"), bit, raw_i, text))
         return rows
 
-    def refresh(self):
+    def show_read_timeout(self):
+        self.read_status_label.setText("Timeout / keine Antwort.")
+
+    def show_read_success(self):
+        self.read_status_label.setText("Störungen erfolgreich gelesen.")
+        self.refresh(update_status=False)
+
+    def refresh(self, update_status: bool = True):
+        if update_status:
+            self.read_status_label.setText("Live-Wert aktualisiert.")
         load_raw = self.main_window.last_values.get(2019)
         alarm_active = bool((int(load_raw) & (1 << 10))) if load_raw is not None else False
         if load_raw is None:
