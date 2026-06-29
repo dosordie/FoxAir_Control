@@ -797,6 +797,8 @@ class OnOffTimerEditorDialog(QDialog):
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
         self.status_label = QLabel("Bereit.")
+        self.status_label.setMinimumWidth(220)
+        self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #666;")
         top.addWidget(self.auto_update_cb)
         top.addStretch(1)
@@ -836,6 +838,9 @@ class OnOffTimerEditorDialog(QDialog):
         buttons.addStretch(1)
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
 
     def _add_timer_tab(self, timer_no: int):
         widget = QWidget()
@@ -1965,6 +1970,9 @@ class DualBusLoggerDialog(QDialog):
                 "DISPLAY-INIT: 'Alle bekannten Register lesen' läuft über "
                 "den ausgelagerten DisplayWorker-Controller; Warmlink/Standard bleiben unverändert."
             )
+            main_window = getattr(self, "main_window", None)
+            if main_window is not None and hasattr(main_window, "display_init_progress_busy"):
+                main_window.display_init_progress_busy("Display-Modbus: Spezialabfrage startet ...")
             controller.start(pause_ms=pause_ms)
         except Exception as e:
             self._log(f"DISPLAY-INIT Fehler im DisplayWorker-Controller: {e}")
@@ -3918,6 +3926,9 @@ class MainWindow(QMainWindow):
         # Nicht mehr nach fixer Pause alles raushauen, sondern Antwort/Timeout abwarten.
         self.init_display_packet_mode = False
         self.init_waiting_for_display_packet = False
+        self.display_init_progress_text = "Bereit"
+        self.display_init_progress_active = False
+        self.display_init_progress_busy_state = False
         self._suppress_name_resize = False
 
         self._build_ui()
@@ -4250,9 +4261,16 @@ class MainWindow(QMainWindow):
         self.init_progress_bar.setToolTip("Fortschritt für 'Alle bekannten Register lesen'.")
         self.init_progress_bar.setMinimumWidth(120)
 
+        self.init_progress_text_label = QLabel("Nicht verbunden")
+        self.init_progress_text_label.setWordWrap(True)
+        self.init_progress_text_label.setMinimumWidth(220)
+        self.init_progress_text_label.setStyleSheet("color: #444; padding: 2px;")
+        self.init_progress_text_label.setToolTip("Detaillierter Status für Display-Modbus-Init und Init-Lesen.")
+
         manual_layout.addWidget(self.init_read_btn, 0, 0)
         manual_layout.addWidget(self.init_progress_bar, 0, 1, 1, 3)
-        manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
+        manual_layout.addWidget(self.init_progress_text_label, 1, 1, 1, 3)
+        manual_layout.addWidget(self.manual_register_btn, 2, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5420,6 +5438,12 @@ class MainWindow(QMainWindow):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         # Fix34: Beim Wechsel von Display auf Warmlink/Standard darf ein alter
         # Display-INIT/DisplayWorker-Zustand den Init-Button nicht dauerhaft sperren.
+        if self.current_backend_key() != "display_modbus":
+            self.display_init_progress_active = False
+            self.display_init_progress_busy_state = False
+            self.display_init_progress_text = "Bereit"
+            if hasattr(self, "init_progress_text_label"):
+                self.init_progress_text_label.setText("Bereit")
         if self.current_backend_key() != "display_modbus" and bool(getattr(self, "display_aux_takeover_active", False)):
             try:
                 dlg = getattr(self, "dual_logger_dialog", None)
@@ -5458,64 +5482,112 @@ class MainWindow(QMainWindow):
             return max(0, total - remaining), total, True
         return total if bool(getattr(self, "init_read_active", False)) else 0, total, False
 
+    def _set_init_progress_text(self, text: str) -> None:
+        text = str(text or "Bereit")
+        if hasattr(self, "init_progress_text_label"):
+            self.init_progress_text_label.setText(text)
+        if hasattr(self, "status_label"):
+            self.status_label.setText(text)
+
+    def _compact_init_progress_format(self, done: int | None = None, total: int | None = None, fallback: str = "") -> str:
+        if done is not None and total is not None:
+            return f"{max(0, int(done))}/{max(1, int(total))} Schritte"
+        return str(fallback or "warte...")
+
     def display_init_progress_changed(self, done: int, total: int, text: str):
         if not hasattr(self, "init_progress_bar"):
             return
-        self.init_progress_bar.setRange(0, max(1, int(total)))
-        self.init_progress_bar.setValue(max(0, min(int(done), max(1, int(total)))))
-        self.init_progress_bar.setFormat(str(text))
-        self.status_label.setText(str(text))
+        total = max(1, int(total))
+        done = max(0, min(int(done), total))
+        self.display_init_progress_text = str(text)
+        self.display_init_progress_active = True
+        self.display_init_progress_busy_state = False
+        self.init_progress_bar.setTextVisible(True)
+        self.init_progress_bar.setRange(0, total)
+        self.init_progress_bar.setValue(done)
+        self.init_progress_bar.setFormat(self._compact_init_progress_format(done, total))
+        self._set_init_progress_text(self.display_init_progress_text)
         self._log(f"Display-Abfrage Progress: {done}/{total} - {text}", level=5)
 
     def display_init_progress_busy(self, text: str):
         if not hasattr(self, "init_progress_bar"):
             return
+        self.display_init_progress_text = str(text)
+        self.display_init_progress_active = True
+        self.display_init_progress_busy_state = True
+        self.init_progress_bar.setTextVisible(True)
         self.init_progress_bar.setRange(0, 0)
-        self.init_progress_bar.setFormat(str(text))
-        self.status_label.setText(str(text))
+        self.init_progress_bar.setFormat("warte...")
+        self._set_init_progress_text(self.display_init_progress_text)
         self._log(f"Display-Abfrage: {text}", level=3)
 
     def display_init_progress_finished(self, text: str):
         if not hasattr(self, "init_progress_bar"):
             return
-        total = max(1, int(self.init_progress_bar.maximum() or len(DISPLAY_KNOWN_PACKET_READS)))
+        self.display_init_progress_text = str(text)
+        self.display_init_progress_active = False
+        self.display_init_progress_busy_state = False
+        total = max(1, len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2)
+        try:
+            total = max(total, int(self.init_progress_bar.maximum() or 0))
+        except Exception:
+            pass
+        self.init_progress_bar.setTextVisible(True)
         self.init_progress_bar.setRange(0, total)
         self.init_progress_bar.setValue(total)
-        self.init_progress_bar.setFormat(str(text))
-        self.status_label.setText(str(text))
+        self.init_progress_bar.setFormat("Fertig")
+        self._set_init_progress_text(self.display_init_progress_text)
         self._log(str(text), level=2)
 
     def display_init_progress_failed(self, text: str):
         if not hasattr(self, "init_progress_bar"):
             return
+        self.display_init_progress_text = str(text)
+        self.display_init_progress_active = True
+        self.display_init_progress_busy_state = False
         if self.init_progress_bar.maximum() == 0:
-            self.init_progress_bar.setRange(0, max(1, len(DISPLAY_KNOWN_PACKET_READS)))
-        self.init_progress_bar.setFormat(str(text))
-        self.status_label.setText(str(text))
+            self.init_progress_bar.setRange(0, max(1, len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2))
+        self.init_progress_bar.setFormat("Fehler/Timeout")
+        self._set_init_progress_text(self.display_init_progress_text)
         self._log(str(text), level=2, force=True)
 
     def _update_init_read_progress(self):
         if not hasattr(self, "init_progress_bar"):
             return
         if not bool(getattr(self, "connected", False)):
+            self.display_init_progress_active = False
+            self.display_init_progress_busy_state = False
+            self.display_init_progress_text = "Nicht verbunden"
+            self.init_progress_bar.setRange(0, 100)
             self.init_progress_bar.setValue(0)
             self.init_progress_bar.setFormat("Nicht verbunden")
+            self._set_init_progress_text("Nicht verbunden")
             return
         done, total, active = self._init_read_progress_counts()
+        is_display = self.current_backend_key() == "display_modbus"
         if active:
-            if self.init_progress_bar.maximum() == 0:
+            if is_display and bool(getattr(self, "display_init_progress_busy_state", False)):
+                self._set_init_progress_text(getattr(self, "display_init_progress_text", "Display-Modbus: warte ..."))
                 return
             self.init_progress_bar.setRange(0, max(1, total))
             self.init_progress_bar.setValue(done)
-            if self.current_backend_key() == "display_modbus":
-                self.init_progress_bar.setFormat(f"Display-Modbus: {done}/{total} Schritte")
+            if is_display:
+                self.display_init_progress_active = True
+                self.init_progress_bar.setFormat(self._compact_init_progress_format(done, total))
+                self._set_init_progress_text(getattr(self, "display_init_progress_text", "Display-Modbus: Spezialabfrage läuft ..."))
             else:
                 self.init_progress_bar.setFormat(f"{done}/{total} Blöcke")
-        elif self.init_progress_bar.value() and self.init_progress_bar.value() < 100:
-            self.init_progress_bar.setValue(100)
+                if hasattr(self, "init_progress_text_label"):
+                    self.init_progress_text_label.setText(f"{done}/{total} Blöcke")
+        elif self.init_progress_bar.value() and self.init_progress_bar.value() < self.init_progress_bar.maximum():
+            self.init_progress_bar.setValue(self.init_progress_bar.maximum())
             self.init_progress_bar.setFormat("Fertig")
+            if not (is_display and getattr(self, "display_init_progress_text", "")):
+                self._set_init_progress_text("Fertig")
         elif not self.init_progress_bar.value():
             self.init_progress_bar.setFormat("Bereit")
+            if not (is_display and getattr(self, "display_init_progress_text", "") not in ("", "Nicht verbunden")):
+                self._set_init_progress_text("Bereit")
 
     def _update_init_read_button_state(self):
         if not hasattr(self, "init_read_btn"):
@@ -9718,25 +9790,46 @@ class MainWindow(QMainWindow):
         self._display_timer_batch_send_current_step()
         return True
 
+    def _notify_dialog_status(self, dialogs, text: str) -> None:
+        seen: set[int] = set()
+        for dialog in dialogs:
+            if dialog is None or id(dialog) in seen:
+                continue
+            seen.add(id(dialog))
+            try:
+                if not dialog.isVisible():
+                    continue
+            except Exception:
+                continue
+            try:
+                if hasattr(dialog, "set_write_status"):
+                    dialog.set_write_status(str(text))
+                    continue
+                label = getattr(dialog, "status_label", None)
+                if label is not None:
+                    label.setText(str(text))
+            except Exception:
+                pass
+
     def _notify_timer_sg_write_status(self, title: str, text: str) -> None:
+        title_text = str(title or "")
         targets = []
-        if "SG Ready" in str(title):
+        if "SG Ready" in title_text:
             targets.append(getattr(self, "sg_dialog", None))
-        if "Timer" in str(title):
+        elif "Silentmodus" in title_text:
+            targets.extend([getattr(self, "silent_timer_dialog", None), getattr(self, "onoff_timer_dialog", None)])
+        elif "WP Ein/Aus" in title_text or "Ein/Aus" in title_text:
+            targets.append(getattr(self, "onoff_timer_dialog", None))
+        elif "Betriebsart" in title_text or "Timer" in title_text:
+            targets.append(getattr(self, "timer_dialog", None))
+        else:
             targets.extend([
                 getattr(self, "timer_dialog", None),
                 getattr(self, "onoff_timer_dialog", None),
                 getattr(self, "silent_timer_dialog", None),
+                getattr(self, "sg_dialog", None),
             ])
-        for dialog in targets:
-            if dialog is None or not dialog.isVisible():
-                continue
-            label = getattr(dialog, "status_label", None)
-            if label is not None:
-                try:
-                    label.setText(str(text))
-                except Exception:
-                    pass
+        self._notify_dialog_status(targets, text)
 
     def _display_timer_batch_send_current_step(self) -> None:
         state = self.display_timer_batch_state
@@ -9849,6 +9942,7 @@ class MainWindow(QMainWindow):
             return
 
         self._log(f"TIMER wird GESENDET ({title}):\n" + "\n".join(lines))
+        self._notify_timer_sg_write_status(title, f"{title}: Schreibe ...")
         if display_plan is not None:
             self._send_display_timer_batch(display_plan, delay_ms, title)
             return

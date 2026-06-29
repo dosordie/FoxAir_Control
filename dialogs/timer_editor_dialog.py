@@ -92,6 +92,8 @@ class TimerEditorDialog(QDialog):
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
         self.status_label = QLabel("Bereit.")
+        self.status_label.setMinimumWidth(220)
+        self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #666;")
         top.addWidget(self.auto_update_cb)
         top.addStretch(1)
@@ -135,6 +137,10 @@ class TimerEditorDialog(QDialog):
         button_layout.addStretch(1)
         button_layout.addWidget(self.close_btn)
         layout.addLayout(button_layout)
+
+
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
 
     def _add_timer_tab(self, timer_no: int):
         widget = QWidget()
@@ -567,6 +573,12 @@ class SilentTimerDialog(QDialog):
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setMinimumWidth(220)
+        self.status_label.setWordWrap(True)
+        self.status_label.setStyleSheet("color: #666;")
+        layout.addWidget(self.status_label)
+
         form = QFormLayout()
         self.start_enable_cb = QCheckBox("Start aktiv")
         self.stop_enable_cb = QCheckBox("Stop aktiv")
@@ -602,6 +614,9 @@ class SilentTimerDialog(QDialog):
             buttons.addWidget(w)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
 
     def load_from_live_values(self):
         for reg_no in sorted(self.TIMER_REGS):
