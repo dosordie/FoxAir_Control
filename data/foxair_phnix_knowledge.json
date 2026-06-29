@@ -1892,23 +1892,17 @@
     "description": "17"
   },
   "2029": {
-    "description": "T-Diag 5 (T-Diag5). Diagnosewert mit DIGI5/A-Skalierung; gehört nicht in den A-Parameterblock.",
-    "knowledge": "User-Korrektur: Register 2029-2031 wurden fälschlich als A-Code geführt und sollen als T-Diag-Diagnosewerte angezeigt werden.",
-    "source": "User correction 2026-06-29"
+    "description": "Eingangsstromwert in A."
   },
   "203": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; vermutlich Kennung/String/Logo-/Seitenpuffer, Bedeutung noch nicht sicher. Nicht als WP-Parameter verwenden.",
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2030": {
-    "description": "T-Diag 6 (T-Diag6). Diagnosewert mit DIGI5/A-Skalierung; gehört nicht in den A-Parameterblock.",
-    "knowledge": "User-Korrektur: Register 2029-2031 wurden fälschlich als A-Code geführt und sollen als T-Diag-Diagnosewerte angezeigt werden.",
-    "source": "User correction 2026-06-29"
+    "description": "Eingangsstromwert in A."
   },
   "2031": {
-    "description": "T-Diag 7 (T-Diag7). Diagnosewert mit DIGI5/A-Skalierung; gehört nicht in den A-Parameterblock.",
-    "knowledge": "User-Korrektur: Register 2029-2031 wurden fälschlich als A-Code geführt und sollen als T-Diag-Diagnosewerte angezeigt werden.",
-    "source": "User correction 2026-06-29"
+    "description": "Eingangsstromwert in A."
   },
   "2032": {
     "description": "Registergruppe h (Stunden). Laufzeitwert in Stunden."

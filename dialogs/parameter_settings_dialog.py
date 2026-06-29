@@ -100,13 +100,16 @@ def register_block_and_clean_name(name: str) -> tuple[str, str, str]:
 def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip().upper()
+        code = str(data_or_name.get("code", "")).strip()
+        code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)
         if not code and old_code:
             code = old_code
+            code_for_block = code.upper()
         if not block:
-            block = re.match(r"^([A-Z]{1,3})", code).group(1) if code and re.match(r"^([A-Z]{1,3})", code) else old_block
+            block_match = re.match(r"^([A-Z]{1,3})", code_for_block) if code_for_block else None
+            block = block_match.group(1) if block_match else old_block
         if old_code and name != clean:
             name = clean
         return block, code, name
@@ -239,9 +242,11 @@ class ParameterSettingsDialog(QDialog):
                 # und sollen die normale Parameter-Einstellungsansicht nicht ueberladen.
                 continue
             mode = str(data.get("mode", ""))
+            is_t_diag = str(code).upper().startswith("T-DIAG")
             # Fuer diese Ansicht sind schreibbare/parametrierbare Register interessant.
             # App-Video-Labels nehmen wir immer mit, auch wenn mode fehlt.
-            if "w" not in mode.lower() and not app_label:
+            # T-Diag-Werte sind Diagnosewerte, sollen aber als eigener Anhang im T-Block sichtbar sein.
+            if "w" not in mode.lower() and not app_label and not is_t_diag:
                 continue
             items.append({
                 "reg": reg_no,
@@ -261,9 +266,12 @@ class ParameterSettingsDialog(QDialog):
                 "source_app_video": str(data.get("source_app_video", "")),
             })
         def sort_key(item: dict[str, Any]):
-            num_match = re.search(r"(\d+)", item["code"])
+            code_text = str(item["code"] or "")
+            num_match = re.search(r"(\d+)", code_text)
             num = int(num_match.group(1)) if num_match else 9999
-            return (item["block"], num, item["reg"])
+            # T-Diag-Diagnosewerte gehoeren ans Ende des T-Blocks, nicht zwischen T05/T10.
+            diag_tail = 1 if code_text.upper().startswith("T-DIAG") else 0
+            return (item["block"], diag_tail, num, item["reg"])
         return sorted(items, key=sort_key)
 
     def _build_ui(self):

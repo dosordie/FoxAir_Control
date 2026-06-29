@@ -4388,40 +4388,37 @@
   "2029": {
     "function": "16",
     "mode": "read",
-    "name": "T-Diag 5",
+    "name": "Eingangsstrom 1",
     "type": "DIGI5",
-    "block": "T-Diag",
+    "block": "T",
     "code": "T-Diag5",
-    "unit": "A",
-    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
+    "unit": "A"
   },
   "2030": {
     "function": "16",
     "mode": "read",
-    "name": "T-Diag 6",
+    "name": "Eingangsstrom 2",
     "type": "DIGI5",
-    "block": "T-Diag",
+    "block": "T",
     "code": "T-Diag6",
-    "unit": "A",
-    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
+    "unit": "A"
   },
   "2031": {
     "function": "16",
     "mode": "read",
-    "name": "T-Diag 7",
+    "name": "Eingangsstrom 2?",
     "type": "DIGI5",
     "unit": "A",
-    "block": "T-Diag",
-    "code": "T-Diag7",
-    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
+    "block": "T",
+    "code": "T-Diag7"
   },
   "2032": {
     "function": "16",
     "mode": "write",
     "name": "Kompressor-Laufzeit",
     "type": "RAW",
-    "block": "h",
-    "code": "h2032",
+    "block": "T",
+    "code": "T-Diag8",
     "unit": "h"
   },
   "2033": {

@@ -427,14 +427,16 @@ def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     """
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip().upper()
+        code = str(data_or_name.get("code", "")).strip()
+        code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)
         if not code and old_code:
             code = old_code
+            code_for_block = code.upper()
         if not block:
-            if code:
-                m = re.match(r"^([A-Z]{1,3})", code)
+            if code_for_block:
+                m = re.match(r"^([A-Z]{1,3})", code_for_block)
                 block = m.group(1) if m else ""
             else:
                 block = old_block
