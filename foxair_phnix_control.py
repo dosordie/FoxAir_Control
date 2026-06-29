@@ -65,6 +65,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QProgressBar,
     QSpinBox,
     QScrollArea,
     QSplitter,
@@ -76,9 +77,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from workers.display_worker import DisplayKnownReadController
-from workers.warmlink_worker import WarmlinkInitReadController
-from workers.standard_modbus_worker import StandardModbusInitReadController
+from workers.display_worker import DISPLAY_KNOWN_PACKET_READS, DisplayKnownReadController
+from workers.warmlink_worker import WARMLINK_INIT_BLOCKS, WarmlinkInitReadController
+from workers.standard_modbus_worker import STANDARD_MODBUS_INIT_BLOCKS, StandardModbusInitReadController
 from workers.dual_logger_worker import DualLoggerWorkerController
 
 from cloud.warmlink_codes import (
@@ -5130,6 +5131,14 @@ class CommunicationSettingsDialog(QDialog):
         self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
         form.addRow("Startup:", self.auto_read_init_cb)
 
+        self.init_pause_spin = QSpinBox()
+        self.init_pause_spin.setRange(100, 5000)
+        self.init_pause_spin.setValue(int(main_window.settings.get("init_read_pause_ms", 500)))
+        self.init_pause_spin.setSingleStep(100)
+        self.init_pause_spin.setSuffix(" ms")
+        self.init_pause_spin.setToolTip("Pause zwischen den Blöcken für 'Alle bekannten Register lesen'.")
+        form.addRow("Alle Register lesen - Pause:", self.init_pause_spin)
+
         self.live_poll_cb = QCheckBox("Livewerte 20xx zyklisch lesen")
         self.live_poll_cb.setChecked(bool(main_window.settings.get("auto_poll_live_values", False)))
         self.live_poll_cb.setToolTip("Liest zyklisch die Live-/Diagnoseblöcke ab 2001/2091.")
@@ -5411,6 +5420,9 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
         self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
+        self.main_window.settings["init_read_pause_ms"] = int(self.init_pause_spin.value())
+        if hasattr(self.main_window, "init_pause_spin"):
+            self.main_window.init_pause_spin.setValue(int(self.init_pause_spin.value()))
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
         selected_backend = (
@@ -6184,6 +6196,10 @@ class MainWindow(QMainWindow):
         self.bus_dialog: Optional[BusAddressDialog] = None
         self.offline_dialog: Optional[OfflineRegisterBrowserDialog] = None
         self.backup_restore_dialog: Optional[BackupRestoreDialog] = None
+        self.init_progress_timer = QTimer(self)
+        self.init_progress_timer.setInterval(300)
+        self.init_progress_timer.timeout.connect(self._update_init_read_progress)
+        self.init_progress_timer.start()
         self.dual_logger_dialog: Optional[DualBusLoggerDialog] = None
         self.warmlink_cloud_dialog: Optional[WarmLinkCloudDialog] = None
         self.cloud_write_thread: Optional[QThread] = None
@@ -6519,15 +6535,22 @@ class MainWindow(QMainWindow):
         self.init_read_btn = QPushButton("Alle bekannten Register lesen")
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
-        self.init_pause_spin.setValue(900)
+        self.init_pause_spin.setValue(int(self.settings.get("init_read_pause_ms", 500)))
         self.init_pause_spin.setSingleStep(100)
         self.init_pause_spin.setSuffix(" ms")
         self.init_pause_spin.setMaximumWidth(95)
         self.init_pause_spin.setToolTip("Pause zwischen den Init-Leseblöcken. Höher stellen, wenn die WP/Warmlink langsam antwortet.")
 
+        self.init_progress_bar = QProgressBar()
+        self.init_progress_bar.setRange(0, 100)
+        self.init_progress_bar.setValue(0)
+        self.init_progress_bar.setTextVisible(True)
+        self.init_progress_bar.setFormat("Bereit")
+        self.init_progress_bar.setToolTip("Fortschritt für 'Alle bekannten Register lesen'.")
+        self.init_progress_bar.setMinimumWidth(120)
+
         manual_layout.addWidget(self.init_read_btn, 0, 0)
-        manual_layout.addWidget(QLabel("Pause:"), 0, 1)
-        manual_layout.addWidget(self.init_pause_spin, 0, 2)
+        manual_layout.addWidget(self.init_progress_bar, 0, 1, 1, 3)
         manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
@@ -7708,6 +7731,44 @@ class MainWindow(QMainWindow):
         self._update_comm_summary()
         self._update_dual_logger_button_visibility()
         self._refresh_search_highlights()
+
+    def _init_read_progress_counts(self) -> tuple[int, int, bool]:
+        backend = self.current_backend_key()
+        if backend == "standard_modbus":
+            ctrl = getattr(self, "standard_modbus_init_controller", None)
+            total = len(STANDARD_MODBUS_INIT_BLOCKS)
+            if ctrl is not None and bool(getattr(ctrl, "active", False)):
+                remaining = len(getattr(ctrl, "queue", []) or []) + (1 if getattr(ctrl, "current", None) is not None else 0) + len(getattr(ctrl, "retry_items", []) or [])
+                return max(0, total - remaining), total, True
+            return total if bool(getattr(self, "init_read_active", False)) else 0, total, False
+        if backend == "display_modbus":
+            dlg = getattr(self, "dual_logger_dialog", None)
+            total = len(DISPLAY_KNOWN_PACKET_READS)
+            active = bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
+            if active:
+                done = len({int(x[1]) for x in (getattr(dlg, "display_known_init_ok_items", []) or [])})
+                return min(done, total), total, True
+            return 0, total, False
+        ctrl = getattr(self, "warmlink_init_controller", None)
+        total = len(WARMLINK_INIT_BLOCKS)
+        if ctrl is not None and bool(getattr(ctrl, "active", False)):
+            remaining = len(getattr(ctrl, "queue", []) or []) + (1 if getattr(ctrl, "current", None) is not None else 0) + len(getattr(ctrl, "retry_items", []) or [])
+            return max(0, total - remaining), total, True
+        return total if bool(getattr(self, "init_read_active", False)) else 0, total, False
+
+    def _update_init_read_progress(self):
+        if not hasattr(self, "init_progress_bar"):
+            return
+        done, total, active = self._init_read_progress_counts()
+        if active:
+            percent = int((done / max(1, total)) * 100)
+            self.init_progress_bar.setValue(percent)
+            self.init_progress_bar.setFormat(f"{done}/{total} Blöcke")
+        elif self.init_progress_bar.value() and self.init_progress_bar.value() < 100:
+            self.init_progress_bar.setValue(100)
+            self.init_progress_bar.setFormat("Fertig")
+        elif not self.init_progress_bar.value():
+            self.init_progress_bar.setFormat("Bereit")
 
     def _update_init_read_button_state(self):
         if not hasattr(self, "init_read_btn"):

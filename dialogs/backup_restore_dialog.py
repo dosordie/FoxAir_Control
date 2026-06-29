@@ -246,9 +246,28 @@ class BackupRestoreDialog(QDialog):
         regs.extend(groups.get(True, []))
         return sorted(set(regs))
 
+    def _ensure_connected_for_transfer(self, action_label: str) -> bool:
+        if bool(getattr(self.main_window, "connected", False)):
+            return True
+        answer = QMessageBox.question(
+            self,
+            "Keine Verbindung",
+            f"Für {action_label} besteht aktuell keine Verbindung. Jetzt verbinden?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.main_window.connect_to_device()
+            self.main_window._log(f"{action_label}: Verbindung wurde vor dem Start angefordert; bitte nach erfolgreicher Verbindung erneut starten.")
+        else:
+            self.main_window._log(f"{action_label}: abgebrochen, keine Verbindung aktiv.")
+        return False
+
     def read_backup_blocks(self):
         # Bewusst Blockweise lesen, inkl. Kopf, damit der normale Parser/Blockcheck arbeitet.
         if self._backup_reading:
+            return
+        if not self._ensure_connected_for_transfer("Backup"):
             return
         blocks = self._backup_blocks()
         self._backup_reading = True
@@ -585,6 +604,8 @@ class BackupRestoreDialog(QDialog):
         return out
 
     def restore_values(self, mode: str = "changed"):
+        if not self._ensure_connected_for_transfer("Restore"):
+            return
         if not self.loaded_backup:
             QMessageBox.information(self, "Kein Backup", "Bitte zuerst eine Backup-Datei laden.")
             return
