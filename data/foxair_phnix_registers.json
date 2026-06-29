@@ -4387,30 +4387,33 @@
   },
   "2029": {
     "function": "16",
-    "mode": "write",
-    "name": "Eingangsstrom 1",
+    "mode": "read",
+    "name": "T-Diag 5",
     "type": "DIGI5",
-    "block": "A",
-    "code": "A2029",
-    "unit": "A"
+    "block": "T-Diag",
+    "code": "T-Diag5",
+    "unit": "A",
+    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
   },
   "2030": {
     "function": "16",
-    "mode": "write",
-    "name": "Eingangsstrom 2",
+    "mode": "read",
+    "name": "T-Diag 6",
     "type": "DIGI5",
-    "block": "A",
-    "code": "A2030",
-    "unit": "A"
+    "block": "T-Diag",
+    "code": "T-Diag6",
+    "unit": "A",
+    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
   },
   "2031": {
     "function": "16",
-    "mode": "write",
-    "name": "Eingangsstrom 2?",
+    "mode": "read",
+    "name": "T-Diag 7",
     "type": "DIGI5",
     "unit": "A",
-    "block": "A",
-    "code": "A2031"
+    "block": "T-Diag",
+    "code": "T-Diag7",
+    "description": "Diagnosewert; nicht als A-Parameterblock verwenden."
   },
   "2032": {
     "function": "16",
