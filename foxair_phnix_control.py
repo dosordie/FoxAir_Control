@@ -1044,6 +1044,16 @@ class OnOffTimerEditorDialog(QDialog):
             out.append((reg_no, self._pair_raw_from_controls(first_timer), f"WP Ein/Aus Timer {first_timer}+{first_timer+1} Aktiv/Tage"))
         return out
 
+    def silent_timer_values(self) -> list[tuple[int, int, str]]:
+        return [
+            (1244, 1 if self.silent_start_enable_cb.isChecked() else 0, "Silentmodus Timer Start aktivieren"),
+            (1245, int(self.silent_start_hour.value()) & 0xFFFF, "Silentmodus Timer Start Stunde"),
+            (1246, int(self.silent_start_min.value()) & 0xFFFF, "Silentmodus Timer Start Minute"),
+            (1247, 1 if self.silent_stop_enable_cb.isChecked() else 0, "Silentmodus Timer Stop aktivieren"),
+            (1248, int(self.silent_stop_hour.value()) & 0xFFFF, "Silentmodus Timer Stop Stunde"),
+            (1249, int(self.silent_stop_min.value()) & 0xFFFF, "Silentmodus Timer Stop Minute"),
+        ]
+
     def _dry_run_lines(self, values: list[tuple[int, int, str]], slave_addr: int) -> list[str]:
         # PRIVATE fix53: Im Display-Bus nutzen Timer-/SG-/Popup-Mehrfachwrites
         # denselben Bedienwertpfad wie normale Display-Parameterwrites. Der Dry-Run
@@ -7456,6 +7466,10 @@ class MainWindow(QMainWindow):
                 timer_dialog = getattr(self, "onoff_timer_dialog", None)
                 if timer_dialog is not None and timer_dialog.isVisible():
                     timer_dialog.show_timer_read_timeout(req_label, addr, qty)
+            if req_label == getattr(TimerEditorDialog, "TIMER_READ_LABEL", "Timer Bereich 1281-1325"):
+                timer_dialog = getattr(self, "timer_dialog", None)
+                if timer_dialog is not None and timer_dialog.isVisible():
+                    timer_dialog.show_timer_read_timeout(req_label, addr, qty)
             if req_label == "Lastausgang 2019":
                 load_dialog = getattr(self, "load_output_dialog", None)
                 if load_dialog is not None and load_dialog.isVisible():
@@ -7553,6 +7567,12 @@ class MainWindow(QMainWindow):
                 getattr(OnOffTimerEditorDialog, "TIMER_READ_LABEL_ONOFF", "WP Ein/Aus Timer 1256-1270"),
             }:
                 timer_dialog = getattr(self, "onoff_timer_dialog", None)
+                if timer_dialog is not None and timer_dialog.isVisible():
+                    for reg in frame.registers:
+                        timer_dialog.update_from_live_register(reg, force=True)
+                    timer_dialog.on_timer_read_response(req_label, start_addr, quantity)
+            if req_label == getattr(TimerEditorDialog, "TIMER_READ_LABEL", "Timer Bereich 1281-1325"):
+                timer_dialog = getattr(self, "timer_dialog", None)
                 if timer_dialog is not None and timer_dialog.isVisible():
                     for reg in frame.registers:
                         timer_dialog.update_from_live_register(reg, force=True)
