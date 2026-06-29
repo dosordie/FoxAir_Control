@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional
 
 DEFAULT_CAPTURE_SETTINGS = {
     "enabled": False,
-    "directory": "warmlink_captures",
+    "directory": "captures",
     "capture_rx": True,
     "capture_tx": True,
     "write_events": True,
@@ -130,7 +130,7 @@ class WarmlinkRawCapture:
                 self.log_cb(f"Warmlink Capture: Schreibfehler: {exc}"); self.stop_evt.set()
         self._close_files()
     def _dir(self) -> Path:
-        p = Path(str(self.cfg.get("directory") or "warmlink_captures"));
+        p = Path(str(self.cfg.get("directory") or DEFAULT_CAPTURE_SETTINGS["directory"]));
         if not p.is_absolute(): p = Path(self.base_dir)/p
         p.mkdir(parents=True, exist_ok=True); return p
     def _open_segment(self, force=False):

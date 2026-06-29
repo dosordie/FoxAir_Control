@@ -10,6 +10,11 @@ Die Funktion befindet sich in `Programm-Einstellungen` im Expertenbereich `Warml
 
 Der Langzeit-Capture ist aktuell nur für den Warmlink-Modbus/LTE-Stream verfügbar. Bei anderen Kommunikationsarten wird der Expertenbereich ausgeblendet und der Capture startet nicht. Gespeicherte Capture-Einstellungen bleiben erhalten, werden aber nur bei Warmlink-Backend verwendet.
 
+## Capture-Verzeichnis
+Das Standardverzeichnis für neue Konfigurationen ist `captures`. Relative Pfade werden unter dem FoxAir-Control-Benutzerdatenordner abgelegt, z. B. unter Windows typischerweise unter `%APPDATA%\FoxAir Phnix Control\captures`. Absolute Pfade sind ebenfalls möglich und werden direkt verwendet.
+
+Im Einstellungsdialog werden sowohl der eingestellte Wert als auch der effektive Zielordner angezeigt. Über `Auswählen...` kann ein Ordner gewählt werden; liegt der gewählte Ordner innerhalb des Benutzerdatenordners, wird bevorzugt ein relativer Pfad gespeichert. Über `Öffnen` wird der effektive Capture-Ordner bei Bedarf angelegt und im Dateimanager geöffnet.
+
 ## Dateiformate
 Pro Segment werden Dateien nach folgendem Schema erzeugt:
 
