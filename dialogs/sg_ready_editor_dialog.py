@@ -41,6 +41,8 @@ class SGReadyEditorDialog(QDialog):
         layout.addLayout(form)
         status_row = QHBoxLayout()
         self.status_label = QLabel("Bereit.")
+        self.status_label.setMinimumWidth(220)
+        self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #666;")
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
@@ -107,6 +109,9 @@ class SGReadyEditorDialog(QDialog):
             reg = self.main_window.latest_regs.get(reg_no)
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
+
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
 
     def _widget_for_reg(self, reg_no: int) -> Optional[QWidget]:
         if reg_no == 1334:
