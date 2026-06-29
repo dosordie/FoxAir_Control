@@ -260,4 +260,3 @@ Ich bastle an diesem Projekt in meiner Freizeit.
 Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
 
 [![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
-
