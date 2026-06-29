@@ -448,16 +448,24 @@ class BackupRestoreDialog(QDialog):
         self.backup_info_label.setText("Backup-Datei wird geschrieben ...")
         QApplication.processEvents()
         QApplication.setOverrideCursor(Qt.WaitCursor)
+        success_message = ""
+        error_message = ""
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            self.backup_info_label.setText(f"Backup gespeichert: {len(data['registers'])} Register")
-            self.main_window._log(f"Backup gespeichert: {path} ({len(data['registers'])} Register)")
-            QMessageBox.information(self, "Backup gespeichert", f"Gespeichert:\n{path}\n\nRegister: {len(data['registers'])}")
-        except Exception as exc:
-            QMessageBox.warning(self, "Backup Fehler", str(exc))
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                self.backup_info_label.setText(f"Backup gespeichert: {len(data['registers'])} Register")
+                self.main_window._log(f"Backup gespeichert: {path} ({len(data['registers'])} Register)")
+                success_message = f"Gespeichert:\n{path}\n\nRegister: {len(data['registers'])}"
+            except Exception as exc:
+                error_message = str(exc)
         finally:
             QApplication.restoreOverrideCursor()
+
+        if success_message:
+            QMessageBox.information(self, "Backup gespeichert", success_message)
+        elif error_message:
+            QMessageBox.warning(self, "Backup Fehler", error_message)
 
     def load_backup_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "Backup laden", getattr(self.main_window, "user_data_dir", self.main_window.base_dir), "JSON Backup (*.json);;Alle Dateien (*.*)")
