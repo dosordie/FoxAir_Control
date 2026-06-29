@@ -3298,6 +3298,10 @@ class WPControlDialog(QDialog):
         hint = QLabel("Einfache Steuerung wie in der App. Schreibbefehle werden erst nach Bestätigung gesendet.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setWordWrap(True)
+        self.status_label.setStyleSheet("color: #555; padding: 2px;")
+        layout.addWidget(self.status_label)
 
         status_box = QGroupBox("Status")
         layout.addWidget(status_box)
@@ -3409,6 +3413,16 @@ class WPControlDialog(QDialog):
         self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
         self.close_btn.clicked.connect(self.close)
 
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
+
+    def show_read_success(self) -> None:
+        self.refresh_from_live()
+        self.status_label.setText("WP-Steuerung gelesen.")
+
+    def show_read_timeout(self) -> None:
+        self.status_label.setText("Timeout / keine Antwort.")
+
     def update_from_live_register(self, reg):
         if int(getattr(reg, "reg", -1)) in {1011, 1012, 1016, 2011, 2012, 2013, 2014, 2045, 2046, 2047, 2048, 2077, 1157, 1158, 1159}:
             self.refresh_from_live()
@@ -3480,12 +3494,16 @@ class WPControlDialog(QDialog):
     def write_power(self):
         value = int(self.power_combo.currentData())
         if self._confirm_write("Ein/Aus schreiben", f"Register 1011 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
+            self.status_label.setText("Schreibe WP-Steuerung ...")
             self.main_window.send_register_write(1011, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Ein/Aus")
+            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
 
     def write_mode(self):
         value = int(self.mode_combo.currentData())
         if self._confirm_write("Modus schreiben", f"Register 1012 wirklich auf {value} ({self.SET_MODE_MAP.get(value)}) schreiben?"):
+            self.status_label.setText("Schreibe WP-Steuerung ...")
             self.main_window.send_register_write(1012, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Modus")
+            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
 
     def write_target(self):
         mode = self._raw(1012)
@@ -3493,13 +3511,17 @@ class WPControlDialog(QDialog):
         raw = int(round(float(self.target_spin.value()) * 10.0)) & 0xFFFF
         text = f"{label}: Register {reg_no} wirklich auf {self.target_spin.value():.1f} °C (raw {raw}) schreiben?"
         if self._confirm_write("Solltemperatur schreiben", text):
+            self.status_label.setText("Schreibe WP-Steuerung ...")
             self.main_window.send_register_write(reg_no, raw, DEFAULT_BUS_ADDR, label=f"WP-Steuerung {label}")
+            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
 
     def write_ww_target(self):
         raw = int(round(float(self.ww_target_spin.value()) * 10.0)) & 0xFFFF
         text = f"Warmwasser-Solltemperatur: Register 1157 wirklich auf {self.ww_target_spin.value():.1f} °C (raw {raw}) schreiben?"
         if self._confirm_write("WW-Solltemperatur schreiben", text):
+            self.status_label.setText("Schreibe WP-Steuerung ...")
             self.main_window.send_register_write(1157, raw, DEFAULT_BUS_ADDR, label="WP-Steuerung Warmwasser-Solltemperatur")
+            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
 
     def write_silent(self):
         current = self._raw(1016, 0) or 0
@@ -3507,9 +3529,12 @@ class WPControlDialog(QDialog):
         new_value = (current | 0x0002) if bit else (current & ~0x0002)
         text = f"Register 1016 Bit 1 wirklich {'setzen' if bit else 'löschen'}?\nAktuell: {current}/0x{current:04X}\nNeu: {new_value}/0x{new_value:04X}"
         if self._confirm_write("Silent schreiben", text):
+            self.status_label.setText("Schreibe WP-Steuerung ...")
             self.main_window.send_register_write(1016, new_value, DEFAULT_BUS_ADDR, label="WP-Steuerung Silent Bit 1")
+            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
 
     def read_from_wp(self):
+        self.status_label.setText("Lese WP-Steuerung ...")
         for addr, qty, label in [
             (1011, 6, "WP-Steuerung Soll/Flags 1011-1016"),
             (1157, 3, "WP-Steuerung Solltemperaturen R01-R03"),
@@ -3634,6 +3659,10 @@ class ATCompensationDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setWordWrap(True)
+        self.status_label.setStyleSheet("color: #555; padding: 2px;")
+        layout.addWidget(self.status_label)
         self.enable_cb = QCheckBox("AT-Kompensationskurve Zone 1 aktivieren (H36 / Register 1236)")
         layout.addWidget(self.enable_cb)
 
@@ -3700,6 +3729,16 @@ class ATCompensationDialog(QDialog):
         self.write_params_btn.clicked.connect(self.write_params)
         self.close_btn.clicked.connect(self.close)
 
+    def set_write_status(self, text: str) -> None:
+        self.status_label.setText(str(text))
+
+    def show_read_success(self) -> None:
+        self.refresh_from_live()
+        self.status_label.setText("AT-Kompensation gelesen.")
+
+    def show_read_timeout(self) -> None:
+        self.status_label.setText("AT-Kompensation Timeout / keine Antwort.")
+
     def update_from_live_register(self, reg):
         if int(getattr(reg, "reg", -1)) in {1234, 1235, 1236, 2014, 2048}:
             self.refresh_from_live()
@@ -3751,18 +3790,29 @@ class ATCompensationDialog(QDialog):
     def write_enable(self):
         value = 1 if self.enable_cb.isChecked() else 0
         if self._confirm_write("AT-Kompensation schreiben", f"Register 1236 / H36 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
+            self.status_label.setText("Schreibe AT-Kompensation ...")
             self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36")
+            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
 
     def write_params(self):
         slope_raw = int(round(float(self.slope_spin.value()) * 10.0)) & 0xFFFF
         offset_raw = int(round(float(self.offset_spin.value()) * 10.0)) & 0xFFFF
         text = f"Slope 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
         if self._confirm_write("AT-Kurvenparameter schreiben", text):
+            self.status_label.setText("Schreibe AT-Kompensation ...")
             self.main_window.send_register_write(1234, slope_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Slope")
             self.main_window.send_register_write(1235, offset_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Offset", delay_ms=350)
+            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
 
     def read_from_wp(self):
+        self.status_label.setText("Lese AT-Kompensation ...")
         for addr, qty, label in [(1234, 3, "AT-Kompensation 1234-1236"), (2014, 1, "AT-Kompensation aktuelle Solltemp. 2014"), (2048, 1, "AT-Kompensation Außentemperatur 2048")]:
+            if addr == 1234:
+                self.status_label.setText("Lese AT-Kompensation Parameter ...")
+            elif addr == 2014:
+                self.status_label.setText("Lese aktuelle Solltemperatur ...")
+            elif addr == 2048:
+                self.status_label.setText("Lese Außentemperatur ...")
             self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
@@ -4261,16 +4311,9 @@ class MainWindow(QMainWindow):
         self.init_progress_bar.setToolTip("Fortschritt für 'Alle bekannten Register lesen'.")
         self.init_progress_bar.setMinimumWidth(120)
 
-        self.init_progress_text_label = QLabel("Nicht verbunden")
-        self.init_progress_text_label.setWordWrap(True)
-        self.init_progress_text_label.setMinimumWidth(220)
-        self.init_progress_text_label.setStyleSheet("color: #444; padding: 2px;")
-        self.init_progress_text_label.setToolTip("Detaillierter Status für Display-Modbus-Init und Init-Lesen.")
-
         manual_layout.addWidget(self.init_read_btn, 0, 0)
         manual_layout.addWidget(self.init_progress_bar, 0, 1, 1, 3)
-        manual_layout.addWidget(self.init_progress_text_label, 1, 1, 1, 3)
-        manual_layout.addWidget(self.manual_register_btn, 2, 0, 1, 4)
+        manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5442,8 +5485,10 @@ class MainWindow(QMainWindow):
             self.display_init_progress_active = False
             self.display_init_progress_busy_state = False
             self.display_init_progress_text = "Bereit"
-            if hasattr(self, "init_progress_text_label"):
-                self.init_progress_text_label.setText("Bereit")
+            if hasattr(self, "init_progress_bar"):
+                self.init_progress_bar.setRange(0, 100)
+                self.init_progress_bar.setValue(0)
+                self._set_init_progress_text("Bereit")
         if self.current_backend_key() != "display_modbus" and bool(getattr(self, "display_aux_takeover_active", False)):
             try:
                 dlg = getattr(self, "dual_logger_dialog", None)
@@ -5467,6 +5512,10 @@ class MainWindow(QMainWindow):
                 return max(0, total - remaining), total, True
             return total if bool(getattr(self, "init_read_active", False)) else 0, total, False
         if backend == "display_modbus":
+            if bool(getattr(getattr(self, "display_fake_reboot_state", {}), "get", lambda _k, _d=None: _d)("active", False)):
+                attempt = int(self.display_fake_reboot_state.get("attempt", 0) or 0)
+                max_attempts = int(self.display_fake_reboot_state.get("max_attempts", 3) or 3)
+                return max(0, min(attempt, max_attempts)), max_attempts, True
             dlg = getattr(self, "dual_logger_dialog", None)
             total = len(DISPLAY_KNOWN_PACKET_READS)
             active = bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
@@ -5484,8 +5533,9 @@ class MainWindow(QMainWindow):
 
     def _set_init_progress_text(self, text: str) -> None:
         text = str(text or "Bereit")
-        if hasattr(self, "init_progress_text_label"):
-            self.init_progress_text_label.setText(text)
+        if hasattr(self, "init_progress_bar"):
+            self.init_progress_bar.setTextVisible(True)
+            self.init_progress_bar.setFormat(text)
         if hasattr(self, "status_label"):
             self.status_label.setText(text)
 
@@ -5493,6 +5543,30 @@ class MainWindow(QMainWindow):
         if done is not None and total is not None:
             return f"{max(0, int(done))}/{max(1, int(total))} Schritte"
         return str(fallback or "warte...")
+
+
+    def _display_reboot_progress(self, text: str, *, busy: bool = False, done: int | None = None, total: int | None = None, finished: bool = False, failed: bool = False) -> None:
+        if not hasattr(self, "init_progress_bar"):
+            return
+        self.display_init_progress_text = str(text or "Display: läuft ...")
+        self.display_init_progress_active = not finished
+        self.display_init_progress_busy_state = bool(busy)
+        self.init_progress_bar.setTextVisible(True)
+        if busy:
+            self.init_progress_bar.setRange(0, 0)
+        else:
+            total_value = max(1, int(total if total is not None else 3))
+            done_value = total_value if finished else max(0, min(int(done if done is not None else 0), total_value))
+            self.init_progress_bar.setRange(0, total_value)
+            self.init_progress_bar.setValue(done_value)
+        self._set_init_progress_text(self.display_init_progress_text)
+        self._update_init_read_button_state()
+
+    def _display_reboot_finish(self, text: str, *, failed: bool = False) -> None:
+        self._display_reboot_progress(text, busy=False, done=3, total=3, finished=True, failed=failed)
+        self.display_init_progress_active = False
+        self.display_init_progress_busy_state = False
+        self._update_init_read_button_state()
 
     def display_init_progress_changed(self, done: int, total: int, text: str):
         if not hasattr(self, "init_progress_bar"):
@@ -5505,8 +5579,7 @@ class MainWindow(QMainWindow):
         self.init_progress_bar.setTextVisible(True)
         self.init_progress_bar.setRange(0, total)
         self.init_progress_bar.setValue(done)
-        self.init_progress_bar.setFormat(self._compact_init_progress_format(done, total))
-        self._set_init_progress_text(self.display_init_progress_text)
+        self._set_init_progress_text(self._compact_init_progress_format(done, total, self.display_init_progress_text))
         self._log(f"Display-Abfrage Progress: {done}/{total} - {text}", level=5)
 
     def display_init_progress_busy(self, text: str):
@@ -5517,7 +5590,6 @@ class MainWindow(QMainWindow):
         self.display_init_progress_busy_state = True
         self.init_progress_bar.setTextVisible(True)
         self.init_progress_bar.setRange(0, 0)
-        self.init_progress_bar.setFormat("warte...")
         self._set_init_progress_text(self.display_init_progress_text)
         self._log(f"Display-Abfrage: {text}", level=3)
 
@@ -5535,8 +5607,7 @@ class MainWindow(QMainWindow):
         self.init_progress_bar.setTextVisible(True)
         self.init_progress_bar.setRange(0, total)
         self.init_progress_bar.setValue(total)
-        self.init_progress_bar.setFormat("Fertig")
-        self._set_init_progress_text(self.display_init_progress_text)
+        self._set_init_progress_text(self.display_init_progress_text or "Fertig")
         self._log(str(text), level=2)
 
     def display_init_progress_failed(self, text: str):
@@ -5547,8 +5618,7 @@ class MainWindow(QMainWindow):
         self.display_init_progress_busy_state = False
         if self.init_progress_bar.maximum() == 0:
             self.init_progress_bar.setRange(0, max(1, len(DISPLAY_KNOWN_PACKET_READS) * 3 + 2))
-        self.init_progress_bar.setFormat("Fehler/Timeout")
-        self._set_init_progress_text(self.display_init_progress_text)
+        self._set_init_progress_text(self.display_init_progress_text or "Fehler/Timeout")
         self._log(str(text), level=2, force=True)
 
     def _update_init_read_progress(self):
@@ -5573,12 +5643,9 @@ class MainWindow(QMainWindow):
             self.init_progress_bar.setValue(done)
             if is_display:
                 self.display_init_progress_active = True
-                self.init_progress_bar.setFormat(self._compact_init_progress_format(done, total))
-                self._set_init_progress_text(getattr(self, "display_init_progress_text", "Display-Modbus: Spezialabfrage läuft ..."))
+                self._set_init_progress_text(getattr(self, "display_init_progress_text", self._compact_init_progress_format(done, total)))
             else:
-                self.init_progress_bar.setFormat(f"{done}/{total} Blöcke")
-                if hasattr(self, "init_progress_text_label"):
-                    self.init_progress_text_label.setText(f"{done}/{total} Blöcke")
+                self._set_init_progress_text(f"{done}/{total} Blöcke")
         elif self.init_progress_bar.value() and self.init_progress_bar.value() < self.init_progress_bar.maximum():
             self.init_progress_bar.setValue(self.init_progress_bar.maximum())
             self.init_progress_bar.setFormat("Fertig")
@@ -5592,12 +5659,12 @@ class MainWindow(QMainWindow):
     def _update_init_read_button_state(self):
         if not hasattr(self, "init_read_btn"):
             return
-        display_active = False
+        display_active = bool(getattr(getattr(self, "display_fake_reboot_state", {}), "get", lambda _k, _d=None: _d)("active", False))
         try:
             dlg = getattr(self, "dual_logger_dialog", None)
-            display_active = bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
+            display_active = display_active or bool(dlg is not None and getattr(dlg, "display_known_init_active", False))
         except Exception:
-            display_active = False
+            pass
         warmlink_active = bool(getattr(getattr(self, "warmlink_init_controller", None), "active", False))
         standard_active = bool(getattr(getattr(self, "standard_modbus_init_controller", None), "active", False))
         generic_active = bool(getattr(self, "init_read_active", False)) and (display_active or warmlink_active or standard_active)
@@ -7163,6 +7230,8 @@ class MainWindow(QMainWindow):
         old_words = self.display_hmi_block_snapshots.get(key)
         self.display_hmi_block_snapshots[key] = words
         self.display_hmi_block_snapshot_times[key] = time.monotonic()
+        if bool(getattr(getattr(self, "display_fake_reboot_state", {}), "get", lambda _k, _d=None: _d)("active", False)) and slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451}:
+            self._display_reboot_progress(f"Display: Paket {start} empfangen", busy=True)
 
         def reg_label(index: int) -> str:
             return f"{start + index}/W{index + 1}"
@@ -7611,6 +7680,14 @@ class MainWindow(QMainWindow):
                         sg_dialog.show_sg_status_timeout()
                     else:
                         sg_dialog.status_label.setText("SG Ready Werte Timeout / keine Antwort.")
+            if req_label.startswith("WP-Steuerung"):
+                wp_dialog = getattr(self, "wp_control_dialog", None)
+                if wp_dialog is not None and wp_dialog.isVisible():
+                    wp_dialog.show_read_timeout()
+            if req_label.startswith("AT-Kompensation"):
+                at_dialog = getattr(self, "at_comp_dialog", None)
+                if at_dialog is not None and at_dialog.isVisible():
+                    at_dialog.show_read_timeout()
 
     def _apply_pending_read_response(self, frame) -> bool:
         if frame.mode != "read-response":
@@ -7721,6 +7798,18 @@ class MainWindow(QMainWindow):
                         if int(reg.reg) == 2133:
                             sg_dialog.update_from_live_register(reg, force=True)
                             break
+            if req_label.startswith("WP-Steuerung"):
+                wp_dialog = getattr(self, "wp_control_dialog", None)
+                if wp_dialog is not None and wp_dialog.isVisible():
+                    for reg in frame.registers:
+                        wp_dialog.update_from_live_register(reg)
+                    wp_dialog.show_read_success()
+            if req_label.startswith("AT-Kompensation"):
+                at_dialog = getattr(self, "at_comp_dialog", None)
+                if at_dialog is not None and at_dialog.isVisible():
+                    for reg in frame.registers:
+                        at_dialog.update_from_live_register(reg)
+                    at_dialog.show_read_success()
             if self.current_backend_key() != "display_modbus":
                 for controller_name in ("warmlink_init_controller", "standard_modbus_init_controller"):
                     controller = getattr(self, controller_name, None)
@@ -8583,6 +8672,14 @@ class MainWindow(QMainWindow):
                 dialog = getattr(self, "register_write_dialogs", {}).get(key)
                 if dialog is not None and dialog.isVisible():
                     dialog.show_write_ack(int(req.get("wire_addr", frame.typ)), int(req.get("value", 0)))
+            elif label.startswith("WP-Steuerung"):
+                dialog = getattr(self, "wp_control_dialog", None)
+                if dialog is not None and dialog.isVisible():
+                    dialog.set_write_status("WP-Steuerung bestätigt.")
+            elif label.startswith("AT-Kompensation"):
+                dialog = getattr(self, "at_comp_dialog", None)
+                if dialog is not None and dialog.isVisible():
+                    dialog.set_write_status("AT-Kompensation bestätigt.")
             return True
         return False
 
@@ -8664,6 +8761,7 @@ class MainWindow(QMainWindow):
                 self._log(f"DISPLAY Reboot Fake fix11 ({source_label}): nicht gestartet, Backend ist nicht Modbus Display.")
             return False
         if self.display_fake_reboot_state.get("active"):
+            self._display_reboot_progress("Display: läuft bereits ...", busy=True)
             msg = f"DISPLAY Reboot Fake fix11 ({source_label}): läuft bereits, Anfrage wird zusammengefasst."
             if prompt:
                 QMessageBox.information(self, "Display Reboot Fake", "Ein Display-Reboot-Fake läuft bereits.")
@@ -8718,6 +8816,7 @@ class MainWindow(QMainWindow):
             if not ask_yes_no(self, "Display Reboot Fake?", question, default_yes=False):
                 self._log("Display Reboot Fake abgebrochen: nicht gesendet.")
                 return False
+        self._display_reboot_progress("Display: Reboot-Fake startet ...", busy=True)
         self.display_fake_reboot_state = {
             "active": True,
             "attempt": 0,
@@ -8744,6 +8843,8 @@ class MainWindow(QMainWindow):
         state["attempt_started"] = time.monotonic()
         state["5112_retries"] = 0
         state["flag_retries"] = 0
+        max_attempts = int(state.get('max_attempts', 3) or 3)
+        self._display_reboot_progress(f"Display: Versuch {attempt}/{max_attempts}", done=attempt - 1, total=max_attempts)
         self._log(f"DISPLAY Reboot Fake fix11: Versuch {attempt}/{state.get('max_attempts', 3)} gestartet.")
         self._display_fake_reboot_send_5112()
 
@@ -8756,6 +8857,7 @@ class MainWindow(QMainWindow):
         state["last_send_time"] = time.monotonic()
         retry = int(state.get("5112_retries", 0)) + 1
         state["5112_retries"] = retry
+        self._display_reboot_progress("Display: Trigger vorbereiten ...", busy=True)
         self._enqueue_display_fc16_single(0x5112, 0x0000, f"Display Reboot Fake fix12: 5112H=0 ACK-Test {retry}")
         QTimer.singleShot(1600, self._display_fake_reboot_check_5112_ack)
 
@@ -8765,6 +8867,7 @@ class MainWindow(QMainWindow):
             return
         sent_at = float(state.get("last_send_time", 0.0) or 0.0)
         if self._display_write_ack_seen_since(0x5112, sent_at):
+            self._display_reboot_progress("Display: 0BC3=0x8000 setzen ...", busy=True)
             self._log("DISPLAY Reboot Fake fix11: ACK für 5112H gesehen, sende jetzt 0BC3H=8000H.")
             QTimer.singleShot(350, self._display_fake_reboot_send_flag)
             return
@@ -8784,6 +8887,7 @@ class MainWindow(QMainWindow):
         state["last_send_time"] = time.monotonic()
         retry = int(state.get("flag_retries", 0)) + 1
         state["flag_retries"] = retry
+        self._display_reboot_progress("Display: 0BC3=0x8000 setzen ...", busy=True)
         self._enqueue_display_fc16_single(0x0BC3, 0x8000, f"Display Reboot Fake fix12: 0BC3H=8000H ACK-Test {retry}")
         QTimer.singleShot(1700, self._display_fake_reboot_check_flag_ack)
 
@@ -8794,9 +8898,11 @@ class MainWindow(QMainWindow):
         sent_at = float(state.get("last_send_time", 0.0) or 0.0)
         flag = self._display_0bc3_value_from_3001()
         if self._display_write_ack_seen_since(0x0BC3, sent_at) or flag == 0x8000:
+            self._display_reboot_progress("Display: Trigger gesendet", busy=True)
             self._log(
                 "DISPLAY Reboot Fake fix11: 0BC3H-ACK/Flag gesehen, warte auf 3001-Poll und Parameterblöcke."
             )
+            self._display_reboot_progress("Display: warte auf Parameterpakete ...", busy=True)
             state["phase"] = "wait_upload"
             state["upload_wait_started"] = time.monotonic()
             QTimer.singleShot(900, self._display_fake_reboot_check_upload)
@@ -8824,11 +8930,14 @@ class MainWindow(QMainWindow):
                 "DISPLAY Reboot Fake fix11 ERFOLG: frische Parameterblöcke gesehen: "
                 f"{fresh}; 0BC3 aktuell {('--' if flag is None else '0x%04X' % flag)}; Quelle={source}."
             )
+            self._display_reboot_finish(f"Display: {len(fresh)}/{len(fresh)} Pakete übernommen")
             self.display_fake_reboot_state = {}
+            self._update_init_read_button_state()
             return
         age = time.monotonic() - wait_started
         if flag == 0x8000:
             if age < 14.0:
+                self._display_reboot_progress("Display: 0BC3 sichtbar, warte auf Pakete ...", busy=True)
                 self._log(
                     "DISPLAY Reboot Fake fix11: 0BC3=0x8000 sichtbar, warte weiter auf Parameterblöcke "
                     f"(bisher {fresh or '-'})."
@@ -8863,8 +8972,10 @@ class MainWindow(QMainWindow):
         if attempt < max_attempts:
             QTimer.singleShot(700, self._display_fake_reboot_attempt)
         else:
+            self._display_reboot_finish("Display: Timeout", failed=True)
             self._log("DISPLAY Reboot Fake fix11 FEHLGESCHLAGEN: nach 3 Versuchen kein sicherer Parameter-Upload gesehen.")
             self.display_fake_reboot_state = {}
+            self._update_init_read_button_state()
 
     def _display_read_range_intersects_param_packet(self, addr: int, quantity: int) -> bool:
         try:
@@ -9950,6 +10061,8 @@ class MainWindow(QMainWindow):
         for addr, value, _label in values:
             _frame, wire_addr, wire_slave, _note, _fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
             self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
+        self._notify_timer_sg_write_status(title, f"{title}: Schreiben gesendet.")
+        QTimer.singleShot(6500, lambda t=title: self._notify_timer_sg_write_status(t, "Bereit."))
 
     def rebuild_table_filter(self):
         self.table_rows = {}
