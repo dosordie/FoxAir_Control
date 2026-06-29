@@ -1,3 +1,47 @@
+## 0.5.51
+
+### Highlights
+- Neuer Warmlink RAW Langzeit-Capture für den Modbus-Warmlink/LTE-Datenstrom.
+- Passives Firmware-/Update-Logging vorbereitet, ohne Schreib- oder Replay-Funktion.
+- Frame-Complete-Index für spätere Offline-Analyse vollständiger Warmlink-/Modbus-Frames.
+- Robusteres Segment-Handling: neue Captures hängen nicht mehr an alte Tagessegmente an.
+
+### Warmlink RAW / Firmware-Logging
+- RX/TX-Rohdaten werden verlustarm als echte Binärdateien `.rx.bin` / `.tx.bin` gespeichert.
+- `events.jsonl` dient als Hilfsindex mit Chunk-, Status-, Anomalie- und Firmware-Events.
+- Neue `frame_complete` Events indexieren vollständig erkannte Frames mit:
+  - Richtung RX/TX
+  - Dateiname
+  - Offset-Start/Ende
+  - Länge
+  - Bus/Function-Code
+  - Registeradresse/Menge
+  - Payloadbereich, soweit sicher bestimmbar
+  - CRC-Status
+- Register `2104 / Hauptsoftwareversion` wird passiv beobachtet.
+- Aktives zyklisches 2104-Polling wurde wieder entfernt, weil der Wert im normalen Warmlink-Datenstrom auftaucht.
+- Änderungen von 2104 erzeugen Firmware-Version-Events und optional eine `UPDATE_DETECTED` Markerdatei.
+- Normale Statusblöcke wie `0x0443`, `0x07D1` und `0x082B` mit 90 Registern werden nicht mehr fälschlich als Firmware-Verdacht gewertet.
+- TCP-Continuation-Chunks werden nicht mehr als neue Frames bzw. falsche `unknown_function`-Anomalien gewertet.
+
+### Segmentierung / Langzeitbetrieb
+- Jeder Capture-Start erzeugt ein neues freies Segment.
+- Wenn `_001` bereits existiert, wird automatisch `_002`, `_003`, usw. verwendet.
+- Offsets in `events.jsonl` und `frame_complete` beziehen sich eindeutig auf die zugehörige `.rx.bin`/`.tx.bin`.
+- Queue-Drops werden in Events/Summary dokumentiert.
+- Summary enthält Drop-Status und Firmware-Verdacht.
+
+### UI / Einstellungen
+- Programmeinstellungen können auch bei aktiver Verbindung geöffnet werden.
+- Live-Kommunikationsparameter sind bei aktiver Verbindung gesperrt.
+- Warmlink-Capture-Optionen bleiben bei aktiver Warmlink-Verbindung bedienbar.
+- Capture-/Logger-Einstellungen sind nur für den Warmlink-Modbus/LTE-Stream vorgesehen.
+
+### Hinweise
+- Der Capture ist rein passiv.
+- Es gibt keine Firmware-Schreib-, Replay- oder Update-Funktion.
+- RAW-Captures können sensible Daten enthalten und sollten nicht öffentlich geteilt werden.
+
 ## PUBLIC V0.2.46
 
 - Version auf **0.2.46** angehoben; `APP_EDITION` bleibt **PUBLIC**.
