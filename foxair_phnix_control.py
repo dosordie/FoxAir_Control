@@ -9,6 +9,7 @@ import os
 import queue
 import re
 import socket
+import subprocess
 import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -5581,7 +5582,11 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout = QFormLayout(self.capture_expert_box)
         self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
         self.cap_enabled_cb.setChecked(bool(cap.get("enabled", False)))
-        self.cap_dir_edit = QLineEdit(str(cap.get("directory", "warmlink_captures")))
+        self.cap_dir_edit = QLineEdit(str(cap.get("directory", DEFAULT_CAPTURE_SETTINGS["directory"])))
+        self.cap_dir_edit.setToolTip(
+            "Relative Pfade werden im FoxAir-Control-Benutzerdatenordner gespeichert.\n"
+            "Absolute Pfade werden direkt verwendet."
+        )
         self.cap_rx_cb = QCheckBox("RX mitschreiben"); self.cap_rx_cb.setChecked(bool(cap.get("capture_rx", True)))
         self.cap_tx_cb = QCheckBox("TX mitschreiben"); self.cap_tx_cb.setChecked(bool(cap.get("capture_tx", True)))
         self.cap_events_cb = QCheckBox("Events/Index schreiben"); self.cap_events_cb.setChecked(bool(cap.get("write_events", True)))
@@ -5592,13 +5597,22 @@ class CommunicationSettingsDialog(QDialog):
         self.cap_anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.cap_anomaly_cb.setChecked(bool(cap.get("anomaly_detection", True)))
         self.cap_status_label = QLabel("Status wird nach dem Speichern/Verbinden aktualisiert.")
         self.cap_status_label.setWordWrap(True)
-        self.cap_open_btn = QPushButton("Capture-Ordner öffnen")
+        self.cap_dir_select_btn = QPushButton("Auswählen...")
+        self.cap_open_btn = QPushButton("Öffnen")
+        self.cap_effective_dir_label = QLabel()
+        self.cap_effective_dir_label.setWordWrap(True)
+        self.cap_effective_dir_label.setToolTip(
+            "Das ist der tatsächliche Ordner, in dem RX/TX/Events/Summary-Dateien gespeichert werden."
+        )
         self.cap_rotate_btn = QPushButton("Neues Segment starten")
         self.cap_stop_btn = QPushButton("Capture stoppen")
+        cap_dir_row = QWidget(); cap_dir_layout = QHBoxLayout(cap_dir_row); cap_dir_layout.setContentsMargins(0,0,0,0)
+        cap_dir_layout.addWidget(self.cap_dir_edit, 1); cap_dir_layout.addWidget(self.cap_dir_select_btn); cap_dir_layout.addWidget(self.cap_open_btn)
         cap_btn_row = QWidget(); cap_btn_layout = QHBoxLayout(cap_btn_row); cap_btn_layout.setContentsMargins(0,0,0,0)
-        cap_btn_layout.addWidget(self.cap_open_btn); cap_btn_layout.addWidget(self.cap_rotate_btn); cap_btn_layout.addWidget(self.cap_stop_btn); cap_btn_layout.addStretch(1)
+        cap_btn_layout.addWidget(self.cap_rotate_btn); cap_btn_layout.addWidget(self.cap_stop_btn); cap_btn_layout.addStretch(1)
         expert_layout.addRow(self.cap_enabled_cb)
-        expert_layout.addRow("Capture-Verzeichnis:", self.cap_dir_edit)
+        expert_layout.addRow("Capture-Verzeichnis:", cap_dir_row)
+        expert_layout.addRow("Effektiver Ordner:", self.cap_effective_dir_label)
         expert_layout.addRow(self.cap_rx_cb); expert_layout.addRow(self.cap_tx_cb); expert_layout.addRow(self.cap_events_cb)
         expert_layout.addRow("Tagesrotation nach Inaktivität:", self.cap_idle_spin)
         expert_layout.addRow("Max. Einzeldateigröße:", self.cap_file_spin)
@@ -5608,9 +5622,12 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout.addRow("Status:", self.cap_status_label)
         expert_layout.addRow(cap_btn_row)
         layout.addWidget(self.capture_expert_box)
-        self.cap_open_btn.clicked.connect(lambda: open_update_url(os.path.abspath(os.path.join(getattr(main_window, "user_data_dir", main_window.base_dir), self.cap_dir_edit.text().strip() or "warmlink_captures"))))
+        self.cap_dir_edit.textChanged.connect(lambda _=None: self._update_capture_effective_dir_label())
+        self.cap_dir_select_btn.clicked.connect(self._choose_capture_dir)
+        self.cap_open_btn.clicked.connect(self._open_capture_dir)
         self.cap_rotate_btn.clicked.connect(lambda: getattr(main_window, "warmlink_capture", None) and main_window.warmlink_capture.force_new_segment())
         self.cap_stop_btn.clicked.connect(lambda: main_window._stop_warmlink_capture("per Einstellungen gestoppt"))
+        self._update_capture_effective_dir_label()
         try:
             st = getattr(main_window, "warmlink_capture", None).get_status() if getattr(main_window, "warmlink_capture", None) else None
             if st:
@@ -5633,6 +5650,58 @@ class CommunicationSettingsDialog(QDialog):
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
+
+    def _capture_base_dir(self) -> str:
+        return os.path.abspath(str(getattr(self.main_window, "user_data_dir", self.main_window.base_dir)))
+
+    @staticmethod
+    def _is_absolute_capture_path(path: str) -> bool:
+        text = str(path or "").strip()
+        return bool(os.path.isabs(text) or re.match(r"^[A-Za-z]:[\\/]", text) or text.startswith("\\\\"))
+
+    def _capture_dir_value(self) -> str:
+        return self.cap_dir_edit.text().strip() or str(DEFAULT_CAPTURE_SETTINGS["directory"])
+
+    def _effective_capture_dir(self) -> str:
+        directory = self._capture_dir_value()
+        if self._is_absolute_capture_path(directory):
+            return os.path.normpath(directory)
+        return os.path.abspath(os.path.join(self._capture_base_dir(), directory))
+
+    def _capture_path_for_settings(self, selected_dir: str) -> str:
+        selected = os.path.abspath(os.path.normpath(str(selected_dir)))
+        base = self._capture_base_dir()
+        try:
+            common = os.path.commonpath([base, selected])
+        except ValueError:
+            common = ""
+        if common == base:
+            rel = os.path.relpath(selected, base)
+            return "." if rel == "." else rel
+        return selected
+
+    def _update_capture_effective_dir_label(self):
+        if hasattr(self, "cap_effective_dir_label"):
+            self.cap_effective_dir_label.setText(self._effective_capture_dir())
+
+    def _choose_capture_dir(self):
+        start_dir = self._effective_capture_dir()
+        if not os.path.isdir(start_dir):
+            start_dir = self._capture_base_dir()
+        chosen = QFileDialog.getExistingDirectory(self, "Capture-Verzeichnis auswählen", start_dir)
+        if chosen:
+            self.cap_dir_edit.setText(self._capture_path_for_settings(chosen))
+            self._update_capture_effective_dir_label()
+
+    def _open_capture_dir(self):
+        path = self._effective_capture_dir()
+        os.makedirs(path, exist_ok=True)
+        if sys.platform.startswith("win"):
+            os.startfile(path)  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
 
     def _update_capture_settings_visibility(self):
         if not hasattr(self, "capture_expert_box"):
@@ -5764,9 +5833,10 @@ class CommunicationSettingsDialog(QDialog):
             if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
         )
         if self._is_warmlink_backend_key(selected_backend):
-            self.main_window.settings["warmlink_raw_capture"] = {
+            capture_settings = dict(self.main_window.settings.get("warmlink_raw_capture", {}))
+            capture_settings.update({
                 "enabled": bool(self.cap_enabled_cb.isChecked()),
-                "directory": self.cap_dir_edit.text().strip() or "warmlink_captures",
+                "directory": self._capture_dir_value(),
                 "capture_rx": bool(self.cap_rx_cb.isChecked()),
                 "capture_tx": bool(self.cap_tx_cb.isChecked()),
                 "write_events": bool(self.cap_events_cb.isChecked()),
@@ -5775,7 +5845,8 @@ class CommunicationSettingsDialog(QDialog):
                 "max_total_size_mb": int(self.cap_total_spin.value()),
                 "retention_days": int(self.cap_retention_spin.value()),
                 "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
-            }
+            })
+            self.main_window.settings["warmlink_raw_capture"] = capture_settings
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
