@@ -91,8 +91,11 @@ class TimerEditorDialog(QDialog):
         self.bus_edit.setVisible(False)
         self.auto_update_cb = QCheckBox("live aktualisieren")
         self.auto_update_cb.setChecked(True)
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
         top.addWidget(self.auto_update_cb)
         top.addStretch(1)
+        top.addWidget(self.status_label)
         layout.addLayout(top)
 
         self.tabs = QTabWidget()
@@ -512,13 +515,24 @@ class TimerEditorDialog(QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
+    TIMER_READ_LABEL = "Timer Bereich 1281-1325"
+
     def read_from_wp(self):
         try:
             slave_addr = DEFAULT_BUS_ADDR
-            self.main_window.send_read_request(1281, 45, slave_addr=slave_addr, label="Timer Bereich 1281-1325")
+            self.status_label.setText("Lese Betriebsart Timer 1281-1325 ...")
+            self.main_window.send_read_request(1281, 45, slave_addr=slave_addr, label=self.TIMER_READ_LABEL)
             self.main_window._log("TIMER Lesen angefordert. Offenes Timerfenster aktualisiert sich bei eintreffenden Werten automatisch.")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Leseanforderung", str(exc))
+
+    def on_timer_read_response(self, label: str, start_addr: int, quantity: int):
+        if label == self.TIMER_READ_LABEL and int(start_addr) == 1281 and int(quantity) == 45:
+            self.status_label.setText("Betriebsart Timer erfolgreich gelesen.")
+
+    def show_timer_read_timeout(self, label: str, start_addr: int, quantity: int):
+        if label == self.TIMER_READ_LABEL and int(start_addr) == 1281 and int(quantity) == 45:
+            self.status_label.setText("Betriebsart Timer Timeout. Vorhandene Live-Werte bleiben erhalten.")
 
     def send_values(self):
         try:
