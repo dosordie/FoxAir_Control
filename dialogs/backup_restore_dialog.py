@@ -101,10 +101,7 @@ class BackupRestoreDialog(QDialog):
         row = QHBoxLayout()
         self.read_btn = QPushButton("Parameterbereiche lesen")
         self.save_btn = QPushButton("Backup-Datei speichern ...")
-        self.refresh_backup_btn = QPushButton("Vorschau aktualisieren")
-        self.refresh_backup_btn.setToolTip("Aktualisiert die Tabelle aus den aktuell gelesenen/geladenen Backup-Daten.")
         row.addWidget(self.read_btn)
-        row.addWidget(self.refresh_backup_btn)
         row.addWidget(self.save_btn)
         row.addStretch(1)
         lay.addLayout(row)
@@ -148,7 +145,6 @@ class BackupRestoreDialog(QDialog):
         lay.addWidget(self.backup_table, 1)
 
         self.read_btn.clicked.connect(self.read_backup_blocks)
-        self.refresh_backup_btn.clicked.connect(self.refresh_backup_preview)
         self.save_btn.clicked.connect(self.save_backup_file)
         self.show_optional_missing_check.toggled.connect(self.refresh_backup_preview)
         self.refresh_backup_preview()
@@ -246,22 +242,46 @@ class BackupRestoreDialog(QDialog):
         regs.extend(groups.get(True, []))
         return sorted(set(regs))
 
-    def _ensure_connected_for_transfer(self, action_label: str) -> bool:
+    def _ensure_connected_for_transfer(self, action_label: str, resume: Optional[Any] = None) -> bool:
         if bool(getattr(self.main_window, "connected", False)):
             return True
-        answer = QMessageBox.question(
-            self,
-            "Keine Verbindung",
-            f"Für {action_label} besteht aktuell keine Verbindung. Jetzt verbinden?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-        if answer == QMessageBox.StandardButton.Yes:
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.Question)
+        msg.setWindowTitle("Keine Verbindung")
+        msg.setText(f"Für {action_label} besteht aktuell keine Verbindung. Jetzt verbinden?")
+        yes_btn = msg.addButton("Ja", QMessageBox.ButtonRole.YesRole)
+        msg.addButton("Nein", QMessageBox.ButtonRole.NoRole)
+        msg.setDefaultButton(yes_btn)
+        msg.exec()
+        if msg.clickedButton() == yes_btn:
             self.main_window.connect_to_device()
-            self.main_window._log(f"{action_label}: Verbindung wurde vor dem Start angefordert; bitte nach erfolgreicher Verbindung erneut starten.")
+            self.main_window._log(f"{action_label}: Verbindung wurde vor dem Start angefordert; starte nach erfolgreicher Verbindung automatisch.")
+            self._start_after_connect(action_label, resume=resume)
         else:
             self.main_window._log(f"{action_label}: abgebrochen, keine Verbindung aktiv.")
         return False
+
+    def _start_after_connect(self, action_label: str, resume: Optional[Any] = None) -> None:
+        deadline = time.monotonic() + 15.0
+
+        def poll() -> None:
+            if not self.isVisible():
+                return
+            if bool(getattr(self.main_window, "connected", False)):
+                self.main_window._log(f"{action_label}: Verbindung aktiv, starte automatisch.")
+                if resume is not None:
+                    resume()
+                elif action_label == "Backup":
+                    self.read_backup_blocks()
+                elif action_label == "Restore":
+                    self.restore_values()
+                return
+            if time.monotonic() >= deadline:
+                self.main_window._log(f"{action_label}: automatische Fortsetzung abgebrochen, Verbindung wurde nicht rechtzeitig aktiv.")
+                return
+            QTimer.singleShot(250, poll)
+
+        QTimer.singleShot(250, poll)
 
     def read_backup_blocks(self):
         # Bewusst Blockweise lesen, inkl. Kopf, damit der normale Parser/Blockcheck arbeitet.
@@ -349,7 +369,6 @@ class BackupRestoreDialog(QDialog):
 
     def _set_backup_busy(self, busy: bool, text: str = ""):
         self.read_btn.setEnabled(not busy)
-        self.refresh_backup_btn.setEnabled(not busy)
         self.save_btn.setEnabled((not busy) and self._backup_required_complete())
         if text:
             self.backup_info_label.setText(text)
@@ -604,7 +623,7 @@ class BackupRestoreDialog(QDialog):
         return out
 
     def restore_values(self, mode: str = "changed"):
-        if not self._ensure_connected_for_transfer("Restore"):
+        if not self._ensure_connected_for_transfer("Restore", resume=lambda: self.restore_values(mode=mode)):
             return
         if not self.loaded_backup:
             QMessageBox.information(self, "Kein Backup", "Bitte zuerst eine Backup-Datei laden.")
@@ -622,14 +641,15 @@ class BackupRestoreDialog(QDialog):
             f"Erste Register:\n{preview}{more}\n\n"
             "Jetzt wirklich schreiben?"
         )
-        answer = QMessageBox.warning(
-            self,
-            "Restore wirklich schreiben?",
-            question,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("Restore wirklich schreiben?")
+        msg.setText(question)
+        yes_btn = msg.addButton("Ja", QMessageBox.ButtonRole.YesRole)
+        no_btn = msg.addButton("Nein", QMessageBox.ButtonRole.NoRole)
+        msg.setDefaultButton(no_btn)
+        msg.exec()
+        if msg.clickedButton() != yes_btn:
             self.main_window._log("Restore abgebrochen.")
             return
         delay_ms = 450

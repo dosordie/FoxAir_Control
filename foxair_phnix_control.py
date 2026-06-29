@@ -6545,7 +6545,10 @@ class MainWindow(QMainWindow):
         self.init_progress_bar.setRange(0, 100)
         self.init_progress_bar.setValue(0)
         self.init_progress_bar.setTextVisible(True)
-        self.init_progress_bar.setFormat("Bereit")
+        self.init_progress_bar.setFormat("Nicht verbunden")
+        self.init_progress_bar.setStyleSheet(
+            "QProgressBar::chunk { background-color: #2fa84f; }"
+        )
         self.init_progress_bar.setToolTip("Fortschritt für 'Alle bekannten Register lesen'.")
         self.init_progress_bar.setMinimumWidth(120)
 
@@ -7759,6 +7762,10 @@ class MainWindow(QMainWindow):
     def _update_init_read_progress(self):
         if not hasattr(self, "init_progress_bar"):
             return
+        if not bool(getattr(self, "connected", False)):
+            self.init_progress_bar.setValue(0)
+            self.init_progress_bar.setFormat("Nicht verbunden")
+            return
         done, total, active = self._init_read_progress_counts()
         if active:
             percent = int((done / max(1, total)) * 100)
@@ -7849,6 +7856,7 @@ class MainWindow(QMainWindow):
             self.connect_btn.setEnabled(True)
             self.disconnect_btn.setEnabled(False)
             self.write_send_btn.setEnabled(False)
+            self._update_init_read_progress()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
             self._close_raw_file()
@@ -7871,6 +7879,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
+        self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
         if self.raw_file_cb.isChecked():
@@ -7905,6 +7914,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
         self.write_send_btn.setEnabled(False)
+        self._update_init_read_progress()
         self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
