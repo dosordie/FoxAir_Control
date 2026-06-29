@@ -5512,18 +5512,11 @@ class CommunicationSettingsDialog(QDialog):
         self.display_dual_logger_label = QLabel("Display-Diagnose:")
         form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
 
-        self.comm_locked_label = QLabel(
-            "Verbindung aktiv: Kommunikationsart, Host, Port und Unit-ID sind gesperrt. "
-            "Bitte erst trennen, um diese Werte zu ändern. Andere Einstellungen können gespeichert werden."
-        )
-        self.comm_locked_label.setWordWrap(True)
-        self.comm_locked_label.setStyleSheet(
-            "QLabel { background-color: #fff3cd; color: #664d03; border: 1px solid #ffec99; "
-            "border-radius: 4px; padding: 6px; font-weight: bold; }"
-        )
-        self.comm_locked_label.setVisible(False)
-        form.addRow("Verbindung:", self.comm_locked_label)
-        self._apply_communication_lock_state()
+        self._comm_locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen, um diesen Wert zu ändern."
+        self._comm_widget_tooltips = {
+            widget: widget.toolTip() for widget in self._communication_lock_widgets(include_labels=True)
+        }
+        self._set_comm_widgets_locked(bool(getattr(self.main_window, "connected", False)))
 
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
@@ -5647,31 +5640,30 @@ class CommunicationSettingsDialog(QDialog):
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
         self.capture_expert_box.setVisible(self._is_warmlink_backend_key(backend))
 
-    def _communication_lock_widgets(self) -> tuple[QWidget, ...]:
-        return (
+    def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
+        widgets = (
             self.backend_combo, self.transport_combo, self.host_edit, self.port_spin,
             self.serial_port_edit, self.baud_spin, self.parity_combo, self.bytesize_combo,
             self.stopbits_combo, self.unit_spin,
+        )
+        if not include_labels:
+            return widgets
+        return widgets + (
             self.host_label, self.port_label, self.serial_port_label, self.baud_label,
             self.parity_label, self.bytesize_label, self.stopbits_label, self.unit_label,
         )
 
-    def _apply_communication_lock_state(self):
-        comm_locked = bool(getattr(self.main_window, "connected", False))
-        locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen."
-        self.comm_locked_label.setVisible(comm_locked)
-        for widget in self._communication_lock_widgets():
-            widget.setEnabled(not comm_locked)
-            if comm_locked:
+    def _set_comm_widgets_locked(self, locked: bool):
+        locked_tooltip = self._comm_locked_tooltip
+        for widget in self._communication_lock_widgets(include_labels=True):
+            widget.setEnabled(not locked)
+            if locked:
                 widget.setToolTip(locked_tooltip)
-            elif widget.toolTip() == locked_tooltip:
-                widget.setToolTip("")
-        if not comm_locked:
-            self.unit_spin.setToolTip(
-                "Modbus-Slave-Adresse für aktive manuelle Lese-/Schreibbefehle. "
-                "Standard-Modbus meist Unit 1; Display/HMI meist Unit 3. "
-                "Passive Displaybus-Rollen wie 0x00 Broadcast oder 0x01 Rohstatus werden automatisch erkannt."
-            )
+            else:
+                widget.setToolTip(self._comm_widget_tooltips.get(widget, ""))
+
+    def _apply_communication_lock_state(self):
+        self._set_comm_widgets_locked(bool(getattr(self.main_window, "connected", False)))
 
     def _backend_settings(self, backend: str) -> dict:
         return self.main_window._backend_settings(backend)
@@ -5767,7 +5759,10 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
-        selected_backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        selected_backend = (
+            self.main_window.current_backend_key()
+            if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
+        )
         if self._is_warmlink_backend_key(selected_backend):
             self.main_window.settings["warmlink_raw_capture"] = {
                 "enabled": bool(self.cap_enabled_cb.isChecked()),
