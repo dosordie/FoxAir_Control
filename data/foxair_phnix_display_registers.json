@@ -4,10 +4,11 @@
     "code": "H38",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Funktion unbekannt",
+    "name": "Spracheinstellung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "H38 ist nicht External Pump Selection. ASM: normaler Vier-Variablen-Parameter 0401H/2401H; keine weitere Display-Logik gefunden."
+    "notes": "Aus Display-Firmware: H38 nutzt Kommunikationsvariable 0401H = 1025 dez. Value Map noch offen, da Werte nicht sicher bekannt sind. H38 ist nicht External Pump Selection.",
+    "app_label": "Language choice"
   },
   "1061": {
     "app_label": "Fan Motor Power Curve",
