@@ -1,30 +1,30 @@
 {
   "1001": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1002": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1003": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1004": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1005": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1006": {
-    "description": "Paketkennung: WF2210250475 (Wort 1-6), beobachtet in 90er-Paketblöcken.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1007": {
-    "description": "Reserviertes Wort im Paket-/Blockkopf; typischerweise 0.",
+    "description": "Blockkopf Paket 1 / Kennung; Teil der WiFi-Barcode-/Warmlink-Modulkennung WF2210250475 (ASCII Big Endian, Wort 1-6; Wort 7 Reserve/Ende). Nicht Geräte-Serial-No.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
   "1008": {
@@ -100,7 +100,7 @@
   },
   "1025": {
     "default": "0",
-    "description": "H38: Funktion unbekannt. Nicht External Pump Selection. ASM: normaler Vier-Variablen-Parameter 0401H/2401H; keine weitere Display-Logik gefunden.",
+    "description": "H38 / Spracheinstellung / Language choice. Aus Display-Firmware: H38 nutzt Kommunikationsvariable 0401H = 1025 dez.; Value Map noch offen.",
     "source": "Display-FW ASM + user correction 2026-06-19"
   },
   "1026": {
@@ -145,7 +145,7 @@
   },
   "1033": {
     "default": "0",
-    "description": "0-EIN im Warmwasser-Modus/1-AUS im Warmwasser-Modus",
+    "description": "0 = 3-Wege-Ventil EIN im Warmwasser-Modus / Hot Water-ON; 1 = 3-Wege-Ventil AUS im Warmwasser-Modus / Hot Water-OFF.",
     "source": "v36 Beschreibung/App-Review",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
@@ -274,7 +274,7 @@
   },
   "1057": {
     "default": "7℃",
-    "description": "-20 bis 20 °C",
+    "description": "Temperaturdifferenz zwischen Auslass- und WW-Temperatur / Temp Diff between Outlet and DHW Temp; alter App-Video-Text war irreführend.",
     "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
   },
   "1058": {
