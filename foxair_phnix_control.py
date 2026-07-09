@@ -131,8 +131,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.51"
-BUILD_DATE = "2026-06-29"
+APP_VERSION = "0.2.52"
+BUILD_DATE = "2026-07-09"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -3212,6 +3212,12 @@ class AboutDialog(QDialog):
         cloud_credit.setStyleSheet("color: #666666;")
         layout.addWidget(cloud_credit)
 
+        self.wifi_barcode_label = QLabel()
+        self.wifi_barcode_label.setWordWrap(True)
+        self.wifi_barcode_label.setStyleSheet("background: #eef6ff; border: 1px solid #b7d7f5; padding: 6px;")
+        layout.addWidget(self.wifi_barcode_label)
+        self._refresh_wifi_barcode_info()
+
         repo = QLabel(f'GitHub: <a href="https://github.com/{UPDATE_REPO}">https://github.com/{UPDATE_REPO}</a>')
         repo.setTextFormat(Qt.RichText)
         repo.setOpenExternalLinks(True)
@@ -3230,6 +3236,24 @@ class AboutDialog(QDialog):
         self.update_btn.clicked.connect(main_window.check_for_updates)
         repo_btn.clicked.connect(lambda: open_update_url(f"https://github.com/{UPDATE_REPO}"))
         close_btn.clicked.connect(self.accept)
+
+    def showEvent(self, event):
+        self._refresh_wifi_barcode_info()
+        super().showEvent(event)
+
+    def _refresh_wifi_barcode_info(self) -> None:
+        barcode, code_date = self.main_window._wifi_barcode_info()
+        if not barcode:
+            self.wifi_barcode_label.setVisible(False)
+            self.wifi_barcode_label.setText("")
+            return
+        lines = [f"<b>WiFi Barcode / Kommunikationsmodul-ID:</b> {barcode}"]
+        if code_date:
+            lines.append(f"<b>Dekodiertes Code-Datum:</b> {code_date}")
+        lines.append("Hinweis: Nicht identisch mit Geräte-Serial-No. auf dem Typenschild.")
+        lines.append("Format-Vermutung: WF + YYMMDD + laufende Nummer")
+        self.wifi_barcode_label.setText("<br>".join(lines))
+        self.wifi_barcode_label.setVisible(True)
 
 
 class WPControlDialog(QDialog):
@@ -4873,8 +4897,43 @@ class MainWindow(QMainWindow):
             return str(data.get("unit", "") or "").strip()
         return ""
 
+    @staticmethod
+    def _decode_printable_ascii_word(raw_value: int) -> str:
+        """Dekodiert ein 16-Bit-Big-Endian-Wort als zwei druckbare ASCII-Zeichen."""
+        raw = int(raw_value) & 0xFFFF
+        if raw in (0x0000, 0xFFFF):
+            return ""
+        chars = [(raw >> 8) & 0xFF, raw & 0xFF]
+        if all(32 <= ch <= 126 for ch in chars):
+            return "".join(chr(ch) for ch in chars)
+        return ""
+
+    def _wifi_barcode_words(self) -> list[str]:
+        words: list[str] = []
+        for reg_no in range(1001, 1008):
+            reg = self.latest_regs.get(reg_no)
+            if reg is None:
+                words.append("")
+            else:
+                words.append(self._decode_printable_ascii_word(int(reg.raw_value)))
+        return words
+
+    def _wifi_barcode_info(self) -> tuple[str, str]:
+        text = "".join(self._wifi_barcode_words()).strip().strip("\x00")
+        if not (text.startswith("WF") and len(text) >= 8 and text[2:8].isdigit()):
+            return "", ""
+        yy = int(text[2:4])
+        month = int(text[4:6])
+        day = int(text[6:8])
+        date_text = ""
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            date_text = f"20{yy:02d}-{month:02d}-{day:02d}"
+        return text, date_text
 
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
+        if 1001 <= int(reg.reg) <= 1007:
+            ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
+            return ascii_text or "Reserve"
         info = self.regmap.get(int(reg.reg))
         unit = self._unit_for_register(int(reg.reg))
         dtype = info.dtype if info else getattr(reg, "dtype", "RAW")

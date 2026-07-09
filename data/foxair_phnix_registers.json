@@ -98,44 +98,65 @@
   "1001": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 1 / WiFi Barcode ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "1-2",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1002": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 2 / WiFi Barcode ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "3-4",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1003": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 3 / WiFi Barcode ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "5-6",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1004": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 4 / WiFi Barcode ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "7-8",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1005": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 5 / WiFi Barcode ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "9-10",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1006": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 6 / WiFi Barcode ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "11-12",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1007": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 1 / Reserve 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 1 / Kennung Wort 7 / WiFi Barcode ASCII Reserve/Ende",
+    "type": "BLOCK",
+    "ascii_group": "wifi_barcode",
+    "ascii_pos": "Reserve/Ende",
+    "notes": "Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren."
   },
   "1008": {
     "function": "03",
@@ -327,10 +348,11 @@
     "code": "H38",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Funktion unbekannt",
+    "name": "Spracheinstellung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "H38 ist nicht External Pump Selection. ASM: normaler Vier-Variablen-Parameter 0401H/2401H; keine weitere Display-Logik gefunden."
+    "notes": "Aus Display-Firmware: H38 nutzt Kommunikationsvariable 0401H = 1025 dez. Value Map noch offen, da Werte nicht sicher bekannt sind. H38 ist nicht External Pump Selection.",
+    "app_label": "Language choice"
   },
   "1026": {
     "block": "H",
@@ -453,11 +475,11 @@
   },
   "1033": {
     "app_label": "3-Way Valve Polarity",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved",
-    "app_note": "App zeigt Hot Water-ON; Gegenwert noch prüfen",
+    "app_mapping_mode": "app/cloud/video source; technical value_map preserved",
+    "app_note": "Englische App-/Cloud-/Video-Werte korrigiert nach Issue #85; alte unsichere Zuordnung (1=Hot Water-ON, 0=Heating/Cooling-ON?) nicht mehr verwenden.",
     "app_values": {
-      "0": "Heating-ON / Cooling-ON?",
-      "1": "Hot Water-ON"
+      "0": "Hot Water-ON",
+      "1": "Hot Water-OFF"
     },
     "block": "H",
     "code": "H20",
@@ -795,13 +817,14 @@
   },
   "1057": {
     "app_current_video_value": "7.0 °C",
-    "app_label": "Temp Difference B Of Limiting Frequency",
+    "app_label": "Temp Diff between Outlet and DHW Temp",
     "block": "A",
     "code": "A28",
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturdifferenz zwischen Auslass- und WW-Temperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "app_note": "Technische Bezeichnung nach Issue #85 korrigiert; alter App-Video-Text \"Temp Difference B Of Limiting Frequency\" war irreführend."
   },
   "1058": {
     "app_current_video_value": "NO",
