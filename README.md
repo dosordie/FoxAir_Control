@@ -1,4 +1,4 @@
-# FoxAir / Phnix Control PUBLIC V0.5.51
+# FoxAir / Phnix Control PUBLIC V0.5.52
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
