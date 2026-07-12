@@ -3627,49 +3627,49 @@
   "1326": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 1 Startzeit",
+    "name": "Zirkulationspumpe Timer 1 Startzeit",
     "type": "RAW"
   },
   "1327": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 1 Stopzeit",
+    "name": "Zirkulationspumpe Timer 1 Stopzeit",
     "type": "RAW"
   },
   "1328": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 2 Startzeit",
+    "name": "Zirkulationspumpe Timer 2 Startzeit",
     "type": "RAW"
   },
   "1329": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 2 Stopzeit",
+    "name": "Zirkulationspumpe Timer 2 Stopzeit",
     "type": "RAW"
   },
   "1330": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 3 Startzeit",
+    "name": "Zirkulationspumpe Timer 3 Startzeit",
     "type": "RAW"
   },
   "1331": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 3 Stopzeit",
+    "name": "Zirkulationspumpe Timer 3 Stopzeit",
     "type": "RAW"
   },
   "1332": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 1+2 Aktiv-Bitmaske",
+    "name": "Zirkulationspumpe Timer 1+2 Aktiv-Bitmaske",
     "type": "RAW"
   },
   "1333": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Rücklaufpumpe Timer 3 Aktiv-Bitmaske",
+    "name": "Zirkulationspumpe Timer 3 Aktiv-Bitmaske",
     "type": "RAW"
   },
   "1334": {
@@ -4395,7 +4395,7 @@
   },
   "2011": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Gerätezustand",
     "type": "DIGI1",
     "value_map": {
@@ -4405,7 +4405,7 @@
   },
   "2012": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Aktueller Betriebsstatus",
     "type": "DIGI1",
     "value_map": {
@@ -4419,19 +4419,19 @@
   },
   "2013": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Temperaturwert nach Begrenzung",
     "type": "TEMP1"
   },
   "2014": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Temperaturwert nach Wetterkompensation während des Heizens",
     "type": "TEMP1"
   },
   "2015": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Zentrale Abtauautomatik anwenden",
     "type": "DIGI1",
     "value_map": {
@@ -4441,7 +4441,7 @@
   },
   "2016": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Solltemperatur wie 2013 / 2014",
     "type": "TEMP1",
     "unit": "°C",
@@ -4449,7 +4449,7 @@
   },
   "2017": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -4489,19 +4489,19 @@
   },
   "2020": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "015 / EEV-Schritte",
     "type": "DIGI1"
   },
   "2021": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2022": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "017 / EVI EEV-Schritte",
     "type": "DIGI1"
   },
@@ -4514,31 +4514,31 @@
   },
   "2024": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "System 2 Ventil-/EEV-Anzeige Wert (ASM)",
     "type": "RAW"
   },
   "2025": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "System 2 EVI-/Enthalpie-Anzeige Wert (ASM)",
     "type": "RAW"
   },
   "2026": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "9",
     "type": "RAW"
   },
   "2027": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "9",
     "type": "RAW"
   },
   "2028": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "9",
     "type": "RAW"
   },
@@ -4574,7 +4574,7 @@
   },
   "2032": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Kompressor-Laufzeit",
     "type": "RAW",
     "block": "T",
@@ -4583,7 +4583,7 @@
   },
   "2033": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -4618,7 +4618,7 @@
     "block": "T",
     "code": "T40",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Heizungsrücklauftemperatur",
     "type": "TEMP1"
   },
@@ -4626,7 +4626,7 @@
     "block": "T",
     "code": "T41",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Heizungsvorlauftemperatur",
     "type": "TEMP1"
   },
@@ -4634,7 +4634,7 @@
     "block": "T",
     "code": "T42",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Mischrohrauslasswassertemperatur",
     "type": "TEMP1"
   },
@@ -4642,7 +4642,7 @@
     "block": "T",
     "code": "T43",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "WW-Rücklauftemperatur",
     "type": "TEMP1"
   },
@@ -4650,19 +4650,19 @@
     "block": "T",
     "code": "T44",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "WW-Vorlauftemperatur",
     "type": "TEMP1"
   },
   "2040": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2041": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -4670,7 +4670,7 @@
     "block": "T",
     "code": "T36",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Phasenstrom des Kompressors",
     "type": "AMP_X10",
     "unit": "A"
@@ -4679,7 +4679,7 @@
     "block": "T",
     "code": "T37",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "DC-Power-Bus-Spannung",
     "type": "VOLT",
     "unit": "V",
@@ -4689,7 +4689,7 @@
     "block": "T",
     "code": "T38",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "IPM-Temperatur.",
     "type": "TEMP1"
   },
@@ -4697,7 +4697,7 @@
     "block": "T",
     "code": "T01",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Einlasswassertemperatur",
     "type": "TEMP1"
   },
@@ -4705,7 +4705,7 @@
     "block": "T",
     "code": "T02",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Auslasswassertemperatur",
     "type": "TEMP1"
   },
@@ -4713,7 +4713,7 @@
     "block": "T",
     "code": "T08",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "WW-Tanktemperatur",
     "type": "TEMP1"
   },
@@ -4721,7 +4721,7 @@
     "block": "T",
     "code": "T04",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Umgebungstemperatur (AT)",
     "type": "TEMP1"
   },
@@ -4729,7 +4729,7 @@
     "block": "T",
     "code": "T03",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Verdampfertemperatur",
     "type": "TEMP1"
   },
@@ -4737,7 +4737,7 @@
     "block": "T",
     "code": "T14",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Verteilerrohrtemperatur",
     "type": "TEMP1"
   },
@@ -4745,7 +4745,7 @@
     "block": "T",
     "code": "T05",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Saugsungstemperatur",
     "type": "TEMP1"
   },
@@ -4753,7 +4753,7 @@
     "block": "T",
     "code": "T07",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Puffertanktemperatur",
     "type": "TEMP1"
   },
@@ -4761,7 +4761,7 @@
     "block": "T",
     "code": "T12",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Abgastemperatur",
     "type": "TEMP1"
   },
@@ -4780,19 +4780,19 @@
     "block": "T",
     "code": "T06",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Frostschutztemperatur (Am PlattenWT)",
     "type": "TEMP1"
   },
   "2056": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "T? / System 1 Frostschutztemperatur 2 / Coil/Frost Temp 2 (ASM V1.3)",
     "type": "TEMP1"
   },
   "2057": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Livewert 2057 (nicht T34; Bedeutung unbestätigt)",
     "type": "RAW",
     "unit": "",
@@ -4803,7 +4803,7 @@
     "block": "T",
     "code": "T09",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Raumtemperatur",
     "type": "DIGI5"
   },
@@ -4833,7 +4833,7 @@
     "block": "T",
     "code": "T33",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "IPM-Hochfehler-Temperatur",
     "type": "TEMP1"
   },
@@ -4841,7 +4841,7 @@
     "block": "T",
     "code": "T34",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "AC-Eingangsspannung",
     "type": "VOLT",
     "unit": "V",
@@ -4851,7 +4851,7 @@
     "block": "T",
     "code": "T10",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "EVI-Einlasstemperatur",
     "type": "TEMP1",
     "unit": "°C",
@@ -4861,7 +4861,7 @@
     "block": "T",
     "code": "T11",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "EVI-Auslasstemperatur",
     "type": "TEMP1"
   },
@@ -4900,7 +4900,7 @@
   },
   "2068": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "System 2 Strom / Current (ASM)",
     "type": "DIGI5"
   },
@@ -4908,14 +4908,14 @@
     "block": "T",
     "code": "T15",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Niederdruck",
     "type": "BAR_X10",
     "unit": "bar"
   },
   "2070": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "System 2 Druck / Pressure (ASM)",
     "type": "DIGI5"
   },
@@ -4923,7 +4923,7 @@
     "block": "T",
     "code": "T30",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Kompressorfrequenz",
     "type": "DIGI1"
   },
@@ -4931,7 +4931,7 @@
     "block": "T",
     "code": "T31",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Betriebsfrequenz des Kompressors",
     "type": "DIGI1"
   },
@@ -4939,7 +4939,7 @@
     "block": "T",
     "code": "T32",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Max. Frequenz vom Kompressortreiber",
     "type": "DIGI1"
   },
@@ -4947,7 +4947,7 @@
     "block": "T",
     "code": "T27",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Drehzahl des Lüftermotors 1",
     "type": "DIGI1"
   },
@@ -4955,7 +4955,7 @@
     "block": "T",
     "code": "T28",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Drehzahl des Lüftermotors 2",
     "type": "DIGI1"
   },
@@ -4963,7 +4963,7 @@
     "block": "T",
     "code": "T29",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Zieldrehzahl des Lüftermotors",
     "type": "DIGI1"
   },
@@ -4996,7 +4996,7 @@
   },
   "2080": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5062,7 +5062,7 @@
   },
   "2084": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "9",
     "type": "RAW"
   },
@@ -5255,62 +5255,62 @@
   },
   "2101": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2102": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2103": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Hauptcontroler Softwarecode (ASM)",
     "type": "RAW"
   },
   "2104": {
     "function": "16",
-    "mode": "r/w",
+    "mode": "read",
     "name": "Hauptsoftwareversion",
     "type": "RAW"
   },
   "2105": {
     "function": "16",
-    "mode": "r/w",
+    "mode": "read",
     "name": "Softwarecode",
     "type": "RAW"
   },
   "2106": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2107": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Kommunikations-Heartbeat / WP-Paket gültig 0x5AA5 (Merker Display-Init)",
     "type": "RAW",
     "note": "Merker V0.2.38: In validierten Broadcast-Paketblöcken 2091ff steht hier 0x5AA5; aktive Display-/HMI-Readpfade können 0 liefern. Für Display-Init/Neustart später beobachten."
   },
   "2108": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Lüfter-Stummschalt-Flag / Fan Mute Flag (ASM)",
     "type": "RAW"
   },
   "2109": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2110": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5330,19 +5330,19 @@
   },
   "2113": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2114": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2115": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "UP PWM aktuell",
     "type": "PERCENT",
     "unit": "%"
@@ -5356,7 +5356,7 @@
   },
   "2117": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5370,7 +5370,7 @@
   },
   "2119": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5384,7 +5384,7 @@
   },
   "2121": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5397,7 +5397,7 @@
   },
   "2123": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5410,31 +5410,31 @@
   },
   "2125": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2126": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2127": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2128": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
   "2129": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Reserviert",
     "type": "RAW"
   },
@@ -5442,7 +5442,7 @@
     "block": "T",
     "code": "T46",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "IPM-Temperatur des externen Lüftermotorantriebs",
     "type": "DIGI5"
   },
@@ -5450,7 +5450,7 @@
     "block": "T",
     "code": "T47",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Leistung des externen Lüftermotorantriebs",
     "type": "DIGI1"
   },
@@ -5458,7 +5458,7 @@
     "block": "T",
     "code": "T48",
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Strom des externen Lüftermotorantriebs.",
     "type": "DIGI6"
   },
