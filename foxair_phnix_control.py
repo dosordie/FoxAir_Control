@@ -4899,14 +4899,15 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _decode_printable_ascii_word(raw_value: int) -> str:
-        """Dekodiert ein 16-Bit-Big-Endian-Wort als zwei druckbare ASCII-Zeichen."""
+        """Dekodiert ein 16-Bit-Big-Endian-Wort byteweise als druckbares ASCII."""
         raw = int(raw_value) & 0xFFFF
-        if raw in (0x0000, 0xFFFF):
-            return ""
-        chars = [(raw >> 8) & 0xFF, raw & 0xFF]
-        if all(32 <= ch <= 126 for ch in chars):
-            return "".join(chr(ch) for ch in chars)
-        return ""
+        chars: list[str] = []
+        for ch in ((raw >> 8) & 0xFF, raw & 0xFF):
+            if ch in (0x00, 0xFF):
+                continue
+            if 32 <= ch <= 126:
+                chars.append(chr(ch))
+        return "".join(chars)
 
     def _wifi_barcode_words(self) -> list[str]:
         words: list[str] = []
