@@ -76,6 +76,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QSpinBox,
     QScrollArea,
+    QScroller,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -4281,6 +4282,7 @@ class MainWindow(QMainWindow):
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
+        self._enable_touch_scrolling_for_table(self.register_table)
         self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
         upper.addWidget(self.register_table)
 
@@ -5288,6 +5290,17 @@ class MainWindow(QMainWindow):
             return 6
 
         return 2
+
+    def _enable_touch_scrolling_for_table(self, table: QTableWidget) -> None:
+        """Enable native touch panning for table viewports without changing mouse behavior."""
+        try:
+            table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+            table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+            table.viewport().setAttribute(Qt.WA_AcceptTouchEvents, True)
+            QScroller.grabGesture(table.viewport(), QScroller.TouchGesture)
+        except Exception as exc:
+            if hasattr(self, "log_text"):
+                self._log(f"Touch-Scrolling konnte nicht aktiviert werden: {exc}", level=4)
 
     def _should_log_message(self, text: str, level: Optional[int] = None, force: bool = False) -> bool:
         if force:
