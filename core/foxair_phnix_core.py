@@ -376,6 +376,8 @@ def format_value_by_type(
         return f"{signed} kW/h"
     if dtype in ("KWH", "ENERGY_KWH"):
         return f"{signed} kWh"
+    if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
+        return f"V{signed / 10.0:.1f}"
     if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
         return f"{signed / 100.0:.1f} m³/h"
     if dtype in ("FLOW_M3H_X10", "FLOW_X10"):

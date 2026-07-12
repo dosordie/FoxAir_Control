@@ -76,6 +76,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QSpinBox,
     QScrollArea,
+    QScroller,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -131,8 +132,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.52"
-BUILD_DATE = "2026-07-09"
+APP_VERSION = "0.2.53"
+BUILD_DATE = "2026-07-12"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -4281,6 +4282,7 @@ class MainWindow(QMainWindow):
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
+        self._enable_touch_scrolling_for_table(self.register_table)
         self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
         upper.addWidget(self.register_table)
 
@@ -4899,14 +4901,15 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _decode_printable_ascii_word(raw_value: int) -> str:
-        """Dekodiert ein 16-Bit-Big-Endian-Wort als zwei druckbare ASCII-Zeichen."""
+        """Dekodiert ein 16-Bit-Big-Endian-Wort byteweise als druckbares ASCII."""
         raw = int(raw_value) & 0xFFFF
-        if raw in (0x0000, 0xFFFF):
-            return ""
-        chars = [(raw >> 8) & 0xFF, raw & 0xFF]
-        if all(32 <= ch <= 126 for ch in chars):
-            return "".join(chr(ch) for ch in chars)
-        return ""
+        chars: list[str] = []
+        for ch in ((raw >> 8) & 0xFF, raw & 0xFF):
+            if ch in (0x00, 0xFF):
+                continue
+            if 32 <= ch <= 126:
+                chars.append(chr(ch))
+        return "".join(chars)
 
     def _wifi_barcode_words(self) -> list[str]:
         words: list[str] = []
@@ -4930,8 +4933,26 @@ class MainWindow(QMainWindow):
             date_text = f"20{yy:02d}-{month:02d}-{day:02d}"
         return text, date_text
 
+    @staticmethod
+    def _is_ascii_block_header_register(reg_no: int) -> bool:
+        reg_no = int(reg_no)
+        return any(
+            start <= reg_no <= end
+            for start, end in (
+                (200, 205),
+                (1001, 1007),
+                (1091, 1096),
+                (1181, 1186),
+                (1271, 1276),
+                (1361, 1366),
+                (1451, 1456),
+                (2001, 2006),
+                (2091, 2096),
+            )
+        )
+
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
-        if 1001 <= int(reg.reg) <= 1007:
+        if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
         info = self.regmap.get(int(reg.reg))
@@ -5034,6 +5055,8 @@ class MainWindow(QMainWindow):
             return f"{signed} kW/h"
         if dtype in ("KWH", "ENERGY_KWH"):
             return f"{signed} kWh"
+        if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
+            return f"V{signed / 10.0:.1f}"
         if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
             return f"{signed / 100.0:.1f} m³/h"
         if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
@@ -5267,6 +5290,17 @@ class MainWindow(QMainWindow):
             return 6
 
         return 2
+
+    def _enable_touch_scrolling_for_table(self, table: QTableWidget) -> None:
+        """Enable native touch panning for table viewports without changing mouse behavior."""
+        try:
+            table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+            table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+            table.viewport().setAttribute(Qt.WA_AcceptTouchEvents, True)
+            QScroller.grabGesture(table.viewport(), QScroller.TouchGesture)
+        except Exception as exc:
+            if hasattr(self, "log_text"):
+                self._log(f"Touch-Scrolling konnte nicht aktiviert werden: {exc}", level=4)
 
     def _should_log_message(self, text: str, level: Optional[int] = None, force: bool = False) -> bool:
         if force:

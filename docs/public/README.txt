@@ -3,7 +3,7 @@ Warmlink GUI Test v16
 Änderungen aus Display-Firmware-Analyse:
 - Mapping für Timer 1-6 vollständig ergänzt: je 7 Register ab 1281 / 0x0501.
 - Register 1323-1325 als gepaarte Aktiv/Tage-Bitmasken bestätigt.
-- Rücklaufpumpen-Timer 1326-1333 benannt.
+- Zirkulationspumpen-Timer 1326-1333 benannt.
 - SG-Ready Block 1334-1341 benannt; SG05-SG07 als TEMP1/Offset bis 25.0 °C.
 - Kommunikationsblock 1281-1360 entspricht Display-FW 0x0501-0x0550 / User-Variablen 0x2501-0x2550.
 
