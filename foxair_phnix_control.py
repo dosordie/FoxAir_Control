@@ -4930,8 +4930,26 @@ class MainWindow(QMainWindow):
             date_text = f"20{yy:02d}-{month:02d}-{day:02d}"
         return text, date_text
 
+    @staticmethod
+    def _is_ascii_block_header_register(reg_no: int) -> bool:
+        reg_no = int(reg_no)
+        return any(
+            start <= reg_no <= end
+            for start, end in (
+                (200, 205),
+                (1001, 1007),
+                (1091, 1096),
+                (1181, 1186),
+                (1271, 1276),
+                (1361, 1366),
+                (1451, 1456),
+                (2001, 2006),
+                (2091, 2096),
+            )
+        )
+
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
-        if 1001 <= int(reg.reg) <= 1007:
+        if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
         info = self.regmap.get(int(reg.reg))
@@ -5034,6 +5052,8 @@ class MainWindow(QMainWindow):
             return f"{signed} kW/h"
         if dtype in ("KWH", "ENERGY_KWH"):
             return f"{signed} kWh"
+        if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
+            return f"V{signed / 10.0:.1f}"
         if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
             return f"{signed / 100.0:.1f} m³/h"
         if dtype in ("FLOW_M3H_X10", "FLOW_X10"):

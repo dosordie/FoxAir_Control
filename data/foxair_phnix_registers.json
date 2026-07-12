@@ -2,38 +2,56 @@
   "200": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "201": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "202": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "203": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "204": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "205": {
     "function": "03",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "206": {
     "function": "03",
@@ -1251,38 +1269,56 @@
   "1091": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1092": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1093": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1094": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1095": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1096": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 2 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 2 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1097": {
     "function": "03",
@@ -2265,38 +2301,56 @@
   "1181": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1182": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1183": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1184": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1185": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1186": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 3 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 3 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1187": {
     "function": "03",
@@ -2325,8 +2379,9 @@
   "1191": {
     "function": "03",
     "mode": "read",
-    "name": "Paket 3 Sync-/Gültigkeitsmarker 0x5AA5",
-    "type": "BLOCK"
+    "name": "Paketmarker / Syncwort / Blockkopfkennung",
+    "type": "BLOCK",
+    "note": "Beobachtet: 0x5AA5. Nicht als Text/ASCII anzeigen; 0x5A wäre Z, 0xA5 ist kein druckbares Standard-ASCII."
   },
   "1192": {
     "app_current_video_value": "5.0 °C",
@@ -2584,19 +2639,25 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Offset Inlet Temperatur",
-    "type": "RAW"
+    "type": "TEMP1",
+    "unit": "K",
+    "note": "Anzeige als Kelvin-Differenz: RAW / 10 K."
   },
   "1213": {
     "function": "03/16",
     "mode": "r/w",
     "name": "Offset outlet Temperatur",
-    "type": "RAW"
+    "type": "TEMP1",
+    "unit": "K",
+    "note": "Anzeige als Kelvin-Differenz: RAW / 10 K."
   },
   "1214": {
     "function": "03/16",
     "mode": "r/w",
     "name": "Offset WW Temperatur",
-    "type": "RAW"
+    "type": "TEMP1",
+    "unit": "K",
+    "note": "Anzeige als Kelvin-Differenz: RAW / 10 K."
   },
   "1215": {
     "app_current_video_value": "90 N",
@@ -3170,38 +3231,56 @@
   "1271": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1272": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1273": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1274": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1275": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1276": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 4 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 4 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1277": {
     "function": "03",
@@ -3873,38 +3952,56 @@
   "1361": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1362": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1363": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1364": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1365": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1366": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 5 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 5 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1367": {
     "function": "03",
@@ -4083,38 +4180,56 @@
   "1451": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1452": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1453": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1454": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1455": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1456": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket 6 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 6 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "1457": {
     "function": "03",
@@ -4203,38 +4318,56 @@
   "2001": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2002": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2003": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2004": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2005": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2006": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 1 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 7 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2007": {
     "function": "03",
@@ -4375,8 +4508,9 @@
   "2023": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Anzahl Verdichter-Starts",
+    "type": "RAW",
+    "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet."
   },
   "2024": {
     "function": "16",
@@ -4411,29 +4545,32 @@
   "2029": {
     "function": "16",
     "mode": "read",
-    "name": "Eingangsstrom 1",
+    "name": "Eingangsstrom L1",
     "type": "DIGI5",
     "block": "T",
     "code": "T-Diag5",
-    "unit": "A"
+    "unit": "A",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
   "2030": {
     "function": "16",
     "mode": "read",
-    "name": "Eingangsstrom 2",
+    "name": "Eingangsstrom L2",
     "type": "DIGI5",
     "block": "T",
     "code": "T-Diag6",
-    "unit": "A"
+    "unit": "A",
+    "note": "Quelle: Forum / Endif; Hinweis: nur bei 3Ph-Geräten; Status: selbst getestet."
   },
   "2031": {
     "function": "16",
     "mode": "read",
-    "name": "Eingangsstrom 2?",
+    "name": "Eingangsstrom L3",
     "type": "DIGI5",
     "unit": "A",
     "block": "T",
-    "code": "T-Diag7"
+    "code": "T-Diag7",
+    "note": "Quelle: Forum / Endif; Hinweis: nur bei 3Ph-Geräten; Status: selbst getestet."
   },
   "2032": {
     "function": "16",
@@ -4844,15 +4981,18 @@
   "2078": {
     "function": "16",
     "mode": "write",
-    "name": "Leistung",
-    "type": "DIGI1"
+    "name": "Energiezähler elektrisch high bits",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "unit": "kWh"
   },
   "2079": {
     "function": "16",
     "mode": "write",
-    "name": "Leistung / Energiezähler",
-    "type": "KWH_PER_H",
-    "unit": "kW/h"
+    "name": "Energiezähler elektrisch low bits / total",
+    "type": "KWH",
+    "unit": "kWh",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
   "2080": {
     "function": "16",
@@ -5038,38 +5178,56 @@
   "2091": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 1",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 1 / ASCII Zeichen 1-2",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "1-2",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2092": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 2",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 2 / ASCII Zeichen 3-4",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "3-4",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2093": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 3",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 3 / ASCII Zeichen 5-6",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "5-6",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2094": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 4",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 4 / ASCII Zeichen 7-8",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "7-8",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2095": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 5",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 5 / ASCII Zeichen 9-10",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "9-10",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2096": {
     "function": "03",
     "mode": "read",
-    "name": "Blockkopf Paket Status 2 / Kennung Wort 6",
-    "type": "BLOCK"
+    "name": "Blockkopf Paket 8 / Kennung Wort 6 / ASCII Zeichen 11-12",
+    "type": "BLOCK",
+    "ascii_group": "block_header",
+    "ascii_pos": "11-12",
+    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
   },
   "2097": {
     "function": "03",
@@ -5159,14 +5317,16 @@
   "2111": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Display Nr.",
+    "type": "RAW",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
   "2112": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Display Version",
+    "type": "RAW",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
   "2113": {
     "function": "16",
@@ -5192,7 +5352,7 @@
     "mode": "write",
     "name": "Funktion unbekannt",
     "type": "RAW",
-    "note": "Beobachtung: Der Wert wird kleiner, wenn die aktuelle UP-PWM (Register 2115) kleiner wird. Bedeutung/Skalierung noch unbekannt."
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
   "2117": {
     "function": "16",
@@ -5203,9 +5363,10 @@
   "2118": {
     "function": "16",
     "mode": "write",
-    "name": "Merker 2118: unbestätigter Zähler / Laufzeit-Kandidat",
-    "type": "RAW",
-    "note": "Beobachtet 4578→4579→4580 während WP-Lauf. Bedeutung/Skalierung offen."
+    "name": "Energiezähler elektrisch Heizen",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "unit": "kWh"
   },
   "2119": {
     "function": "16",
@@ -5216,9 +5377,10 @@
   "2120": {
     "function": "16",
     "mode": "write",
-    "name": "Merker 2120: unbestätigter Zähler / Laufzeit-Kandidat",
-    "type": "RAW",
-    "note": "Beobachtet 7630→7631→7632 während WP-Lauf. Bedeutung/Skalierung offen."
+    "name": "Energiezähler Wärmemenge Heizen",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "unit": "kWh"
   },
   "2121": {
     "function": "16",
@@ -5229,8 +5391,9 @@
   "2122": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Funktion unbekannt",
+    "type": "RAW",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
   },
   "2123": {
     "function": "16",
@@ -5241,8 +5404,9 @@
   "2124": {
     "function": "16",
     "mode": "write",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Funktion unbekannt",
+    "type": "RAW",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
   },
   "2125": {
     "function": "16",
@@ -5306,13 +5470,14 @@
     "name": "SG Ready aktiver Modus",
     "type": "RAW",
     "value_map": {
-      "0": "WP aus oder SG deaktiviert",
+      "0": "WP Aus oder SG deaktiviert",
       "1": "SG Mode 1 / Schlafmodus",
       "2": "SG Mode 2 / wenig PV",
       "3": "SG Mode 3 / mittel PV",
-      "4": "SG Mode 4 / High PV"
+      "4": "SG Mode 4 / High PV",
+      "5": "Normalbetrieb"
     },
-    "description": "Zeigt den aktiven SG-Ready-Modus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
+    "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
   "91105": {
     "block": "DWINV",
@@ -5333,5 +5498,138 @@
     "type": "DIGI1",
     "unit": "V",
     "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
+  },
+  "1464": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1466": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1476": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2144": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2136": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2137": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2138": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2134": {
+    "function": "03",
+    "mode": "read",
+    "name": "Timer State Leistungsbegrenzungstimer 1-6",
+    "type": "RAW",
+    "value_map": {
+      "0": "disabled",
+      "1": "enabled"
+    },
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
+  },
+  "3012": {
+    "function": "03",
+    "mode": "read",
+    "name": "Display Nr.",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3013": {
+    "function": "03",
+    "mode": "read",
+    "name": "Display Version",
+    "type": "VERSION_X10",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet. Anzeige: V[RAW/10], experimentell."
+  },
+  "3014": {
+    "function": "03",
+    "mode": "read",
+    "name": "Nr.",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3015": {
+    "function": "03",
+    "mode": "read",
+    "name": "Nr.",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3016": {
+    "function": "03",
+    "mode": "read",
+    "name": "Wochentag",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet.",
+    "value_map": {
+      "0": "Sonntag"
+    }
+  },
+  "3017": {
+    "function": "03",
+    "mode": "read",
+    "name": "Jahr + 2000",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3018": {
+    "function": "03",
+    "mode": "read",
+    "name": "Monat",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3019": {
+    "function": "03",
+    "mode": "read",
+    "name": "Tag",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3020": {
+    "function": "03",
+    "mode": "read",
+    "name": "Stunde",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+  },
+  "3021": {
+    "function": "03",
+    "mode": "read",
+    "name": "Minute",
+    "type": "RAW",
+    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
   }
 }
