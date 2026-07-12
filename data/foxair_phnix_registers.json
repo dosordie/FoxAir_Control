@@ -4507,7 +4507,7 @@
   },
   "2023": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Anzahl Verdichter-Starts",
     "type": "RAW",
     "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet."
@@ -4980,7 +4980,7 @@
   },
   "2078": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Energiezähler elektrisch high bits",
     "type": "KWH",
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
@@ -4988,7 +4988,7 @@
   },
   "2079": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Energiezähler elektrisch low bits / total",
     "type": "KWH",
     "unit": "kWh",
@@ -5316,14 +5316,14 @@
   },
   "2111": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Display Nr.",
     "type": "RAW",
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
   "2112": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Display Version",
     "type": "RAW",
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
@@ -5349,7 +5349,7 @@
   },
   "2116": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Funktion unbekannt",
     "type": "RAW",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
@@ -5362,7 +5362,7 @@
   },
   "2118": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Energiezähler elektrisch Heizen",
     "type": "KWH",
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
@@ -5376,7 +5376,7 @@
   },
   "2120": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Energiezähler Wärmemenge Heizen",
     "type": "KWH",
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
@@ -5390,7 +5390,7 @@
   },
   "2122": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Funktion unbekannt",
     "type": "RAW",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
@@ -5403,7 +5403,7 @@
   },
   "2124": {
     "function": "16",
-    "mode": "write",
+    "mode": "read",
     "name": "Funktion unbekannt",
     "type": "RAW",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
