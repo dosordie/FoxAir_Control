@@ -18,19 +18,14 @@ from PySide6.QtCore import QTimer
 
 STANDARD_MODBUS_INIT_BLOCKS: list[tuple[int, int, str]] = [
     (1001, 90, "Standard Init Extra Paketkopf/Block 1001/0x03E9"),
-    (1018, 73, "Standard Init V1.3 Paket 1 Nutzdaten 1018/0x03FA"),
     (1091, 90, "Standard Init Extra Paketkopf/Block 1091/0x0443"),
-    (1101, 80, "Standard Init V1.3 Paket 2 Nutzdaten 1101/0x044D"),
     (1181, 90, "Standard Init Extra Paketkopf/Block 1181/0x049D"),
-    (1191, 80, "Standard Init V1.3 Paket 3 Nutzdaten 1191/0x04A7"),
     (1271, 90, "Standard Init Parameterblock 1271/0x04F7"),
     (1361, 90, "Standard Init Extra-Block 1361/0x0551"),
     (1451, 90, "Standard Init Extra-Block 1451/0x05AB"),
-    (1541, 90, "Standard Init Extra-Block 1541/0x0605"),
     (2001, 90, "Standard Init Statusblock 2001/0x07D1"),
     (2091, 90, "Standard Init Statusblock 2091/0x082B"),
 ]
-
 
 class StandardModbusInitReadController:
     """Sequenzieller Controller fuer 'Alle bekannten Register lesen' am Standard-Modbus-Pfad."""
