@@ -5532,7 +5532,7 @@
   "2137": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
+    "type": "POWER_KW_X10",
     "name": "Elektrische Leistung / Spiegel von 2054 (Kandidat)",
     "unit": "kW",
     "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2137 folgte Register 2054 sehr eng. Starker Kandidat für einen Spiegelwert von 2054 und damit vermutlich elektrische Leistung bzw. aktuelle Leistungsaufnahme. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
@@ -5540,7 +5540,7 @@
   "2138": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
+    "type": "POWER_KW_X10",
     "name": "Thermische Leistung / Spiegel von 2059 (Kandidat)",
     "unit": "kW",
     "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2138 folgte Register 2059 sehr eng. Starker Kandidat für einen Spiegelwert von 2059 und damit vermutlich thermische Leistung. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
