@@ -1,0 +1,19 @@
+FoxAir / Phnix Registererkenntnisse 2026-07-15
+================================================
+
+Kontext
+-------
+- Quelle: Live-Beobachtung FoxAir / Phnix Control App V0.2.53
+- Backend: display_modbus
+- Betriebszustand: Kühlbetrieb kurz nach Wärmepumpenstart
+- Status: Beobachtungen und Hypothesen, nicht als bestätigte Funktionszuordnung behandeln
+
+Mapping-Trennung
+----------------
+Der virtuelle Bereich 91099-91149 bildet Wörter eines Displaybus-Rohstatusblocks ab. Die virtuelle Nummerierung verhindert Kollisionen mit echten WP-Registern im Bereich 2099-2149. Diese Register gelten ausschließlich für das Backend Modbus Display.
+
+Normale WP-Register wie 2106, 2122, 2124, 2136, 2137 und 2138 bleiben ausschließlich im Hauptmapping. Virtuelle Displaybus-Register wie 91099, 91105, 91106, 91107, 91108, 91110 und 91130 bleiben ausschließlich im Displaymapping.
+
+Pumpenregelung / Register 2106
+------------------------------
+Beim Start der Wärmepumpe startet die Pumpen-PWM offenbar zunächst mit 100 %. Später wurde Register 2115 stabil bei 50 % beobachtet. Register 2106 pulste anschließend weiterhin ungefähr alle 5 Minuten für etwa 9-11 Sekunden, ohne dass 2115 weiter reduziert wurde. Mögliche Deutung: 2106 zeigt ein zyklisches Pumpenregel-/PWM-Regelfenster; P12 könnte die Änderung pro Regelperiode beeinflussen; 50 % könnte eine aktive Untergrenze oder aktuelle Regelgrenze sein. Die Absenkung von 100 % auf 50 % wurde nicht lückenlos aufgezeichnet. Für eine Bestätigung ist ein neuer Start mit dauerhaftem Raw-Logging nötig.

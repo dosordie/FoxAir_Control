@@ -5308,8 +5308,9 @@
   "2106": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)",
+    "type": "RAW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register pulste zyklisch ungefähr alle 5 Minuten von 0 auf 1 und nach etwa 9–11 Sekunden zurück auf 0. Beobachtete Pulse u. a. um 13:30, 13:35, 13:40, 13:45, 13:50, 13:55, 14:00 und 14:05 Uhr. Währenddessen blieb Register 2115 stabil bei 50 % Pumpen-PWM. Starker Kandidat für zyklisches Pumpenregel-/PWM-Regelfenster bzw. einen P12-Regelentscheid. Bedeutung noch unbestätigt."
   },
   "2107": {
     "function": "16",
@@ -5525,22 +5526,24 @@
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Berechneter x0.1-Regel-/Modulwert (Kandidat)",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert driftete langsam ungefähr im Bereich 286–301. Möglicherweise x0.1-skaliert. Denkbar sind Temperatur-, Leistungs-, Modul- oder berechnete Regelgrößen. Funktion und Einheit unbestätigt."
   },
   "2137": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Elektrische Leistung / Spiegel von 2054 (Kandidat)",
+    "unit": "kW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2137 folgte Register 2054 sehr eng. Starker Kandidat für einen Spiegelwert von 2054 und damit vermutlich elektrische Leistung bzw. aktuelle Leistungsaufnahme. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
   },
   "2138": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Thermische Leistung / Spiegel von 2059 (Kandidat)",
+    "unit": "kW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2138 folgte Register 2059 sehr eng. Starker Kandidat für einen Spiegelwert von 2059 und damit vermutlich thermische Leistung. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
   },
   "2139": {
     "function": "03",
