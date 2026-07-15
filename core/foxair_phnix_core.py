@@ -259,10 +259,13 @@ class RegisterMap:
         for key, value in raw.items():
             try:
                 reg = int(key, 0)
-            except (TypeError, ValueError):
-                # Allow JSON-safe metadata/comment keys in mapping files without
-                # exposing them as registers or breaking standard JSON parsing.
-                continue
+            except (TypeError, ValueError) as exc:
+                key_text = str(key)
+                if key_text in {"_comment", "_meta", "_source"} or key_text.startswith("_"):
+                    # Allow JSON-safe metadata/comment keys in mapping files without
+                    # exposing them as registers or breaking standard JSON parsing.
+                    continue
+                raise ValueError(f"Invalid register map key {key_text!r} in {path}") from exc
             if isinstance(value, list) and len(value) >= 2:
                 self.items[reg] = RegisterInfo(str(value[0]), str(value[1]), None, None)
             elif isinstance(value, dict):
