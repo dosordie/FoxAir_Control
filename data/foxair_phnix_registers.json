@@ -1,4 +1,5 @@
 {
+  "_comment": "Hier sind alle Register welche auf allen Modbussen gleich sind. 1xxx les-/schreibbar, 2xxx nur lesen.",
   "200": {
     "function": "03",
     "mode": "read",
@@ -3891,19 +3892,19 @@
   "1353": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1353]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1354": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1354]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1355": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1356": {
@@ -4254,6 +4255,27 @@
     "mode": "read",
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
+  },
+  "1464": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1466": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1476": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
   "1541": {
     "function": "03",
@@ -5481,28 +5503,18 @@
     },
     "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
-  "1464": {
+  "2134": {
     "function": "03",
     "mode": "read",
+    "name": "Timer State Leistungsbegrenzungstimer 1-6",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "value_map": {
+      "0": "disabled",
+      "1": "enabled"
+    },
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
-  "1466": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
-  },
-  "1476": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
-  },
-  "2144": {
+  "2135": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
@@ -5530,15 +5542,81 @@
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "2134": {
+  "2139": {
     "function": "03",
     "mode": "read",
-    "name": "Timer State Leistungsbegrenzungstimer 1-6",
     "type": "RAW",
-    "value_map": {
-      "0": "disabled",
-      "1": "enabled"
-    },
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2140": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2141": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2142": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2143": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2144": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2145": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2146": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2147": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2148": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2149": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   }
 }

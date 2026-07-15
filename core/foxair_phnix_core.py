@@ -257,7 +257,12 @@ class RegisterMap:
         with open(path, "r", encoding="utf-8") as f:
             raw: Dict[str, Any] = json.load(f)
         for key, value in raw.items():
-            reg = int(key, 0)
+            try:
+                reg = int(key, 0)
+            except (TypeError, ValueError):
+                # Allow JSON-safe metadata/comment keys in mapping files without
+                # exposing them as registers or breaking standard JSON parsing.
+                continue
             if isinstance(value, list) and len(value) >= 2:
                 self.items[reg] = RegisterInfo(str(value[0]), str(value[1]), None, None)
             elif isinstance(value, dict):
