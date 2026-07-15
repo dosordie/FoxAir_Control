@@ -1,0 +1,51 @@
+FoxAir PHNIX Register Mapping Audit
+===================================
+
+Anzahl Register Hauptmapping: 574
+Anzahl Register Displaymapping: 240
+Anzahl nur Hauptmapping: 511
+Anzahl nur Displaymapping: 177
+Anzahl doppelte Register: 63
+Anzahl identische doppelte Register: 13
+Anzahl unterschiedliche doppelte Register: 47
+Anzahl Schreibrechtskonflikte: 3
+
+Liste der betroffenen Register mit Schreibrechtskonflikten:
+- 2104 (0x0838): name,mode,function
+- 2107 (0x083B): name,mode,function,note
+- 2115 (0x0843): mode,function
+
+Bereichsübersicht (Union beider Mappings):
+- unter 1000: 16
+- 1000–1999: 408
+- 2000–2999: 149
+- 3000–3999: 21
+- 4000–89999: 155
+- ab 90000: 2
+
+Wichtigste Konflikte (erste 25 numerisch sortiert):
+- 2099 (DIFFERENT): name
+- 2100 (DIFFERENT): name
+- 2101 (DIFFERENT): name,mode
+- 2102 (DIFFERENT): name,mode
+- 2103 (DIFFERENT): name,mode
+- 2104 (WRITE_PERMISSION_DIFF): name,mode,function
+- 2105 (DIFFERENT): name,mode
+- 2106 (DIFFERENT): name,mode
+- 2107 (WRITE_PERMISSION_DIFF): name,mode,function,note
+- 2108 (DIFFERENT): name,mode
+- 2109 (DIFFERENT): name,mode
+- 2110 (DIFFERENT): name,mode
+- 2111 (DIFFERENT): name,mode,note
+- 2112 (DIFFERENT): name,mode,note
+- 2113 (DIFFERENT): name,mode
+- 2114 (DIFFERENT): name,mode
+- 2115 (WRITE_PERMISSION_DIFF): mode,function
+- 2116 (DIFFERENT): name,mode,note
+- 2117 (DIFFERENT): name,mode
+- 2118 (DIFFERENT): name,type,unit,mode,note
+- 2119 (DIFFERENT): name,mode
+- 2120 (DIFFERENT): name,type,unit,mode,note
+- 2121 (DIFFERENT): name,mode
+- 2122 (DIFFERENT): name,mode,note
+- 2123 (DIFFERENT): name,mode

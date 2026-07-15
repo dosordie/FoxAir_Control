@@ -1,0 +1,752 @@
+﻿register;register_hex;in_main;in_display;main_name;display_name;main_type;display_type;main_unit;display_unit;main_mode;display_mode;main_function;display_function;main_block;display_block;main_code;display_code;main_value_map;display_value_map;main_bit_map;display_bit_map;main_notes;display_notes;differences;classification;remark
+200;0x00C8;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+201;0x00C9;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+202;0x00CA;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+203;0x00CB;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+204;0x00CC;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+205;0x00CD;yes;no;Interner HMI-Kommunikationsblock / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+206;0x00CE;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+207;0x00CF;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+208;0x00D0;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+209;0x00D1;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+210;0x00D2;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+211;0x00D3;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+212;0x00D4;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+213;0x00D5;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+214;0x00D6;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+215;0x00D7;yes;no;Interner HMI-Kommunikationsblock / Reserve;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1001;0x03E9;yes;no;Blockkopf Paket 1 / Kennung Wort 1 / WiFi Barcode ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1002;0x03EA;yes;no;Blockkopf Paket 1 / Kennung Wort 2 / WiFi Barcode ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1003;0x03EB;yes;no;Blockkopf Paket 1 / Kennung Wort 3 / WiFi Barcode ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1004;0x03EC;yes;no;Blockkopf Paket 1 / Kennung Wort 4 / WiFi Barcode ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1005;0x03ED;yes;no;Blockkopf Paket 1 / Kennung Wort 5 / WiFi Barcode ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1006;0x03EE;yes;no;Blockkopf Paket 1 / Kennung Wort 6 / WiFi Barcode ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1007;0x03EF;yes;no;Blockkopf Paket 1 / Kennung Wort 7 / WiFi Barcode ASCII Reserve/Ende;;BLOCK;;;;read;;03;;;;;;;;;;"Teil der WiFi-Barcode-/Warmlink-Modulkennung; Blockkopf/Kennung bleibt ebenfalls gültig. Nicht als Geräte-Serial-No. interpretieren.";;;MAIN_ONLY;Register exists only in main mapping.
+1008;0x03F0;yes;no;Blockkopf Paket 1 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1009;0x03F1;yes;no;Blockkopf Paket 1 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1010;0x03F2;yes;no;Blockkopf Paket 1 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1011;0x03F3;yes;no;AN/AUS;;DIGI1;;;;r/w;;03/16;;;;;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1012;0x03F4;yes;no;Modus setzen;;MODE_0_4;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1013;0x03F5;yes;no;Wassertanktemperatur (vom Zentralregler bei H37-1);;TEMP1;;;;r/w;;06;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1014;0x03F6;yes;no;Zentralregler zum Abtauen zulassen bei D26-1;;DIGI1;;;;r/w;;06;;;;;;"{""0"":""nicht zulassen"",""1"":""zulassen""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1015;0x03F7;yes;no;Sprachauswahl;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1016;0x03F8;yes;no;Manuelle Steuerung / Silent Status;;DIGI1;;;;r/w;;03/16;;;;;;;;"{""0"":""Manuelles Abtauen"",""1"":""Silent Mode / Silent Status"",""2"":""Eine Taste manuelle Heizung""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+1017;0x03F9;yes;no;Logo-Auswahl;;RAW;;;;r/w;;03/06;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1018;0x03FA;yes;no;Power Off Memory aktivieren (Autostart);;DIGI1;;;;r/w;;03/16;;H;;H01;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1019;0x03FB;yes;no;Lüftermotorantrieb und Kompressorantrieb integriert;;DIGI1;;;;r/w;;03/16;;H;;H33;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1020;0x03FC;yes;no;ERP Testmodus;;DIGI1;;;;r/w;;03/16;;H;;H34;;"{""0"":""Nein / kein ERP-Test"",""1"":""35 °C Testbedingung"",""2"":""55 °C Testbedingung""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1021;0x03FD;yes;no;Kühlfunktion aktivieren;;DIGI1;;;;r/w;;03/16;;H;;H05;;"{""0"":""Kühlfunktion nicht vorhanden/aus"",""1"":""Kühlfunktion vorhanden/ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1022;0x03FE;yes;no;Reserviert;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1023;0x03FF;yes;no;Reglerwahl;;DIGI1;;;;r/w;;03/16;;H;;H07;;"{""0"":""Master/Hauptregler"",""1"":""Slave/Nebenregler""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1024;0x0400;yes;no;Geräteadresse;;DIGI1;;;;r/w;;03/16;;H;;H10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1025;0x0401;yes;yes;Spracheinstellung;Spracheinstellung;RAW;RAW;;;r/w;r/w;03/16;03/16;H;H;H38;H38;;;;;Aus Display-Firmware: H38 nutzt Kommunikationsvariable 0401H = 1025 dez. Value Map noch offen, da Werte nicht sicher bekannt sind. H38 ist nicht External Pump Selection.;Aus Display-Firmware: H38 nutzt Kommunikationsvariable 0401H = 1025 dez. Value Map noch offen, da Werte nicht sicher bekannt sind. H38 ist nicht External Pump Selection.;;IDENTICAL;Relevant fields are identical.
+1026;0x0402;yes;no;Logo-Auswahl / Kundenlogo-Code (ASM);;RAW;;;;r/w;;03/16;;H;;H39;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1027;0x0403;yes;no;EVI aktivieren;;DIGI1;;;;r/w;;03/16;;H;;H27;;"{""0"":""kein EVI"",""1"":""EVI bei Kühlung"",""2"":""EVI bei Heizung"",""3"":""EVI bei Heizung und Kühlung""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1028;0x0404;yes;no;Heiz-/Kühl- und Warmwasserfunktion aktiviert;;DIGI1;;;;r/w;;03/16;;H;;H28;;"{""0"":""ohne Warmwasserfunktion"",""1"":""mit Warmwasserfunktion"",""2"":""Nur Warmwasser / Only DHW""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1029;0x0405;yes;no;Temperatureinheit;;DIGI1;;;;r/w;;03/16;;H;;H21;;"{""0"":""Celsius"",""1"":""Fahrenheit""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1030;0x0406;yes;no;Silent-Modus aktivieren;;DIGI1;;;;r/w;;03/16;;H;;H22;;"{""0"":""Silent-Modus aus"",""1"":""Silent-Modus ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1031;0x0407;yes;no;Electric Heater Off Temp Diff / E-Heizer Ausschalt-Temperaturdifferenz;;TEMP05;;°C;;r/w;;03/16;;A;;A35;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1032;0x0408;yes;no;Elektrische Heizstufe;;DIGI1;;;;r/w;;03/16;;H;;H18;;"{""1"":""Elektrische Heizstufe 1"",""2"":""Elektrische Heizstufe 2"",""3"":""Elektrische Heizstufe 3""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1033;0x0409;yes;no;3-Wege-Ventil-Polarität;;DIGI1;;;;r/w;;03/16;;H;;H20;;"{""0"":""3-Wege-Ventil EIN im Warmwasser-Modus"",""1"":""3-Wege-Ventil AUS im Warmwasser-Modus""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1034;0x040A;yes;no;Operationscode;;DIGI1;;;;r/w;;03/16;;H;;H29;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1035;0x040B;yes;no;Temp.-Regelauswahl;;DIGI1;;;;r/w;;03/16;;H;;H25;;"{""0"":""Auslasswassertemperatur"",""1"":""Raumtemperatur"",""2"":""Puffertanktemperatur"",""3"":""Einlasswassertemperatur""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1036;0x040C;yes;no;Indoor Unit Type / Hydraulikmodul-Typ;;RAW;;;;r/w;;03/16;;H;;H30;;"{""0"":""None"",""1"":""1st Type"",""2"":""2nd Type"",""3"":""3rd Type""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1037;0x040D;yes;no;Abschalttemperatur Umgebung;;TEMP1;;;;r/w;;03/16;;A;;A03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1038;0x040E;yes;no;Frostschutztemperatur;;TEMP1;;;;r/w;;03/16;;A;;A04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1039;0x040F;yes;no;Frostschutztemperaturdifferenz;;TEMP1;;;;r/w;;03/16;;A;;A05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1040;0x0410;yes;no;Max. Abgastemperatur;;TEMP1;;;;r/w;;03/16;;A;;A06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1041;0x0411;yes;no;Zirkulationswasserpumpentyp;;DIGI1;;;;r/w;;03/16;;H;;H31;;"{""0"":""keine Durchflusserkennung"",""1"":""Grundfos 25-75"",""2"":""Grundfos 25-105"",""3"":""Grundfos 25-125"",""4"":""APM25 9-130"",""5"":""APM25 12-130""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1042;0x0412;yes;no;Niederdrucksensor aktivieren;;DIGI1;;;;r/w;;03/16;;A;;A11;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1043;0x0413;yes;no;Min. Auslasswassertemperatur schutz;;TEMP1;;;;r/w;;03/16;;A;;A23;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1044;0x0414;yes;no;Übermäßige Temperaturdifferenz zwischen Einlass- und Auslasswasser;;TEMP1;;;;r/w;;03/16;;A;;A24;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1045;0x0415;yes;no;Erzwungene Umschaltzeit;;DIGI1;;;;r/w;;03/16;;H;;H32;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1046;0x0416;yes;no;Wassertank-Temperaturquelle;;DIGI1;;;;r/w;;03/16;;H;;H37;;"{""0"":""Wärmepumpe / Wassertank-Temperatursensor"",""1"":""Modbus / Zentralregler""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1047;0x0417;yes;no;Zentrale Abtaufunktion aktivieren;;DIGI1;;;;r/w;;03/16;;D;;D26;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1048;0x0418;yes;no;External Pump Selection (Code unbekannt / nicht H37);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1049;0x0419;yes;no;Electric-Heater-On AT Grenzwert / Temperaturparameter (ASM);;TEMP1;;;;r/w;;03/16;;A;;A31;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1050;0x041A;yes;no;Electric Heater Delays Comp on Time;;MINUTES;;min;;r/w;;03/16;;A;;A32;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1051;0x041B;yes;no;Min. Umgebungstemperatur im Kühlmodus;;TEMP1;;;;r/w;;03/16;;A;;A30;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1052;0x041C;yes;no;Umgebungs-/Saug-/Spulensensortyp;;DIGI1;;;;r/w;;03/16;;A;;A21;;"{""0"":""5K Sensortyp"",""1"":""2K Sensortyp""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1053;0x041D;yes;no;Min. Frostschutztemperatur;;TEMP1;;;;r/w;;03/16;;A;;A22;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1054;0x041E;yes;no;Kältemitteltyp;;DIGI1;;;;r/w;;03/16;;A;;A26;;"{""0"":""R32"",""1"":""R290"",""2"":""R32-1"",""3"":""R290-1"",""4"":""R32-2"",""5"":""R290-2"",""6"":""R32-3"",""7"":""R290-3""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1055;0x041F;yes;no;Minimale Verdampfungstemperatur der Kühlung;;TEMP1;;;;r/w;;03/16;;A;;A25;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1056;0x0420;yes;no;Temperaturdifferenz der Begrenzungsfrequenz;;TEMP1;;;;r/w;;03/16;;A;;A27;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1057;0x0421;yes;no;Temperaturdifferenz zwischen Auslass- und WW-Temperatur;;TEMP1;;;;r/w;;03/16;;A;;A28;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1058;0x0422;yes;no;Hochdrucksensor aktivieren;;DIGI1;;;;r/w;;03/16;;A;;A29;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1059;0x0423;yes;no;Lüftermotortyp;;DIGI1;;;;r/w;;03/16;;F;;F01;;"{""0"":""Legacy: Hochgeschwindigkeits-Lüfter"",""1"":""Legacy: zweistufiger Lüfter"",""3"":""DC Fan Motor"",""4"":""DC Fan Motor External Drive""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1060;0x0424;yes;no;Verdampfertemperatur für maximale Lüfterdrehzahl im Kühlbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1061;0x0425;yes;yes;Fan Motor Power Curve / Lüftermotor-Leistungskurve;Fan Motor Power Curve / Lüftermotor-Leistungskurve;RAW;RAW;rpm;rpm;r/w;r/w;03/16;03/16;F;F;F27;F27;;;;;;;;IDENTICAL;Relevant fields are identical.
+1062;0x0426;yes;no;Verdampfertemperatur für minimale Lüfterdrehzahl im Kühlbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1063;0x0427;yes;no;E-Heizer Einschalt-Temperaturdifferenz;;TEMP1;;°C;;r/w;;03/16;;A;;A33;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1064;0x0428;yes;no;Kurbelgehäuseheizung Vorheizzeit;;MINUTES;;min;;r/w;;03/16;;A;;A34;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1065;0x0429;yes;no;Reserviert;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1066;0x042A;yes;no;Verdampfertemperatur für maximale Lüfterdrehzahl im Heizbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1067;0x042B;yes;no;Reserviert;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1068;0x042C;yes;no;Verdampfertemperatur für minimale Lüfterdrehzahl im Heizbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1069;0x042D;yes;no;Mehrzonenregelung aktivieren;;DIGI1;;;;r/w;;03/16;;Z;;Z01;;"{""0"":""Keine Zone"",""1"":""Zone 1-S"",""2"":""Zone 2-S"",""3"":""Zone 1+2-S"",""4"":""Zone 1-T"",""5"":""Zone 2-T"",""6"":""Zone 1+2-T"",""7"":""Zone 1-P"",""8"":""Zone 2-P"",""9"":""Zone 1+2-P""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1070;0x042E;yes;no;Zone 1 Raumtemperatur-Sollwert;;TEMP1;;;;r/w;;03/16;;Z;;Z02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1071;0x042F;yes;no;Zone 1 Raumtemperatur-Differenz zum Start;;TEMP1;;K;;r/w;;03/16;;Z;;Z03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1072;0x0430;yes;no;Zone 2 Raumtemperatur-Sollwert;;TEMP1;;;;r/w;;03/16;;Z;;Z04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1073;0x0431;yes;no;Zone 2 Raumtemperatur-Differenz zum Start;;TEMP1;;K;;r/w;;03/16;;Z;;Z05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1074;0x0432;yes;no;Lüfteranzahl;;DIGI1;;;;r/w;;03/16;;F;;F10;;"{""0"":""Einzellüfter"",""1"":""Doppellüfter""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1075;0x0433;yes;no;Zone 1 Heizungs-Auslasswasser-Sollwert;;TEMP1;;;;r/w;;03/16;;Z;;Z06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1076;0x0434;yes;no;Zone 2 Mischwasser-Auslasswasser-Sollwert;;TEMP1;;;;r/w;;03/16;;Z;;Z07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1077;0x0435;yes;no;AT-Kompensationskurve Zone 2 aktivieren;;DIGI1;;;;r/w;;03/16;;Z;;Z17;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1078;0x0436;yes;no;Zone2 Heizkurve K / Raumtemperatur-Kompensation (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1079;0x0437;yes;no;Zone2 Heizkurve B / Raumtemperatur-Kompensation (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1080;0x0438;yes;no;Mischventil manuelle Stellrate (0% = Auto-Regelung);;PERCENT;;%;;r/w;;03/16;;Z;;Z08;;"{""0"":""Manuell"",""1"":""Auto""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1081;0x0439;yes;no;Min. Lüfterdrehzahl im Kühlbetrieb;;DIGI1;;rpm;;r/w;;03/16;;F;;F18;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1082;0x043A;yes;no;Mischventil Öffnungszeit;;SECONDS;;s;;r/w;;03/16;;Z;;Z09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1083;0x043B;yes;no;Min. Lüfterdrehzahl im Heizbetrieb;;DIGI1;;rpm;;r/w;;03/16;;F;;F19;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1084;0x043C;yes;no;Mischventil Schließzeit;;SECONDS;;s;;r/w;;03/16;;Z;;Z10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1085;0x043D;yes;no;Mischventil Regelung P-Anteil (PID);;DIGI5;;;;r/w;;03/16;;Z;;Z11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1086;0x043E;yes;no;Timer-Stummschaltung aktivieren (ASM V1.3: 243E);;DIGI1;;;;r/w;;03/16;;F;;F21;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1087;0x043F;yes;no;Manuelle Lüfterdrehzahl aktivieren;;DIGI1;;;;r/w;;03/16;;F;;F22;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1088;0x0440;yes;no;Mischventil Regelung I-Anteil (PID);;DIGI5;;;;r/w;;03/16;;Z;;Z12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1089;0x0441;yes;no;Nenn-DC-Lüftermotordrehzahl;;DIGI1;;rpm;;r/w;;03/16;;F;;F23;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1090;0x0442;yes;no;Mischventil PID-Zyklus;;MINUTES;;min;;r/w;;03/16;;Z;;Z13;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1091;0x0443;yes;no;Blockkopf Paket 2 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1092;0x0444;yes;no;Blockkopf Paket 2 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1093;0x0445;yes;no;Blockkopf Paket 2 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1094;0x0446;yes;no;Blockkopf Paket 2 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1095;0x0447;yes;no;Blockkopf Paket 2 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1096;0x0448;yes;no;Blockkopf Paket 2 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1097;0x0449;yes;no;Blockkopf Paket 2 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1098;0x044A;yes;no;Blockkopf Paket 2 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1099;0x044B;yes;no;Blockkopf Paket 2 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1100;0x044C;yes;no;Blockkopf Paket 2 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1101;0x044D;yes;no;Verdampfertemperatur des Einzel-/Doppellüfterschalters im Kühlbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F28;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1102;0x044E;yes;no;Verdampfertemperatur des Einzellüfterstopps im Kühlbetrieb;;TEMP1;;;;r/w;;03/16;;F;;F29;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1103;0x044F;yes;no;Max. Lüfterdrehzahl im Kühlbetrieb;;RPM;;rpm;;r/w;;03/16;;F;;F25;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1104;0x0450;yes;no;Max. Lüfterdrehzahl im Heizbetrieb;;RPM;;rpm;;r/w;;03/16;;F;;F26;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1105;0x0451;yes;no;Umgebungstemperatur des Start-Abtauens;;TEMP1;;;;r/w;;03/16;;D;;D01;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1106;0x0452;yes;no;Heizbetriebszeit vor dem Abtauen;;MINUTES;;min;;r/w;;03/16;;D;;D02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1107;0x0453;yes;no;Intervallzeit zwischen den Abtauzyklen;;MINUTES;;min;;r/w;;03/16;;D;;D03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1108;0x0454;yes;no;Heißgastemperaturkorrektur für den Abtauzyklus;;TEMP1;;;;r/w;;03/16;;D;;D04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1109;0x0455;yes;no;Abtau-Saugsdruck 1;;DIGI5;;;;r/w;;03/16;;D;;D05-1;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1110;0x0456;yes;no;Abtau-Saugsdruck 2;;DIGI5;;;;r/w;;03/16;;D;;D05-2;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1111;0x0457;yes;no;Abtauzykluszeitkorrektur;;DIGI1;;;;r/w;;03/16;;D;;D06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1112;0x0458;yes;no;Umgebungstemperatur des Start-Gleitabtauens;;TEMP1;;;;r/w;;03/16;;D;;D07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1113;0x0459;yes;no;Saugsungstemperatur des Start-Gleitabtauens;;TEMP1;;;;r/w;;03/16;;D;;D08;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1114;0x045A;yes;no;Umgebungstemperatur des Stopp-Gleitabtauens;;TEMP1;;;;r/w;;03/16;;D;;D09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1115;0x045B;yes;no;Saugsungstemperatur des Stopp-Gleitabtauens;;TEMP1;;;;r/w;;03/16;;D;;D10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1116;0x045C;yes;no;Min. Einlasswassertemperatur des Abtauens;;TEMP1;;°C;;r/w;;03/16;;D;;D11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1117;0x045D;yes;no;Saugsdruck des erzwungenen Abtauens;;BAR_X10;;bar;;r/w;;03/16;;D;;D12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1118;0x045E;yes;no;Heizbetriebszeit vor dem erzwungenen Abtauen;;MINUTES;;min;;r/w;;03/16;;D;;D13;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1119;0x045F;yes;no;Lüftermotorleistungsverhältnis zur Verlängerung des Abtauzyklus;;DIGI19;;;;r/w;;03/16;;D;;D14;;;;;;Skalierung: Wert / 100.;;;MAIN_ONLY;Register exists only in main mapping.
+1120;0x0460;yes;no;Lüftermotorleistungsverhältnis zum Eintritt in das erzwungene Abtauen;;DIGI19;;;;r/w;;03/16;;D;;D15;;;;;;Skalierung: Wert / 100.;;;MAIN_ONLY;Register exists only in main mapping.
+1121;0x0461;yes;no;Max. Lüftermotorleistung zum Eintritt in das erzwungene Abtauen;;WATT;;W;;r/w;;03/16;;D;;D16;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1122;0x0462;yes;no;Verdampfertemperatur des Abtauausgangs;;TEMP1;;;;r/w;;03/16;;D;;D17;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1123;0x0463;yes;no;Verteilerrohrtemperatur des Abtauausgangs;;TEMP1;;;;r/w;;03/16;;D;;D18;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1124;0x0464;yes;no;Max. Abtauzeit;;MINUTES;;min;;r/w;;03/16;;D;;D19;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1125;0x0465;yes;no;Abtaufrequenz;;HZ;;Hz;;r/w;;03/16;;D;;D20;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1126;0x0466;yes;no;Elektrische Heizung während des Abtauens aktivieren;;DIGI1;;;;r/w;;03/16;;D;;D21;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1127;0x0467;yes;no;Wasserdurchfluss beim Abtauen;;FLOW_M3H_X10;;m³/h;;r/w;;03/16;;D;;D22;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1128;0x0468;yes;no;Max. Abtauzyklus durch Lüftermotorleistung;;MINUTES;;min;;r/w;;03/16;;D;;D23;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1129;0x0469;yes;no;Wassertank-Abtauquelle im Heizung+WW/Kühlung+WW-Modus;;DIGI1;;;;r/w;;03/16;;D;;D24;;"{""0"":""nicht umschalten"",""1"":""WW-Seite / WW-Tank"",""2"":""Heizseite / Pufferspeicher""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1130;0x046A;yes;no;Max. Einlasswassertemperaturabfall beim Abtauen;;TEMP1;;;;r/w;;03/16;;D;;D25;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1131;0x046B;yes;no;EEV Regelmodus;;DIGI1;;;;r/w;;03/16;;E;;E17;;"{""0"":""Manual"",""1"":""Auto"",""2"":""Smart""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1132;0x046C;yes;no;Ziel-Überhitzung Heizen;;TEMP1;;°C;;r/w;;03/16;;E;;E02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1133;0x046D;yes;no;EEV Anfangsschritte Heizen;;STEPS_N;;N;;r/w;;03/16;;E;;E03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1134;0x046E;yes;no;Mischventil-Stellwert im Kühlbetrieb;;PERCENT;;%;;r/w;;03/16;;Z;;Z14;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1135;0x046F;yes;no;Zone 2 maximale Wasser-Solltemperatur;;TEMP1;;;;r/w;;03/16;;Z;;Z15;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1136;0x0470;yes;no;Mischventil Regel-I (DIGI5 laut ASM-Kommentar) (ASM);;DIGI5;;;;r/w;;03/16;;Z;;Z16;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1137;0x0471;yes;no;EEV minimale Anfangsschritte;;STEPS_N;;N;;r/w;;03/16;;E;;E07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1138;0x0472;yes;no;EEV Anfangsschritte Kühlen;;STEPS_N;;N;;r/w;;03/16;;E;;E08;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1139;0x0473;yes;no;EVI-EEV Anpassungsmodus;;DIGI1;;;;r/w;;03/16;;E;;E09;;"{""0"":""Manual"",""1"":""Auto""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1140;0x0474;yes;no;EVI-EEV Anfangsschritte;;STEPS_N;;N;;r/w;;03/16;;E;;E10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1141;0x0475;yes;no;System 2 EVI/Enthalpie vorhanden wenn Wert != 0 (ASM V1.3);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1142;0x0476;yes;no;EEV Anfangsschritte Heizen 2;;STEPS_N;;N;;r/w;;03/16;;E;;E03-2;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1143;0x0477;yes;no;EVI-EEV Ziel-Überhitzungsgrad;;TEMP1;;°C;;r/w;;03/16;;E;;E13;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1144;0x0478;yes;no;EVI-EEV minimale Schritte;;STEPS_N;;N;;r/w;;03/16;;E;;E14;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1145;0x0479;yes;no;Temperatur-/Hystereseparameter (ASM);;TEMP1;;;;r/w;;03/16;;E;;E15;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1146;0x047A;yes;no;Temperatur-/Hystereseparameter (ASM);;TEMP1;;;;r/w;;03/16;;E;;E16;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1147;0x047B;yes;no;Abtau-EEV Schritte;;STEPS_N;;N;;r/w;;03/16;;E;;E17;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1148;0x047C;yes;no;Ziel-Überhitzung Kühlen;;TEMP1;;°C;;r/w;;03/16;;E;;E18;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1149;0x047D;yes;no;EEV Anpassungsbereich im Smart-Modus;;PERCENT;;%;;r/w;;03/16;;E;;E19;;;;;;Vermutung, noch nicht verifiziert: E19 begrenzt vermutlich, wie stark der Smart-Algorithmus vom normalen/Auto-EEV-Wert abweichen darf. Bei Default 20 % dürfte Smart den berechneten EEV-Wert vermutlich um bis zu ca. 20 % korrigieren.;;;MAIN_ONLY;Register exists only in main mapping.
+1150;0x047E;yes;no;Reserviert;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1151;0x047F;yes;no;Reserviert;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1152;0x0480;yes;no;Desinfektionswassertemperatur;;TEMP1;;°C;;r/w;;03/16;;G;;G01;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1153;0x0481;yes;no;Desinfektionsdauer;;MINUTES;;min;;r/w;;03/16;;G;;G02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1154;0x0482;yes;no;Desinfektionsstartzeit;;HOURS;;h;;r/w;;03/16;;G;;G03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1155;0x0483;yes;no;Intervallzeit der Desinfektion;;DAYS;;days;;r/w;;03/16;;G;;G04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1156;0x0484;yes;no;Desinfektion aktivieren;;DIGI1;;;;r/w;;03/16;;G;;G05;;"{""0"":""NO"",""1"":""YES""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1157;0x0485;yes;no;Warmwasser-Solltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R01;;;;;;Warmwasser-Solltemperatur für WP-Steuerung;;;MAIN_ONLY;Register exists only in main mapping.
+1158;0x0486;yes;no;Heizungssolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R02;;;;;;Heizungssolltemperatur für WP-Steuerung;;;MAIN_ONLY;Register exists only in main mapping.
+1159;0x0487;yes;no;Kühlsolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R03;;;;;;Kühlsolltemperatur für WP-Steuerung;;;MAIN_ONLY;Register exists only in main mapping.
+1160;0x0488;yes;no;Heizung Einschalt-Rücklaufdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1161;0x0489;yes;no;Heizung Standby-/Abschalt-Temperaturdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1162;0x048A;yes;no;Min. Kühlsolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R08;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1163;0x048B;yes;no;Max. Kühlsolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1164;0x048C;yes;no;Min. Heizungssolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1165;0x048D;yes;no;Max. Heizungssolltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1166;0x048E;yes;no;Rückkehrdifferenz zum Verlassen des Hochtemperatur-Modus;;TEMP1;;°C;;r/w;;03/16;;R;;R15;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1167;0x048F;yes;no;Niedrige AT für Wassertemperaturbegrenzung EIN;;TEMP1;;°C;;r/w;;03/16;;R;;R29;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1168;0x0490;yes;no;Niedrige AT für Wassertemperaturbegrenzung AUS;;TEMP1;;°C;;r/w;;03/16;;R;;R30;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1169;0x0491;yes;no;Max. Auslasswassertemperaturbegrenzung bei niedriger AT;;TEMP1;;°C;;r/w;;03/16;;R;;R31;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1170;0x0492;yes;no;Hohe AT für Wassertemperaturbegrenzung EIN;;TEMP1;;°C;;r/w;;03/16;;R;;R32;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1171;0x0493;yes;no;Hohe AT für Wassertemperaturbegrenzung AUS;;TEMP1;;°C;;r/w;;03/16;;R;;R33;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1172;0x0494;yes;no;Max. Auslasswassertemperaturbegrenzung bei hoher AT;;TEMP1;;°C;;r/w;;03/16;;R;;R34;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1173;0x0495;yes;no;Position des elektrischen Heizers;;DIGI1;;;;r/w;;03/16;;R;;R35;;"{""0"":""Not Available"",""1"":""Heating water circuit"",""2"":""Tank/buffer heater""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1174;0x0496;yes;no;Kühlung Einschalt-Rücklaufdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1175;0x0497;yes;no;Kühlung Standby-/Abschalt-Temperaturdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1176;0x0498;yes;no;Min. WW-Solltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R36;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1177;0x0499;yes;no;Max. WW-Solltemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R37;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1178;0x049A;yes;no;Temperatur-/Hystereseparameter R12;;TEMP1;;°C;;r/w;;03/16;;R;;R12;;;;;;In App nicht sichtbar.;;;MAIN_ONLY;Register exists only in main mapping.
+1179;0x049B;yes;no;Temperatur-/Hystereseparameter R13;;TEMP1;;°C;;r/w;;03/16;;R;;R13;;;;;;In App nicht sichtbar.;;;MAIN_ONLY;Register exists only in main mapping.
+1180;0x049C;yes;no;Temperatur-/Hystereseparameter R14;;TEMP1;;°C;;r/w;;03/16;;R;;R14;;;;;;In App nicht sichtbar.;;;MAIN_ONLY;Register exists only in main mapping.
+1181;0x049D;yes;no;Blockkopf Paket 3 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1182;0x049E;yes;no;Blockkopf Paket 3 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1183;0x049F;yes;no;Blockkopf Paket 3 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1184;0x04A0;yes;no;Blockkopf Paket 3 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1185;0x04A1;yes;no;Blockkopf Paket 3 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1186;0x04A2;yes;no;Blockkopf Paket 3 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1187;0x04A3;yes;no;Blockkopf Paket 3 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1188;0x04A4;yes;no;Blockkopf Paket 3 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1189;0x04A5;yes;no;Blockkopf Paket 3 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1190;0x04A6;yes;no;Blockkopf Paket 3 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1191;0x04A7;yes;no;Paketmarker / Syncwort / Blockkopfkennung;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1192;0x04A8;yes;no;AT für Auto-Start Heizmodus;;TEMP1;;°C;;r/w;;03/16;;R;;R39;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1193;0x04A9;yes;no;Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3);;TEMP1;;;;r/w;;03/16;;R;;R40;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1194;0x04AA;yes;no;Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3);;TEMP1;;;;r/w;;03/16;;R;;R41;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1195;0x04AB;yes;no;WW-Tank Einschalt-Rücklaufdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R16;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1196;0x04AC;yes;no;WW-Tank Standby-Temperaturdifferenz;;TEMP1;;°C;;r/w;;03/16;;R;;R17;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1197;0x04AD;yes;no;Betriebsmodus der Hauptumwälzpumpe;;DIGI1;;;;r/w;;03/16;;P;;P01;;"{""0"":""Always On"",""1"":""Saving"",""2"":""Interval""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1198;0x04AE;yes;no;Intervallzeit;;MINUTES;;min;;r/w;;03/16;;P;;P02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1199;0x04AF;yes;no;Betriebsdauer;;MINUTES;;min;;r/w;;03/16;;P;;P03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1200;0x04B0;yes;no;EEV Anfangsschritte Heizen 1;;STEPS_N;;N;;r/w;;03/16;;E;;E03-1;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1201;0x04B1;yes;no;WW-Pumpenbetriebsmodus;;DIGI1;;;;r/w;;03/16;;P;;P05;;"{""0"":""Always On"",""1"":""Saving"",""2"":""Interval""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1202;0x04B2;yes;no;Manuelle Steuerung der Hauptumwälzpumpe;;DIGI1;;;;r/w;;03/16;;P;;P06;;"{""0"":""NO"",""1"":""YES""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1203;0x04B3;yes;no;Schutzintervall der Umwälzpumpe;;DAYS;;days;;r/w;;03/16;;P;;P09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1204;0x04B4;yes;no;Nennleistung Hauptumwälzpumpe;;RAW;;W;;r/w;;03/16;;P;;P08;;;;;;Einheit sicher: Watt.;;;MAIN_ONLY;Register exists only in main mapping.
+1205;0x04B5;yes;no;Drehzahl der Umwälzpumpe;;PERCENT;;%;;r/w;;03/16;;P;;P10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1206;0x04B6;yes;no;EEV Anfangsschritte Heizen 3;;STEPS_N;;N;;r/w;;03/16;;E;;E03-3;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1207;0x04B7;yes;no;EEV Anfangsschritte Heizen 4;;STEPS_N;;N;;r/w;;03/16;;E;;E03-4;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1208;0x04B8;yes;no;EEV Anfangsschritte Heizen 5;;STEPS_N;;N;;r/w;;03/16;;E;;E03-5;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1209;0x04B9;yes;no;EEV Min. Schritte 1;;STEPS_N;;N;;r/w;;03/16;;E;;E07-1;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1210;0x04BA;yes;no;EEV Min. Schritte 2;;STEPS_N;;N;;r/w;;03/16;;E;;E07-2;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1211;0x04BB;yes;no;EEV Min. Schritte 3;;STEPS_N;;N;;r/w;;03/16;;E;;E07-3;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1212;0x04BC;yes;no;Offset Inlet Temperatur;;TEMP1;;K;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1213;0x04BD;yes;no;Offset outlet Temperatur;;TEMP1;;K;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1214;0x04BE;yes;no;Offset WW Temperatur;;TEMP1;;K;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1215;0x04BF;yes;no;EEV Min. Schritte 4;;STEPS_N;;N;;r/w;;03/16;;E;;E07-4;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1216;0x04C0;yes;no;EEV Min. Schritte 5;;STEPS_N;;N;;r/w;;03/16;;E;;E07-5;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1217;0x04C1;yes;no;Max. Kompressorfrequenz im Kühlbetrieb bei hoher Umgebungstemperatur;;HZ;;Hz;;r/w;;03/16;;C;;C11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1218;0x04C2;yes;no;Manuelle Kompressorfrequenz;;HZ;;Hz;;r/w;;03/16;;C;;C01;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1219;0x04C3;yes;no;Min. Kompressorfrequenz;;HZ;;Hz;;r/w;;03/16;;C;;C02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1220;0x04C4;yes;no;Max. Kompressorfrequenz;;HZ;;Hz;;r/w;;03/16;;C;;C03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1221;0x04C5;yes;no;Kompressormodellauswahl;;DIGI1;;;;r/w;;03/16;;C;;C04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1222;0x04C6;yes;no;Min. Kompressorfrequenz im Kühlbetrieb bei niedriger Umgebungstemperatur;;HZ;;Hz;;r/w;;03/16;;C;;C05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1223;0x04C7;yes;no;Frequenzregelungsmodus;;DIGI1;;;;r/w;;03/16;;C;;C06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1224;0x04C8;yes;no;Resonanzpunkt 1;;HZ;;Hz;;r/w;;03/16;;C;;C07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1225;0x04C9;yes;no;Resonanzpunkt 2;;HZ;;Hz;;r/w;;03/16;;C;;C08;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1226;0x04CA;yes;no;Resonanzpunkt 3;;HZ;;Hz;;r/w;;03/16;;C;;C09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1227;0x04CB;yes;no;Min. Kompressorfrequenz im Heizbetrieb bei niedriger Umgebungstemperatur;;HZ;;Hz;;r/w;;03/16;;C;;C10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1228;0x04CC;yes;no;Max. Auslasswassertemperatur im Heizbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R42;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1229;0x04CD;yes;no;Max. Zielwassertemperaturbegrenzung bei niedriger AT im Heizbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R43;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1230;0x04CE;yes;no;Max. Zielwassertemperaturbegrenzung bei hoher AT im Heizbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R44;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1231;0x04CF;yes;no;AT zum Starten des elektrischen Heizers ohne Verzögerung;;TEMP1;;°C;;r/w;;03/16;;R;;R45;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1232;0x04D0;yes;no;Temp.-Differenz zwischen max. WW-Solltemp. und max. Auslasstemp.;;TEMP1;;°C;;r/w;;03/16;;R;;R46;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1233;0x04D1;yes;no;AT zum Start der Frequenzbegrenzung im Kühlbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R60;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1234;0x04D2;yes;no;AT-Kompensation Slope / Steigung;;DIGI5;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1235;0x04D3;yes;no;AT-Kompensation Offset / Versatz;;TEMP1;;°C;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1236;0x04D4;yes;no;AT-Kompensationskurve Zone 1 aktivieren;;DIGI1;;;;r/w;;03/16;;H;;H36;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1237;0x04D5;yes;no;AT zum Stoppen der Frequenzbegrenzung im Kühlbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R61;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1238;0x04D6;yes;no;Max. Wärmepumpen-Auslasswassertemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R62;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1239;0x04D7;yes;no;Ziel-Raumtemperatur;;TEMP1;;°C;;r/w;;03/16;;R;;R70;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1240;0x04D8;yes;no;Raumtemperaturdifferenz zum Einschalten im Heizbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R71;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1241;0x04D9;yes;no;Raumtemperaturdifferenz für Standby im Heizbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R72;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1242;0x04DA;yes;no;Raumtemperaturdifferenz zum Einschalten im Kühlbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R73;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1243;0x04DB;yes;no;Raumtemperaturdifferenz für Standby im Kühlbetrieb;;TEMP1;;°C;;r/w;;03/16;;R;;R74;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1244;0x04DC;yes;no;Silentmodus Timer Start aktivieren;;DIGI1;;;;r/w;;03/16;;;;;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1245;0x04DD;yes;no;Silentmodus Timer Start Stunde;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1246;0x04DE;yes;no;Silentmodus Timer Start Minute;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1247;0x04DF;yes;no;Silentmodus Timer Stop aktivieren;;DIGI1;;;;r/w;;03/16;;;;;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1248;0x04E0;yes;no;Silentmodus Timer Stop Stunde;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1249;0x04E1;yes;no;Silentmodus Timer Stop Minute;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1250;0x04E2;yes;no;Systemzeit aktivieren;;DIGI1;;;;r/w;;03/16;;;;;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1251;0x04E3;yes;no;Aktuelle Systemminute;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1252;0x04E4;yes;no;Aktuelle Systemstunde;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1253;0x04E5;yes;no;Aktueller Systemtag;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1254;0x04E6;yes;no;Aktueller Systemmonat;;DIGI1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1255;0x04E7;yes;no;Aktuelles Systemjahr;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1256;0x04E8;yes;no;WP Ein/Aus Timer 1 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG1;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1257;0x04E9;yes;no;WP Ein/Aus Timer 1 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG2;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1258;0x04EA;yes;no;WP Ein/Aus Timer 2 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG3;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1259;0x04EB;yes;no;WP Ein/Aus Timer 2 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG4;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1260;0x04EC;yes;no;WP Ein/Aus Timer 3 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG5;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1261;0x04ED;yes;no;WP Ein/Aus Timer 3 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG6;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1262;0x04EE;yes;no;WP Ein/Aus Timer 4 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG7;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1263;0x04EF;yes;no;WP Ein/Aus Timer 4 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG8;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1264;0x04F0;yes;no;WP Ein/Aus Timer 5 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG9;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1265;0x04F1;yes;no;WP Ein/Aus Timer 5 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG10;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1266;0x04F2;yes;no;WP Ein/Aus Timer 6 Startzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1267;0x04F3;yes;no;WP Ein/Aus Timer 6 Stopzeit;;TIME_HHMM;;;;r/w;;03/16;;KG;;KG12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1268;0x04F4;yes;no;WP Ein/Aus Timer 1+2 Aktiv/Tage Bitmaske;;TIMER_BITPAIR;;;;r/w;;03/16;;KG;;KG13-KG28;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1269;0x04F5;yes;no;WP Ein/Aus Timer 3+4 Aktiv/Tage Bitmaske;;TIMER_BITPAIR;;;;r/w;;03/16;;KG;;KG29-KG44;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1270;0x04F6;yes;no;WP Ein/Aus Timer 5+6 Aktiv/Tage Bitmaske;;TIMER_BITPAIR;;;;r/w;;03/16;;KG;;KG45-KG60;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1271;0x04F7;yes;no;Blockkopf Paket 4 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1272;0x04F8;yes;no;Blockkopf Paket 4 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1273;0x04F9;yes;no;Blockkopf Paket 4 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1274;0x04FA;yes;no;Blockkopf Paket 4 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1275;0x04FB;yes;no;Blockkopf Paket 4 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1276;0x04FC;yes;no;Blockkopf Paket 4 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1277;0x04FD;yes;no;Blockkopf Paket 4 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1278;0x04FE;yes;no;Blockkopf Paket 4 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1279;0x04FF;yes;no;Blockkopf Paket 4 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1280;0x0500;yes;no;Blockkopf Paket 4 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1281;0x0501;yes;no;Timer 1 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1282;0x0502;yes;no;Timer 1 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1283;0x0503;yes;no;Timer 1 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1284;0x0504;yes;no;Timer 1 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1285;0x0505;yes;no;Timer 1 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1286;0x0506;yes;no;"Timer 1 Modus-Code (ASM; 9 = keinen Modus ändern)";;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1287;0x0507;yes;no;Timer 1 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1288;0x0508;yes;no;Timer 2 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1289;0x0509;yes;no;Timer 2 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1290;0x050A;yes;no;Timer 2 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1291;0x050B;yes;no;Timer 2 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1292;0x050C;yes;no;Timer 2 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1293;0x050D;yes;no;Timer 2 Modus (ASM) (9 = keinen Modus ändern);;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1294;0x050E;yes;no;Timer 2 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1295;0x050F;yes;no;Timer 3 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1296;0x0510;yes;no;Timer 3 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1297;0x0511;yes;no;Timer 3 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1298;0x0512;yes;no;Timer 3 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1299;0x0513;yes;no;Timer 3 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1300;0x0514;yes;no;Timer 3 Modus (ASM) (9 = keinen Modus ändern);;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1301;0x0515;yes;no;Timer 3 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1302;0x0516;yes;no;Timer 4 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1303;0x0517;yes;no;Timer 4 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1304;0x0518;yes;no;Timer 4 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1305;0x0519;yes;no;Timer 4 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1306;0x051A;yes;no;Timer 4 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1307;0x051B;yes;no;Timer 4 Modus (ASM) (9 = keinen Modus ändern);;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1308;0x051C;yes;no;Timer 4 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1309;0x051D;yes;no;Timer 5 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1310;0x051E;yes;no;Timer 5 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1311;0x051F;yes;no;Timer 5 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1312;0x0520;yes;no;Timer 5 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1313;0x0521;yes;no;Timer 5 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1314;0x0522;yes;no;Timer 5 Modus (ASM) (9 = keinen Modus ändern);;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1315;0x0523;yes;no;Timer 5 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1316;0x0524;yes;no;Timer 6 Einschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1317;0x0525;yes;no;Timer 6 Ausschaltzeit (HH:MM aus High-/Low-Byte) (ASM);;TIME_HHMM;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1318;0x0526;yes;no;Timer 6 WW-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1319;0x0527;yes;no;Timer 6 HZ-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1320;0x0528;yes;no;Timer 6 Kühlen-Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1321;0x0529;yes;no;Timer 6 Modus (ASM) (9 = keinen Modus ändern);;TIMER_MODE;;;;r/w;;03/16;;;;;;"{""0"":""Warmwasser"",""1"":""Heizen"",""2"":""Kühlen"",""3"":""Warmwasser + Heizen"",""4"":""Warmwasser + Kühlen"",""9"":""keinen Modus ändern / Code 9""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1322;0x052A;yes;no;Timer 6 max. Leistung (ASM);;POWER_KW_X10;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1323;0x052B;yes;no;"Timer 1+2 Aktiv/Tage Bitmaske (ASM; Low-Byte erster Timer, High-Byte zweiter Timer)";;TIMER_BITPAIR;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1324;0x052C;yes;no;"Timer 3+4 Aktiv/Tage Bitmaske (ASM; Low-Byte erster Timer, High-Byte zweiter Timer)";;TIMER_BITPAIR;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1325;0x052D;yes;no;"Timer 5+6 Aktiv/Tage Bitmaske (ASM; Low-Byte erster Timer, High-Byte zweiter Timer)";;TIMER_BITPAIR;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1326;0x052E;yes;no;Zirkulationspumpe Timer 1 Startzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1327;0x052F;yes;no;Zirkulationspumpe Timer 1 Stopzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1328;0x0530;yes;no;Zirkulationspumpe Timer 2 Startzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1329;0x0531;yes;no;Zirkulationspumpe Timer 2 Stopzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1330;0x0532;yes;no;Zirkulationspumpe Timer 3 Startzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1331;0x0533;yes;no;Zirkulationspumpe Timer 3 Stopzeit;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1332;0x0534;yes;no;Zirkulationspumpe Timer 1+2 Aktiv-Bitmaske;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1333;0x0535;yes;no;Zirkulationspumpe Timer 3 Aktiv-Bitmaske;;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1334;0x0536;yes;no;SG Ready Auswahl;;SG_MODE;;;;r/w;;03/16;;SG;;SG01;;"{""0"":""Aus"",""1"":""Einfach / 1 Kontakt"",""2"":""2 Kontakte""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1335;0x0537;yes;no;SG Mode 1 Schlafmodus Zeit;;RAW;;min;;r/w;;03/16;;SG;;SG02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1336;0x0538;yes;no;SG Mode 2 Leistung / wenig PV;;POWER_KW_X10;;kW;;r/w;;03/16;;SG;;SG03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1337;0x0539;yes;no;SG Mode 3 Leistung / mittel PV;;POWER_KW_X10;;kW;;r/w;;03/16;;SG;;SG04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1338;0x053A;yes;no;SG Mode 4 WW-Zieltemperatur-Anhebung;;TEMP1;;;;r/w;;03/16;;SG;;SG05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1339;0x053B;yes;no;SG Mode 4 HZ-Zieltemperatur-Anhebung;;TEMP1;;;;r/w;;03/16;;SG;;SG06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1340;0x053C;yes;no;SG Mode 4 Kühlen-Zieltemperatur-Anhebung;;TEMP1;;;;r/w;;03/16;;SG;;SG07;;;;;;Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.;;;MAIN_ONLY;Register exists only in main mapping.
+1341;0x053D;yes;no;SG Mode 4 E-Heizer / Zusatzfunktion;;DIGI1;;;;r/w;;03/16;;SG;;SG08;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1342;0x053E;yes;no;Niederdruck-Grenzwert für Frequenzbegrenzung;;BAR_X10;;bar;;r/w;;03/16;;A;;A38;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1343;0x053F;yes;no;Maximaler Stromwert;;AMP_X2;;A;;r/w;;03/16;;A;;A39;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1344;0x0540;yes;no;Nenn-Wasserdurchfluss;;FLOW_M3H_X100;;m³/h;;;;;;A;;A40;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1345;0x0541;yes;yes;External Pump Selection / Externe Pumpenauswahl;External Pump Selection / Externe Pumpenauswahl;DIGI1;DIGI1;;;r/w;r/w;03/16;03/16;H;H;H40;H40;"{""0"":""Hot Water Pump / Warmwasserpumpe"",""1"":""Warm Water Circulation Pump / Warmwasser-Zirkulationspumpe"",""2"":""Off Signal when defrosting / Aus-Signal beim Abtauen""}";"{""0"":""Hot Water Pump / Warmwasserpumpe"",""1"":""Warm Water Circulation Pump / Warmwasser-Zirkulationspumpe"",""2"":""Off Signal when defrosting / Aus-Signal beim Abtauen""}";;;Live getestet. Nicht H38. ASM-Zusatz: 2541H beeinflusst Timer-/Pumpen-Seitenauswahl.;Live getestet. Nicht H38. ASM-Zusatz: 2541H beeinflusst Timer-/Pumpen-Seitenauswahl.;;IDENTICAL;Relevant fields are identical.
+1346;0x0542;yes;no;Supervisor-Passwort: 66;;RAW;;;;;;;;H;;H41;;;;;;H41 bestätigt.;;;MAIN_ONLY;Register exists only in main mapping.
+1347;0x0543;yes;no;Max. Kompressorfrequenz im Warmwasserbetrieb;;HZ;;Hz;;r/w;;03/16;;C;;C12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1348;0x0544;yes;yes;Display-Firmware Parameter C13;Display-Firmware Parameter C13;RAW;RAW;;;r/w;r/w;03/16;03/16;C;C;C13;C13;;;;;In App nicht sichtbar.;In App nicht sichtbar.;;IDENTICAL;Relevant fields are identical.
+1349;0x0545;yes;yes;Display-Firmware Parameter C14;Display-Firmware Parameter C14;RAW;RAW;;;r/w;r/w;03/16;03/16;C;C;C14;C14;;;;;In App nicht sichtbar.;In App nicht sichtbar.;;IDENTICAL;Relevant fields are identical.
+1350;0x0546;yes;yes;Display-Firmware Parameter C15;Display-Firmware Parameter C15;RAW;RAW;;;r/w;r/w;03/16;03/16;C;C;C15;C15;;;;;In App nicht sichtbar.;In App nicht sichtbar.;;IDENTICAL;Relevant fields are identical.
+1351;0x0547;yes;yes;Display-Firmware Parameter E20;Display-Firmware Parameter E20;RAW;RAW;;;r/w;r/w;03/16;03/16;E;E;E20;E20;;;;;In App nicht sichtbar.;In App nicht sichtbar.;;IDENTICAL;Relevant fields are identical.
+1352;0x0548;yes;yes;Display-Firmware Parameter E21;Display-Firmware Parameter E21;RAW;RAW;;;r/w;r/w;03/16;03/16;E;E;E21;E21;;;;;In App nicht sichtbar.;In App nicht sichtbar.;;IDENTICAL;Relevant fields are identical.
+1353;0x0549;yes;yes;Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1353];Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1353];RAW;RAW;;;r/w;r/w;03/16;03/16;;;;;;;;;;;;IDENTICAL;Relevant fields are identical.
+1354;0x054A;yes;yes;Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1354];Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1354];RAW;RAW;;;r/w;r/w;03/16;03/16;;;;;;;;;;;;IDENTICAL;Relevant fields are identical.
+1355;0x054B;yes;yes;Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355];Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355];RAW;RAW;;;r/w;r/w;03/16;03/16;;;;;;;;;;;;IDENTICAL;Relevant fields are identical.
+1356;0x054C;yes;no;H42 Einschalt-AT Gehaeusewannenheizung (D30/1437 erst wirksam, wenn AT kleiner H42 ist);;TEMP1;;°C;;r/w;;03/16;;H;;H42;;;;;;H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist. Einheit °C.;;;MAIN_ONLY;Register exists only in main mapping.
+1357;0x054D;yes;no;Differenz: Keine Pumpe Ein bei niedriger Wassertemperatur;;TEMP1;;K;;r/w;;03/16;;Z;;Z19;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1358;0x054E;yes;no;Zone 1 Wasserpumpe im Kühlbetrieb aktivieren;;DIGI1;;;;r/w;;03/16;;Z;;Z20;;"{""0"":""Nein"",""1"":""Ja""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1361;0x0551;yes;no;Blockkopf Paket 5 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1362;0x0552;yes;no;Blockkopf Paket 5 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1363;0x0553;yes;no;Blockkopf Paket 5 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1364;0x0554;yes;no;Blockkopf Paket 5 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1365;0x0555;yes;no;Blockkopf Paket 5 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1366;0x0556;yes;no;Blockkopf Paket 5 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1367;0x0557;yes;no;Blockkopf Paket 5 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1368;0x0558;yes;no;Blockkopf Paket 5 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1369;0x0559;yes;no;Blockkopf Paket 5 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1370;0x055A;yes;no;Blockkopf Paket 5 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1371;0x055B;yes;no;Werkstestmodus / manuelle Steuerung (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1372;0x055C;yes;no;Automatischer Werkstest Ein/Aus (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1373;0x055D;yes;no;Automatischer Werkstest Modus (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1374;0x055E;yes;no;Automatischer Werkstest Zieltemperatur (ASM);;TEMP1;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1375;0x055F;yes;no;Automatischer Werkstest Kompressorfrequenz (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1376;0x0560;yes;no;Automatischer Werkstest Lüfter 1 Drehzahl (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1377;0x0561;yes;no;Automatischer Werkstest Lüfter 2 Drehzahl (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1378;0x0562;yes;no;Automatischer Werkstest Haupt-EEV Schritte (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1379;0x0563;yes;no;Automatischer Werkstest EVI-EEV Schritte (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1380;0x0564;yes;no;Automatischer Werkstest Wasserpumpe Drehzahl (ASM);;RAW;;;;r/w;;03/16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1432;0x0598;yes;no;Ziel-Temperaturdifferenz für Pumpendrehzahlregelung;;TEMP1;;°C;;r/w;;03/16;;P;;P11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1433;0x0599;yes;no;Pumpendrehzahl-Anpassbereich je Periode;;STEPS_N;;N;;r/w;;03/16;;P;;P12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1435;0x059B;yes;no;Nachfüllventil Startzyklus (IDU);;DAYS;;days;;r/w;;03/16;;P;;P13;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1436;0x059C;yes;no;Nachfüllventil Arbeitsdauer (IDU);;SECONDS;;s;;r/w;;03/16;;P;;P14;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1437;0x059D;yes;no;D30 Gehaeusewannenheizung Delays Off Time after Defrost;;MINUTES;;min;;r/w;;03/16;;D;;D30;;;;;;Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.;;;MAIN_ONLY;Register exists only in main mapping.
+1438;0x059E;yes;no;Ziel-Wasserdruck (IDU);;BAR_X10;;bar;;r/w;;03/16;;P;;P15;;;;;;User tested: P15 = Register 1438.;;;MAIN_ONLY;Register exists only in main mapping.
+1444;0x05A4;yes;no;Stopp-Nachfülldruckdifferenz (IDU);;BAR_X10;;bar;;r/w;;03/16;;P;;P16;;;;;;User tested: P16 = Register 1444.;;;MAIN_ONLY;Register exists only in main mapping.
+1451;0x05AB;yes;no;Blockkopf Paket 6 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1452;0x05AC;yes;no;Blockkopf Paket 6 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1453;0x05AD;yes;no;Blockkopf Paket 6 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1454;0x05AE;yes;no;Blockkopf Paket 6 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1455;0x05AF;yes;no;Blockkopf Paket 6 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1456;0x05B0;yes;no;Blockkopf Paket 6 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1457;0x05B1;yes;no;Blockkopf Paket 6 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1458;0x05B2;yes;no;Blockkopf Paket 6 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1459;0x05B3;yes;no;Blockkopf Paket 6 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1460;0x05B4;yes;no;Blockkopf Paket 6 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1464;0x05B8;yes;no;Funktion unbekannt;;RAW;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1466;0x05BA;yes;no;Funktion unbekannt;;RAW;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1476;0x05C4;yes;no;Funktion unbekannt;;RAW;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1541;0x0605;yes;no;Blockkopf Paket 7 / Kennung Wort 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1542;0x0606;yes;no;Blockkopf Paket 7 / Kennung Wort 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1543;0x0607;yes;no;Blockkopf Paket 7 / Kennung Wort 3;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1544;0x0608;yes;no;Blockkopf Paket 7 / Kennung Wort 4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1545;0x0609;yes;no;Blockkopf Paket 7 / Kennung Wort 5;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1546;0x060A;yes;no;Blockkopf Paket 7 / Kennung Wort 6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1547;0x060B;yes;no;Blockkopf Paket 7 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1548;0x060C;yes;no;Blockkopf Paket 7 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1549;0x060D;yes;no;Blockkopf Paket 7 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+1550;0x060E;yes;no;Blockkopf Paket 7 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2001;0x07D1;yes;no;Blockkopf Paket 7 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2002;0x07D2;yes;no;Blockkopf Paket 7 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2003;0x07D3;yes;no;Blockkopf Paket 7 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2004;0x07D4;yes;no;Blockkopf Paket 7 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2005;0x07D5;yes;no;Blockkopf Paket 7 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2006;0x07D6;yes;no;Blockkopf Paket 7 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2007;0x07D7;yes;no;Blockkopf Paket Status 1 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2008;0x07D8;yes;no;Blockkopf Paket Status 1 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2009;0x07D9;yes;no;Blockkopf Paket Status 1 / Marker-Länge;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2010;0x07DA;yes;no;Blockkopf Paket Status 1 / erstes Blockkopf-Register;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2011;0x07DB;yes;no;Gerätezustand;;DIGI1;;;;read;;16;;;;;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2012;0x07DC;yes;no;Aktueller Betriebsstatus;;DIGI1;;;;read;;16;;;;;;"{""0"":""Kühlen"",""1"":""Heizen"",""2"":""Abtauen"",""3"":""Sterilisieren"",""4"":""Warmwasser""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2013;0x07DD;yes;no;Temperaturwert nach Begrenzung;;TEMP1;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2014;0x07DE;yes;no;Temperaturwert nach Wetterkompensation während des Heizens;;TEMP1;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2015;0x07DF;yes;no;Zentrale Abtauautomatik anwenden;;DIGI1;;;;read;;16;;;;;;"{""0"":""Nein"",""1"":""Abtau-Modus verfügbar""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2016;0x07E0;yes;no;Solltemperatur wie 2013 / 2014;;TEMP1;;°C;;read;;16;;;;;;;;;;Skalierung /10 wie 2013/2014.;;;MAIN_ONLY;Register exists only in main mapping.
+2017;0x07E1;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2018;0x07E2;yes;no;025 / Lastausgang (Elektrischer Wassertankheizer);;DIGI1;;;;read-only;;03;;;;;;"{""0"":""Aus"",""1"":""Ein""}";;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2019;0x07E3;yes;no;001 bis 023 / Lastausgänge Bitfeld (vollständig decodiert);;BITFIELD;;;;read-only;;03;;;;;;;;"{""0"":""Kompressor-Ausgang (0=AUS/1=EIN)"",""1"":""Reserviert"",""10"":""011 Alarm-Ausgang (0=AUS/1=EIN)"",""11"":""012 Kurbelgehäuseheizung (0=AUS/1=EIN)"",""12"":""013 Wannenheizung (0=AUS/1=EIN)"",""13"":""021 Heizungswasserpumpe (0=AUS/1=EIN)"",""14"":""022 Hydraulikmodul Wasserkreislauf Elektroheizung (0=AUS/1=EIN)"",""15"":""023 Hydraulikmodul WW-Tank Elektroheizung (0=AUS/1=EIN)"",""2"":""003 Lüfter Hochgeschwindigkeitsausgang (0=AUS/1=EIN)"",""3"":""Lüfter Niedriggeschwindigkeitsausgang (0=AUS/1=EIN)"",""4"":""005 Wasserpumpen-Ausgang (0=AUS/1=EIN)"",""5"":""006 Warmwasserpumpen-Ausgang (0=AUS/1=EIN)"",""6"":""007 4-Wege-Ventil 1 (0=AUS/1=EIN)"",""7"":""008 Elektrische Heizstufe 1 (0=AUS/1=EIN)"",""8"":""009 Elektrische Heizstufe 2 (0=AUS/1=EIN)"",""9"":""010 3-Wege-Ventil (0=AUS/1=EIN)""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2020;0x07E4;yes;no;015 / EEV-Schritte;;DIGI1;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2021;0x07E5;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2022;0x07E6;yes;no;017 / EVI EEV-Schritte;;DIGI1;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2023;0x07E7;yes;no;Anzahl Verdichter-Starts;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2024;0x07E8;yes;no;System 2 Ventil-/EEV-Anzeige Wert (ASM);;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2025;0x07E9;yes;no;System 2 EVI-/Enthalpie-Anzeige Wert (ASM);;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2026;0x07EA;yes;no;9;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2027;0x07EB;yes;no;9;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2028;0x07EC;yes;no;9;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2029;0x07ED;yes;no;Eingangsstrom L1;;DIGI5;;A;;read;;16;;T;;T-Diag5;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2030;0x07EE;yes;no;Eingangsstrom L2;;DIGI5;;A;;read;;16;;T;;T-Diag6;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2031;0x07EF;yes;no;Eingangsstrom L3;;DIGI5;;A;;read;;16;;T;;T-Diag7;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2032;0x07F0;yes;no;Kompressor-Laufzeit;;RAW;;h;;read;;16;;T;;T-Diag8;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2033;0x07F1;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2034;0x07F2;yes;no;Schalterzustände / Kontakte / SG Ready;;BITFIELD;;;;read-only;;03;;S;;S01;;;;"{""0"":""S01 Hochdruckschalter"",""1"":""S02 Niederdruckschalter"",""10"":""S11 Reserviert / unbekannt"",""11"":""S12 Reserviert / unbekannt"",""12"":""SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2 (active-high: 0=Aus, 1=Ein)"",""13"":""SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8 (active-high: 0=Aus, 1=Ein)"",""14"":""S15 Reserviert / unbekannt"",""15"":""S16 Reserviert / unbekannt"",""2"":""S03 Wasserflussschalter"",""3"":""S04 Überhitzungsschalter elektrischer Heizer"",""4"":""S05 Fern-AN/AUS"",""5"":""S06 Fern Heizen/Kühlen"",""6"":""S07 Warmwasserschalter"",""7"":""S08 Reserviert / unbekannt"",""8"":""S09 Reserviert / unbekannt"",""9"":""S10 Heizen/Kühlen AN/AUS""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2035;0x07F3;yes;no;Heizungsrücklauftemperatur;;TEMP1;;;;read;;16;;T;;T40;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2036;0x07F4;yes;no;Heizungsvorlauftemperatur;;TEMP1;;;;read;;16;;T;;T41;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2037;0x07F5;yes;no;Mischrohrauslasswassertemperatur;;TEMP1;;;;read;;16;;T;;T42;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2038;0x07F6;yes;no;WW-Rücklauftemperatur;;TEMP1;;;;read;;16;;T;;T43;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2039;0x07F7;yes;no;WW-Vorlauftemperatur;;TEMP1;;;;read;;16;;T;;T44;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2040;0x07F8;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2041;0x07F9;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2042;0x07FA;yes;no;Phasenstrom des Kompressors;;AMP_X10;;A;;read;;16;;T;;T36;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2043;0x07FB;yes;no;DC-Power-Bus-Spannung;;VOLT;;V;;read;;16;;T;;T37;;;;;;User confirmed unit V/Volt in v0.2.35;;;MAIN_ONLY;Register exists only in main mapping.
+2044;0x07FC;yes;no;IPM-Temperatur.;;TEMP1;;;;read;;16;;T;;T38;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2045;0x07FD;yes;no;Einlasswassertemperatur;;TEMP1;;;;read;;16;;T;;T01;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2046;0x07FE;yes;no;Auslasswassertemperatur;;TEMP1;;;;read;;16;;T;;T02;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2047;0x07FF;yes;no;WW-Tanktemperatur;;TEMP1;;;;read;;16;;T;;T08;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2048;0x0800;yes;no;Umgebungstemperatur (AT);;TEMP1;;;;read;;16;;T;;T04;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2049;0x0801;yes;no;Verdampfertemperatur;;TEMP1;;;;read;;16;;T;;T03;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2050;0x0802;yes;no;Verteilerrohrtemperatur;;TEMP1;;;;read;;16;;T;;T14;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2051;0x0803;yes;no;Saugsungstemperatur;;TEMP1;;;;read;;16;;T;;T05;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2052;0x0804;yes;no;Puffertanktemperatur;;TEMP1;;;;read;;16;;T;;T07;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2053;0x0805;yes;no;Abgastemperatur;;TEMP1;;;;read;;16;;T;;T12;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2054;0x0806;yes;no;Elektrische Leistung / Unit Power;;POWER_KW_X10;;kW;;read;;16;;T;;T54;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2055;0x0807;yes;no;Frostschutztemperatur (Am PlattenWT);;TEMP1;;;;read;;16;;T;;T06;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2056;0x0808;yes;no;T? / System 1 Frostschutztemperatur 2 / Coil/Frost Temp 2 (ASM V1.3);;TEMP1;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2057;0x0809;yes;no;"Livewert 2057 (nicht T34; Bedeutung unbestätigt)";;RAW;;;;read;;16;;;;;;;;;;Korrektur V0.2.41 fix8: 2057 ist nicht T34. T34 / AC-Spannung ist 2062.;;;MAIN_ONLY;Register exists only in main mapping.
+2058;0x080A;yes;no;Raumtemperatur;;DIGI5;;;;read;;16;;T;;T09;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2059;0x080B;yes;no;Wärmeleistung / Unit Capacity;;POWER_KW_X10;;kW;;read;;16;;T;;T59;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2060;0x080C;yes;no;COP;;COP_X100;;COP;;read;;16;;T;;T60;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2061;0x080D;yes;no;IPM-Hochfehler-Temperatur;;TEMP1;;;;read;;16;;T;;T33;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2062;0x080E;yes;no;AC-Eingangsspannung;;VOLT;;V;;read;;16;;T;;T34;;;;;;"User confirmed unit V/Volt in v0.2.35 T34 bestätigt hier; 2057 ist nicht T34.";;;MAIN_ONLY;Register exists only in main mapping.
+2063;0x080F;yes;no;EVI-Einlasstemperatur;;TEMP1;;°C;;read;;16;;T;;T10;;;;;;User confirmed unit °C in v0.2.35;;;MAIN_ONLY;Register exists only in main mapping.
+2064;0x0810;yes;no;EVI-Auslasstemperatur;;TEMP1;;;;read;;16;;T;;T11;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2065;0x0811;yes;no;Verdampfungstemperatur / Evaporating Temp (ASM);;TEMP1;;°C;;read;;16;;T;;T-Diag1;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2066;0x0812;yes;no;Abgas-Überhitzung / Exhaust Superheat (ASM);;TEMP1;;K;;read;;16;;T;;T-Diag2;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2067;0x0813;yes;no;Rückgas-/Saug-Überhitzung / Suction Superheat (ASM);;TEMP1;;K;;read;;16;;T;;T-Diag3;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2068;0x0814;yes;no;System 2 Strom / Current (ASM);;DIGI5;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2069;0x0815;yes;no;Niederdruck;;BAR_X10;;bar;;read;;16;;T;;T15;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2070;0x0816;yes;no;System 2 Druck / Pressure (ASM);;DIGI5;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2071;0x0817;yes;no;Kompressorfrequenz;;DIGI1;;;;read;;16;;T;;T30;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2072;0x0818;yes;no;Betriebsfrequenz des Kompressors;;DIGI1;;;;read;;16;;T;;T31;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2073;0x0819;yes;no;Max. Frequenz vom Kompressortreiber;;DIGI1;;;;read;;16;;T;;T32;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2074;0x081A;yes;no;Drehzahl des Lüftermotors 1;;DIGI1;;;;read;;16;;T;;T27;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2075;0x081B;yes;no;Drehzahl des Lüftermotors 2;;DIGI1;;;;read;;16;;T;;T28;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2076;0x081C;yes;no;Zieldrehzahl des Lüftermotors;;DIGI1;;;;read;;16;;T;;T29;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2077;0x081D;yes;no;Wasserdurchflussrate;;FLOW_M3H_X100;;m³/h;;read;;16;;T;;T39;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2078;0x081E;yes;no;Energiezähler elektrisch high bits;;KWH;;kWh;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2079;0x081F;yes;no;Energiezähler elektrisch low bits / total;;KWH;;kWh;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2080;0x0820;yes;no;Reserviert;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2081;0x0821;yes;no;Fehler 7 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR07;;;;"{""0"":""IPM Überhitzung"",""1"":""Kompressor Startfehler"",""10"":""AC-Eingangs-Überstromabschaltung"",""11"":""Eingangsspannungs-Abtastfehler"",""12"":""DSP ↔ PFC Kommunikationsfehler"",""13"":""Antriebsplatinen-Temperaturfehler"",""14"":""DSP ↔ Kommunikationsplatine Fehler"",""15"":""Hauptplatinen-Kommunikationsfehler"",""2"":""Kompressor Überstrom"",""3"":""Phasenverlust Eingangsspannung"",""4"":""IPM Stromabtastfehler"",""5"":""Überhitzungsschutz Antriebsplatine"",""6"":""Vorladefehler"",""7"":""DC-Sammelschienen-Überspannung"",""8"":""DC-Sammelschienen-Unterspannung"",""9"":""AC-Eingangsspannung Unterspannung""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2082;0x0822;yes;no;Fehler 8 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR08;;;;"{""0"":""IPM Überhitzungsstopp"",""1"":""Kompressor Standardphase"",""15"":""Kompressor-Übergeschwindigkeitsschutz"",""3"":""Eingangsstrom-Abtastfehler"",""6"":""EEPROM-Fehler"",""7"":""Eingangsspannung Überbegrenzungsschutz""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2083;0x0823;yes;no;Fehler 9 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR09;;;;"{""0"":""Stromregelungsfrequenz-Alarm"",""1"":""Kompressor Magnetschutz-Alarm"",""2"":""Leistungseinheit Überhitzung"",""4"":""AC-Eingangsstrom Regelungsalarm"",""5"":""EEPROM-Fehlerwarnung""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2084;0x0824;yes;no;9;;RAW;;;;read;;16;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2085;0x0825;yes;no;Fehler 1 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR01;;;;"{""10"":""Winter-Frostschutz Stufe 1"",""11"":""Winter-Frostschutz Stufe 2"",""12"":""Frostschutz"",""14"":""Raumtemperaturfehler"",""2"":""Heizungsrücklauftemperatur-Sensorfehler"",""3"":""Heizungsauslasswassertemperatur-Sensorfehler"",""4"":""Hochdruckschutz"",""6"":""Niederdruckschutz"",""8"":""Wasserflussschutz"",""9"":""Überlastschutz der Elektroheizung""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2086;0x0826;yes;no;Fehler 2 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR02;;;;"{""3"":""Lüfter 1 Überlastungs-Drehzahlbegrenzung"",""4"":""Lüfter 2 Überlastungs-Drehzahlbegrenzung"",""5"":""Temp.diff. Ein-/Auslasswasser zu groß"",""6"":""Auslasswasser überhitzt"",""7"":""Mischwasser-Auslasswassertemperatur-Sensorfehler"",""8"":""Warmwasserrücklauftemperatur-Sensorfehler"",""9"":""Warmwasserauslasswassertemperatur-Sensorfehler""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2087;0x0827;yes;no;Fehler 3 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR03;;;;"{""12"":""Frostschutz (3x)"",""4"":""Hochdruckschutz (3x)"",""6"":""Niederdruckschutz (3x)"",""8"":""Wasserflussschutz (3x)"",""9"":""Elektroheizungsschutz (3x)""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2088;0x0828;yes;no;Fehler 4 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR04;;;;"{""2"":""Temp.diff. Ein-/Auslasswasser zu groß (3x)"",""3"":""Auslasswassertemperatur zu niedrig (3x)"",""4"":""Auslasswasser Übertemperaturschutz (3x)""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2089;0x0829;yes;no;Fehler 5 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR05;;;;"{""0"":""Einlasswassertemperaturfehler"",""1"":""Auslasswassertemperaturfehler"",""10"":""EVI Auslasstemperaturfehler"",""11"":""Abgastemperaturfehler"",""13"":""System 1 Drucksensorfehler"",""14"":""Niedrige Umgebungstemperaturfehler"",""15"":""Auslasstemperatur zu niedriger Schutz"",""2"":""Spulentemperaturfehler"",""3"":""Umgebungstemperaturfehler"",""4"":""Sauggastemperaturfehler"",""5"":""Frostschutztemperaturfehler"",""6"":""Spulenauslasswassertemperatur-Sensorfehler"",""9"":""EVI Einlasstemperaturfehler""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2090;0x082A;yes;no;Fehler 6 / Störmeldebits;;BITFIELD;;;;read;;16;;ERR;;ERR06;;;;"{""11"":""Lüfter 1 Fehler"",""12"":""Lüfter 2 Fehler"",""13"":""Kommunikationsfehler Hauptplatine ↔ Lüfter 1"",""15"":""Kommunikationsfehler Hauptplatine ↔ Lüfter 2"",""8"":""Warmwassertemperaturfehler""}";;;;;MAIN_ONLY;Register exists only in main mapping.
+2091;0x082B;yes;no;Blockkopf Paket 8 / Kennung Wort 1 / ASCII Zeichen 1-2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2092;0x082C;yes;no;Blockkopf Paket 8 / Kennung Wort 2 / ASCII Zeichen 3-4;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2093;0x082D;yes;no;Blockkopf Paket 8 / Kennung Wort 3 / ASCII Zeichen 5-6;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2094;0x082E;yes;no;Blockkopf Paket 8 / Kennung Wort 4 / ASCII Zeichen 7-8;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2095;0x082F;yes;no;Blockkopf Paket 8 / Kennung Wort 5 / ASCII Zeichen 9-10;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2096;0x0830;yes;no;Blockkopf Paket 8 / Kennung Wort 6 / ASCII Zeichen 11-12;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2097;0x0831;yes;no;Blockkopf Paket Status 2 / Reserve 1;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2098;0x0832;yes;no;Blockkopf Paket Status 2 / Reserve 2;;BLOCK;;;;read;;03;;;;;;;;;;;;;MAIN_ONLY;Register exists only in main mapping.
+2099;0x0833;yes;yes;Blockkopf Paket Status 2 / Marker-Länge;DWIN/Display Rohstatusblock 2099ff Wort 1 (Bedeutung unklar);BLOCK;BLOCK;;;read;read;03;03;;;;;;;;;;;name;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2100;0x0834;yes;yes;Blockkopf Paket Status 2 / erstes Blockkopf-Register;DWIN/Display Rohstatusblock 2099ff Wort 2 (Bedeutung unklar);BLOCK;BLOCK;;;read;read;03;03;;;;;;;;;;;name;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2101;0x0835;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 3 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2102;0x0836;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 4 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2103;0x0837;yes;yes;Hauptcontroler Softwarecode (ASM);DWIN/Display Rohstatusblock 2099ff Wort 5 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2104;0x0838;yes;yes;Hauptsoftwareversion;Displaybus 2099ff Rohwort 6 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;16;;;;;;;;;;;;name,mode,function;WRITE_PERMISSION_DIFF;Writable assessment differs based on mode/function.
+2105;0x0839;yes;yes;Softwarecode;"DWIN/Display Rohstatusblock Wort 7 (wechselt 228/229; Bedeutung unklar)";RAW;RAW;;;read;r/w;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2106;0x083A;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 8 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2107;0x083B;yes;yes;Kommunikations-Heartbeat / WP-Paket gültig 0x5AA5 (Merker Display-Init);Displaybus 2099ff Rohwort 9 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;16;;;;;;;;;;;;name,mode,function,note;WRITE_PERMISSION_DIFF;Writable assessment differs based on mode/function.
+2108;0x083C;yes;yes;Lüfter-Stummschalt-Flag / Fan Mute Flag (ASM);"DWIN/Display Rohstatusblock Wort 10 (wechselt 310..313; Bedeutung unklar)";RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2109;0x083D;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 11 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2110;0x083E;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 12 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2111;0x083F;yes;yes;Display Nr.;DWIN/Display Rohstatusblock 2099ff Wort 13 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2112;0x0840;yes;yes;Display Version;DWIN/Display Rohstatusblock 2099ff Wort 14 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2113;0x0841;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 15 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2114;0x0842;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 16 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2115;0x0843;yes;yes;UP PWM aktuell;UP PWM aktuell;PERCENT;PERCENT;%;%;read;;16;;;;;;;;;;;;mode,function;WRITE_PERMISSION_DIFF;Writable assessment differs based on mode/function.
+2116;0x0844;yes;yes;Funktion unbekannt;DWIN/Display Rohstatusblock 2099ff Wort 18 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2117;0x0845;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 19 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2118;0x0846;yes;yes;Energiezähler elektrisch Heizen;DWIN/Display Rohstatusblock 2099ff Wort 20 (Bedeutung unklar);KWH;RAW;kWh;;read;write;16;16;;;;;;;;;;;name,type,unit,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2119;0x0847;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 21 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2120;0x0848;yes;yes;Energiezähler Wärmemenge Heizen;DWIN/Display Rohstatusblock 2099ff Wort 22 (Bedeutung unklar);KWH;RAW;kWh;;read;write;16;16;;;;;;;;;;;name,type,unit,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2121;0x0849;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 23 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2122;0x084A;yes;yes;Funktion unbekannt;DWIN/Display Rohstatusblock 2099ff Wort 24 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2123;0x084B;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 25 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2124;0x084C;yes;yes;Funktion unbekannt;DWIN/Display Rohstatusblock 2099ff Wort 26 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2125;0x084D;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 27 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2126;0x084E;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 28 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2127;0x084F;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 29 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2128;0x0850;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 30 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2129;0x0851;yes;yes;Reserviert;DWIN/Display Rohstatusblock 2099ff Wort 31 (Bedeutung unklar);RAW;RAW;;;read;write;16;16;;;;;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2130;0x0852;yes;yes;IPM-Temperatur des externen Lüftermotorantriebs;DWIN/Display Rohstatusblock 2099ff Wort 32 (Bedeutung unklar);DIGI5;DIGI5;;;read;write;16;16;T;T;T46;T46;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2131;0x0853;yes;yes;Leistung des externen Lüftermotorantriebs;DWIN/Display Rohstatusblock 2099ff Wort 33 (Bedeutung unklar);DIGI1;DIGI1;;;read;write;16;16;T;T;T47;T47;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2132;0x0854;yes;yes;Strom des externen Lüftermotorantriebs.;DWIN/Display Rohstatusblock 2099ff Wort 34 (Bedeutung unklar);DIGI6;DIGI6;;;read;write;16;16;T;T;T48;T48;;;;;;;name,mode;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2133;0x0855;yes;yes;SG Ready aktiver Modus;Displaybus 2099ff Rohwort 35 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read-only;;03;;SG;;SGstatus;;"{""0"":""WP Aus oder SG deaktiviert"",""1"":""SG Mode 1 / Schlafmodus"",""2"":""SG Mode 2 / wenig PV"",""3"":""SG Mode 3 / mittel PV"",""4"":""SG Mode 4 / High PV"",""5"":""Normalbetrieb""}";;;;;;name,mode,function,block,code,value_map,description;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2134;0x0856;yes;yes;Timer State Leistungsbegrenzungstimer 1-6;Displaybus 2099ff Rohwort 36 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;03;;;;;;"{""0"":""disabled"",""1"":""enabled""}";;;;;;name,mode,function,value_map,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2135;0x0857;no;yes;;Displaybus 2099ff Rohwort 37 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2136;0x0858;yes;yes;Funktion unbekannt;Displaybus 2099ff Rohwort 38 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;03;;;;;;;;;;;;name,mode,function,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2137;0x0859;yes;yes;Funktion unbekannt;Displaybus 2099ff Rohwort 39 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;03;;;;;;;;;;;;name,mode,function,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2138;0x085A;yes;yes;Funktion unbekannt;Displaybus 2099ff Rohwort 40 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;03;;;;;;;;;;;;name,mode,function,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2139;0x085B;no;yes;;Displaybus 2099ff Rohwort 41 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2140;0x085C;no;yes;;Displaybus 2099ff Rohwort 42 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2141;0x085D;no;yes;;Displaybus 2099ff Rohwort 43 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2142;0x085E;no;yes;;Displaybus 2099ff Rohwort 44 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2143;0x085F;no;yes;;Displaybus 2099ff Rohwort 45 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2144;0x0860;yes;yes;Funktion unbekannt;Displaybus 2099ff Rohwort 46 (nur Diagnose, nicht Warmlink);RAW;RAW;;;read;;03;;;;;;;;;;;;name,mode,function,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+2145;0x0861;no;yes;;Displaybus 2099ff Rohwort 47 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2146;0x0862;no;yes;;Displaybus 2099ff Rohwort 48 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2147;0x0863;no;yes;;Displaybus 2099ff Rohwort 49 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2148;0x0864;no;yes;;Displaybus 2099ff Rohwort 50 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+2149;0x0865;no;yes;;Displaybus 2099ff Rohwort 51 (nur Diagnose, nicht Warmlink);;RAW;;;;;;;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3001;0x0BB9;no;yes;;DWIN 3001ff W1 Anzeige-/Status 1;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3002;0x0BBA;no;yes;;DWIN 3001ff W2 Anzeige-/Status 2;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3003;0x0BBB;no;yes;;DWIN 3001ff W3 Anzeige-/Status 3;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3004;0x0BBC;no;yes;;DWIN 3001ff W4 Anzeige-/Status 4;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3005;0x0BBD;no;yes;;DWIN 3001ff W5 Anzeige-/Status 5;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3006;0x0BBE;no;yes;;DWIN 3001ff W6 Anzeige-/Status 6;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3007;0x0BBF;no;yes;;DWIN 3001ff W7 Anzeige-/Status 7;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3008;0x0BC0;no;yes;;DWIN 3001ff W8 Anzeige-/Status 8;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3009;0x0BC1;no;yes;;DWIN 3001ff W9 Anzeige-/Status 9;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3010;0x0BC2;no;yes;;DWIN 3001ff W10 Anzeige-/Status 10;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3011;0x0BC3;no;yes;;DWIN 0BC3 Parameter-Sync-/Änderungsflag;;RAW;;;;read;;03;;;;;;"{""0"":""kein Änderungsflag"",""128"":""Paket 1541 geändert"",""16"":""Paket 1271 geändert"",""2"":""Paket 1001 geändert"",""32"":""Paket 1361 geändert"",""32768"":""Initial/Reboot: Parameterpakete neu laden"",""4"":""Paket 1091 geändert"",""64"":""Paket 1451 geändert"",""8"":""Paket 1181 geändert""}";;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+3012;0x0BC4;yes;yes;Display Nr.;DWIN 3001ff W12 Anzeige-/Pointer-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3013;0x0BC5;yes;yes;Display Version;DWIN 3001ff W13 Anzeige-/Pointer-Kandidat;VERSION_X10;RAW;;;read;read;03;03;;;;;;"{""17"":""V1.7 Display-Software""}";;;;;name,type,value_map,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3014;0x0BC6;yes;yes;Nr.;DWIN 3001ff W14 Anzeige-/Pointer-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3015;0x0BC7;yes;yes;Nr.;DWIN 3001ff W15 Anzeige-/Pointer-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3016;0x0BC8;yes;yes;Wochentag;DWIN 3001ff W16 kleiner Code / Status-Kandidat;RAW;RAW;;;read;read;03;03;;;;;"{""0"":""Sonntag""}";;;;;;name,value_map,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3017;0x0BC9;yes;yes;Jahr + 2000;DWIN 3001ff W17 Anzeige-/Status-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3018;0x0BCA;yes;yes;Monat;DWIN 3001ff W18 Anzeige-/Status-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3019;0x0BCB;yes;yes;Tag;DWIN 3001ff W19 Anzeige-/Status-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3020;0x0BCC;yes;yes;Stunde;DWIN 3001ff W20 Anzeige-/Status-Kandidat;RAW;RAW;;;read;read;03;03;;;;;;;;;;;name,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+3021;0x0BCD;yes;yes;Minute;"DWIN Anzeige-/Icon-/Seiten-Code 3021 (Kandidat; nicht direkt 2012)";RAW;RAW;;;read;read;03;03;;;;;;"{""0"":""Code 0 - noch nicht zugeordnet"",""1"":""Code 1 - noch nicht zugeordnet"",""10"":""Code 10 - noch nicht zugeordnet"",""11"":""Code 11 - noch nicht zugeordnet"",""12"":""Code 12 - noch nicht zugeordnet"",""13"":""Code 13 - noch nicht zugeordnet"",""14"":""Code 14 - noch nicht zugeordnet"",""15"":""Code 15 - noch nicht zugeordnet"",""16"":""Code 16 - noch nicht zugeordnet"",""17"":""Code 17 - noch nicht zugeordnet"",""18"":""Code 18 - noch nicht zugeordnet"",""19"":""Code 19 - noch nicht zugeordnet"",""2"":""Code 2 - noch nicht zugeordnet"",""20"":""Code 20 - noch nicht zugeordnet"",""3"":""Code 3 - noch nicht zugeordnet"",""4"":""Code 4 - noch nicht zugeordnet"",""5"":""Code 5 - noch nicht zugeordnet"",""6"":""Code 6 - noch nicht zugeordnet"",""7"":""Code 7 - noch nicht zugeordnet"",""8"":""Code 8 - noch nicht zugeordnet"",""9"":""Code 9 - noch nicht zugeordnet""}";;;;;name,value_map,note;DIFFERENT;"Relevant fields differ; no source was selected as authoritative."
+4544;0x11C0;no;yes;;DWIN 11C0 Abtau-/Status-Icon (ASM-Kandidat);;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4720;0x1270;no;yes;;DWIN 1270 Temperatur-/Anzeige-Kandidatenblock;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4721;0x1271;no;yes;;DWIN Wertebereich 0x1271 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4722;0x1272;no;yes;;DWIN 0x1272 WW-Tanktemperatur Anzeige (Korrelation zu WREG 2047);;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4723;0x1273;no;yes;;DWIN Wertebereich 0x1273 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4724;0x1274;no;yes;;DWIN 0x1274 Einlasswassertemperatur Anzeige (Korrelation zu WREG 2045);;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4725;0x1275;no;yes;;DWIN 0x1275 Auslasswassertemperatur Anzeige (Kandidat, Korrelation zu WREG 2046);;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4726;0x1276;no;yes;;DWIN Wertebereich 0x1276 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4727;0x1277;no;yes;;DWIN Wertebereich 0x1277 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4728;0x1278;no;yes;;DWIN 0x1278 Anzeige-Sollwert/Kandidat 45.0;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4729;0x1279;no;yes;;DWIN 0x1279 Anzeige-Sollwert/Grenzwert Kandidat 35.0;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4730;0x127A;no;yes;;DWIN Wertebereich 0x127A Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4731;0x127B;no;yes;;DWIN Wertebereich 0x127B Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4732;0x127C;no;yes;;DWIN 0x127C Heiz-Soll / berechneter Heiz-Sollwert Anzeige;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4733;0x127D;no;yes;;DWIN Wertebereich 0x127D Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4734;0x127E;no;yes;;DWIN Wertebereich 0x127E Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4735;0x127F;no;yes;;DWIN Wertebereich 0x127F Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4736;0x1280;no;yes;;DWIN Wertebereich 0x1280 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4737;0x1281;no;yes;;DWIN Wertebereich 0x1281 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4738;0x1282;no;yes;;DWIN Wertebereich 0x1282 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4739;0x1283;no;yes;;DWIN Wertebereich 0x1283 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4740;0x1284;no;yes;;DWIN Wertebereich 0x1284 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4741;0x1285;no;yes;;DWIN Wertebereich 0x1285 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4742;0x1286;no;yes;;DWIN Wertebereich 0x1286 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4743;0x1287;no;yes;;DWIN Wertebereich 0x1287 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4744;0x1288;no;yes;;DWIN Wertebereich 0x1288 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4745;0x1289;no;yes;;DWIN Wertebereich 0x1289 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4746;0x128A;no;yes;;DWIN Wertebereich 0x128A Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4747;0x128B;no;yes;;DWIN Wertebereich 0x128B Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4748;0x128C;no;yes;;DWIN Wertebereich 0x128C Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4749;0x128D;no;yes;;DWIN Wertebereich 0x128D Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4750;0x128E;no;yes;;DWIN Wertebereich 0x128E Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4751;0x128F;no;yes;;DWIN Wertebereich 0x128F Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4752;0x1290;no;yes;;DWIN Wertebereich 0x1290 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4753;0x1291;no;yes;;DWIN Wertebereich 0x1291 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4754;0x1292;no;yes;;DWIN Wertebereich 0x1292 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4755;0x1293;no;yes;;DWIN Wertebereich 0x1293 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4756;0x1294;no;yes;;DWIN Wertebereich 0x1294 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4757;0x1295;no;yes;;DWIN Wertebereich 0x1295 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4758;0x1296;no;yes;;DWIN Wertebereich 0x1296 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4759;0x1297;no;yes;;DWIN Wertebereich 0x1297 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4760;0x1298;no;yes;;DWIN Wertebereich 0x1298 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4761;0x1299;no;yes;;DWIN Wertebereich 0x1299 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4762;0x129A;no;yes;;DWIN Wertebereich 0x129A Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4763;0x129B;no;yes;;DWIN Wertebereich 0x129B Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4764;0x129C;no;yes;;DWIN Wertebereich 0x129C Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4765;0x129D;no;yes;;DWIN Wertebereich 0x129D Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4766;0x129E;no;yes;;DWIN Wertebereich 0x129E Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4767;0x129F;no;yes;;DWIN Wertebereich 0x129F Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4768;0x12A0;no;yes;;DWIN Wertebereich 0x12A0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4769;0x12A1;no;yes;;DWIN Wertebereich 0x12A1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4770;0x12A2;no;yes;;DWIN 0x12A2 WW-Tanktemperatur Anzeige Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4771;0x12A3;no;yes;;DWIN Wertebereich 0x12A3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4772;0x12A4;no;yes;;DWIN 0x12A4 Einlasswassertemperatur Anzeige Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4773;0x12A5;no;yes;;DWIN 0x12A5 Auslasswassertemperatur Anzeige Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4774;0x12A6;no;yes;;DWIN Wertebereich 0x12A6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4775;0x12A7;no;yes;;DWIN Wertebereich 0x12A7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4776;0x12A8;no;yes;;DWIN 0x12A8 Anzeige-Sollwert/Kandidat 45.0 Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4777;0x12A9;no;yes;;DWIN 0x12A9 Anzeige-Sollwert/Grenzwert Kandidat 35.0 Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4778;0x12AA;no;yes;;DWIN Wertebereich 0x12AA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4779;0x12AB;no;yes;;DWIN Wertebereich 0x12AB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4780;0x12AC;no;yes;;DWIN 0x12AC Heiz-Soll / berechneter Heiz-Sollwert Spiegelblock;;TEMP1;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4781;0x12AD;no;yes;;DWIN Wertebereich 0x12AD Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4782;0x12AE;no;yes;;DWIN Wertebereich 0x12AE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4783;0x12AF;no;yes;;DWIN Wertebereich 0x12AF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4784;0x12B0;no;yes;;DWIN Wertebereich 0x12B0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4785;0x12B1;no;yes;;DWIN Wertebereich 0x12B1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4786;0x12B2;no;yes;;DWIN Wertebereich 0x12B2 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4787;0x12B3;no;yes;;DWIN Wertebereich 0x12B3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4788;0x12B4;no;yes;;DWIN Wertebereich 0x12B4 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4789;0x12B5;no;yes;;DWIN Wertebereich 0x12B5 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4790;0x12B6;no;yes;;DWIN Wertebereich 0x12B6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4791;0x12B7;no;yes;;DWIN Wertebereich 0x12B7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4792;0x12B8;no;yes;;DWIN Wertebereich 0x12B8 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4793;0x12B9;no;yes;;DWIN Wertebereich 0x12B9 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4794;0x12BA;no;yes;;DWIN Wertebereich 0x12BA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4795;0x12BB;no;yes;;DWIN Wertebereich 0x12BB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4796;0x12BC;no;yes;;DWIN Wertebereich 0x12BC Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4797;0x12BD;no;yes;;DWIN Wertebereich 0x12BD Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4798;0x12BE;no;yes;;DWIN Wertebereich 0x12BE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4799;0x12BF;no;yes;;DWIN Wertebereich 0x12BF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4800;0x12C0;no;yes;;DWIN Wertebereich 0x12C0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4801;0x12C1;no;yes;;DWIN Wertebereich 0x12C1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4802;0x12C2;no;yes;;DWIN Wertebereich 0x12C2 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4803;0x12C3;no;yes;;DWIN Wertebereich 0x12C3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4804;0x12C4;no;yes;;DWIN Wertebereich 0x12C4 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4805;0x12C5;no;yes;;DWIN Wertebereich 0x12C5 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4806;0x12C6;no;yes;;DWIN Wertebereich 0x12C6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4807;0x12C7;no;yes;;DWIN Wertebereich 0x12C7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4808;0x12C8;no;yes;;DWIN Wertebereich 0x12C8 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4809;0x12C9;no;yes;;DWIN Wertebereich 0x12C9 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4810;0x12CA;no;yes;;DWIN Wertebereich 0x12CA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4811;0x12CB;no;yes;;DWIN Wertebereich 0x12CB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4812;0x12CC;no;yes;;DWIN Wertebereich 0x12CC Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4813;0x12CD;no;yes;;DWIN Wertebereich 0x12CD Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4814;0x12CE;no;yes;;DWIN Wertebereich 0x12CE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4815;0x12CF;no;yes;;DWIN Wertebereich 0x12CF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4816;0x12D0;no;yes;;DWIN Wertebereich 0x12D0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4817;0x12D1;no;yes;;DWIN Wertebereich 0x12D1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4818;0x12D2;no;yes;;DWIN Wertebereich 0x12D2 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4819;0x12D3;no;yes;;DWIN Wertebereich 0x12D3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4820;0x12D4;no;yes;;DWIN Wertebereich 0x12D4 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4821;0x12D5;no;yes;;DWIN Wertebereich 0x12D5 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4822;0x12D6;no;yes;;DWIN Wertebereich 0x12D6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4823;0x12D7;no;yes;;DWIN Wertebereich 0x12D7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4824;0x12D8;no;yes;;DWIN Wertebereich 0x12D8 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4825;0x12D9;no;yes;;DWIN Wertebereich 0x12D9 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4826;0x12DA;no;yes;;DWIN Wertebereich 0x12DA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4827;0x12DB;no;yes;;DWIN Wertebereich 0x12DB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4828;0x12DC;no;yes;;DWIN Wertebereich 0x12DC Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4829;0x12DD;no;yes;;DWIN Wertebereich 0x12DD Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4830;0x12DE;no;yes;;DWIN Wertebereich 0x12DE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4831;0x12DF;no;yes;;DWIN Wertebereich 0x12DF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4832;0x12E0;no;yes;;DWIN Wertebereich 0x12E0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4833;0x12E1;no;yes;;DWIN Wertebereich 0x12E1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4834;0x12E2;no;yes;;DWIN Wertebereich 0x12E2 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4835;0x12E3;no;yes;;DWIN Wertebereich 0x12E3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4836;0x12E4;no;yes;;DWIN Wertebereich 0x12E4 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4837;0x12E5;no;yes;;DWIN Wertebereich 0x12E5 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4838;0x12E6;no;yes;;DWIN Wertebereich 0x12E6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4839;0x12E7;no;yes;;DWIN Wertebereich 0x12E7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4840;0x12E8;no;yes;;DWIN Wertebereich 0x12E8 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4841;0x12E9;no;yes;;DWIN Wertebereich 0x12E9 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4842;0x12EA;no;yes;;DWIN Wertebereich 0x12EA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4843;0x12EB;no;yes;;DWIN Wertebereich 0x12EB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4844;0x12EC;no;yes;;DWIN Wertebereich 0x12EC Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4845;0x12ED;no;yes;;DWIN Wertebereich 0x12ED Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4846;0x12EE;no;yes;;DWIN Wertebereich 0x12EE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4847;0x12EF;no;yes;;DWIN Wertebereich 0x12EF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4848;0x12F0;no;yes;;DWIN Wertebereich 0x12F0 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4849;0x12F1;no;yes;;DWIN Wertebereich 0x12F1 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4850;0x12F2;no;yes;;DWIN Wertebereich 0x12F2 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4851;0x12F3;no;yes;;DWIN Wertebereich 0x12F3 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4852;0x12F4;no;yes;;DWIN Wertebereich 0x12F4 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4853;0x12F5;no;yes;;DWIN Wertebereich 0x12F5 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4854;0x12F6;no;yes;;DWIN Wertebereich 0x12F6 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4855;0x12F7;no;yes;;DWIN Wertebereich 0x12F7 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4856;0x12F8;no;yes;;DWIN Wertebereich 0x12F8 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4857;0x12F9;no;yes;;DWIN Wertebereich 0x12F9 Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4858;0x12FA;no;yes;;DWIN Wertebereich 0x12FA Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4859;0x12FB;no;yes;;DWIN Wertebereich 0x12FB Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4860;0x12FC;no;yes;;DWIN Wertebereich 0x12FC Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4861;0x12FD;no;yes;;DWIN Wertebereich 0x12FD Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4862;0x12FE;no;yes;;DWIN Wertebereich 0x12FE Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+4863;0x12FF;no;yes;;DWIN Wertebereich 0x12FF Temperatur-/Anzeige-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+5920;0x1720;no;yes;;DWIN 1720 Modus-Anzeige / Textpointer-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+5936;0x1730;no;yes;;DWIN 1730 Betriebsstatus-Anzeige / Textpointer-Kandidat;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6144;0x1800;no;yes;;DWIN 1800 Anzeigeobjekt-/Layoutblock (kein Warmlink-Register);;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6145;0x1801;no;yes;;DWIN 1801 Anzeigeobjekt-/Layoutparameter;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6146;0x1802;no;yes;;"DWIN 1802 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp";;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6176;0x1820;no;yes;;DWIN 1820 Anzeigeobjekt-/Layoutblock (kein Temperatur-Rohwert);;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6177;0x1821;no;yes;;DWIN 1821 Anzeigeobjekt-/Layoutparameter;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6178;0x1822;no;yes;;"DWIN 1822 Anzeigeobjekt-/Layoutparameter; nicht sicher Temp";;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6272;0x1880;no;yes;;DWIN 1880 Anzeige-/Temperatur-Kandidatenblock;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+6656;0x1A00;no;yes;;DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock;;RAW;;;;read;;03;;;;;;;;;;;;DISPLAY_ONLY;Register exists only in display mapping.
+91105;0x163E1;yes;yes;Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062;Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062;DIGI1;DIGI1;V;V;read;read;03;03;DWINV;DWINV;DV2105;DV2105;;;;;"PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat.";"PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat.";;IDENTICAL;Relevant fields are identical.
+91108;0x163E4;yes;yes;Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043;Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043;DIGI1;DIGI1;V;V;read;read;03;03;DWINV;DWINV;DV2108;DV2108;;;;;"PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat.";"PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat.";;IDENTICAL;Relevant fields are identical.
