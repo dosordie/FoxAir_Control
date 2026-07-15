@@ -110,233 +110,8 @@
     "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355]",
     "type": "RAW"
   },
-  "2099": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 1 (Bedeutung unklar)",
-    "type": "BLOCK"
-  },
-  "2100": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 2 (Bedeutung unklar)",
-    "type": "BLOCK"
-  },
-  "2101": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 3 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2102": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 4 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2103": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 5 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2104": {
-    "name": "Displaybus 2099ff Rohwort 6 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2105": {
-    "function": "16",
-    "mode": "r/w",
-    "name": "DWIN/Display Rohstatusblock Wort 7 (wechselt 228/229; Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2106": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 8 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2107": {
-    "name": "Displaybus 2099ff Rohwort 9 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2108": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock Wort 10 (wechselt 310..313; Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2109": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 11 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2110": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 12 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2111": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 13 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2112": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 14 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2113": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 15 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2114": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 16 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2115": {
-    "name": "UP PWM aktuell",
-    "type": "PERCENT",
-    "unit": "%"
-  },
-  "2116": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 18 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2117": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 19 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2118": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 20 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2119": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 21 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2120": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 22 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2121": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 23 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2122": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 24 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2123": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 25 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2124": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 26 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2125": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 27 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2126": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 28 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2127": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 29 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2128": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 30 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2129": {
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 31 (Bedeutung unklar)",
-    "type": "RAW"
-  },
-  "2130": {
-    "block": "T",
-    "code": "T46",
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 32 (Bedeutung unklar)",
-    "type": "DIGI5"
-  },
-  "2131": {
-    "block": "T",
-    "code": "T47",
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 33 (Bedeutung unklar)",
-    "type": "DIGI1"
-  },
-  "2132": {
-    "block": "T",
-    "code": "T48",
-    "function": "16",
-    "mode": "write",
-    "name": "DWIN/Display Rohstatusblock 2099ff Wort 34 (Bedeutung unklar)",
-    "type": "DIGI6"
-  },
-  "2133": {
-    "name": "Displaybus 2099ff Rohwort 35 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2134": {
-    "name": "Displaybus 2099ff Rohwort 36 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
   "2135": {
     "name": "Displaybus 2099ff Rohwort 37 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2136": {
-    "name": "Displaybus 2099ff Rohwort 38 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2137": {
-    "name": "Displaybus 2099ff Rohwort 39 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2138": {
-    "name": "Displaybus 2099ff Rohwort 40 (nur Diagnose, nicht Warmlink)",
     "type": "RAW"
   },
   "2139": {
@@ -357,10 +132,6 @@
   },
   "2143": {
     "name": "Displaybus 2099ff Rohwort 45 (nur Diagnose, nicht Warmlink)",
-    "type": "RAW"
-  },
-  "2144": {
-    "name": "Displaybus 2099ff Rohwort 46 (nur Diagnose, nicht Warmlink)",
     "type": "RAW"
   },
   "2145": {
@@ -472,100 +243,80 @@
     }
   },
   "3012": {
-    "function": "03",
+    "name": "Display Nr.",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W12 Anzeige-/Pointer-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3013": {
-    "function": "03",
+    "name": "Display Version",
+    "type": "VERSION_X10",
     "mode": "read",
-    "name": "DWIN 3001ff W13 Anzeige-/Pointer-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW",
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet. Anzeige: V[RAW/10], Beispiel raw 17 → V1.7.",
     "value_map": {
       "17": "V1.7 Display-Software"
     }
   },
   "3014": {
-    "function": "03",
+    "name": "Nr.",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W14 Anzeige-/Pointer-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3015": {
-    "function": "03",
+    "name": "Nr.",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W15 Anzeige-/Pointer-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3016": {
-    "function": "03",
+    "name": "Wochentag",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W16 kleiner Code / Status-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "value_map": {
+      "0": "Sonntag"
+    },
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3017": {
-    "function": "03",
+    "name": "Jahr + 2000",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W17 Anzeige-/Status-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3018": {
-    "function": "03",
+    "name": "Monat",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W18 Anzeige-/Status-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3019": {
-    "function": "03",
+    "name": "Tag",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W19 Anzeige-/Status-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3020": {
-    "function": "03",
+    "name": "Stunde",
+    "type": "RAW",
     "mode": "read",
-    "name": "DWIN 3001ff W20 Anzeige-/Status-Kandidat",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "3021": {
-    "function": "03",
-    "mode": "read",
-    "name": "DWIN Anzeige-/Icon-/Seiten-Code 3021 (Kandidat; nicht direkt 2012)",
-    "note": "Merker V0.2.38: beobachtet 55→56 bzw. verschiedene Werte; Anzeige/Icon/Seitenstatus-Kandidat, nicht direkt WP-Modus.",
+    "name": "Minute",
     "type": "RAW",
-    "value_map": {
-      "0": "Code 0 - noch nicht zugeordnet",
-      "1": "Code 1 - noch nicht zugeordnet",
-      "10": "Code 10 - noch nicht zugeordnet",
-      "11": "Code 11 - noch nicht zugeordnet",
-      "12": "Code 12 - noch nicht zugeordnet",
-      "13": "Code 13 - noch nicht zugeordnet",
-      "14": "Code 14 - noch nicht zugeordnet",
-      "15": "Code 15 - noch nicht zugeordnet",
-      "16": "Code 16 - noch nicht zugeordnet",
-      "17": "Code 17 - noch nicht zugeordnet",
-      "18": "Code 18 - noch nicht zugeordnet",
-      "19": "Code 19 - noch nicht zugeordnet",
-      "2": "Code 2 - noch nicht zugeordnet",
-      "20": "Code 20 - noch nicht zugeordnet",
-      "3": "Code 3 - noch nicht zugeordnet",
-      "4": "Code 4 - noch nicht zugeordnet",
-      "5": "Code 5 - noch nicht zugeordnet",
-      "6": "Code 6 - noch nicht zugeordnet",
-      "7": "Code 7 - noch nicht zugeordnet",
-      "8": "Code 8 - noch nicht zugeordnet",
-      "9": "Code 9 - noch nicht zugeordnet"
-    }
+    "mode": "read",
+    "function": "03",
+    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
   },
   "4544": {
     "function": "03",
@@ -1510,23 +1261,23 @@
     "type": "RAW"
   },
   "91105": {
-    "block": "DWINV",
-    "code": "DV2105",
-    "function": "03",
-    "mode": "read",
     "name": "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062",
     "type": "DIGI1",
     "unit": "V",
+    "mode": "read",
+    "function": "03",
+    "block": "DWINV",
+    "code": "DV2105",
     "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
   },
   "91108": {
-    "block": "DWINV",
-    "code": "DV2108",
-    "function": "03",
-    "mode": "read",
     "name": "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043",
     "type": "DIGI1",
     "unit": "V",
+    "mode": "read",
+    "function": "03",
+    "block": "DWINV",
+    "code": "DV2108",
     "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
   }
 }

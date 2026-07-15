@@ -5391,9 +5391,10 @@
   "2122": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
+    "name": "Energiezähler elektrisch Kühlen",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "unit": "kWh"
   },
   "2123": {
     "function": "16",
@@ -5404,9 +5405,10 @@
   "2124": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
+    "name": "Energiezähler Wärmemenge Kühlen",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "unit": "kWh"
   },
   "2125": {
     "function": "16",
@@ -5479,26 +5481,6 @@
     },
     "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
-  "91105": {
-    "block": "DWINV",
-    "code": "DV2105",
-    "function": "03",
-    "mode": "read",
-    "name": "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062",
-    "type": "DIGI1",
-    "unit": "V",
-    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
-  },
-  "91108": {
-    "block": "DWINV",
-    "code": "DV2108",
-    "function": "03",
-    "mode": "read",
-    "name": "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043",
-    "type": "DIGI1",
-    "unit": "V",
-    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
-  },
   "1464": {
     "function": "03",
     "mode": "read",
@@ -5558,78 +5540,5 @@
       "1": "enabled"
     },
     "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
-  },
-  "3012": {
-    "function": "03",
-    "mode": "read",
-    "name": "Display Nr.",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3013": {
-    "function": "03",
-    "mode": "read",
-    "name": "Display Version",
-    "type": "VERSION_X10",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet. Anzeige: V[RAW/10], experimentell."
-  },
-  "3014": {
-    "function": "03",
-    "mode": "read",
-    "name": "Nr.",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3015": {
-    "function": "03",
-    "mode": "read",
-    "name": "Nr.",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3016": {
-    "function": "03",
-    "mode": "read",
-    "name": "Wochentag",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet.",
-    "value_map": {
-      "0": "Sonntag"
-    }
-  },
-  "3017": {
-    "function": "03",
-    "mode": "read",
-    "name": "Jahr + 2000",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3018": {
-    "function": "03",
-    "mode": "read",
-    "name": "Monat",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3019": {
-    "function": "03",
-    "mode": "read",
-    "name": "Tag",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3020": {
-    "function": "03",
-    "mode": "read",
-    "name": "Stunde",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3021": {
-    "function": "03",
-    "mode": "read",
-    "name": "Minute",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
   }
 }
