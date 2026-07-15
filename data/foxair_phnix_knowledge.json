@@ -2187,7 +2187,10 @@
     "default": "644"
   },
   "2106": {
-    "default": "0"
+    "default": "0",
+    "status": "Beobachtung/Hypothese; nicht bestätigt",
+    "knowledge": "Beim Start der Wärmepumpe startet die Pumpen-PWM offenbar zunächst mit 100 %. Später wurde Register 2115 stabil bei 50 % beobachtet. Register 2106 pulste anschließend weiterhin ungefähr alle 5 Minuten für etwa 9–11 Sekunden, ohne dass 2115 weiter reduziert wurde. Mögliche Deutung: 2106 zeigt ein zyklisches Pumpenregel-/PWM-Regelfenster; P12 könnte die Änderung pro Regelperiode beeinflussen; 50 % könnte eine aktive Untergrenze oder aktuelle Regelgrenze sein. Die Absenkung von 100 % auf 50 % wurde nicht lückenlos aufgezeichnet. Für eine Bestätigung ist ein neuer Start mit dauerhaftem Raw-Logging nötig.",
+    "source": "Live-Beobachtung FoxAir / Phnix Control App V0.2.53 am 2026-07-15 im Kühlbetrieb"
   },
   "2107": {
     "default": "0",
