@@ -5,6 +5,8 @@ import json
 import os
 from typing import Any
 
+from core.udp_diagnostics import udp_diagnostic_defaults
+
 
 def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     """Ensure WarmLink cloud settings exist with stable defaults."""
@@ -46,6 +48,7 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     settings.setdefault("manual_register_dialog", {})
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)
+    settings["udp_diagnostic"] = udp_diagnostic_defaults(settings.get("udp_diagnostic", {}))
     main_window = settings.setdefault("main_window", {})
     if not isinstance(main_window, dict):
         main_window = {}
