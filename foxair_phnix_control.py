@@ -101,6 +101,7 @@ from cloud.warmlink_codes import (
     code_display_name,
 )
 from core.settings_manager import ensure_defaults, load_settings, save_settings
+from core.udp_diagnostics import UdpDiagnosticSender, udp_diagnostic_defaults
 from core.update_checker import (
     UPDATE_RELEASES_URL,
     UPDATE_REPO,
@@ -132,8 +133,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.52"
-BUILD_DATE = "2026-07-09"
+APP_VERSION = "0.2.53"
+BUILD_DATE = "2026-07-16"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -2496,6 +2497,7 @@ class DualBusLoggerDialog(QDialog):
                     else:
                         mw.previous_value_texts[reg_no] = f"{old} / 0x{old:04X}"
                 if real_changed:
+                    mw._send_udp_register_change(reg, old)
                     changed.append(f"{reg_no}: {old} -> {raw} ({reg.display_value})")
                 mw.last_values[reg_no] = raw
                 if value_diff or was_cached or reg_no not in mw.table_rows:
@@ -2804,6 +2806,26 @@ class CommunicationSettingsDialog(QDialog):
         )
         self.display_dual_logger_label = QLabel("Display-Diagnose:")
         form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
+
+        udp_cfg = udp_diagnostic_defaults(main_window.settings.get("udp_diagnostic", {}))
+        self.udp_group = QGroupBox("UDP-Diagnose")
+        udp_form = QFormLayout(self.udp_group)
+        self.udp_enabled_cb = QCheckBox("UDP-Diagnoseausgabe aktivieren")
+        self.udp_enabled_cb.setChecked(bool(udp_cfg.get("enabled", False)))
+        self.udp_enabled_cb.setToolTip("Reine ausgehende Best-Effort-Diagnose per UDP; standardmäßig deaktiviert.")
+        self.udp_host_edit = QLineEdit(str(udp_cfg.get("host", "127.0.0.1")))
+        self.udp_host_edit.setToolTip("Standard ist 127.0.0.1 für lokale Diagnoseempfänger.")
+        self.udp_port_spin = QSpinBox(); self.udp_port_spin.setRange(1, 65535); self.udp_port_spin.setValue(int(udp_cfg.get("port", 8766)))
+        self.udp_reg_cb = QCheckBox("Registeränderungen senden")
+        self.udp_reg_cb.setChecked(bool(udp_cfg.get("send_register_changes", True)))
+        self.udp_raw_cb = QCheckBox("Raw-Busdaten senden")
+        self.udp_raw_cb.setChecked(bool(udp_cfg.get("send_raw_bus", False)))
+        udp_form.addRow(self.udp_enabled_cb)
+        udp_form.addRow("Zieladresse:", self.udp_host_edit)
+        udp_form.addRow("Port:", self.udp_port_spin)
+        udp_form.addRow(self.udp_reg_cb)
+        udp_form.addRow(self.udp_raw_cb)
+        layout.addWidget(self.udp_group)
 
         self._comm_locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen, um diesen Wert zu ändern."
         self._comm_widget_tooltips = {
@@ -3131,6 +3153,15 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.init_pause_spin.setValue(int(self.init_pause_spin.value()))
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        self.main_window.settings["udp_diagnostic"] = udp_diagnostic_defaults({
+            "enabled": bool(self.udp_enabled_cb.isChecked()),
+            "host": self.udp_host_edit.text().strip(),
+            "port": int(self.udp_port_spin.value()),
+            "send_register_changes": bool(self.udp_reg_cb.isChecked()),
+            "send_raw_bus": bool(self.udp_raw_cb.isChecked()),
+        })
+        if hasattr(self.main_window, "udp_diagnostic"):
+            self.main_window.udp_diagnostic.configure(self.main_window.settings.get("udp_diagnostic", {}))
         selected_backend = (
             self.main_window.current_backend_key()
             if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
@@ -3871,6 +3902,7 @@ class MainWindow(QMainWindow):
         self.knowledge_path = os.path.join(self.user_data_dir, "data/foxair_phnix_knowledge.json")
         self.bundled_knowledge_path = os.path.join(resource_dir, "data/foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
+        self.udp_diagnostic = UdpDiagnosticSender(self.settings.get("udp_diagnostic", {}), logger=lambda msg: self._log(msg, level=7))
         self._restore_main_window_size()
         apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "system")))
         self.knowledge_defs = self._load_knowledge_defs()
@@ -4646,6 +4678,7 @@ class MainWindow(QMainWindow):
             "manual_register_dialog": self.settings.get("manual_register_dialog", {}),
             "show_dual_logger_button_display": bool(self.settings.get("show_dual_logger_button_display", False)),
             "log_level": int(self.settings.get("log_level", 2)),
+            "udp_diagnostic": self.settings.get("udp_diagnostic", {}),
             "main_window": self.settings.get("main_window", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
             "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
@@ -5984,14 +6017,33 @@ class MainWindow(QMainWindow):
         elif not self.raw_file_cb.isChecked():
             self._close_raw_file()
 
+    def _send_udp_raw_bus(self, direction: str, chunk: bytes) -> None:
+        diag = getattr(self, "udp_diagnostic", None)
+        if diag is not None:
+            diag.send_raw_bus(backend=self.current_backend_key(), direction=direction, data=chunk)
+
+    def _send_udp_register_change(self, reg, old_raw) -> None:
+        diag = getattr(self, "udp_diagnostic", None)
+        if diag is not None:
+            diag.send_register_change(
+                backend=self.current_backend_key(),
+                reg=int(getattr(reg, "reg", 0)),
+                old_raw=old_raw,
+                raw=int(getattr(reg, "raw_value", 0)),
+                value=str(getattr(reg, "display_value", "") or ""),
+                name=str(getattr(reg, "name", "") or ""),
+            )
+
     @Slot(bytes)
     def on_tx_chunk(self, chunk: bytes):
+        self._send_udp_raw_bus("tx", chunk)
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.capture_tx(chunk)
 
     @Slot(bytes)
     def on_raw_chunk(self, chunk: bytes):
+        self._send_udp_raw_bus("rx", chunk)
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.capture_rx(chunk)
@@ -6235,6 +6287,7 @@ class MainWindow(QMainWindow):
                 else:
                     self.previous_value_texts[reg.reg] = f"{old_value} / 0x{old_value:04X}"
             if changed:
+                self._send_udp_register_change(reg, old_value)
                 changed_regs_for_live_search.append(reg.reg)
             self.last_values[reg.reg] = reg.raw_value
 
