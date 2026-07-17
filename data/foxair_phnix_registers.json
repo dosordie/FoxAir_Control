@@ -5019,8 +5019,10 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Status-/Datenwort (wie Displaybus 91099)",
+    "type": "RAW",
+    "unit": "raw",
+    "notes": "Live-Ergänzung 2026-07-17: bisher als reserviert geführt. Beobachtet 8 Änderungen, Rohwertbereich 0 bis 531. Verläuft identisch zur virtuellen Displaybus-ID 91099; möglicherweise Bitfeld oder zusammengesetzter Status."
   },
   "2081": {
     "bit_map": {
@@ -5373,9 +5375,10 @@
   "2116": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "PWM-Rückmeldung der Pumpe",
+    "type": "PERCENT",
+    "unit": "%",
+    "notes": "Live-Ergänzung 2026-07-17: vermutlich PWM-Rückmeldung der Umwälzpumpe in Prozent."
   },
   "2117": {
     "function": "16",
@@ -5525,9 +5528,10 @@
   "2136": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Berechneter x0.1-Regel-/Modulwert (Kandidat)",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert driftete langsam ungefähr im Bereich 286–301. Möglicherweise x0.1-skaliert. Denkbar sind Temperatur-, Leistungs-, Modul- oder berechnete Regelgrößen. Funktion und Einheit unbestätigt."
+    "type": "TEMP1",
+    "unit": "°C",
+    "name": "Berechneter x0,1-Regel-/Modulwert (Kandidat)",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert driftete langsam ungefähr im Bereich 286–301. Live-Ergänzung 2026-07-17: als 0,1 °C in der Wertspalte formatieren; Interpretation als 30,3 bis 31,4 °C ist plausibel. Denkbar sind Temperatur-, Leistungs-, Modul- oder berechnete Regelgrößen. Funktion und Einheit unbestätigt."
   },
   "2137": {
     "function": "03",
