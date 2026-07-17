@@ -1106,26 +1106,6 @@
     "name": "DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock",
     "type": "RAW"
   },
-  "91105": {
-    "name": "Displaybus-Spiegel AC-Eingangsspannung / wie 2062",
-    "type": "VOLT",
-    "unit": "V",
-    "mode": "read",
-    "function": "03",
-    "block": "DWINV",
-    "code": "DV2105",
-    "notes": "Virtuelles Displaybus-Register. Live-Beobachtung 2026-07-15 stützt die Zuordnung als Spiegel der AC-Eingangsspannung wie Register 2062. Beobachtete Werte ca. 232–233 V. Noch als Kandidat behandeln."
-  },
-  "91108": {
-    "name": "Displaybus-Spiegel DC-Power-Bus-Spannung / wie 2043",
-    "type": "VOLT",
-    "unit": "V",
-    "mode": "read",
-    "function": "03",
-    "block": "DWINV",
-    "code": "DV2108",
-    "notes": "Virtuelles Displaybus-Register. Live-Beobachtung 2026-07-15 stützt die Zuordnung als Spiegel der DC-Power-Bus-Spannung wie Register 2043. Beobachtete Werte ca. 337–346 V. Noch als Kandidat behandeln."
-  },
   "_comment_virtual_raw_status_91099_91149": "Der virtuelle Bereich 91099–91149 bildet Wörter eines Displaybus-Rohstatusblocks ab. Die virtuelle Nummerierung verhindert Kollisionen mit echten WP-Registern im Bereich 2099–2149. Diese Register gelten ausschließlich für das Backend Modbus Display.",
   "91099": {
     "name": "Displaybus-Rohstatus / möglicher Bezug zu 2080 (Kandidat)",
@@ -1135,6 +1115,16 @@
     "block": "DWRAW",
     "code": "DV2099",
     "notes": "Live-Beobachtung 2026-07-15: Werte wie 515 und 547, teilweise ähnlich oder gleich Register 2080. Möglicher Spiegel-, Status- oder Bitfeldbezug zu 2080. Funktion unbestätigt."
+  },
+  "91105": {
+    "name": "Displaybus-Spiegel AC-Eingangsspannung / wie 2062",
+    "type": "VOLT",
+    "unit": "V",
+    "mode": "read",
+    "function": "03",
+    "block": "DWINV",
+    "code": "DV2105",
+    "notes": "Virtuelles Displaybus-Register. Live-Beobachtung 2026-07-15 stützt die Zuordnung als Spiegel der AC-Eingangsspannung wie Register 2062. Beobachtete Werte ca. 232–233 V. Noch als Kandidat behandeln."
   },
   "91106": {
     "name": "Displaybus-Rohstatus Wort 8 / dynamischer Wert (Kandidat)",
@@ -1153,6 +1143,16 @@
     "block": "DWRAW",
     "code": "DV2107",
     "notes": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert änderte sich sichtbar während des Betriebs. Bedeutung noch unbekannt. Vorläufig nur als dynamisches Displaybus-Rohstatuswort dokumentiert; weiter beobachten."
+  },
+  "91108": {
+    "name": "Displaybus-Spiegel DC-Power-Bus-Spannung / wie 2043",
+    "type": "VOLT",
+    "unit": "V",
+    "mode": "read",
+    "function": "03",
+    "block": "DWINV",
+    "code": "DV2108",
+    "notes": "Virtuelles Displaybus-Register. Live-Beobachtung 2026-07-15 stützt die Zuordnung als Spiegel der DC-Power-Bus-Spannung wie Register 2043. Beobachtete Werte ca. 337–346 V. Noch als Kandidat behandeln."
   },
   "91110": {
     "name": "Displaybus-Rohstatus Wort 12 / dynamischer Wert (Kandidat)",
