@@ -51,7 +51,7 @@ from cloud.cloud_write_helpers import (
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer, QSize
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -206,6 +206,28 @@ def app_icon() -> QIcon:
     icon_path = resource_path(APP_ICON_FILE)
     icon = QIcon(icon_path)
     return icon
+
+
+def asset_icon(relative_path: str) -> QIcon:
+    """Load an optional asset icon without breaking text-only controls."""
+    path = resource_path(relative_path)
+    if not os.path.exists(path):
+        return QIcon()
+    icon = QIcon(path)
+    if icon.isNull():
+        return QIcon()
+    return icon
+
+
+def apply_button_icon(button: QPushButton, relative_path: str, tooltip: str, accessible_name: str, accessible_description: str = ""):
+    """Apply a bundled SVG icon and accessibility metadata, keeping the button usable without the asset."""
+    icon = asset_icon(relative_path)
+    if not icon.isNull():
+        button.setIcon(icon)
+        button.setIconSize(QSize(22, 22))
+    button.setToolTip(tooltip)
+    button.setAccessibleName(accessible_name)
+    button.setAccessibleDescription(accessible_description or tooltip)
 
 
 def ask_yes_no(parent, title: str, text: str, default_yes: bool = False) -> bool:
@@ -2714,11 +2736,29 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window = main_window
         self.setWindowTitle("Programm-Einstellungen")
         self.setWindowIcon(app_icon())
-        self.resize(560, 420)
+        self.resize(720, 560)
 
         layout = QVBoxLayout(self)
-        form = QFormLayout()
-        layout.addLayout(form)
+        tabs = QTabWidget()
+        layout.addWidget(tabs, 1)
+
+        def add_tab(title: str) -> tuple[QWidget, QFormLayout]:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            page = QWidget()
+            page_layout = QFormLayout(page)
+            page_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            scroll.setWidget(page)
+            tabs.addTab(scroll, title)
+            return page, page_layout
+
+        general_page, general_form = add_tab("Allgemein")
+        connection_page, connection_form = add_tab("Verbindung")
+        cloud_page, cloud_form = add_tab("Warmlink Cloud")
+        udp_page, udp_form_tab = add_tab("UDP-Diagnose")
+        capture_page, capture_form = add_tab("Langzeit-Capture")
+        logging_page, logging_form = add_tab("Logging")
+        form = connection_form
 
         self.backend_combo = QComboBox()
         for key, label in BACKEND_CHOICES:
@@ -2795,8 +2835,8 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow(self.stopbits_label, self.stopbits_combo)
         form.addRow(self.unit_label, self.unit_spin)
         form.addRow(self.display_write_mode_label, self.display_write_mode_combo)
-        form.addRow("Gerät:", self.device_combo)
-        form.addRow("Hinweis:", self.device_hint_label)
+        cloud_form.addRow("Gerät:", self.device_combo)
+        cloud_form.addRow("Hinweis:", self.device_hint_label)
 
         self.display_dual_logger_cb = QCheckBox("Dual-Bus Logger Button im Hauptfenster anzeigen")
         self.display_dual_logger_cb.setChecked(bool(main_window.settings.get("show_dual_logger_button_display", False)))
@@ -2825,7 +2865,7 @@ class CommunicationSettingsDialog(QDialog):
         udp_form.addRow("Port:", self.udp_port_spin)
         udp_form.addRow(self.udp_reg_cb)
         udp_form.addRow(self.udp_raw_cb)
-        layout.addWidget(self.udp_group)
+        udp_form_tab.addRow(self.udp_group)
 
         self._comm_locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen, um diesen Wert zu ändern."
         self._comm_widget_tooltips = {
@@ -2836,7 +2876,7 @@ class CommunicationSettingsDialog(QDialog):
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
         self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
-        form.addRow("Anzeige:", self.show_warning_cb)
+        general_form.addRow("Anzeige:", self.show_warning_cb)
 
         self.theme_combo = QComboBox()
         self.theme_combo.addItem("System (Windows übernehmen)", "system")
@@ -2844,7 +2884,7 @@ class CommunicationSettingsDialog(QDialog):
         self.theme_combo.addItem("Dunkel", "dark")
         tidx = self.theme_combo.findData(str(main_window.settings.get("theme", "system")))
         self.theme_combo.setCurrentIndex(tidx if tidx >= 0 else 0)
-        form.addRow("Darstellung:", self.theme_combo)
+        general_form.addRow("Darstellung:", self.theme_combo)
 
         self.update_asset_combo = QComboBox()
         self.update_asset_combo.addItem("Automatisch erkennen", "auto")
@@ -2852,12 +2892,12 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.addItem("Setup/Installer bevorzugen", "setup")
         uidx = self.update_asset_combo.findData(str(main_window.settings.get("update_asset_mode", "auto")))
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
-        form.addRow("Update-Download:", self.update_asset_combo)
+        general_form.addRow("Update-Download:", self.update_asset_combo)
 
         self.auto_read_init_cb = QCheckBox("Basisregister nach Autoconnect/Connect lesen")
         self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
         self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
-        form.addRow("Startup:", self.auto_read_init_cb)
+        general_form.addRow("Startup:", self.auto_read_init_cb)
 
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
@@ -2865,7 +2905,7 @@ class CommunicationSettingsDialog(QDialog):
         self.init_pause_spin.setSingleStep(100)
         self.init_pause_spin.setSuffix(" ms")
         self.init_pause_spin.setToolTip("Pause zwischen den Blöcken für 'Alle bekannten Register lesen'.")
-        form.addRow("Alle Register lesen - Pause:", self.init_pause_spin)
+        general_form.addRow("Alle Register lesen - Pause:", self.init_pause_spin)
 
         self.live_poll_cb = QCheckBox("Livewerte 20xx zyklisch lesen")
         self.live_poll_cb.setChecked(bool(main_window.settings.get("auto_poll_live_values", False)))
@@ -2880,7 +2920,7 @@ class CommunicationSettingsDialog(QDialog):
         live_poll_layout.addWidget(self.live_poll_cb)
         live_poll_layout.addWidget(self.live_poll_interval_spin)
         live_poll_layout.addStretch(1)
-        form.addRow("Auto-Poll:", live_poll_row)
+        general_form.addRow("Auto-Poll:", live_poll_row)
 
         self.tab_auto_poll_cb = QCheckBox("Parameterblock im Einstellfenster zyklisch lesen")
         self.tab_auto_poll_cb.setChecked(bool(main_window.settings.get("tab_auto_poll", False)))
@@ -2894,7 +2934,7 @@ class CommunicationSettingsDialog(QDialog):
         tab_poll_layout.addWidget(self.tab_auto_poll_cb)
         tab_poll_layout.addWidget(self.tab_poll_interval_spin)
         tab_poll_layout.addStretch(1)
-        form.addRow("Parameter:", tab_poll_row)
+        general_form.addRow("Parameter:", tab_poll_row)
 
         cap = dict(DEFAULT_CAPTURE_SETTINGS)
         saved_cap = main_window.settings.get("warmlink_raw_capture", {})
@@ -2943,7 +2983,7 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout.addRow(self.cap_anomaly_cb)
         expert_layout.addRow("Status:", self.cap_status_label)
         expert_layout.addRow(cap_btn_row)
-        layout.addWidget(self.capture_expert_box)
+        capture_form.addRow(self.capture_expert_box)
         self.cap_dir_edit.textChanged.connect(lambda _=None: self._update_capture_effective_dir_label())
         self.cap_dir_select_btn.clicked.connect(self._choose_capture_dir)
         self.cap_open_btn.clicked.connect(self._open_capture_dir)
@@ -2959,7 +2999,8 @@ class CommunicationSettingsDialog(QDialog):
 
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
-        layout.addWidget(self.info_label)
+        connection_form.addRow("Hinweis:", self.info_label)
+        logging_form.addRow(QLabel("Log-Level, RAW-Anzeige und Logdatei werden im Hauptfenster gesetzt."))
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -4259,8 +4300,12 @@ class MainWindow(QMainWindow):
         self.clear_main_btn.setToolTip("Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.")
 
         self.about_btn = QPushButton("About")
-        self.about_btn.setMaximumWidth(72)
-        self.about_btn.setToolTip("Hilfe / About (F1)")
+        self.about_btn.setMaximumWidth(86)
+        apply_button_icon(self.comm_settings_btn, "assets/icons/settings.svg", "Programmeinstellungen öffnen", "Einstellungen", "Programmeinstellungen öffnen")
+        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "Warmlink Cloud öffnen", "Warmlink Cloud", "Warmlink Cloud öffnen")
+        apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
+        apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
+        apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
@@ -4640,6 +4685,7 @@ class MainWindow(QMainWindow):
         self.frame_count = 0
         self._backend_changed()
         self._update_dual_logger_button_visibility()
+        self._update_connection_button_icons()
         QTimer.singleShot(0, self._refresh_search_highlights)
 
     def _load_settings(self) -> dict:
@@ -5861,6 +5907,7 @@ class MainWindow(QMainWindow):
             self.connect_btn.setEnabled(True)
             self.disconnect_btn.setEnabled(False)
             self.write_send_btn.setEnabled(False)
+            self._update_connection_button_icons()
             self._update_init_read_progress()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
@@ -5877,6 +5924,16 @@ class MainWindow(QMainWindow):
         self.thread = None
         self.worker = None
 
+    def _update_connection_button_icons(self):
+        if not hasattr(self, "connect_btn") or not hasattr(self, "disconnect_btn"):
+            return
+        if bool(getattr(self, "connected", False)):
+            apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Bereits verbunden", "Verbinden", "Verbindung ist bereits aktiv")
+            apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
+        else:
+            apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
+            apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Nicht verbunden", "Verbindung trennen", "Keine aktive Verbindung")
+
     @Slot()
     def on_connected(self):
         self.connected = True
@@ -5884,6 +5941,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
+        self._update_connection_button_icons()
         self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
@@ -5908,6 +5966,7 @@ class MainWindow(QMainWindow):
             self.disconnect_btn.setEnabled(True)
             # Schreiben/Lesen läuft in diesem Zustand über den aktiven DisplayWorker.
             self.write_send_btn.setEnabled(True)
+            self._update_connection_button_icons()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
             self._close_raw_file()
@@ -5919,6 +5978,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
         self.write_send_btn.setEnabled(False)
+        self._update_connection_button_icons()
         self._update_init_read_progress()
         self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
