@@ -2911,10 +2911,22 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
         general_form.addRow("Update-Download:", self.update_asset_combo)
 
+        self.connection_actions_row = QWidget()
+        connection_actions_layout = QHBoxLayout(self.connection_actions_row)
+        connection_actions_layout.setContentsMargins(0, 0, 0, 0)
+        self.connect_btn = QPushButton("Connect")
+        self.disconnect_btn = QPushButton("Disconnect")
+        apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
+        apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
+        connection_actions_layout.addWidget(self.connect_btn)
+        connection_actions_layout.addWidget(self.disconnect_btn)
+        connection_actions_layout.addStretch(1)
+        connection_form.addRow("Verbindung:", self.connection_actions_row)
+
         self.autoconnect_cb = QCheckBox("Autoconnect")
         self.autoconnect_cb.setChecked(bool(getattr(main_window, "autoconnect_cb", None) and main_window.autoconnect_cb.isChecked()))
         self.autoconnect_cb.setToolTip("Beim Programmstart automatisch mit letzter IP/Port verbinden.")
-        general_form.addRow("Startup:", self.autoconnect_cb)
+        connection_form.addRow("Startup:", self.autoconnect_cb)
 
         self.auto_read_init_cb = QCheckBox("Basisregister nach Autoconnect/Connect lesen")
         self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
@@ -3054,9 +3066,17 @@ class CommunicationSettingsDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
+        self.connect_btn.clicked.connect(self._connect_from_settings)
+        self.disconnect_btn.clicked.connect(self._disconnect_from_settings)
+        self.connection_state_timer = QTimer(self)
+        self.connection_state_timer.setInterval(500)
+        self.connection_state_timer.timeout.connect(self._apply_communication_lock_state)
+        self.connection_state_timer.start()
+
         self.backend_combo.currentIndexChanged.connect(lambda _=None: self._backend_changed(load_values=True))
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
         self._backend_changed(load_values=True)
+        self._update_connection_actions()
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
@@ -3146,6 +3166,44 @@ class CommunicationSettingsDialog(QDialog):
 
     def _apply_communication_lock_state(self):
         self._set_comm_widgets_locked(bool(getattr(self.main_window, "connected", False)))
+        self._update_connection_actions()
+
+    def _update_connection_actions(self):
+        connected = bool(getattr(self.main_window, "connected", False))
+        has_thread = bool(getattr(self.main_window, "thread", None))
+        if hasattr(self, "connect_btn"):
+            self.connect_btn.setEnabled(not connected and not has_thread)
+            apply_button_icon(
+                self.connect_btn,
+                "assets/icons/connect.svg",
+                "Bereits verbunden" if connected else "Mit der Wärmepumpe verbinden",
+                "Verbinden",
+                "Verbindung ist bereits aktiv" if connected else "Aktuelle Verbindungseinstellungen übernehmen und verbinden",
+            )
+        if hasattr(self, "disconnect_btn"):
+            self.disconnect_btn.setEnabled(connected or has_thread)
+            apply_button_icon(
+                self.disconnect_btn,
+                "assets/icons/disconnect.svg",
+                "Verbindung trennen" if (connected or has_thread) else "Nicht verbunden",
+                "Verbindung trennen",
+                "Bestehende Verbindung zur Wärmepumpe trennen" if (connected or has_thread) else "Keine aktive Verbindung",
+            )
+
+    def _connect_from_settings(self):
+        if bool(getattr(self.main_window, "connected", False)) or bool(getattr(self.main_window, "thread", None)):
+            self._update_connection_actions()
+            return
+        self._save_current_fields_to_selected_backend()
+        backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        self.main_window.apply_communication_settings(backend)
+        self.main_window._save_settings(sync_main_fields=False)
+        self.main_window.connect_to_device()
+        self._apply_communication_lock_state()
+
+    def _disconnect_from_settings(self):
+        self.main_window.disconnect_from_device()
+        self._apply_communication_lock_state()
 
     def _backend_settings(self, backend: str) -> dict:
         return self.main_window._backend_settings(backend)
