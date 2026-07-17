@@ -14,6 +14,7 @@ py -m PyInstaller ^
   --name "FoxAir_Phnix_Control" ^
   --icon "app_icon.ico" ^
   --add-data "data;data" ^
+  --add-data "assets;assets" ^
   --add-data "app_icon.png;." ^
   --add-data "app_icon.ico;." ^
   --add-data "docs\public;docs\public" ^

@@ -62,3 +62,22 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Parameter-Einstellfenster mit Beschreibungen/Wissensdatenbank
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
+
+## UDP-Diagnoseausgabe
+
+FoxAir Control kann optional kompakte Diagnoseereignisse per UDP an lokale Auswertewerkzeuge senden. Die Funktion ist standardmäßig deaktiviert und sendet ausschließlich ausgehend (Best Effort, kein Empfangspfad, keine Wiederholungen).
+
+* Standardziel: `127.0.0.1:8766`
+* Registeränderungen und Raw-Busdaten sind getrennt aktivierbar.
+* Gesendet werden nur kleine JSON-Datagramme, keine Zugangsdaten oder kompletten Registerlisten.
+* Ein kleiner Testempfänger kann so gestartet werden:
+
+```bash
+python tools/udp_diag_receiver.py
+```
+
+Beispielausgabe:
+
+```json
+{"event":"register_change","ts":"...","backend":"display_modbus","reg":2106,"old_raw":0,"raw":1,"hex":"0x0001","name":"Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)"}
+```

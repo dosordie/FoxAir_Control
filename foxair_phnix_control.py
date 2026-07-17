@@ -51,7 +51,7 @@ from cloud.cloud_write_helpers import (
 )
 from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer, QSize
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -101,6 +101,7 @@ from cloud.warmlink_codes import (
     code_display_name,
 )
 from core.settings_manager import ensure_defaults, load_settings, save_settings
+from core.udp_diagnostics import UdpDiagnosticSender, udp_diagnostic_defaults
 from core.update_checker import (
     UPDATE_RELEASES_URL,
     UPDATE_REPO,
@@ -133,7 +134,7 @@ from core.foxair_phnix_core import (
 
 
 APP_VERSION = "0.2.53"
-BUILD_DATE = "2026-07-12"
+BUILD_DATE = "2026-07-16"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -205,6 +206,37 @@ def app_icon() -> QIcon:
     icon_path = resource_path(APP_ICON_FILE)
     icon = QIcon(icon_path)
     return icon
+
+
+def asset_icon(relative_path: str) -> QIcon:
+    """Load an optional asset icon without breaking text-only controls."""
+    path = resource_path(relative_path)
+    if not os.path.exists(path):
+        return QIcon()
+    icon = QIcon(path)
+    if icon.isNull():
+        return QIcon()
+    return icon
+
+
+def apply_button_icon(
+    button: QPushButton,
+    relative_path: str,
+    tooltip: str,
+    accessible_name: str,
+    accessible_description: str = "",
+    show_text: bool = False,
+):
+    """Apply a bundled SVG icon and accessibility metadata, keeping the button usable without the asset."""
+    icon = asset_icon(relative_path)
+    if not icon.isNull():
+        button.setIcon(icon)
+        button.setIconSize(QSize(22, 22))
+        if not show_text:
+            button.setText("")
+    button.setToolTip(tooltip)
+    button.setAccessibleName(accessible_name)
+    button.setAccessibleDescription(accessible_description or tooltip)
 
 
 def ask_yes_no(parent, title: str, text: str, default_yes: bool = False) -> bool:
@@ -1607,6 +1639,14 @@ class DualBusLoggerDialog(QDialog):
         self.poll_now_btn = QPushButton("Warmlink jetzt pollen")
         self.display_scan_now_btn = QPushButton("Display jetzt scannen")
         self.clear_btn = QPushButton("Log leeren")
+        apply_button_icon(
+            self.clear_btn,
+            "assets/icons/clear_log.svg",
+            "Plattforms-Log leeren",
+            "Log leeren",
+            "Plattforms-Log leeren",
+            show_text=True,
+        )
         buttons.addWidget(self.start_btn)
         buttons.addWidget(self.stop_btn)
         buttons.addWidget(self.poll_now_btn)
@@ -2496,6 +2536,7 @@ class DualBusLoggerDialog(QDialog):
                     else:
                         mw.previous_value_texts[reg_no] = f"{old} / 0x{old:04X}"
                 if real_changed:
+                    mw._send_udp_register_change(reg, old)
                     changed.append(f"{reg_no}: {old} -> {raw} ({reg.display_value})")
                 mw.last_values[reg_no] = raw
                 if value_diff or was_cached or reg_no not in mw.table_rows:
@@ -2712,11 +2753,29 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window = main_window
         self.setWindowTitle("Programm-Einstellungen")
         self.setWindowIcon(app_icon())
-        self.resize(560, 420)
+        self.resize(720, 560)
 
         layout = QVBoxLayout(self)
-        form = QFormLayout()
-        layout.addLayout(form)
+        tabs = QTabWidget()
+        layout.addWidget(tabs, 1)
+
+        def add_tab(title: str) -> tuple[QWidget, QFormLayout]:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            page = QWidget()
+            page_layout = QFormLayout(page)
+            page_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            scroll.setWidget(page)
+            tabs.addTab(scroll, title)
+            return page, page_layout
+
+        general_page, general_form = add_tab("Allgemein")
+        connection_page, connection_form = add_tab("Verbindung")
+        cloud_page, cloud_form = add_tab("Warmlink Cloud")
+        udp_page, udp_form_tab = add_tab("UDP-Diagnose")
+        capture_page, capture_form = add_tab("Langzeit-Capture")
+        logging_page, logging_form = add_tab("Logging")
+        form = connection_form
 
         self.backend_combo = QComboBox()
         for key, label in BACKEND_CHOICES:
@@ -2793,8 +2852,8 @@ class CommunicationSettingsDialog(QDialog):
         form.addRow(self.stopbits_label, self.stopbits_combo)
         form.addRow(self.unit_label, self.unit_spin)
         form.addRow(self.display_write_mode_label, self.display_write_mode_combo)
-        form.addRow("Gerät:", self.device_combo)
-        form.addRow("Hinweis:", self.device_hint_label)
+        cloud_form.addRow("Gerät:", self.device_combo)
+        cloud_form.addRow("Hinweis:", self.device_hint_label)
 
         self.display_dual_logger_cb = QCheckBox("Dual-Bus Logger Button im Hauptfenster anzeigen")
         self.display_dual_logger_cb.setChecked(bool(main_window.settings.get("show_dual_logger_button_display", False)))
@@ -2805,6 +2864,26 @@ class CommunicationSettingsDialog(QDialog):
         self.display_dual_logger_label = QLabel("Display-Diagnose:")
         form.addRow(self.display_dual_logger_label, self.display_dual_logger_cb)
 
+        udp_cfg = udp_diagnostic_defaults(main_window.settings.get("udp_diagnostic", {}))
+        self.udp_group = QGroupBox("UDP-Diagnose")
+        udp_form = QFormLayout(self.udp_group)
+        self.udp_enabled_cb = QCheckBox("UDP-Diagnoseausgabe aktivieren")
+        self.udp_enabled_cb.setChecked(bool(udp_cfg.get("enabled", False)))
+        self.udp_enabled_cb.setToolTip("Reine ausgehende Best-Effort-Diagnose per UDP; standardmäßig deaktiviert.")
+        self.udp_host_edit = QLineEdit(str(udp_cfg.get("host", "127.0.0.1")))
+        self.udp_host_edit.setToolTip("Standard ist 127.0.0.1 für lokale Diagnoseempfänger.")
+        self.udp_port_spin = QSpinBox(); self.udp_port_spin.setRange(1, 65535); self.udp_port_spin.setValue(int(udp_cfg.get("port", 8766)))
+        self.udp_reg_cb = QCheckBox("Registeränderungen senden")
+        self.udp_reg_cb.setChecked(bool(udp_cfg.get("send_register_changes", True)))
+        self.udp_raw_cb = QCheckBox("Raw-Busdaten senden")
+        self.udp_raw_cb.setChecked(bool(udp_cfg.get("send_raw_bus", False)))
+        udp_form.addRow(self.udp_enabled_cb)
+        udp_form.addRow("Zieladresse:", self.udp_host_edit)
+        udp_form.addRow("Port:", self.udp_port_spin)
+        udp_form.addRow(self.udp_reg_cb)
+        udp_form.addRow(self.udp_raw_cb)
+        udp_form_tab.addRow(self.udp_group)
+
         self._comm_locked_tooltip = "Bei aktiver Verbindung gesperrt. Bitte erst trennen, um diesen Wert zu ändern."
         self._comm_widget_tooltips = {
             widget: widget.toolTip() for widget in self._communication_lock_widgets(include_labels=True)
@@ -2814,7 +2893,7 @@ class CommunicationSettingsDialog(QDialog):
         self.show_warning_cb = QCheckBox("Hinweis-Banner im Hauptfenster anzeigen")
         self.show_warning_cb.setChecked(bool(main_window.settings.get("show_public_warning", True)))
         self.show_warning_cb.setToolTip("Blendet den gelben Hinweis 'inoffizielles Tool' im Hauptfenster ein/aus.")
-        form.addRow("Anzeige:", self.show_warning_cb)
+        general_form.addRow("Anzeige:", self.show_warning_cb)
 
         self.theme_combo = QComboBox()
         self.theme_combo.addItem("System (Windows übernehmen)", "system")
@@ -2822,7 +2901,7 @@ class CommunicationSettingsDialog(QDialog):
         self.theme_combo.addItem("Dunkel", "dark")
         tidx = self.theme_combo.findData(str(main_window.settings.get("theme", "system")))
         self.theme_combo.setCurrentIndex(tidx if tidx >= 0 else 0)
-        form.addRow("Darstellung:", self.theme_combo)
+        general_form.addRow("Darstellung:", self.theme_combo)
 
         self.update_asset_combo = QComboBox()
         self.update_asset_combo.addItem("Automatisch erkennen", "auto")
@@ -2830,12 +2909,17 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.addItem("Setup/Installer bevorzugen", "setup")
         uidx = self.update_asset_combo.findData(str(main_window.settings.get("update_asset_mode", "auto")))
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
-        form.addRow("Update-Download:", self.update_asset_combo)
+        general_form.addRow("Update-Download:", self.update_asset_combo)
+
+        self.autoconnect_cb = QCheckBox("Autoconnect")
+        self.autoconnect_cb.setChecked(bool(getattr(main_window, "autoconnect_cb", None) and main_window.autoconnect_cb.isChecked()))
+        self.autoconnect_cb.setToolTip("Beim Programmstart automatisch mit letzter IP/Port verbinden.")
+        general_form.addRow("Startup:", self.autoconnect_cb)
 
         self.auto_read_init_cb = QCheckBox("Basisregister nach Autoconnect/Connect lesen")
         self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
         self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
-        form.addRow("Startup:", self.auto_read_init_cb)
+        general_form.addRow("Startup:", self.auto_read_init_cb)
 
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
@@ -2843,7 +2927,7 @@ class CommunicationSettingsDialog(QDialog):
         self.init_pause_spin.setSingleStep(100)
         self.init_pause_spin.setSuffix(" ms")
         self.init_pause_spin.setToolTip("Pause zwischen den Blöcken für 'Alle bekannten Register lesen'.")
-        form.addRow("Alle Register lesen - Pause:", self.init_pause_spin)
+        general_form.addRow("Alle Register lesen - Pause:", self.init_pause_spin)
 
         self.live_poll_cb = QCheckBox("Livewerte 20xx zyklisch lesen")
         self.live_poll_cb.setChecked(bool(main_window.settings.get("auto_poll_live_values", False)))
@@ -2858,7 +2942,7 @@ class CommunicationSettingsDialog(QDialog):
         live_poll_layout.addWidget(self.live_poll_cb)
         live_poll_layout.addWidget(self.live_poll_interval_spin)
         live_poll_layout.addStretch(1)
-        form.addRow("Auto-Poll:", live_poll_row)
+        general_form.addRow("Auto-Poll:", live_poll_row)
 
         self.tab_auto_poll_cb = QCheckBox("Parameterblock im Einstellfenster zyklisch lesen")
         self.tab_auto_poll_cb.setChecked(bool(main_window.settings.get("tab_auto_poll", False)))
@@ -2872,12 +2956,23 @@ class CommunicationSettingsDialog(QDialog):
         tab_poll_layout.addWidget(self.tab_auto_poll_cb)
         tab_poll_layout.addWidget(self.tab_poll_interval_spin)
         tab_poll_layout.addStretch(1)
-        form.addRow("Parameter:", tab_poll_row)
+        general_form.addRow("Parameter:", tab_poll_row)
 
         cap = dict(DEFAULT_CAPTURE_SETTINGS)
         saved_cap = main_window.settings.get("warmlink_raw_capture", {})
         if isinstance(saved_cap, dict):
             cap.update(saved_cap)
+        self.capture_unavailable_label = QLabel(
+            "Hinweis: Der Langzeit-Capture ist nur mit der Kommunikationsart "
+            "„Modbus Warmlink LTE“ verfügbar. Bitte in der Verbindung auf diesen Modus wechseln, "
+            "um die Capture-Einstellungen zu verwenden."
+        )
+        self.capture_unavailable_label.setWordWrap(True)
+        self.capture_unavailable_label.setStyleSheet(
+            "color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 6px;"
+        )
+        capture_form.addRow(self.capture_unavailable_label)
+
         self.capture_expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
         expert_layout = QFormLayout(self.capture_expert_box)
         self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
@@ -2921,7 +3016,7 @@ class CommunicationSettingsDialog(QDialog):
         expert_layout.addRow(self.cap_anomaly_cb)
         expert_layout.addRow("Status:", self.cap_status_label)
         expert_layout.addRow(cap_btn_row)
-        layout.addWidget(self.capture_expert_box)
+        capture_form.addRow(self.capture_expert_box)
         self.cap_dir_edit.textChanged.connect(lambda _=None: self._update_capture_effective_dir_label())
         self.cap_dir_select_btn.clicked.connect(self._choose_capture_dir)
         self.cap_open_btn.clicked.connect(self._open_capture_dir)
@@ -2937,7 +3032,22 @@ class CommunicationSettingsDialog(QDialog):
 
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
-        layout.addWidget(self.info_label)
+        connection_form.addRow("Hinweis:", self.info_label)
+
+        self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
+        self.raw_log_cb.setChecked(bool(getattr(main_window, "raw_log_cb", None) and main_window.raw_log_cb.isChecked()))
+        self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
+        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
+        self.raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
+        self.raw_file_cb.setToolTip("Schreibt den RAW-Datenstrom zusätzlich in eine Binärdatei im Benutzerordner.")
+        self.known_only_cb = QCheckBox("nur bekannte Register anzeigen")
+        self.known_only_cb.setChecked(bool(getattr(main_window, "known_only_cb", None) and main_window.known_only_cb.isChecked()))
+        self.log_changes_only_cb = QCheckBox("nur Änderungen loggen")
+        self.log_changes_only_cb.setChecked(bool(getattr(main_window, "log_changes_only_cb", None) and main_window.log_changes_only_cb.isChecked()))
+        logging_form.addRow("RAW-Anzeige:", self.raw_log_cb)
+        logging_form.addRow("RAW-Datei:", self.raw_file_cb)
+        logging_form.addRow("Registertabelle:", self.known_only_cb)
+        logging_form.addRow("Logfilter:", self.log_changes_only_cb)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -3007,7 +3117,10 @@ class CommunicationSettingsDialog(QDialog):
         if not hasattr(self, "capture_expert_box"):
             return
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.capture_expert_box.setVisible(self._is_warmlink_backend_key(backend))
+        is_warmlink = self._is_warmlink_backend_key(backend)
+        self.capture_expert_box.setVisible(is_warmlink)
+        if hasattr(self, "capture_unavailable_label"):
+            self.capture_unavailable_label.setVisible(not is_warmlink)
 
     def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
         widgets = (
@@ -3120,6 +3233,19 @@ class CommunicationSettingsDialog(QDialog):
         comm_locked = bool(self.main_window.connected)
         if not comm_locked:
             self._save_current_fields_to_selected_backend()
+        if hasattr(self.main_window, "autoconnect_cb"):
+            self.main_window.autoconnect_cb.setChecked(bool(self.autoconnect_cb.isChecked()))
+        if hasattr(self.main_window, "raw_log_cb"):
+            self.main_window.raw_log_cb.setChecked(bool(self.raw_log_cb.isChecked()))
+        if hasattr(self.main_window, "raw_file_cb"):
+            self.main_window.raw_file_cb.setChecked(bool(self.raw_file_cb.isChecked()))
+            self.main_window.on_raw_file_checkbox_changed()
+        if hasattr(self.main_window, "known_only_cb"):
+            self.main_window.known_only_cb.setChecked(bool(self.known_only_cb.isChecked()))
+            self.main_window.rebuild_table_filter()
+        if hasattr(self.main_window, "log_changes_only_cb"):
+            self.main_window.log_changes_only_cb.setChecked(bool(self.log_changes_only_cb.isChecked()))
+
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
         self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
@@ -3131,6 +3257,15 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.init_pause_spin.setValue(int(self.init_pause_spin.value()))
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
+        self.main_window.settings["udp_diagnostic"] = udp_diagnostic_defaults({
+            "enabled": bool(self.udp_enabled_cb.isChecked()),
+            "host": self.udp_host_edit.text().strip(),
+            "port": int(self.udp_port_spin.value()),
+            "send_register_changes": bool(self.udp_reg_cb.isChecked()),
+            "send_raw_bus": bool(self.udp_raw_cb.isChecked()),
+        })
+        if hasattr(self.main_window, "udp_diagnostic"):
+            self.main_window.udp_diagnostic.configure(self.main_window.settings.get("udp_diagnostic", {}))
         selected_backend = (
             self.main_window.current_backend_key()
             if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
@@ -3871,6 +4006,7 @@ class MainWindow(QMainWindow):
         self.knowledge_path = os.path.join(self.user_data_dir, "data/foxair_phnix_knowledge.json")
         self.bundled_knowledge_path = os.path.join(resource_dir, "data/foxair_phnix_knowledge.json")
         self.settings = self._load_settings()
+        self.udp_diagnostic = UdpDiagnosticSender(self.settings.get("udp_diagnostic", {}), logger=lambda msg: self._log(msg, level=7))
         self._restore_main_window_size()
         apply_app_theme(QApplication.instance(), str(self.settings.get("theme", "system")))
         self.knowledge_defs = self._load_knowledge_defs()
@@ -4227,8 +4363,14 @@ class MainWindow(QMainWindow):
         self.clear_main_btn.setToolTip("Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.")
 
         self.about_btn = QPushButton("About")
-        self.about_btn.setMaximumWidth(72)
-        self.about_btn.setToolTip("Hilfe / About (F1)")
+        self.about_btn.setMaximumWidth(86)
+        apply_button_icon(self.comm_settings_btn, "assets/icons/settings.svg", "Programmeinstellungen öffnen", "Einstellungen", "Programmeinstellungen öffnen")
+        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "Warmlink Cloud öffnen", "Warmlink Cloud", "Warmlink Cloud öffnen")
+        apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
+        apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
+        apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
+        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", show_text=True)
+        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", "Hauptfenster leeren", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
@@ -4608,6 +4750,7 @@ class MainWindow(QMainWindow):
         self.frame_count = 0
         self._backend_changed()
         self._update_dual_logger_button_visibility()
+        self._update_connection_button_icons()
         QTimer.singleShot(0, self._refresh_search_highlights)
 
     def _load_settings(self) -> dict:
@@ -4646,6 +4789,7 @@ class MainWindow(QMainWindow):
             "manual_register_dialog": self.settings.get("manual_register_dialog", {}),
             "show_dual_logger_button_display": bool(self.settings.get("show_dual_logger_button_display", False)),
             "log_level": int(self.settings.get("log_level", 2)),
+            "udp_diagnostic": self.settings.get("udp_diagnostic", {}),
             "main_window": self.settings.get("main_window", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
             "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
@@ -5828,6 +5972,7 @@ class MainWindow(QMainWindow):
             self.connect_btn.setEnabled(True)
             self.disconnect_btn.setEnabled(False)
             self.write_send_btn.setEnabled(False)
+            self._update_connection_button_icons()
             self._update_init_read_progress()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
@@ -5844,6 +5989,16 @@ class MainWindow(QMainWindow):
         self.thread = None
         self.worker = None
 
+    def _update_connection_button_icons(self):
+        if not hasattr(self, "connect_btn") or not hasattr(self, "disconnect_btn"):
+            return
+        if bool(getattr(self, "connected", False)):
+            apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Bereits verbunden", "Verbinden", "Verbindung ist bereits aktiv")
+            apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
+        else:
+            apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
+            apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Nicht verbunden", "Verbindung trennen", "Keine aktive Verbindung")
+
     @Slot()
     def on_connected(self):
         self.connected = True
@@ -5851,6 +6006,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
         self.write_send_btn.setEnabled(True)
+        self._update_connection_button_icons()
         self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
@@ -5875,6 +6031,7 @@ class MainWindow(QMainWindow):
             self.disconnect_btn.setEnabled(True)
             # Schreiben/Lesen läuft in diesem Zustand über den aktiven DisplayWorker.
             self.write_send_btn.setEnabled(True)
+            self._update_connection_button_icons()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
             self._close_raw_file()
@@ -5886,6 +6043,7 @@ class MainWindow(QMainWindow):
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
         self.write_send_btn.setEnabled(False)
+        self._update_connection_button_icons()
         self._update_init_read_progress()
         self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
@@ -5984,14 +6142,33 @@ class MainWindow(QMainWindow):
         elif not self.raw_file_cb.isChecked():
             self._close_raw_file()
 
+    def _send_udp_raw_bus(self, direction: str, chunk: bytes) -> None:
+        diag = getattr(self, "udp_diagnostic", None)
+        if diag is not None:
+            diag.send_raw_bus(backend=self.current_backend_key(), direction=direction, data=chunk)
+
+    def _send_udp_register_change(self, reg, old_raw) -> None:
+        diag = getattr(self, "udp_diagnostic", None)
+        if diag is not None:
+            diag.send_register_change(
+                backend=self.current_backend_key(),
+                reg=int(getattr(reg, "reg", 0)),
+                old_raw=old_raw,
+                raw=int(getattr(reg, "raw_value", 0)),
+                value=str(getattr(reg, "display_value", "") or ""),
+                name=str(getattr(reg, "name", "") or ""),
+            )
+
     @Slot(bytes)
     def on_tx_chunk(self, chunk: bytes):
+        self._send_udp_raw_bus("tx", chunk)
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.capture_tx(chunk)
 
     @Slot(bytes)
     def on_raw_chunk(self, chunk: bytes):
+        self._send_udp_raw_bus("rx", chunk)
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.capture_rx(chunk)
@@ -6235,6 +6412,7 @@ class MainWindow(QMainWindow):
                 else:
                     self.previous_value_texts[reg.reg] = f"{old_value} / 0x{old_value:04X}"
             if changed:
+                self._send_udp_register_change(reg, old_value)
                 changed_regs_for_live_search.append(reg.reg)
             self.last_values[reg.reg] = reg.raw_value
 

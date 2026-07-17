@@ -1,4 +1,5 @@
 {
+  "_comment": "Hier sind alle Register welche auf allen Modbussen gleich sind. 1xxx les-/schreibbar, 2xxx nur lesen.",
   "200": {
     "function": "03",
     "mode": "read",
@@ -3891,19 +3892,19 @@
   "1353": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1353]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1354": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1354]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1355": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert / Lücke im ASM-Parameterblock (ASM/DWIN, keine Referenz gefunden) [1355]",
+    "name": "Reserviert",
     "type": "RAW"
   },
   "1356": {
@@ -4254,6 +4255,27 @@
     "mode": "read",
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
+  },
+  "1464": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1466": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "1476": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
   "1541": {
     "function": "03",
@@ -4997,8 +5019,10 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Status-/Datenwort (wie Displaybus 91099)",
+    "type": "RAW",
+    "unit": "raw",
+    "notes": "Live-Ergänzung 2026-07-17: bisher als reserviert geführt. Beobachtet 8 Änderungen, Rohwertbereich 0 bis 531. Verläuft identisch zur virtuellen Displaybus-ID 91099; möglicherweise Bitfeld oder zusammengesetzter Status."
   },
   "2081": {
     "bit_map": {
@@ -5286,8 +5310,9 @@
   "2106": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)",
+    "type": "RAW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register pulste zyklisch ungefähr alle 5 Minuten von 0 auf 1 und nach etwa 9–11 Sekunden zurück auf 0. Beobachtete Pulse u. a. um 13:30, 13:35, 13:40, 13:45, 13:50, 13:55, 14:00 und 14:05 Uhr. Währenddessen blieb Register 2115 stabil bei 50 % Pumpen-PWM. Starker Kandidat für zyklisches Pumpenregel-/PWM-Regelfenster bzw. einen P12-Regelentscheid. Bedeutung noch unbestätigt."
   },
   "2107": {
     "function": "16",
@@ -5350,9 +5375,10 @@
   "2116": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "PWM-Rückmeldung der Pumpe",
+    "type": "PERCENT",
+    "unit": "%",
+    "notes": "Live-Ergänzung 2026-07-17: vermutlich PWM-Rückmeldung der Umwälzpumpe in Prozent."
   },
   "2117": {
     "function": "16",
@@ -5391,9 +5417,10 @@
   "2122": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
+    "name": "Energiezähler elektrisch Kühlen",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "unit": "kWh"
   },
   "2123": {
     "function": "16",
@@ -5404,9 +5431,10 @@
   "2124": {
     "function": "16",
     "mode": "read",
-    "name": "Funktion unbekannt",
-    "type": "RAW",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben. Zählt im Betrieb aufwärts. Quelle/Status: Forum / Endif / Beobachtung; selbst ungetestet."
+    "name": "Energiezähler Wärmemenge Kühlen",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "unit": "kWh"
   },
   "2125": {
     "function": "16",
@@ -5479,41 +5507,77 @@
     },
     "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
-  "91105": {
-    "block": "DWINV",
-    "code": "DV2105",
+  "2134": {
     "function": "03",
     "mode": "read",
-    "name": "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062",
-    "type": "DIGI1",
-    "unit": "V",
-    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2062 AC-Eingangsspannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
+    "name": "Timer State Leistungsbegrenzungstimer 1-6",
+    "type": "RAW",
+    "value_map": {
+      "0": "disabled",
+      "1": "enabled"
+    },
+    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
   },
-  "91108": {
-    "block": "DWINV",
-    "code": "DV2108",
-    "function": "03",
-    "mode": "read",
-    "name": "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043",
-    "type": "DIGI1",
-    "unit": "V",
-    "notes": "PRIVATE fix18: virtuelles Register aus 0x01/2099ff; verhält sich im Log wie 2043 DC-Power-Bus-Spannung. Absender/Rolle vermutlich Power-Modul-Spiegel, noch Kandidat."
-  },
-  "1464": {
+  "2135": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "1466": {
+  "2136": {
+    "function": "03",
+    "mode": "read",
+    "type": "TEMP1",
+    "unit": "°C",
+    "name": "Berechneter x0,1-Regel-/Modulwert (Kandidat)",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert driftete langsam ungefähr im Bereich 286–301. Live-Ergänzung 2026-07-17: als 0,1 °C in der Wertspalte formatieren; Interpretation als 30,3 bis 31,4 °C ist plausibel. Denkbar sind Temperatur-, Leistungs-, Modul- oder berechnete Regelgrößen. Funktion und Einheit unbestätigt."
+  },
+  "2137": {
+    "function": "03",
+    "mode": "read",
+    "type": "POWER_KW_X10",
+    "name": "Elektrische Leistung / Spiegel von 2054 (Kandidat)",
+    "unit": "kW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2137 folgte Register 2054 sehr eng. Starker Kandidat für einen Spiegelwert von 2054 und damit vermutlich elektrische Leistung bzw. aktuelle Leistungsaufnahme. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
+  },
+  "2138": {
+    "function": "03",
+    "mode": "read",
+    "type": "POWER_KW_X10",
+    "name": "Thermische Leistung / Spiegel von 2059 (Kandidat)",
+    "unit": "kW",
+    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2138 folgte Register 2059 sehr eng. Starker Kandidat für einen Spiegelwert von 2059 und damit vermutlich thermische Leistung. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
+  },
+  "2139": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "1476": {
+  "2140": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2141": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2142": {
+    "function": "03",
+    "mode": "read",
+    "type": "RAW",
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2143": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
@@ -5527,109 +5591,39 @@
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "2136": {
+  "2145": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "2137": {
+  "2146": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "2138": {
+  "2147": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "2134": {
+  "2148": {
     "function": "03",
     "mode": "read",
-    "name": "Timer State Leistungsbegrenzungstimer 1-6",
     "type": "RAW",
-    "value_map": {
-      "0": "disabled",
-      "1": "enabled"
-    },
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet."
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   },
-  "3012": {
+  "2149": {
     "function": "03",
     "mode": "read",
-    "name": "Display Nr.",
     "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3013": {
-    "function": "03",
-    "mode": "read",
-    "name": "Display Version",
-    "type": "VERSION_X10",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet. Anzeige: V[RAW/10], experimentell."
-  },
-  "3014": {
-    "function": "03",
-    "mode": "read",
-    "name": "Nr.",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3015": {
-    "function": "03",
-    "mode": "read",
-    "name": "Nr.",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3016": {
-    "function": "03",
-    "mode": "read",
-    "name": "Wochentag",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet.",
-    "value_map": {
-      "0": "Sonntag"
-    }
-  },
-  "3017": {
-    "function": "03",
-    "mode": "read",
-    "name": "Jahr + 2000",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3018": {
-    "function": "03",
-    "mode": "read",
-    "name": "Monat",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3019": {
-    "function": "03",
-    "mode": "read",
-    "name": "Tag",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3020": {
-    "function": "03",
-    "mode": "read",
-    "name": "Stunde",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
-  },
-  "3021": {
-    "function": "03",
-    "mode": "read",
-    "name": "Minute",
-    "type": "RAW",
-    "note": "Quelle Forum / Endif; experimentell; selbst ungetestet."
+    "name": "Funktion unbekannt",
+    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
   }
 }
