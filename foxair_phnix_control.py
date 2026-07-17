@@ -219,13 +219,21 @@ def asset_icon(relative_path: str) -> QIcon:
     return icon
 
 
-def apply_button_icon(button: QPushButton, relative_path: str, tooltip: str, accessible_name: str, accessible_description: str = ""):
+def apply_button_icon(
+    button: QPushButton,
+    relative_path: str,
+    tooltip: str,
+    accessible_name: str,
+    accessible_description: str = "",
+    show_text: bool = False,
+):
     """Apply a bundled SVG icon and accessibility metadata, keeping the button usable without the asset."""
     icon = asset_icon(relative_path)
     if not icon.isNull():
         button.setIcon(icon)
         button.setIconSize(QSize(22, 22))
-        button.setText("")
+        if not show_text:
+            button.setText("")
     button.setToolTip(tooltip)
     button.setAccessibleName(accessible_name)
     button.setAccessibleDescription(accessible_description or tooltip)
@@ -1631,6 +1639,14 @@ class DualBusLoggerDialog(QDialog):
         self.poll_now_btn = QPushButton("Warmlink jetzt pollen")
         self.display_scan_now_btn = QPushButton("Display jetzt scannen")
         self.clear_btn = QPushButton("Log leeren")
+        apply_button_icon(
+            self.clear_btn,
+            "assets/icons/clear_log.svg",
+            "Plattforms-Log leeren",
+            "Log leeren",
+            "Plattforms-Log leeren",
+            show_text=True,
+        )
         buttons.addWidget(self.start_btn)
         buttons.addWidget(self.stop_btn)
         buttons.addWidget(self.poll_now_btn)
@@ -2895,6 +2911,11 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
         general_form.addRow("Update-Download:", self.update_asset_combo)
 
+        self.autoconnect_cb = QCheckBox("Autoconnect")
+        self.autoconnect_cb.setChecked(bool(getattr(main_window, "autoconnect_cb", None) and main_window.autoconnect_cb.isChecked()))
+        self.autoconnect_cb.setToolTip("Beim Programmstart automatisch mit letzter IP/Port verbinden.")
+        general_form.addRow("Startup:", self.autoconnect_cb)
+
         self.auto_read_init_cb = QCheckBox("Basisregister nach Autoconnect/Connect lesen")
         self.auto_read_init_cb.setChecked(bool(main_window.settings.get("auto_read_init_on_startup", False)))
         self.auto_read_init_cb.setToolTip("Nach erfolgreicher Verbindung automatisch die Init-/Basisblöcke lesen.")
@@ -3012,7 +3033,21 @@ class CommunicationSettingsDialog(QDialog):
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         connection_form.addRow("Hinweis:", self.info_label)
-        logging_form.addRow(QLabel("Log-Level, RAW-Anzeige und Logdatei werden im Hauptfenster gesetzt."))
+
+        self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
+        self.raw_log_cb.setChecked(bool(getattr(main_window, "raw_log_cb", None) and main_window.raw_log_cb.isChecked()))
+        self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
+        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
+        self.raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
+        self.raw_file_cb.setToolTip("Schreibt den RAW-Datenstrom zusätzlich in eine Binärdatei im Benutzerordner.")
+        self.known_only_cb = QCheckBox("nur bekannte Register anzeigen")
+        self.known_only_cb.setChecked(bool(getattr(main_window, "known_only_cb", None) and main_window.known_only_cb.isChecked()))
+        self.log_changes_only_cb = QCheckBox("nur Änderungen loggen")
+        self.log_changes_only_cb.setChecked(bool(getattr(main_window, "log_changes_only_cb", None) and main_window.log_changes_only_cb.isChecked()))
+        logging_form.addRow("RAW-Anzeige:", self.raw_log_cb)
+        logging_form.addRow("RAW-Datei:", self.raw_file_cb)
+        logging_form.addRow("Registertabelle:", self.known_only_cb)
+        logging_form.addRow("Logfilter:", self.log_changes_only_cb)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -3198,6 +3233,19 @@ class CommunicationSettingsDialog(QDialog):
         comm_locked = bool(self.main_window.connected)
         if not comm_locked:
             self._save_current_fields_to_selected_backend()
+        if hasattr(self.main_window, "autoconnect_cb"):
+            self.main_window.autoconnect_cb.setChecked(bool(self.autoconnect_cb.isChecked()))
+        if hasattr(self.main_window, "raw_log_cb"):
+            self.main_window.raw_log_cb.setChecked(bool(self.raw_log_cb.isChecked()))
+        if hasattr(self.main_window, "raw_file_cb"):
+            self.main_window.raw_file_cb.setChecked(bool(self.raw_file_cb.isChecked()))
+            self.main_window.on_raw_file_checkbox_changed()
+        if hasattr(self.main_window, "known_only_cb"):
+            self.main_window.known_only_cb.setChecked(bool(self.known_only_cb.isChecked()))
+            self.main_window.rebuild_table_filter()
+        if hasattr(self.main_window, "log_changes_only_cb"):
+            self.main_window.log_changes_only_cb.setChecked(bool(self.log_changes_only_cb.isChecked()))
+
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
         self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
@@ -4321,6 +4369,8 @@ class MainWindow(QMainWindow):
         apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
+        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", show_text=True)
+        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", "Hauptfenster leeren", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
