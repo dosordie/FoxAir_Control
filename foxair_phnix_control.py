@@ -225,6 +225,7 @@ def apply_button_icon(button: QPushButton, relative_path: str, tooltip: str, acc
     if not icon.isNull():
         button.setIcon(icon)
         button.setIconSize(QSize(22, 22))
+        button.setText("")
     button.setToolTip(tooltip)
     button.setAccessibleName(accessible_name)
     button.setAccessibleDescription(accessible_description or tooltip)
@@ -2940,6 +2941,17 @@ class CommunicationSettingsDialog(QDialog):
         saved_cap = main_window.settings.get("warmlink_raw_capture", {})
         if isinstance(saved_cap, dict):
             cap.update(saved_cap)
+        self.capture_unavailable_label = QLabel(
+            "Hinweis: Der Langzeit-Capture ist nur mit der Kommunikationsart "
+            "„Modbus Warmlink LTE“ verfügbar. Bitte in der Verbindung auf diesen Modus wechseln, "
+            "um die Capture-Einstellungen zu verwenden."
+        )
+        self.capture_unavailable_label.setWordWrap(True)
+        self.capture_unavailable_label.setStyleSheet(
+            "color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 6px;"
+        )
+        capture_form.addRow(self.capture_unavailable_label)
+
         self.capture_expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
         expert_layout = QFormLayout(self.capture_expert_box)
         self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
@@ -3070,7 +3082,10 @@ class CommunicationSettingsDialog(QDialog):
         if not hasattr(self, "capture_expert_box"):
             return
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.capture_expert_box.setVisible(self._is_warmlink_backend_key(backend))
+        is_warmlink = self._is_warmlink_backend_key(backend)
+        self.capture_expert_box.setVisible(is_warmlink)
+        if hasattr(self, "capture_unavailable_label"):
+            self.capture_unavailable_label.setVisible(not is_warmlink)
 
     def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
         widgets = (
