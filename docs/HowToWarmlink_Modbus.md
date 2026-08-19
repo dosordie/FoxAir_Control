@@ -6,7 +6,7 @@ Diese Anleitung beschreibt ausschließlich den **Hardware-Anschluss eines USB-RS
 
 Der Adapter wird parallel auf die vorhandene RS485-Verbindung zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) aufgelegt. Die bestehende Verbindung zum LTE-Modem bleibt dabei unverändert bestehen.
 
-> **Wichtig:** Der zusätzliche USB-RS485-Adapter ist beim Mithören nur als Empfänger gedacht. Solange das LTE-Modem angeschlossen ist, darf über den zusätzlichen Adapter kein zweiter Modbus-Master aktiv Telegramme auf den Bus senden.
+> **Hinweis zum aktiven Betrieb:** Für einen reinen Mitschnitt sollte der zusätzliche USB-RS485-Adapter möglichst nur mithören. Über denselben Adapter sind jedoch auch aktive Modbus-Abfragen und Schreibzugriffe möglich und wurden im Projekt bereits erfolgreich verwendet. Da das LTE-Modem gleichzeitig weiter kommuniziert, befinden sich dabei mehrere aktive Teilnehmer auf demselben RS485-Bus. Das kann praktisch funktionieren, es gibt dabei aber keine koordinierte Bus-Arbitrierung; zeitgleiche Telegramme können sich daher gegenseitig stören. Aktive Zugriffe sollten deshalb bewusst und nicht unnötig häufig erfolgen.
 
 Die Bedienung und Konfiguration des Langzeit-Captures in FoxAir Control ist separat in [warmlink_raw_capture.md](warmlink_raw_capture.md) beschrieben.
 
@@ -109,15 +109,15 @@ Für das reine Mithören werden die beiden RS485-Datenleitungen **A und B** ben�
 
 Beim verwendeten USB-Adapter erfolgt die Versorgung über USB. Eine 12-V- oder sonstige Versorgung von der Wärmepumpe wird **nicht** benötigt.
 
-### Keinen zweiten Master erzeugen
+### Aktive Modbus-Zugriffe
 
-Das LTE-Modem kommuniziert bereits aktiv mit dem Mainboard. Ein parallel angeschlossener Adapter sollte deshalb beim Mitschnitt **keine eigenen Modbus-Abfragen oder Schreibbefehle senden**.
+Für einen rein passiven Mitschnitt sind keine eigenen Modbus-Abfragen nötig. Der parallel angeschlossene USB-RS485-Adapter kann aber auch aktiv zum Lesen oder Schreiben von Registern verwendet werden; dies wurde an der untersuchten Anlage bereits erfolgreich getestet.
 
-Auch andere Software als FoxAir Control kann beim Öffnen des COM-Ports automatisch Geräte scannen, pollen oder Register lesen. Solche aktiven Funktionen müssen bei einem reinen Parallelmitschnitt vermieden werden.
+Dabei bleibt das LTE-Modem weiterhin aktiv am Bus. RS485 verhindert physikalisch nicht, dass mehrere Teilnehmer senden, bietet in diesem Aufbau aber keine automatische Kollisionsvermeidung zwischen zwei unabhängig arbeitenden Mastern. Einzelne aktive Zugriffe können daher funktionieren, während unnötig häufiges Polling oder mehrere gleichzeitig aktive Diagnoseprogramme die Wahrscheinlichkeit von Telegrammkollisionen erhöhen.
 
 ### Keine zusätzliche Terminierung
 
-Der USB-RS485-Adapter wird als zusätzlicher passiver Teilnehmer parallel auf den bestehenden Bus gelegt. Am Adapter sollte für diesen Aufbau **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden, da eine zusätzliche Terminierung den bestehenden RS485-Bus unnötig belasten kann.
+Der USB-RS485-Adapter wird als zusätzlicher Teilnehmer parallel auf den bestehenden Bus gelegt. Am Adapter sollte für diesen Aufbau **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden, da eine zusätzliche Terminierung den bestehenden RS485-Bus unnötig belasten kann.
 
 Beim gezeigten Jhoinrch-Adapter ist deshalb besonders der mit **`120Ω`** beschriftete Jumper zu kontrollieren.
 
@@ -162,7 +162,7 @@ Wer die Klemmen oder deren Funktion nicht eindeutig identifizieren kann, sollte 
 USB-RS485-Adapter sofort wieder abklemmen und prüfen:
 
 - Ist die **120-Ω-Terminierung** am Adapter aktiviert?
-- Sendet die verwendete Software aktiv Daten?
+- Sendet die verwendete Software sehr häufig oder gleichzeitig mit einem weiteren Diagnoseprogramm aktiv Daten?
 - Wurde versehentlich eine zusätzliche Leitung wie Versorgungsspannung angeschlossen?
 - Ist der Adapter für echtes RS485 geeignet und elektrisch unauffällig?
 - Bei langer Leitung: verbessert sich das Verhalten mit einer kürzeren Testleitung?
