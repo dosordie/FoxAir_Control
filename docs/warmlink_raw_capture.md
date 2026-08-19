@@ -4,11 +4,40 @@
 
 Der Warmlink RAW Langzeit-Capture ist eine Experten-/Forschungsfunktion, um den Warmlink-/Modbus-Datenstrom über längere Zeit möglichst vollständig mitzuschneiden. Er funktioniert sowohl mit dem Warmlink-Backend über TCP/IP/ser2net als auch über `Serial / COM-Port`.
 
-Ein wichtiges Forschungsziel ist die Frage, ob über den RS485-Bus zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) irgendwann Firmwaredaten, Update-Handshakes oder andere bisher unbekannte Übertragungen sichtbar werden.
+Der **eigentliche Firmware-Datenstrom wurde im Projekt bereits auf dem Display-Modbus beobachtet und dieser Übertragungsweg damit bestätigt**. Das Forschungsziel des Warmlink-Langzeit-Captures ist daher nicht mehr die Frage, ob Firmware grundsätzlich übertragen wird, sondern was auf dem Warmlink-/LTE-Bus **vor und während eines gezielt ausgelösten Firmwareupdates** passiert.
 
-> **Experimentell / reine Forschung:** Es ist nicht bekannt und wird ausdrücklich **nicht garantiert**, dass eine Mainboard-Firmware überhaupt über diesen Bus übertragen wird. Ebenso ist nicht garantiert, dass während eines Langzeit-Captures jemals ein Update stattfindet, dass ein mögliches Update eindeutig erkannt wird oder dass sich aus einem Mitschnitt später ein nutzbares Updateverfahren ableiten lässt. Ein Capture kann deshalb Tage, Wochen oder länger laufen, ohne jemals relevante Firmware-Daten zu erfassen.
+Interessant sind insbesondere mögliche:
+
+- Update-Auslöser
+- Handshakes
+- Steuertelegramme
+- Versions- oder Statusinformationen
+- zeitliche Zusammenhänge mit dem bestätigten Firmwaretransfer auf dem Display-Modbus
+
+> **Experimentell / reine Forschung:** Nach bisherigem Kenntnisstand führt FoxAir **keine automatischen Firmwareupdates** durch. Ein Firmwareupdate muss bei **Kensol** beauftragt bzw. angefordert und von dort angestoßen werden. Ohne einen solchen gezielt ausgelösten Updatevorgang ist daher auch bei einem sehr langen Warmlink-Capture kein Updateverkehr zu erwarten.
+>
+> Nicht garantiert ist, dass der eigentliche Update-Auslöser auf dem Warmlink-/LTE-RS485-Bus überhaupt sichtbar ist oder dass sich aus einem Mitschnitt später ein reproduzierbarer eigener Update-Trigger ableiten lässt.
 
 Der Langzeit-Capture ist **kein Firmware-Updater**. Es gibt keine Firmware-Schreib-, Replay- oder Update-Funktion.
+
+## Was bereits bestätigt ist – und was noch untersucht wird
+
+### Bestätigt
+
+- Der Firmware-Datenstrom wurde auf dem **Display-Modbus** beobachtet.
+- Der Display-Modbus ist damit als tatsächlicher Übertragungsweg der Firmware bestätigt.
+- Firmwareupdates erfolgen nach bisherigem Kenntnisstand **nicht automatisch**.
+- Ein Update muss bei **Kensol** beauftragt bzw. angefordert und von dort angestoßen werden.
+
+### Noch offen / Forschungsziel
+
+- Welche Kommunikation auf dem Warmlink-/LTE-Bus einen Updatevorgang vorbereitet oder auslöst.
+- Ob dort ein eindeutiger Update-Befehl oder Handshake sichtbar wird.
+- Welche Status- oder Versionsinformationen rund um den Updatevorgang übertragen werden.
+- Ob sich Warmlink-Ereignisse zeitlich eindeutig dem Firmwaretransfer auf dem Display-Modbus zuordnen lassen.
+- Ob sich aus diesen Daten jemals ein reproduzierbarer eigener Update-Auslöser ableiten lässt.
+
+Der Warmlink-Capture ist deshalb vor allem als **begleitender Logger für einen gezielt bei Kensol angestoßenen Updatevorgang** zu verstehen.
 
 ## Aktuelles Programmverhalten
 
@@ -118,6 +147,22 @@ Im Firmware-Modus:
 Ist FoxAir Control noch nicht verbunden, wird die Verbindung hergestellt und danach der Capture gestartet. Besteht bereits eine passende Warmlink-Verbindung, startet der Capture direkt.
 
 Jeder neue Capture-Start erzeugt ein **neues freies Segment**. Vorhandene Tagessegmente werden nicht überschrieben oder fortgesetzt.
+
+## Gezielter Mitschnitt eines beauftragten Firmwareupdates
+
+Da FoxAir-Updates nach bisherigem Kenntnisstand nicht automatisch stattfinden, ist ein gezielter Mitschnitt am aussagekräftigsten, wenn der Logger **vor** der Update-Anforderung gestartet wird.
+
+Empfohlenes Vorgehen:
+
+1. Warmlink-Capture starten und **Firmware-Langzeit-Capture (streng passiv)** aktivieren.
+2. Wenn möglich gleichzeitig einen Mitschnitt des **Display-Modbus** vorbereiten bzw. starten.
+3. Erst danach das Firmwareupdate bei **Kensol** beauftragen bzw. anstoßen lassen.
+4. Beide Mitschnitte während des gesamten Updatevorgangs weiterlaufen lassen.
+5. Zeitpunkt der Beauftragung bzw. Auslösung notieren.
+6. Beginn und Ende des sichtbaren Firmware-Datenstroms auf dem Display-Modbus notieren.
+7. Änderungen von Register 2104 und andere auffällige Warmlink-Ereignisse zeitlich dazu vergleichen.
+
+Der Warmlink-Capture ist hierbei vor allem für den **Steuer- und Auslöseverkehr** interessant. Der eigentliche Firmware-Datenstrom wird nach dem bisherigen bestätigten Stand auf dem **Display-Modbus** erwartet.
 
 ## Live-Status
 
@@ -265,9 +310,9 @@ Zusätzlich dokumentiert die `summary.txt` die Gesamtzahl der Drops.
 
 > **Drops > 0 bedeuten:** Ab diesem Zeitpunkt kann der Rohmitschnitt unvollständig sein. Für eine spätere Protokoll- oder Firmwareanalyse sollte ein Capture mit Drops nicht als vollständig betrachtet werden.
 
-## Anomalie-Erkennung und Firmware-Verdacht
+## Anomalie-Erkennung und Update-Verdacht
 
-Die optionale Anomalie-Erkennung verwendet bewusst nur Heuristiken. Sie soll interessante Bereiche für eine spätere manuelle Analyse markieren, aber **keine sichere Firmware-Erkennung vortäuschen**.
+Die optionale Anomalie-Erkennung verwendet bewusst nur Heuristiken. Sie soll interessante Bereiche für eine spätere manuelle Analyse markieren, aber **keinen sicheren Update-Auslöser vortäuschen**.
 
 Beispiele für auffällige Situationen:
 
@@ -288,7 +333,7 @@ Bekannte normale FC16-Statusblöcke wie:
 - `0x07D1`, 90 Register
 - `0x082B`, 90 Register
 
-werden nicht allein deshalb als Firmware-Verdacht bewertet.
+werden nicht allein deshalb als Firmware-/Update-Verdacht bewertet.
 
 ## Firmware-/Update-Watch: Register 2104
 
@@ -303,7 +348,11 @@ Taucht Register 2104 im normalen Warmlink-Datenstrom auf, kann FoxAir Control un
 - `firmware_version_increased` – Rohwert ist numerisch sicher höher
 - `firmware_update_suspected` – heuristischer Firmwareverdacht in Verbindung mit anderen Auffälligkeiten
 
-Eine Änderung von Register 2104 ist ein starkes Indiz dafür, dass sich die Mainboard-Softwareversion geändert hat. Sie beweist aber nicht, **wie** die Firmware übertragen wurde und ob die Übertragung selbst im Capture enthalten ist.
+Eine Änderung von Register 2104 ist ein starkes Indiz dafür, dass sich die Mainboard-Softwareversion geändert hat.
+
+Der eigentliche Firmware-Datenstrom wurde im Projekt bereits auf dem **Display-Modbus** bestätigt. Register 2104 ist im Warmlink-Capture deshalb vor allem für die **zeitliche Korrelation** interessant: Wann ändert sich die gemeldete Softwareversion im Verhältnis zu einem von Kensol angestoßenen Update und zum sichtbaren Firmwaretransfer auf dem Display-Modbus?
+
+Eine Änderung von 2104 beweist nicht, dass der Update-Auslöser selbst über den Warmlink-Bus übertragen wurde.
 
 Wenn eine relevante Änderung erkannt wird, kann zusätzlich eine Datei mit der Endung:
 
@@ -321,17 +370,17 @@ Ein technisch sauberer Capture bedeutet zunächst nur:
 - es gab keine Queue-Drops,
 - es gab keinen Schreibfehler.
 
-Das bedeutet **nicht**, dass ein Firmwareupdate erkannt wurde.
+Das bedeutet **nicht**, dass ein Update-Auslöser auf dem Warmlink-Bus erkannt wurde.
 
-Auch wenn über Wochen keinerlei `UPDATE_DETECTED`, ungewöhnliche Frames oder Versionsänderungen erscheinen, kann der Logger trotzdem korrekt funktionieren. Möglich ist beispielsweise, dass:
+Auch wenn über Tage oder Wochen keinerlei `UPDATE_DETECTED`, ungewöhnliche Frames oder Versionsänderungen erscheinen, kann der Logger trotzdem korrekt funktionieren. Dabei ist zu beachten:
 
-- im Beobachtungszeitraum schlicht kein Update stattfindet,
-- Firmware nicht über diesen RS485-Bus übertragen wird,
-- nur ein anderer Bootloader-/Servicemodus Firmwaredaten empfängt,
-- die Übertragung über einen anderen Kommunikationsweg erfolgt,
-- die Daten zwar übertragen werden, aber mit den heutigen Heuristiken noch nicht eindeutig erkannt werden.
+- Ohne bei **Kensol** beauftragtes bzw. angestoßenes Firmwareupdate ist nach bisherigem Kenntnisstand überhaupt kein Updatevorgang zu erwarten.
+- Der eigentliche Firmware-Datenstrom wird auf dem **Display-Modbus** erwartet; große Firmware-Datenblöcke müssen daher nicht auf dem Warmlink-Bus auftauchen.
+- Ein möglicher Auslöse- oder Steuerbefehl könnte sehr kurz sein und nur zu einem bestimmten Zeitpunkt erscheinen.
+- Der relevante Auslöser könnte intern im LTE-Modem, in der Cloud-Kommunikation oder auf einem anderen Weg verarbeitet werden und auf dem abgegriffenen RS485-Bus nicht eindeutig sichtbar sein.
+- Relevante Steuertelegramme könnten zwar vorhanden sein, mit den heutigen Heuristiken aber noch nicht automatisch als Updateverkehr erkannt werden.
 
-Genau deshalb ist der Langzeit-Capture als **Forschungswerkzeug** zu verstehen und nicht als zugesagte Firmware-Lösung.
+Genau deshalb ist der Warmlink-Langzeit-Capture als **Forschungswerkzeug für den Steuer- und Auslöseweg** zu verstehen und nicht als zugesagte Firmware-Lösung.
 
 ## GUI-Log
 
@@ -361,15 +410,17 @@ Captures deshalb nicht ungeprüft öffentlich hochladen. Vor einer Weitergabe pr
 
 ## Wichtige Empfehlung für den Forschungsbetrieb
 
-Für einen möglichst aussagekräftigen Langzeitmitschnitt am parallel angeschlossenen LTE-/DTU-Bus:
+Für einen möglichst aussagekräftigen Mitschnitt eines gezielt ausgelösten Firmwareupdates:
 
 1. **Modbus Warmlink LTE** als Backend verwenden.
 2. Bei direktem USB-RS485: **Serial / COM-Port, 9600 8N1**.
 3. **Firmware-Langzeit-Capture (streng passiv)** wählen.
 4. RX und Events/Index aktiviert lassen.
 5. Auf **TX-SPERRE AKTIV** und **TX durch FoxAir Control: 0 B ✓** achten.
-6. Drops und Fehler regelmäßig kontrollieren.
-7. Capture-Daten bis zur späteren Analyse vollständig aufbewahren.
-8. Nicht davon ausgehen, dass ein fehlender Treffer einen Fehler des Loggers bedeutet.
+6. Wenn möglich gleichzeitig den **Display-Modbus** mitschneiden.
+7. Erst nach Start der Logger das Update bei **Kensol** beauftragen bzw. anstoßen lassen.
+8. Zeiten von Beauftragung/Auslösung, Display-Firmwaretransfer und Register-2104-Änderung dokumentieren.
+9. Drops und Fehler kontrollieren.
+10. Capture-Daten bis zur späteren Analyse vollständig aufbewahren.
 
-Der Zweck ist, über lange Zeit genügend echte Busdaten zu sammeln, damit bislang unbekannte Abläufe später untersucht werden können. Ob daraus jemals eine reproduzierbare Firmware-Update-Methode entsteht, ist offen.
+Der bereits bestätigte Firmwaretransfer auf dem Display-Modbus liefert dabei die Referenz. Ziel des Warmlink-Captures ist es herauszufinden, **welcher vorgelagerte Steuer- oder Auslöseverkehr dazu gehört**. Ob sich daraus jemals ein eigener reproduzierbarer Update-Trigger ableiten lässt, bleibt offen.
