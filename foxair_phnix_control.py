@@ -2807,6 +2807,15 @@ class WarmlinkCaptureDialog(QDialog):
             status.addWidget(QLabel(title), row // 2, (row % 2) * 2)
             status.addWidget(label, row // 2, (row % 2) * 2 + 1)
         layout.addWidget(status_box)
+        self.backend_warning_label = QLabel(
+            "Dieser Capture ist nur mit der Kommunikationsart „Modbus Warmlink LTE“ verfügbar. "
+            "Bitte das Backend in den Programm-Einstellungen wechseln."
+        )
+        self.backend_warning_label.setWordWrap(True)
+        self.backend_warning_label.setStyleSheet(
+            "QLabel { color: #d46a1f; border: 1px solid #d46a1f; padding: 7px; font-weight: bold; }"
+        )
+        layout.addWidget(self.backend_warning_label)
 
         cfg = main_window._capture_settings()
         mode_box = QGroupBox("Capture-Modus"); mode_form = QFormLayout(mode_box)
@@ -2901,6 +2910,9 @@ class WarmlinkCaptureDialog(QDialog):
         cap = getattr(self.main_window, "warmlink_capture", None)
         return bool(cap and cap.get_status().active)
 
+    def _warmlink_backend_selected(self):
+        return self.main_window._is_warmlink_backend_key(self.main_window.current_backend_key())
+
     def save_settings(self, enabled=None):
         old = dict(self.main_window.settings.get("warmlink_raw_capture", {}))
         old.update({"mode": str(self.mode_combo.currentData() or "normal"), "prevent_standby": bool(self.prevent_standby_cb.isChecked()),
@@ -2914,6 +2926,11 @@ class WarmlinkCaptureDialog(QDialog):
         self.main_window._save_settings(sync_main_fields=False)
 
     def start_capture(self):
+        if not self._warmlink_backend_selected():
+            # Defensive check in addition to the disabled button: never turn on
+            # the auto-start setting for a backend that cannot run this capture.
+            self.refresh_status()
+            return
         self.save_settings(enabled=True)
         if self.main_window.connected: self.main_window._start_warmlink_capture_if_enabled()
         else: self.main_window.connect_to_device()
@@ -2932,6 +2949,7 @@ class WarmlinkCaptureDialog(QDialog):
         cap = getattr(self.main_window, "warmlink_capture", None); st = cap.get_status() if cap else None
         active = bool(st and st.active); firmware = active and str(self.main_window._capture_settings().get("mode", "normal")) == "firmware"
         connected = bool(self.main_window.connected)
+        backend_ok = self._warmlink_backend_selected()
         values = {"connection": "● VERBUNDEN" if connected else ("● VERBINDUNG VERLOREN" if active else "● GETRENNT"),
                   "capture": "● FIRMWARE-CAPTURE AKTIV – STRENG PASSIV" if firmware else ("● AKTIV" if active else "● INAKTIV"),
                   "mode": "Firmware-Capture" if firmware else ("Normaler Langzeit-Capture" if active else "--"),
@@ -2950,7 +2968,10 @@ class WarmlinkCaptureDialog(QDialog):
             self.status_labels[key].setStyleSheet(bad if problem else "")
         for widget in self.setting_widgets: widget.setEnabled(not active)
         self.prevent_standby_cb.setEnabled(not active and self.mode_combo.currentData() != "firmware")
-        self.start_btn.setEnabled(not active); self.save_btn.setEnabled(not active); self.stop_btn.setEnabled(active); self.rotate_btn.setEnabled(active)
+        self.backend_warning_label.setVisible(not backend_ok)
+        self.start_btn.setEnabled(not active and backend_ok)
+        self.start_btn.setToolTip("" if backend_ok else "Bitte zuerst in den Programm-Einstellungen „Modbus Warmlink LTE“ auswählen.")
+        self.save_btn.setEnabled(not active); self.stop_btn.setEnabled(active); self.rotate_btn.setEnabled(active)
 
 
 class CommunicationSettingsDialog(QDialog):

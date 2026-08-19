@@ -30,6 +30,7 @@ class FakeMainWindow(QMainWindow):
         self.settings = {"warmlink_raw_capture": {"enabled": False, "mode": "firmware"}}
         self.warmlink_capture = None
         self.connected = True
+        self.backend = "warmlink_raw"
         self.base_dir = self.user_data_dir = os.getcwd()
         self.started = self.stopped = self.saved = 0
 
@@ -41,6 +42,12 @@ class FakeMainWindow(QMainWindow):
     def _is_firmware_capture_mode(self):
         cfg = self._capture_settings()
         return bool(cfg["enabled"] and cfg["mode"] == "firmware")
+
+    def current_backend_key(self):
+        return self.backend
+
+    def _is_warmlink_backend_key(self, key):
+        return key == "warmlink_raw"
 
     def _set_firmware_capture_guard(self, active):
         self.guard = active
@@ -106,3 +113,19 @@ def test_live_status_and_main_button_follow_actual_capture_status():
     main.warmlink_capture.status.active = False
     app.MainWindow._update_warmlink_capture_button(main)
     assert main.warmlink_capture_btn.text() == "Langzeit-Capture ..."
+
+
+def test_start_is_disabled_for_other_backend_and_does_not_enable_setting():
+    qt_app()
+    main = FakeMainWindow()
+    main.backend = "standard_modbus"
+    dialog = app.WarmlinkCaptureDialog(main)
+
+    dialog.refresh_status()
+    assert dialog.backend_warning_label.isHidden() is False
+    assert dialog.start_btn.isEnabled() is False
+
+    # The method remains safe even if invoked programmatically.
+    dialog.start_capture()
+    assert main.started == 0
+    assert main.settings["warmlink_raw_capture"]["enabled"] is False
