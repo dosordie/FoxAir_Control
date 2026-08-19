@@ -6,7 +6,11 @@ Diese Anleitung beschreibt, wie ein USB-RS485-Adapter parallel auf den Modbus zw
 
 > **Wichtig:** Der zusätzliche USB-RS485-Adapter ist beim Mithören nur als Empfänger gedacht. Er darf nicht als zweiter Modbus-Master aktiv Telegramme auf den Bus senden, solange das LTE-Modem angeschlossen ist.
 
-> **Forschungs-/Experimentierhinweis:** Insbesondere das Langzeit-Logging möglicher Firmware-Übertragungen ist eine reine Forschungsfunktion. Es ist nicht bekannt bzw. nicht garantiert, ob eine Mainboard-Firmware überhaupt über diesen Warmlink-/LTE-RS485-Bus übertragen wird, ob jemals während eines Mitschnitts ein Update stattfindet oder ob daraus später ein nutzbares Update-Verfahren abgeleitet werden kann. Der Logger kann daher auch über sehr lange Zeit keinerlei relevanten Firmware-Daten erfassen.
+> **Stand der Firmware-Untersuchung:** Der eigentliche Firmware-Datenstrom wurde im Projekt bereits auf dem **Display-Modbus** beobachtet und dieser Übertragungsweg damit bestätigt. Der Warmlink-/LTE-Langzeit-Capture soll deshalb vor allem untersuchen, **welche Auslöser, Handshakes, Steuertelegramme oder Metadaten auf dem Warmlink-/LTE-Bus rund um einen Updatevorgang sichtbar werden** und wie diese zeitlich mit dem bekannten Firmwaretransfer auf dem Display-Modbus zusammenhängen.
+>
+> Nach bisherigem Kenntnisstand führt FoxAir **keine automatischen Firmwareupdates** durch. Ein Update muss bei **Kensol** beauftragt bzw. angefordert und von dort angestoßen werden. Ohne einen solchen gezielt ausgelösten Updatevorgang ist daher auch bei einem langen Mitschnitt nicht mit einem Firmwaretransfer zu rechnen.
+>
+> Der Warmlink-Logger bleibt ein Forschungswerkzeug: Es ist nicht garantiert, dass der eigentliche Update-Auslöser auf diesem Bus sichtbar ist oder dass sich aus einem Mitschnitt später ein reproduzierbarer eigener Update-Trigger ableiten lässt.
 
 ## Schnittstellenparameter
 
@@ -112,6 +116,18 @@ Der normale Modus **`Normaler Langzeit-Capture`** zeichnet zwar ebenfalls Daten 
 6. Auf **`PASSIV verbinden & Firmware-Capture starten`** klicken.
 
 Der Capture kann nur gestartet werden, wenn die Kommunikationsart **`Modbus Warmlink LTE`** ausgewählt ist. Bei einem anderen Backend zeigt das Capture-Fenster einen Hinweis und deaktiviert den Start-Button.
+
+### Gezielter Mitschnitt eines Firmwareupdates
+
+Da der eigentliche Firmwaretransfer bereits auf dem **Display-Modbus** bestätigt wurde und Updates nach bisherigem Kenntnisstand nur nach Beauftragung bei **Kensol** angestoßen werden, ist für einen aussagekräftigen Forschungs-Mitschnitt folgendes Vorgehen sinnvoll:
+
+1. Warmlink-Capture **vor** der Update-Anforderung starten und streng passiv laufen lassen.
+2. Wenn möglich parallel auch den **Display-Modbus** mitschneiden, um Steuerverkehr und Firmwaretransfer zeitlich miteinander vergleichen zu können.
+3. Erst danach das Firmwareupdate bei **Kensol** beauftragen bzw. anstoßen lassen.
+4. Capture während des gesamten Updatevorgangs weiterlaufen lassen.
+5. Zeitpunkt der Beauftragung, Beginn des sichtbaren Display-Firmwaretransfers und eine eventuelle Änderung von Register 2104 möglichst genau notieren.
+
+Ein langer Warmlink-Capture ohne beauftragtes Update liefert zwar weiterhin normale Betriebsdaten, kann aber naturgemäß keinen Update-Auslöser zeigen, wenn gar kein Update angestoßen wurde.
 
 ### Woran erkennt man den passiven Betrieb?
 
@@ -234,4 +250,4 @@ USB-RS485-Adapter sofort wieder abklemmen und prüfen:
 
 Diese Dokumentation basiert auf der untersuchten FoxAir/PHNIX-GL9-Konfiguration und ist keine offizielle Herstelleranleitung. Klemmenbezeichnungen und Hardwarevarianten können bei anderen Mainboards oder Geräteversionen abweichen.
 
-Der Firmware-Langzeit-Capture ist ein experimentelles Forschungswerkzeug. Er stellt **keine Firmware-Update-Funktion** bereit und es gibt **keine Garantie**, dass damit jemals eine Firmwareübertragung beobachtet oder ein zukünftiges Updateverfahren ermöglicht werden kann.
+Der eigentliche Firmwaretransfer über den **Display-Modbus** ist im Projekt bereits bestätigt. Der Firmware-Langzeit-Capture am Warmlink-/LTE-Bus ist dagegen ein experimentelles Forschungswerkzeug für den begleitenden Steuer- und Auslöseverkehr. Er stellt **keine Firmware-Update-Funktion** bereit und es gibt **keine Garantie**, dass sich aus dem Warmlink-Mitschnitt der von Kensol verwendete Update-Auslöser oder ein eigenes reproduzierbares Updateverfahren ableiten lässt.
