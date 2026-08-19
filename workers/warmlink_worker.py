@@ -48,6 +48,9 @@ class WarmlinkInitReadController:
 
     def start(self, slave_addr: int, pause_ms: int = 900) -> None:
         owner = self.owner
+        if bool(getattr(owner, "_is_firmware_capture_mode", lambda: False)()):
+            owner._log("Firmware-Capture aktiv – Init-Lesevorgang gesperrt.")
+            return
         if self.active:
             owner._log("WARMLINK-INIT läuft bereits; zweiter Start wird ignoriert.")
             return
@@ -91,6 +94,9 @@ class WarmlinkInitReadController:
         except Exception:
             pass
         owner._log(message)
+
+    def cancel(self, message: str = "WARMLINK-INIT wegen Firmware-Capture abgebrochen.") -> None:
+        self.queue.clear(); self.retry_items.clear(); self._finish(message)
 
     def notify_response(self, addr: int, quantity: int, slave_addr: int) -> None:
         if not self.active or self.current is None:

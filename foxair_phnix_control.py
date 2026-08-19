@@ -545,6 +545,7 @@ class ReaderWorker(QObject):
     frame_decoded = Signal(object)
     raw_chunk = Signal(bytes)
     tx_chunk = Signal(bytes)
+    tx_blocked_attempt = Signal(str, int, int, int)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
         super().__init__()
@@ -563,6 +564,7 @@ class ReaderWorker(QObject):
         self.client = None
         self.buf = bytearray()
         self.write_queue: queue.Queue[tuple[str, int, int, int, int, bool]] = queue.Queue()
+        self.tx_blocked = False
         self.next_write_monotonic = 0.0
         self.last_send_monotonic = 0.0
         self.last_send_desc = ""
@@ -571,6 +573,15 @@ class ReaderWorker(QObject):
         self.total_rx_bytes = 0
         self.rx_restbuffer_since_monotonic = 0.0
 
+    def set_tx_blocked(self, blocked: bool) -> int:
+        """Set the final, low-level TX barrier and atomically discard queued work."""
+        self.tx_blocked = bool(blocked)
+        dropped = 0
+        if blocked:
+            while True:
+                try: self.write_queue.get_nowait(); dropped += 1
+                except queue.Empty: break
+        return dropped
     @Slot()
     def run(self):
         self.running = True
@@ -717,6 +728,12 @@ class ReaderWorker(QObject):
             except queue.Empty:
                 return
 
+            if self.tx_blocked:
+                size = len(value_or_quantity) if kind == "write_block" else 1
+                self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
+                self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), int(size))
+                continue
+
             try:
                 if self.buf:
                     self.log.emit(
@@ -755,6 +772,11 @@ class ReaderWorker(QObject):
 
                 if not self.client or not self.client.is_connected():
                     self.error.emit("Nicht verbunden, kann nicht senden.")
+                    continue
+                # Last safety barrier immediately before both TX accounting and send.
+                if self.tx_blocked:
+                    self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
+                    self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), len(frame))
                     continue
                 self.tx_chunk.emit(frame)
                 self.client.send(frame)
@@ -1718,6 +1740,10 @@ class DualBusLoggerDialog(QDialog):
         der Display-Bus geoeffnet werden; der Warmlink-Bus bleibt unberuehrt.
         Das vollstaendige Dual-Logger-Fenster startet weiterhin beide Busse.
         """
+        if not display_only and self.main_window._is_firmware_capture_mode():
+            QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            return
         if display_only:
             if self.display_thread:
                 return
@@ -1888,6 +1914,9 @@ class DualBusLoggerDialog(QDialog):
         self.dual_worker_controller.start_display_worker(label)
 
     def _start_warmlink_worker(self):
+        if self.main_window._is_firmware_capture_mode():
+            self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            return
         self.dual_worker_controller.start_warmlink_worker("DUAL Warmlink-Modbus")
 
     def _clear_display_refs(self):
@@ -2747,6 +2776,204 @@ BACKEND_DEFAULTS = {
 }
 
 
+class WarmlinkCaptureDialog(QDialog):
+    """Non-modal controller and local-only status view for raw capture."""
+
+    def __init__(self, main_window: "MainWindow"):
+        super().__init__(main_window)
+        self.main_window = main_window
+        self.setWindowTitle("Warmlink Langzeit-Capture")
+        self.setWindowIcon(app_icon())
+        self.resize(920, 760)
+        self.setMinimumSize(820, 650)
+
+        outer = QVBoxLayout(self)
+        scroll = QScrollArea(); scroll.setWidgetResizable(True)
+        page = QWidget(); layout = QVBoxLayout(page)
+        scroll.setWidget(page); outer.addWidget(scroll)
+
+        status_box = QGroupBox("Live-Status (nur lokale Werte)")
+        status = QGridLayout(status_box)
+        self.status_labels = {}
+        names = (("connection", "Warmlink-Verbindung:"), ("capture", "Capture:"),
+                 ("mode", "Modus:"), ("tx_guard", "TX-Sperre:"),
+                 ("power", "Energiespar-Sperre:"), ("segment", "Aktuelles Segment:"),
+                 ("rx", "RX-Bytes:"), ("tx", "TX durch FoxAir Control:"),
+                 ("last_rx", "Letzter RX:"), ("last_tx", "Letzter TX:"),
+                 ("drops", "Drops:"), ("anomalies", "Anomalien:"), ("error", "Fehler:"))
+        for row, (key, title) in enumerate(names):
+            label = QLabel("--"); label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            self.status_labels[key] = label
+            status.addWidget(QLabel(title), row // 2, (row % 2) * 2)
+            status.addWidget(label, row // 2, (row % 2) * 2 + 1)
+        layout.addWidget(status_box)
+        self.backend_warning_label = QLabel(
+            "Dieser Capture ist nur mit der Kommunikationsart „Modbus Warmlink LTE“ verfügbar. "
+            "Bitte das Backend in den Programm-Einstellungen wechseln."
+        )
+        self.backend_warning_label.setWordWrap(True)
+        self.backend_warning_label.setStyleSheet(
+            "QLabel { color: #d46a1f; border: 1px solid #d46a1f; padding: 7px; font-weight: bold; }"
+        )
+        layout.addWidget(self.backend_warning_label)
+
+        cfg = main_window._capture_settings()
+        mode_box = QGroupBox("Capture-Modus"); mode_form = QFormLayout(mode_box)
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("Normaler Langzeit-Capture", "normal")
+        self.mode_combo.addItem("Firmware-Langzeit-Capture (streng passiv)", "firmware")
+        self.mode_combo.setCurrentIndex(max(0, self.mode_combo.findData(str(cfg.get("mode", "normal")))))
+        self.mode_description = QLabel(); self.mode_description.setWordWrap(True)
+        mode_form.addRow("Modus:", self.mode_combo); mode_form.addRow(self.mode_description)
+        layout.addWidget(mode_box)
+
+        record_box = QGroupBox("Aufzeichnung"); record_form = QFormLayout(record_box)
+        self.dir_edit = QLineEdit(str(cfg.get("directory", DEFAULT_CAPTURE_SETTINGS["directory"])))
+        self.dir_select_btn = QPushButton("Auswählen ..."); self.open_btn = QPushButton("Öffnen")
+        dir_row = QWidget(); dir_layout = QHBoxLayout(dir_row); dir_layout.setContentsMargins(0, 0, 0, 0)
+        dir_layout.addWidget(self.dir_edit, 1); dir_layout.addWidget(self.dir_select_btn); dir_layout.addWidget(self.open_btn)
+        self.effective_dir_label = QLabel(); self.effective_dir_label.setWordWrap(True)
+        self.rx_cb = QCheckBox("RX aufzeichnen"); self.rx_cb.setChecked(bool(cfg.get("capture_rx", True)))
+        self.tx_cb = QCheckBox("TX aufzeichnen"); self.tx_cb.setChecked(bool(cfg.get("capture_tx", True)))
+        self.events_cb = QCheckBox("Events/Index schreiben"); self.events_cb.setChecked(bool(cfg.get("write_events", True)))
+        self.prevent_standby_cb = QCheckBox("Standby während Capture verhindern"); self.prevent_standby_cb.setChecked(bool(cfg.get("prevent_standby", True)))
+        checks = QWidget(); checks_layout = QGridLayout(checks); checks_layout.setContentsMargins(0, 0, 0, 0)
+        for i, widget in enumerate((self.rx_cb, self.tx_cb, self.events_cb, self.prevent_standby_cb)): checks_layout.addWidget(widget, i // 2, i % 2)
+        record_form.addRow("Capture-Verzeichnis:", dir_row); record_form.addRow("Effektiver Ordner:", self.effective_dir_label); record_form.addRow(checks)
+        layout.addWidget(record_box)
+
+        rotation_box = QGroupBox("Rotation / Speicher"); rotation = QGridLayout(rotation_box)
+        self.idle_spin = QSpinBox(); self.idle_spin.setRange(1, 1440); self.idle_spin.setValue(int(cfg.get("idle_rotation_minutes", 5))); self.idle_spin.setSuffix(" min")
+        self.file_spin = QSpinBox(); self.file_spin.setRange(1, 1048576); self.file_spin.setValue(int(cfg.get("max_file_size_mb", 1024))); self.file_spin.setSuffix(" MB")
+        self.total_spin = QSpinBox(); self.total_spin.setRange(1, 10485760); self.total_spin.setValue(int(cfg.get("max_total_size_mb", 10240))); self.total_spin.setSuffix(" MB")
+        self.retention_spin = QSpinBox(); self.retention_spin.setRange(1, 3650); self.retention_spin.setValue(int(cfg.get("retention_days", 14))); self.retention_spin.setSuffix(" Tage")
+        self.anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.anomaly_cb.setChecked(bool(cfg.get("anomaly_detection", True)))
+        rotation.addWidget(QLabel("Inaktivitätsrotation:"), 0, 0); rotation.addWidget(self.idle_spin, 0, 1)
+        rotation.addWidget(QLabel("Max. Einzeldateigröße:"), 0, 2); rotation.addWidget(self.file_spin, 0, 3)
+        rotation.addWidget(QLabel("Max. Gesamtspeicher:"), 1, 0); rotation.addWidget(self.total_spin, 1, 1)
+        rotation.addWidget(QLabel("Aufbewahrung:"), 1, 2); rotation.addWidget(self.retention_spin, 1, 3); rotation.addWidget(self.anomaly_cb, 2, 0, 1, 4)
+        layout.addWidget(rotation_box)
+
+        controls = QGroupBox("Bedienung"); controls_layout = QHBoxLayout(controls)
+        self.start_btn = QPushButton(); self.start_btn.setMinimumHeight(42)
+        self.save_btn = QPushButton("Einstellungen speichern")
+        self.stop_btn = QPushButton("Capture stoppen"); self.rotate_btn = QPushButton("Neues Segment starten")
+        controls_layout.addWidget(self.start_btn, 1); controls_layout.addWidget(self.save_btn); controls_layout.addWidget(self.stop_btn); controls_layout.addWidget(self.rotate_btn)
+        layout.addWidget(controls)
+        help_box = QGroupBox("Anleitungen"); help_layout = QHBoxLayout(help_box)
+        help_label = QLabel('<a href="https://github.com/dosordie/FoxAir_Control/blob/main/docs/HowToWarmlink_Modbus.md">RS485-Adapter anschließen</a> &nbsp; | &nbsp; <a href="https://github.com/dosordie/FoxAir_Control/blob/main/docs/warmlink_raw_capture.md">Langzeit-Capture verwenden</a>')
+        help_label.setOpenExternalLinks(True); help_layout.addWidget(help_label); help_layout.addStretch(1); layout.addWidget(help_box)
+
+        self.setting_widgets = (self.mode_combo, self.dir_edit, self.dir_select_btn, self.rx_cb, self.tx_cb,
+                                self.events_cb, self.prevent_standby_cb, self.idle_spin, self.file_spin,
+                                self.total_spin, self.retention_spin, self.anomaly_cb)
+        self.mode_combo.currentIndexChanged.connect(self._apply_mode_ui)
+        self.dir_edit.textChanged.connect(self._update_effective_dir)
+        self.dir_select_btn.clicked.connect(self._choose_dir); self.open_btn.clicked.connect(self._open_dir)
+        self.save_btn.clicked.connect(lambda _checked=False: self.save_settings()); self.start_btn.clicked.connect(self.start_capture)
+        self.stop_btn.clicked.connect(self.stop_capture); self.rotate_btn.clicked.connect(self.rotate_segment)
+        self.timer = QTimer(self); self.timer.setInterval(500); self.timer.timeout.connect(self.refresh_status); self.timer.start()
+        self._apply_mode_ui(); self._update_effective_dir(); self.refresh_status()
+
+    @staticmethod
+    def format_bytes(value: int) -> str:
+        size = float(max(0, value)); units = ("B", "KiB", "MiB", "GiB")
+        for unit in units:
+            if size < 1024 or unit == units[-1]: return f"{int(size)} B" if unit == "B" else f"{size:.1f} {unit}"
+            size /= 1024
+
+    def _capture_base_dir(self): return os.path.abspath(str(getattr(self.main_window, "user_data_dir", self.main_window.base_dir)))
+    def _dir_value(self): return self.dir_edit.text().strip() or str(DEFAULT_CAPTURE_SETTINGS["directory"])
+    def _effective_dir(self):
+        value = self._dir_value()
+        return os.path.normpath(value) if (os.path.isabs(value) or re.match(r"^[A-Za-z]:[\\/]", value) or value.startswith("\\\\")) else os.path.abspath(os.path.join(self._capture_base_dir(), value))
+    def _update_effective_dir(self): self.effective_dir_label.setText(self._effective_dir())
+    def _choose_dir(self):
+        chosen = QFileDialog.getExistingDirectory(self, "Capture-Verzeichnis auswählen", self._effective_dir() if os.path.isdir(self._effective_dir()) else self._capture_base_dir())
+        if chosen:
+            try: value = os.path.relpath(chosen, self._capture_base_dir()) if os.path.commonpath([self._capture_base_dir(), os.path.abspath(chosen)]) == self._capture_base_dir() else chosen
+            except ValueError: value = chosen
+            self.dir_edit.setText(value)
+    def _open_dir(self):
+        path = self._effective_dir(); os.makedirs(path, exist_ok=True)
+        if sys.platform.startswith("win"): os.startfile(path)  # type: ignore[attr-defined]
+        elif sys.platform == "darwin": subprocess.Popen(["open", path])
+        else: subprocess.Popen(["xdg-open", path])
+
+    def _apply_mode_ui(self):
+        firmware = self.mode_combo.currentData() == "firmware"
+        self.mode_description.setText("Streng passiver Firmware-Mitschnitt: FoxAir Control sendet keinerlei eigene Telegramme." if firmware else "Langzeitaufzeichnung; normale Lese- und Schreibfunktionen bleiben erlaubt.")
+        self.start_btn.setText("PASSIV verbinden & Firmware-Capture starten" if firmware else "Verbinden & Capture starten")
+        self.prevent_standby_cb.setEnabled(not firmware and not self._active())
+
+    def _active(self):
+        cap = getattr(self.main_window, "warmlink_capture", None)
+        return bool(cap and cap.get_status().active)
+
+    def _warmlink_backend_selected(self):
+        return self.main_window._is_warmlink_backend_key(self.main_window.current_backend_key())
+
+    def save_settings(self, enabled=None):
+        old = dict(self.main_window.settings.get("warmlink_raw_capture", {}))
+        old.update({"mode": str(self.mode_combo.currentData() or "normal"), "prevent_standby": bool(self.prevent_standby_cb.isChecked()),
+                    "directory": self._dir_value(), "capture_rx": self.rx_cb.isChecked(), "capture_tx": self.tx_cb.isChecked(),
+                    "write_events": self.events_cb.isChecked(), "idle_rotation_minutes": self.idle_spin.value(),
+                    "max_file_size_mb": self.file_spin.value(), "max_total_size_mb": self.total_spin.value(),
+                    "retention_days": self.retention_spin.value(), "anomaly_detection": self.anomaly_cb.isChecked()})
+        if enabled is not None: old["enabled"] = bool(enabled)
+        self.main_window.settings["warmlink_raw_capture"] = old
+        self.main_window._set_firmware_capture_guard(self.main_window._is_firmware_capture_mode())
+        self.main_window._save_settings(sync_main_fields=False)
+
+    def start_capture(self):
+        if not self._warmlink_backend_selected():
+            # Defensive check in addition to the disabled button: never turn on
+            # the auto-start setting for a backend that cannot run this capture.
+            self.refresh_status()
+            return
+        self.save_settings(enabled=True)
+        if self.main_window.connected: self.main_window._start_warmlink_capture_if_enabled()
+        else: self.main_window.connect_to_device()
+        self.refresh_status()
+
+    def stop_capture(self):
+        self.main_window.settings.setdefault("warmlink_raw_capture", {})["enabled"] = False
+        self.main_window._stop_warmlink_capture("vom Capture-Fenster gestoppt")
+        self.main_window._set_firmware_capture_guard(False); self.main_window._save_settings(sync_main_fields=False); self.refresh_status()
+
+    def rotate_segment(self):
+        cap = getattr(self.main_window, "warmlink_capture", None)
+        if cap and cap.get_status().active: cap.force_new_segment()
+
+    def refresh_status(self):
+        cap = getattr(self.main_window, "warmlink_capture", None); st = cap.get_status() if cap else None
+        active = bool(st and st.active); firmware = active and str(self.main_window._capture_settings().get("mode", "normal")) == "firmware"
+        connected = bool(self.main_window.connected)
+        backend_ok = self._warmlink_backend_selected()
+        values = {"connection": "● VERBUNDEN" if connected else ("● VERBINDUNG VERLOREN" if active else "● GETRENNT"),
+                  "capture": "● FIRMWARE-CAPTURE AKTIV – STRENG PASSIV" if firmware else ("● AKTIV" if active else "● INAKTIV"),
+                  "mode": "Firmware-Capture" if firmware else ("Normaler Langzeit-Capture" if active else "--"),
+                  "tx_guard": "● TX-SPERRE AKTIV – streng passiv" if firmware else "● inaktiv",
+                  "power": "AKTIV" if bool(getattr(self.main_window, "capture_power_inhibit_active", False)) else "inaktiv",
+                  "segment": st.segment if st else "--", "rx": self.format_bytes(st.rx_size if st else 0),
+                  "tx": self.format_bytes(st.tx_size if st else 0) + (" ✓" if firmware and st and st.tx_size == 0 else ""),
+                  "last_rx": st.last_rx if st else "--", "last_tx": st.last_tx if st else "--",
+                  "drops": str(st.drops if st else 0), "anomalies": str(st.anomalies if st else 0), "error": (st.error if st and st.error else "--")}
+        for key, value in values.items(): self.status_labels[key].setText(value)
+        good = "color: #2e9d55; font-weight: bold;"; bad = "color: #d46a1f; font-weight: bold;"; idle = "color: palette(mid);"
+        self.status_labels["connection"].setStyleSheet(good if connected else (bad if active else idle))
+        self.status_labels["capture"].setStyleSheet(good if active else idle); self.status_labels["tx_guard"].setStyleSheet(good if firmware else idle)
+        for key in ("drops", "anomalies", "error"):
+            problem = (key == "error" and values[key] != "--") or (key != "error" and values[key] != "0")
+            self.status_labels[key].setStyleSheet(bad if problem else "")
+        for widget in self.setting_widgets: widget.setEnabled(not active)
+        self.prevent_standby_cb.setEnabled(not active and self.mode_combo.currentData() != "firmware")
+        self.backend_warning_label.setVisible(not backend_ok)
+        self.start_btn.setEnabled(not active and backend_ok)
+        self.start_btn.setToolTip("" if backend_ok else "Bitte zuerst in den Programm-Einstellungen „Modbus Warmlink LTE“ auswählen.")
+        self.save_btn.setEnabled(not active); self.stop_btn.setEnabled(active); self.rotate_btn.setEnabled(active)
+
+
 class CommunicationSettingsDialog(QDialog):
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -2773,7 +3000,6 @@ class CommunicationSettingsDialog(QDialog):
         connection_page, connection_form = add_tab("Verbindung")
         cloud_page, cloud_form = add_tab("Warmlink Cloud")
         udp_page, udp_form_tab = add_tab("UDP-Diagnose")
-        capture_page, capture_form = add_tab("Langzeit-Capture")
         logging_page, logging_form = add_tab("Logging")
         form = connection_form
 
@@ -2970,78 +3196,6 @@ class CommunicationSettingsDialog(QDialog):
         tab_poll_layout.addStretch(1)
         general_form.addRow("Parameter:", tab_poll_row)
 
-        cap = dict(DEFAULT_CAPTURE_SETTINGS)
-        saved_cap = main_window.settings.get("warmlink_raw_capture", {})
-        if isinstance(saved_cap, dict):
-            cap.update(saved_cap)
-        self.capture_unavailable_label = QLabel(
-            "Hinweis: Der Langzeit-Capture ist nur mit der Kommunikationsart "
-            "„Modbus Warmlink LTE“ verfügbar. Bitte in der Verbindung auf diesen Modus wechseln, "
-            "um die Capture-Einstellungen zu verwenden."
-        )
-        self.capture_unavailable_label.setWordWrap(True)
-        self.capture_unavailable_label.setStyleSheet(
-            "color: #8a4b00; background: #fff3cd; border: 1px solid #ffd27a; padding: 6px;"
-        )
-        capture_form.addRow(self.capture_unavailable_label)
-
-        self.capture_expert_box = QGroupBox("Expertenbereich: Warmlink RAW Langzeit-Capture")
-        expert_layout = QFormLayout(self.capture_expert_box)
-        self.cap_enabled_cb = QCheckBox("Warmlink RAW Langzeit-Capture aktivieren")
-        self.cap_enabled_cb.setChecked(bool(cap.get("enabled", False)))
-        self.cap_dir_edit = QLineEdit(str(cap.get("directory", DEFAULT_CAPTURE_SETTINGS["directory"])))
-        self.cap_dir_edit.setToolTip(
-            "Relative Pfade werden im FoxAir-Control-Benutzerdatenordner gespeichert.\n"
-            "Absolute Pfade werden direkt verwendet."
-        )
-        self.cap_rx_cb = QCheckBox("RX mitschreiben"); self.cap_rx_cb.setChecked(bool(cap.get("capture_rx", True)))
-        self.cap_tx_cb = QCheckBox("TX mitschreiben"); self.cap_tx_cb.setChecked(bool(cap.get("capture_tx", True)))
-        self.cap_events_cb = QCheckBox("Events/Index schreiben"); self.cap_events_cb.setChecked(bool(cap.get("write_events", True)))
-        self.cap_idle_spin = QSpinBox(); self.cap_idle_spin.setRange(1, 1440); self.cap_idle_spin.setValue(int(cap.get("idle_rotation_minutes", 5))); self.cap_idle_spin.setSuffix(" min")
-        self.cap_file_spin = QSpinBox(); self.cap_file_spin.setRange(1, 1048576); self.cap_file_spin.setValue(int(cap.get("max_file_size_mb", 1024))); self.cap_file_spin.setSuffix(" MB")
-        self.cap_total_spin = QSpinBox(); self.cap_total_spin.setRange(1, 10485760); self.cap_total_spin.setValue(int(cap.get("max_total_size_mb", 10240))); self.cap_total_spin.setSuffix(" MB")
-        self.cap_retention_spin = QSpinBox(); self.cap_retention_spin.setRange(1, 3650); self.cap_retention_spin.setValue(int(cap.get("retention_days", 14))); self.cap_retention_spin.setSuffix(" Tage")
-        self.cap_anomaly_cb = QCheckBox("Anomalie-Erkennung aktivieren"); self.cap_anomaly_cb.setChecked(bool(cap.get("anomaly_detection", True)))
-        self.cap_status_label = QLabel("Status wird nach dem Speichern/Verbinden aktualisiert.")
-        self.cap_status_label.setWordWrap(True)
-        self.cap_dir_select_btn = QPushButton("Auswählen...")
-        self.cap_open_btn = QPushButton("Öffnen")
-        self.cap_effective_dir_label = QLabel()
-        self.cap_effective_dir_label.setWordWrap(True)
-        self.cap_effective_dir_label.setToolTip(
-            "Das ist der tatsächliche Ordner, in dem RX/TX/Events/Summary-Dateien gespeichert werden."
-        )
-        self.cap_rotate_btn = QPushButton("Neues Segment starten")
-        self.cap_stop_btn = QPushButton("Capture stoppen")
-        cap_dir_row = QWidget(); cap_dir_layout = QHBoxLayout(cap_dir_row); cap_dir_layout.setContentsMargins(0,0,0,0)
-        cap_dir_layout.addWidget(self.cap_dir_edit, 1); cap_dir_layout.addWidget(self.cap_dir_select_btn); cap_dir_layout.addWidget(self.cap_open_btn)
-        cap_btn_row = QWidget(); cap_btn_layout = QHBoxLayout(cap_btn_row); cap_btn_layout.setContentsMargins(0,0,0,0)
-        cap_btn_layout.addWidget(self.cap_rotate_btn); cap_btn_layout.addWidget(self.cap_stop_btn); cap_btn_layout.addStretch(1)
-        expert_layout.addRow(self.cap_enabled_cb)
-        expert_layout.addRow("Capture-Verzeichnis:", cap_dir_row)
-        expert_layout.addRow("Effektiver Ordner:", self.cap_effective_dir_label)
-        expert_layout.addRow(self.cap_rx_cb); expert_layout.addRow(self.cap_tx_cb); expert_layout.addRow(self.cap_events_cb)
-        expert_layout.addRow("Tagesrotation nach Inaktivität:", self.cap_idle_spin)
-        expert_layout.addRow("Max. Einzeldateigröße:", self.cap_file_spin)
-        expert_layout.addRow("Max. Gesamtspeicher:", self.cap_total_spin)
-        expert_layout.addRow("Aufbewahrung:", self.cap_retention_spin)
-        expert_layout.addRow(self.cap_anomaly_cb)
-        expert_layout.addRow("Status:", self.cap_status_label)
-        expert_layout.addRow(cap_btn_row)
-        capture_form.addRow(self.capture_expert_box)
-        self.cap_dir_edit.textChanged.connect(lambda _=None: self._update_capture_effective_dir_label())
-        self.cap_dir_select_btn.clicked.connect(self._choose_capture_dir)
-        self.cap_open_btn.clicked.connect(self._open_capture_dir)
-        self.cap_rotate_btn.clicked.connect(lambda: getattr(main_window, "warmlink_capture", None) and main_window.warmlink_capture.force_new_segment())
-        self.cap_stop_btn.clicked.connect(lambda: main_window._stop_warmlink_capture("per Einstellungen gestoppt"))
-        self._update_capture_effective_dir_label()
-        try:
-            st = getattr(main_window, "warmlink_capture", None).get_status() if getattr(main_window, "warmlink_capture", None) else None
-            if st:
-                self.cap_status_label.setText(f"{'aktiv' if st.active else 'inaktiv'} | Segment {st.segment} | RX {st.rx_size} B | TX {st.tx_size} B | letzter RX {st.last_rx} | letzter TX {st.last_tx} | Anomalien {st.anomalies} | Drops {st.drops} | Fehler {st.error or '--'}")
-        except Exception:
-            pass
-
         self.info_label = QLabel("")
         self.info_label.setWordWrap(True)
         connection_form.addRow("Hinweis:", self.info_label)
@@ -3080,67 +3234,6 @@ class CommunicationSettingsDialog(QDialog):
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
-
-    def _capture_base_dir(self) -> str:
-        return os.path.abspath(str(getattr(self.main_window, "user_data_dir", self.main_window.base_dir)))
-
-    @staticmethod
-    def _is_absolute_capture_path(path: str) -> bool:
-        text = str(path or "").strip()
-        return bool(os.path.isabs(text) or re.match(r"^[A-Za-z]:[\\/]", text) or text.startswith("\\\\"))
-
-    def _capture_dir_value(self) -> str:
-        return self.cap_dir_edit.text().strip() or str(DEFAULT_CAPTURE_SETTINGS["directory"])
-
-    def _effective_capture_dir(self) -> str:
-        directory = self._capture_dir_value()
-        if self._is_absolute_capture_path(directory):
-            return os.path.normpath(directory)
-        return os.path.abspath(os.path.join(self._capture_base_dir(), directory))
-
-    def _capture_path_for_settings(self, selected_dir: str) -> str:
-        selected = os.path.abspath(os.path.normpath(str(selected_dir)))
-        base = self._capture_base_dir()
-        try:
-            common = os.path.commonpath([base, selected])
-        except ValueError:
-            common = ""
-        if common == base:
-            rel = os.path.relpath(selected, base)
-            return "." if rel == "." else rel
-        return selected
-
-    def _update_capture_effective_dir_label(self):
-        if hasattr(self, "cap_effective_dir_label"):
-            self.cap_effective_dir_label.setText(self._effective_capture_dir())
-
-    def _choose_capture_dir(self):
-        start_dir = self._effective_capture_dir()
-        if not os.path.isdir(start_dir):
-            start_dir = self._capture_base_dir()
-        chosen = QFileDialog.getExistingDirectory(self, "Capture-Verzeichnis auswählen", start_dir)
-        if chosen:
-            self.cap_dir_edit.setText(self._capture_path_for_settings(chosen))
-            self._update_capture_effective_dir_label()
-
-    def _open_capture_dir(self):
-        path = self._effective_capture_dir()
-        os.makedirs(path, exist_ok=True)
-        if sys.platform.startswith("win"):
-            os.startfile(path)  # type: ignore[attr-defined]
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", path])
-        else:
-            subprocess.Popen(["xdg-open", path])
-
-    def _update_capture_settings_visibility(self):
-        if not hasattr(self, "capture_expert_box"):
-            return
-        backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        is_warmlink = self._is_warmlink_backend_key(backend)
-        self.capture_expert_box.setVisible(is_warmlink)
-        if hasattr(self, "capture_unavailable_label"):
-            self.capture_unavailable_label.setVisible(not is_warmlink)
 
     def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
         widgets = (
@@ -3257,7 +3350,6 @@ class CommunicationSettingsDialog(QDialog):
             self.display_dual_logger_cb.setVisible(backend == "display_modbus")
         if hasattr(self, "display_dual_logger_label"):
             self.display_dual_logger_label.setVisible(backend == "display_modbus")
-        self._update_capture_settings_visibility()
         self._transport_changed()
         self._apply_communication_lock_state()
         if backend == "warmlink_raw":
@@ -3328,21 +3420,6 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.current_backend_key()
             if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
         )
-        if self._is_warmlink_backend_key(selected_backend):
-            capture_settings = dict(self.main_window.settings.get("warmlink_raw_capture", {}))
-            capture_settings.update({
-                "enabled": bool(self.cap_enabled_cb.isChecked()),
-                "directory": self._capture_dir_value(),
-                "capture_rx": bool(self.cap_rx_cb.isChecked()),
-                "capture_tx": bool(self.cap_tx_cb.isChecked()),
-                "write_events": bool(self.cap_events_cb.isChecked()),
-                "idle_rotation_minutes": int(self.cap_idle_spin.value()),
-                "max_file_size_mb": int(self.cap_file_spin.value()),
-                "max_total_size_mb": int(self.cap_total_spin.value()),
-                "retention_days": int(self.cap_retention_spin.value()),
-                "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
-            })
-            self.main_window.settings["warmlink_raw_capture"] = capture_settings
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
@@ -4099,6 +4176,8 @@ class MainWindow(QMainWindow):
         self.raw_file: Optional[BinaryIO] = None
         self.raw_file_path: Optional[str] = None
         self.warmlink_capture: Optional[WarmlinkRawCapture] = None
+        self.warmlink_capture_dialog: Optional[WarmlinkCaptureDialog] = None
+        self.capture_power_inhibit_active = False
         self.capture_log_queue: queue.Queue[str] = queue.Queue()
         self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
@@ -4653,6 +4732,8 @@ class MainWindow(QMainWindow):
         self.bus_popup_btn = QPushButton("Gesehene Bus-Adressen ...")
         self.dual_logger_btn = QPushButton("Dual-Bus Logger (Diagnose) ...")
         self.dual_logger_btn.setToolTip("Nur bei Modbus Display/HMI sichtbar, wenn in Programm-Einstellungen aktiviert.")
+        self.warmlink_capture_btn = QPushButton("Langzeit-Capture ...")
+        self.warmlink_capture_btn.setToolTip("Warmlink Langzeit-Capture öffnen")
         self.backup_restore_btn = QPushButton("Backup / Restore ...")
         self.wp_control_btn = QPushButton("WP-Steuerung ...")
         self.at_comp_btn = QPushButton("AT-Kompensation ...")
@@ -4670,6 +4751,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.offline_browser_btn, 10, 0, 1, 2)
         special_layout.addWidget(self.bus_popup_btn, 11, 0, 1, 2)
         special_layout.addWidget(self.dual_logger_btn, 12, 0, 1, 2)
+        special_layout.addWidget(self.warmlink_capture_btn, 13, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -4796,6 +4878,7 @@ class MainWindow(QMainWindow):
         self.offline_browser_btn.clicked.connect(self.open_offline_browser)
         self.bus_popup_btn.clicked.connect(self.open_bus_addresses)
         self.dual_logger_btn.clicked.connect(self.open_dual_logger_dialog)
+        self.warmlink_capture_btn.clicked.connect(self.open_warmlink_capture_dialog)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
         self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
         self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
@@ -5001,6 +5084,31 @@ class MainWindow(QMainWindow):
         dlg = CommunicationSettingsDialog(self)
         dlg.exec()
 
+    def open_warmlink_capture_dialog(self):
+        dialog = self.warmlink_capture_dialog
+        if dialog is None:
+            dialog = WarmlinkCaptureDialog(self)
+            self.warmlink_capture_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog.refresh_status()
+
+    def _update_warmlink_capture_button(self):
+        if not hasattr(self, "warmlink_capture_btn"):
+            return
+        cap = getattr(self, "warmlink_capture", None)
+        status = cap.get_status() if cap is not None else None
+        active = bool(status and status.active)
+        firmware = active and str(self._capture_settings().get("mode", "normal")) == "firmware"
+        self.warmlink_capture_btn.setText(
+            "● Firmware-Capture AKTIV" if firmware else
+            ("● Langzeit-Capture AKTIV" if active else "Langzeit-Capture ...")
+        )
+        self.warmlink_capture_btn.setStyleSheet(
+            "QPushButton { border: 2px solid #2e9d55; color: #2e9d55; font-weight: bold; }" if active else ""
+        )
+
     def _communication_summary_text(self) -> str:
         backend = self.current_backend_key()
         cfg = self._backend_settings(backend)
@@ -5030,7 +5138,7 @@ class MainWindow(QMainWindow):
     def _apply_live_poll_timer_state(self):
         if not hasattr(self, "live_poll_timer"):
             return
-        if bool(self.settings.get("auto_poll_live_values", False)) and self.connected:
+        if bool(self.settings.get("auto_poll_live_values", False)) and self.connected and not self._is_firmware_capture_mode():
             interval_s = max(5, int(self.settings.get("live_poll_interval_s", 30)))
             self.live_poll_timer.start(interval_s * 1000)
             self._log(f"Livewerte-Auto-Poll aktiv: alle {interval_s} s (Registerblöcke 2001/2091)")
@@ -5969,6 +6077,9 @@ class MainWindow(QMainWindow):
         elif warmlink_active or standard_active or generic_active:
             self.init_read_btn.setEnabled(False)
             self.init_read_btn.setText("Init läuft ...")
+        elif self._is_firmware_capture_mode():
+            self.init_read_btn.setEnabled(False)
+            self.init_read_btn.setText("Firmware-Capture: Senden gesperrt")
         else:
             self.init_read_btn.setEnabled(True)
             self.init_read_btn.setText("Alle bekannten Register lesen")
@@ -5996,6 +6107,9 @@ class MainWindow(QMainWindow):
             bytesize=int(cfg.get("bytesize", 8)),
             stopbits=float(cfg.get("stopbits", 1.0)),
         )
+        # The barrier is installed before the worker thread can connect or emit
+        # connected; there is therefore no post-connect active-send window.
+        self.worker.set_tx_blocked(self._is_firmware_capture_mode())
         self.worker.moveToThread(self.thread)
 
         self.thread.started.connect(self.worker.run)
@@ -6006,6 +6120,7 @@ class MainWindow(QMainWindow):
         self.worker.frame_decoded.connect(self.on_frame_decoded)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
         self.worker.tx_chunk.connect(self.on_tx_chunk)
+        self.worker.tx_blocked_attempt.connect(self._on_passive_tx_blocked)
         self.worker.disconnected.connect(self.thread.quit)
         self.worker.disconnected.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
@@ -6063,14 +6178,16 @@ class MainWindow(QMainWindow):
         self.status_label.setText("verbunden")
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
-        self.write_send_btn.setEnabled(True)
+        passive = self._is_firmware_capture_mode()
+        self._set_firmware_capture_guard(passive)
+        self.write_send_btn.setEnabled(not passive)
         self._update_connection_button_icons()
         self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
         if self.raw_file_cb.isChecked():
             self._open_raw_file()
-        if bool(self.settings.get("auto_read_init_on_startup", False)):
+        if bool(self.settings.get("auto_read_init_on_startup", False)) and not passive:
             QTimer.singleShot(800, self.send_init_reads)
         self._apply_live_poll_timer_state()
 
@@ -6127,6 +6244,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _drain_capture_gui_log_queue(self):
+        self._update_warmlink_capture_button()
         for _ in range(50):
             try:
                 text = self.capture_log_queue.get_nowait()
@@ -6140,6 +6258,54 @@ class MainWindow(QMainWindow):
         if isinstance(saved, dict):
             cfg.update(saved)
         return cfg
+
+    def _is_firmware_capture_mode(self) -> bool:
+        cfg = self._capture_settings()
+        return (self._is_warmlink_backend_key(self.current_backend_key()) and
+                bool(cfg.get("enabled", False)) and str(cfg.get("mode", "normal")) == "firmware")
+
+    def _set_firmware_capture_guard(self, active: bool) -> None:
+        active = bool(active and self._is_warmlink_backend_key(self.current_backend_key()))
+        worker = getattr(self, "worker", None)
+        # FIRST: close the final TX gate on every Warmlink ReaderWorker. Only
+        # after that may timers/controllers/queues be touched.
+        dropped = worker.set_tx_blocked(active) if worker is not None else 0
+        dual = getattr(self, "dual_logger_dialog", None)
+        dual_worker = getattr(dual, "warmlink_worker", None) if dual is not None else None
+        if dual_worker is not None:
+            dropped += dual_worker.set_tx_blocked(active)
+        if active:
+            if dual is not None and getattr(dual, "warmlink_thread", None) is not None:
+                dual.stop()
+                self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            if hasattr(self, "live_poll_timer"): self.live_poll_timer.stop()
+            controller = getattr(self, "warmlink_init_controller", None)
+            if controller is not None and getattr(controller, "active", False): controller.cancel()
+            self.pending_read_requests = []
+            if hasattr(self, "write_send_btn"): self.write_send_btn.setEnabled(False)
+            if hasattr(self, "init_read_btn"): self.init_read_btn.setEnabled(False)
+            self._log(f"Firmware-Capture: TX-Sperre AKTIV – streng passiv; {dropped} Queue-Einträge verworfen.")
+        else:
+            if hasattr(self, "write_send_btn"):
+                self.write_send_btn.setEnabled(bool(self.connected))
+            self._update_init_read_button_state()
+            self._apply_live_poll_timer_state()
+
+    @Slot(str, int, int, int)
+    def _on_passive_tx_blocked(self, kind: str, slave: int, addr: int, size: int) -> None:
+        self._log(f"Firmware-Capture blockierte {kind}: bus=0x{slave:02X}, addr={addr}, Bytes/Elemente={size}")
+        cap = getattr(self, "warmlink_capture", None)
+        if cap is not None:
+            cap.note_event("passive_tx_blocked", command=kind, bus=slave, address=addr, byte_count=size)
+
+    def _set_capture_power_inhibit(self, active: bool) -> None:
+        self.capture_power_inhibit_active = bool(active)
+        if sys.platform != "win32": return
+        try:
+            flags = 0x80000000 | (0x00000001 if active else 0)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+            ctypes.windll.kernel32.SetThreadExecutionState(flags)
+        except Exception as exc:
+            self._log(f"Energiespar-Sperre konnte nicht geändert werden: {exc}")
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
@@ -6155,6 +6321,9 @@ class MainWindow(QMainWindow):
         if not bool(cfg.get("enabled", False)):
             self.warmlink_capture = None
             return
+        existing = getattr(self, "warmlink_capture", None)
+        if existing is not None and existing.get_status().active:
+            return
         baseline = None
         try:
             if 2104 in self.latest_regs:
@@ -6163,12 +6332,14 @@ class MainWindow(QMainWindow):
             baseline = None
         self.warmlink_capture = WarmlinkRawCapture(cfg, getattr(self, "user_data_dir", self.base_dir), self._capture_thread_log)
         self.warmlink_capture.start(baseline=baseline)
+        self._set_capture_power_inhibit(str(cfg.get("mode", "normal")) == "firmware" or bool(cfg.get("prevent_standby", True)))
 
     def _stop_warmlink_capture(self, reason: str = "gestoppt"):
         cap = getattr(self, "warmlink_capture", None)
         if cap is not None:
             cap.stop(reason, join=True, timeout=3.0)
             self.warmlink_capture = None
+        self._set_capture_power_inhibit(False)
         self._drain_capture_gui_log_queue()
 
     def _open_raw_file(self):
@@ -8283,6 +8454,9 @@ class MainWindow(QMainWindow):
     # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
 
     def send_init_reads(self):
+        if self._is_firmware_capture_mode():
+            self._log("Firmware-Capture aktiv – Senden gesperrt.")
+            return
         try:
             slave_addr = self._parse_int_text(self.write_bus_edit.text())
         except Exception:
@@ -8477,6 +8651,10 @@ class MainWindow(QMainWindow):
         self.send_cloud_write(cloud_code, value, device_code=device_code, label=f"Register {reg_no}")
 
     def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = ""):
+        if self._is_firmware_capture_mode():
+            QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Steuerbefehle sind gesperrt.")
+            self._log("Firmware-Capture blockierte aktiven Cloud-Steuerbefehl.")
+            return
         if self.cloud_write_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Schreibbefehl.")
             return
