@@ -4,7 +4,24 @@ from pathlib import Path
 
 import pytest
 
-from warmlink_raw_capture import WarmlinkRawCapture, parse_modbus
+from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture, parse_modbus
+from core.settings_manager import ensure_defaults
+
+
+def test_legacy_capture_settings_default_to_normal_mode():
+    settings = ensure_defaults({"warmlink_raw_capture": {"enabled": True}})
+    assert settings["warmlink_raw_capture"]["mode"] == "normal"
+    assert DEFAULT_CAPTURE_SETTINGS["mode"] == "normal"
+
+
+def test_passive_block_event_does_not_write_tx_bytes(tmp_path):
+    cap = WarmlinkRawCapture({"directory": str(tmp_path), "mode": "firmware"}, str(tmp_path))
+    cap.start()
+    cap.note_event("passive_tx_blocked", command="read", byte_count=8, address=2001)
+    cap.stop(join=True)
+    assert next(tmp_path.glob("*.tx.bin")).read_bytes() == b""
+    events = [json.loads(line) for line in next(tmp_path.glob("*.events.jsonl")).read_text(encoding="utf-8").splitlines()]
+    assert any(event.get("event") == "passive_tx_blocked" for event in events)
 
 
 def test_parse_modbus_does_not_treat_payload_chunks_as_unknown_frames():

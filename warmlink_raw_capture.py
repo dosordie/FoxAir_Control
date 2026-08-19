@@ -7,6 +7,8 @@ from typing import Any, Callable, Optional
 
 DEFAULT_CAPTURE_SETTINGS = {
     "enabled": False,
+    "mode": "normal",
+    "prevent_standby": True,
     "directory": "captures",
     "capture_rx": True,
     "capture_tx": True,
@@ -86,6 +88,8 @@ class WarmlinkRawCapture:
             "rx": {"offset": 0, "data": bytearray()},
             "tx": {"offset": 0, "data": bytearray()},
         }
+        self._protocol_window: list[tuple[float, int, bool]] = []
+        self._last_protocol_alert = 0.0
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -99,6 +103,9 @@ class WarmlinkRawCapture:
     def capture_rx(self, b: bytes): self._put(("rx", bytes(b)))
     def capture_tx(self, b: bytes): self._put(("tx", bytes(b)))
     def force_new_segment(self): self._put(("rotate", {}))
+    def note_event(self, event: str, **details: Any):
+        """Record a public, non-raw event (for example a blocked TX attempt)."""
+        self._put(("event", {"ts": utc_iso(), "event": str(event), **details}))
     def get_status(self) -> CaptureStatus:
         with self.lock: return CaptureStatus(**self.status.__dict__)
     def _put(self, item):
@@ -315,6 +322,20 @@ class WarmlinkRawCapture:
         if not self.cfg.get("anomaly_detection", True): return
         arr = self.recent_rx if direction=="rx" else self.recent_tx; arr.append((now,len(data))); del arr[:max(0,len(arr)-200)]
         rx_bytes=sum(n for t,n in self.recent_rx if now-t<=10); tx_bytes=sum(n for t,n in self.recent_tx if now-t<=10)
+        if direction == "rx":
+            known = ev.get("parser") == "frame" and ev.get("function") in {"0x03", "0x06", "0x10"}
+            self._protocol_window.append((now, len(data), known))
+            self._protocol_window = [x for x in self._protocol_window if now - x[0] <= 10]
+            window_bytes = sum(x[1] for x in self._protocol_window)
+            known_chunks = sum(1 for x in self._protocol_window if x[2])
+            # Deliberately conservative: sustained 64 KiB/10 s and virtually no
+            # recognisable Modbus chunks. Raw capture remains the source of truth.
+            if window_bytes >= 64 * 1024 and known_chunks <= 1 and now - self._last_protocol_alert >= 30:
+                self._last_protocol_alert = now
+                self._write_event({"ts": utc_iso(), "event": "possible_firmware_protocol", "window_s": 10,
+                                   "rx_bytes": window_bytes, "known_modbus_chunks": known_chunks})
+                with self.lock: self.status.anomalies += 1
+                self.log_cb("Warmlink Capture: mögliches proprietäres Firmware-Protokoll erkannt")
         kind=None
         if direction=="rx" and rx_bytes>50*1024: kind="large_rx_burst"
         if ev.get("parser") == "frame_start" and ev.get("function") and ev.get("function") not in {"0x03","0x06","0x10"} and len(data) >= 4 and ev.get("bus") in KNOWN_BUS_ADDRS:

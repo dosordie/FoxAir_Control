@@ -45,6 +45,12 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     settings.setdefault("tab_auto_poll", False)
     settings.setdefault("tab_poll_interval_s", 30)
     settings.setdefault("display_write_mode", "fc16")
+    capture = settings.setdefault("warmlink_raw_capture", {})
+    if not isinstance(capture, dict):
+        capture = {}
+        settings["warmlink_raw_capture"] = capture
+    capture.setdefault("mode", "normal")
+    capture.setdefault("prevent_standby", True)
     settings.setdefault("manual_register_dialog", {})
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)
