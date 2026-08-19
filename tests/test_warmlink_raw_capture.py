@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 from pathlib import Path
 
@@ -22,6 +23,118 @@ def test_passive_block_event_does_not_write_tx_bytes(tmp_path):
     assert next(tmp_path.glob("*.tx.bin")).read_bytes() == b""
     events = [json.loads(line) for line in next(tmp_path.glob("*.events.jsonl")).read_text(encoding="utf-8").splitlines()]
     assert any(event.get("event") == "passive_tx_blocked" for event in events)
+
+
+@pytest.mark.parametrize("command", ["read", "write", "write_block"])
+def test_reader_worker_tx_barrier_blocks_send_and_tx_signal(command, tmp_path):
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    class FakeClient:
+        def __init__(self):
+            self.sent = []
+        def is_connected(self):
+            return True
+        def send(self, frame):
+            self.sent.append(bytes(frame))
+
+    worker = app.ReaderWorker("host", 2001, None)
+    worker.client = FakeClient()
+    worker.running = True
+    tx_chunks = []
+    worker.tx_chunk.connect(tx_chunks.append)
+    cap = WarmlinkRawCapture({"directory": str(tmp_path), "mode": "firmware"}, str(tmp_path))
+    cap.start()
+    worker.tx_blocked_attempt.connect(
+        lambda kind, bus, addr, size: cap.note_event(
+            "passive_tx_blocked", command=kind, bus=bus, address=addr, byte_count=size
+        )
+    )
+    worker.set_tx_blocked(True)
+    if command == "read":
+        worker.enqueue_read(2001, 1)
+    elif command == "write":
+        worker.enqueue_write(1001, 7)
+    else:
+        worker.enqueue_write_block(1001, [7, 8])
+    worker._flush_write_queue()
+    cap.stop(join=True)
+
+    assert worker.client.sent == []
+    assert tx_chunks == []
+    events = [json.loads(line) for line in next(tmp_path.glob("*.events.jsonl")).read_text(encoding="utf-8").splitlines()]
+    assert any(event.get("event") == "passive_tx_blocked" and event.get("command") == command for event in events)
+
+
+def test_reader_worker_can_send_again_after_tx_barrier_is_removed():
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    class FakeClient:
+        def __init__(self): self.sent = []
+        def is_connected(self): return True
+        def send(self, frame): self.sent.append(bytes(frame))
+
+    worker = app.ReaderWorker("host", 2001, None)
+    worker.client = FakeClient(); worker.running = True
+    tx_chunks = []
+    worker.tx_chunk.connect(tx_chunks.append)
+    worker.set_tx_blocked(True)
+    worker.enqueue_read(2001, 1)
+    worker._flush_write_queue()
+    worker.set_tx_blocked(False)
+    worker.enqueue_read(2001, 1)
+    worker._flush_write_queue()
+    assert len(worker.client.sent) == 1
+    assert len(tx_chunks) == 1
+
+
+def test_dual_logger_start_is_blocked_in_firmware_mode(monkeypatch):
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+    warnings = []
+    monkeypatch.setattr(app.QMessageBox, "warning", lambda *args: warnings.append(args))
+
+    class Main:
+        @staticmethod
+        def _is_firmware_capture_mode(): return True
+    class FakeDialog:
+        main_window = Main()
+        messages = []
+        def _log(self, text): self.messages.append(text)
+
+    fake = FakeDialog()
+    app.DualBusLoggerDialog.start(fake)
+    assert warnings
+    assert fake.messages == ["Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt."]
+
+
+def test_possible_firmware_protocol_uses_realistic_rate_and_complete_crc_frames(monkeypatch, tmp_path):
+    import warmlink_raw_capture as capture_module
+
+    cap = WarmlinkRawCapture({"directory": str(tmp_path)}, str(tmp_path))
+    cap.events = io.StringIO()
+    # 7.2 KiB over eight seconds is attainable at 9600 baud and contains no
+    # complete, CRC-valid known frame.
+    for second in range(9):
+        cap._anomaly("rx", b"x" * 800, {"parser": "chunk"}, 100.0 + second)
+    events = [json.loads(line) for line in cap.events.getvalue().splitlines()]
+    assert any(event.get("event") == "possible_firmware_protocol" for event in events)
+
+    cap2 = WarmlinkRawCapture({"directory": str(tmp_path)}, str(tmp_path))
+    cap2.events = io.StringIO()
+    valid_frame = _with_crc("63 03 04 00 01 00 02")
+    monkeypatch.setattr(capture_module.time, "monotonic", lambda: 104.0)
+    cap2._write_frame_complete_event("rx", 0, valid_frame, {
+        "bus": 0x63, "function": "0x03", "crc_ok": True,
+        "crc": int.from_bytes(valid_frame[-2:], "little"),
+    })
+    monkeypatch.setattr(capture_module.time, "monotonic", lambda: 105.0)
+    cap2._write_frame_complete_event("rx", len(valid_frame), valid_frame, {
+        "bus": 0x63, "function": "0x03", "crc_ok": True,
+        "crc": int.from_bytes(valid_frame[-2:], "little"),
+    })
+    for second in range(9):
+        cap2._anomaly("rx", b"x" * 800, {"parser": "chunk"}, 100.0 + second)
+    events2 = [json.loads(line) for line in cap2.events.getvalue().splitlines()]
+    assert not any(event.get("event") == "possible_firmware_protocol" for event in events2)
 
 
 def test_parse_modbus_does_not_treat_payload_chunks_as_unknown_frames():

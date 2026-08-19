@@ -69,6 +69,9 @@ class DualLoggerWorkerController(QObject):
         if self.warmlink_thread is not None:
             return
         o = self.owner
+        if bool(getattr(o.main_window, "_is_firmware_capture_mode", lambda: False)()):
+            o._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            return
         self.warmlink_thread = QThread(o)
         self.warmlink_worker = self.reader_worker_cls(
             o.warmlink_host_edit.text().strip(),
@@ -77,6 +80,11 @@ class DualLoggerWorkerController(QObject):
             backend_label=backend_label,
             transport="tcp",
             write_single=False,
+        )
+        # Defence in depth for this separate ReaderWorker: should the mode be
+        # activated between the check above and thread start, it still cannot TX.
+        self.warmlink_worker.set_tx_blocked(
+            bool(getattr(o.main_window, "_is_firmware_capture_mode", lambda: False)())
         )
         self.warmlink_worker.moveToThread(self.warmlink_thread)
         self.warmlink_thread.started.connect(self.warmlink_worker.run)

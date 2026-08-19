@@ -1740,6 +1740,10 @@ class DualBusLoggerDialog(QDialog):
         der Display-Bus geoeffnet werden; der Warmlink-Bus bleibt unberuehrt.
         Das vollstaendige Dual-Logger-Fenster startet weiterhin beide Busse.
         """
+        if not display_only and self.main_window._is_firmware_capture_mode():
+            QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            return
         if display_only:
             if self.display_thread:
                 return
@@ -1910,6 +1914,9 @@ class DualBusLoggerDialog(QDialog):
         self.dual_worker_controller.start_display_worker(label)
 
     def _start_warmlink_worker(self):
+        if self.main_window._is_firmware_capture_mode():
+            self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
+            return
         self.dual_worker_controller.start_warmlink_worker("DUAL Warmlink-Modbus")
 
     def _clear_display_refs(self):
@@ -3411,6 +3418,12 @@ class CommunicationSettingsDialog(QDialog):
                 "anomaly_detection": bool(self.cap_anomaly_cb.isChecked()),
             })
             self.main_window.settings["warmlink_raw_capture"] = capture_settings
+            # For an already connected bus, install/remove the low-level
+            # barrier immediately after the mode becomes authoritative. Do not
+            # run any other apply logic first.
+            self.main_window._set_firmware_capture_guard(
+                self.main_window._is_firmware_capture_mode()
+            )
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
         self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
@@ -3422,7 +3435,6 @@ class CommunicationSettingsDialog(QDialog):
             backend = str(self.backend_combo.currentData() or "warmlink_raw")
             self.main_window.apply_communication_settings(backend)
         self.main_window._apply_live_poll_timer_state()
-        self.main_window._set_firmware_capture_guard(self.main_window._is_firmware_capture_mode())
         self.main_window._update_dual_logger_button_visibility()
         self.main_window._refresh_search_highlights()
         self.main_window._save_settings(sync_main_fields=False)
@@ -6227,8 +6239,17 @@ class MainWindow(QMainWindow):
     def _set_firmware_capture_guard(self, active: bool) -> None:
         active = bool(active and self._is_warmlink_backend_key(self.current_backend_key()))
         worker = getattr(self, "worker", None)
+        # FIRST: close the final TX gate on every Warmlink ReaderWorker. Only
+        # after that may timers/controllers/queues be touched.
         dropped = worker.set_tx_blocked(active) if worker is not None else 0
+        dual = getattr(self, "dual_logger_dialog", None)
+        dual_worker = getattr(dual, "warmlink_worker", None) if dual is not None else None
+        if dual_worker is not None:
+            dropped += dual_worker.set_tx_blocked(active)
         if active:
+            if dual is not None and getattr(dual, "warmlink_thread", None) is not None:
+                dual.stop()
+                self._log("Firmware-Capture aktiv – aktive Warmlink-Diagnose gesperrt.")
             if hasattr(self, "live_poll_timer"): self.live_poll_timer.stop()
             controller = getattr(self, "warmlink_init_controller", None)
             if controller is not None and getattr(controller, "active", False): controller.cancel()
@@ -6237,7 +6258,10 @@ class MainWindow(QMainWindow):
             if hasattr(self, "init_read_btn"): self.init_read_btn.setEnabled(False)
             self._log(f"Firmware-Capture: TX-Sperre AKTIV – streng passiv; {dropped} Queue-Einträge verworfen.")
         else:
+            if hasattr(self, "write_send_btn"):
+                self.write_send_btn.setEnabled(bool(self.connected))
             self._update_init_read_button_state()
+            self._apply_live_poll_timer_state()
 
     @Slot(str, int, int, int)
     def _on_passive_tx_blocked(self, kind: str, slave: int, addr: int, size: int) -> None:
