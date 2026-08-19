@@ -2,15 +2,13 @@
 
 ## Zweck
 
-Diese Anleitung beschreibt, wie ein USB-RS485-Adapter parallel auf den Modbus zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) aufgelegt wird. Damit kann der vorhandene Datenverkehr mit FoxAir Control mitgeschnitten und analysiert werden, ohne die bestehende Verbindung zum LTE-Modem zu trennen.
+Diese Anleitung beschreibt ausschließlich den **Hardware-Anschluss eines USB-RS485-Adapters** an den Warmlink-/LTE-Modbus der untersuchten FoxAir/PHNIX-Wärmepumpe.
 
-> **Wichtig:** Der zusätzliche USB-RS485-Adapter ist beim Mithören nur als Empfänger gedacht. Er darf nicht als zweiter Modbus-Master aktiv Telegramme auf den Bus senden, solange das LTE-Modem angeschlossen ist.
+Der Adapter wird parallel auf die vorhandene RS485-Verbindung zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) aufgelegt. Die bestehende Verbindung zum LTE-Modem bleibt dabei unverändert bestehen.
 
-> **Stand der Firmware-Untersuchung:** Der eigentliche Firmware-Datenstrom wurde im Projekt bereits auf dem **Display-Modbus** beobachtet und dieser Übertragungsweg damit bestätigt. Der Warmlink-/LTE-Langzeit-Capture soll deshalb vor allem untersuchen, **welche Auslöser, Handshakes, Steuertelegramme oder Metadaten auf dem Warmlink-/LTE-Bus rund um einen Updatevorgang sichtbar werden** und wie diese zeitlich mit dem bekannten Firmwaretransfer auf dem Display-Modbus zusammenhängen.
->
-> Nach bisherigem Kenntnisstand führt FoxAir **keine automatischen Firmwareupdates** durch. Ein Update muss bei **Kensol** beauftragt bzw. angefordert und von dort angestoßen werden. Ohne einen solchen gezielt ausgelösten Updatevorgang ist daher auch bei einem langen Mitschnitt nicht mit einem Firmwaretransfer zu rechnen.
->
-> Der Warmlink-Logger bleibt ein Forschungswerkzeug: Es ist nicht garantiert, dass der eigentliche Update-Auslöser auf diesem Bus sichtbar ist oder dass sich aus einem Mitschnitt später ein reproduzierbarer eigener Update-Trigger ableiten lässt.
+> **Wichtig:** Der zusätzliche USB-RS485-Adapter ist beim Mithören nur als Empfänger gedacht. Solange das LTE-Modem angeschlossen ist, darf über den zusätzlichen Adapter kein zweiter Modbus-Master aktiv Telegramme auf den Bus senden.
+
+Die Bedienung und Konfiguration des Langzeit-Captures in FoxAir Control ist separat in [warmlink_raw_capture.md](warmlink_raw_capture.md) beschrieben.
 
 ## Schnittstellenparameter
 
@@ -72,7 +70,7 @@ Die Klemmen für **A** und **B** sind damit sowohl im Schaltplan als auch am Ans
 
 Falls trotz korrekter Schnittstellenparameter keinerlei verwertbare Telegramme empfangen werden, können **A und B vertauscht** sein. In diesem Fall die beiden RS485-Leitungen am USB-Adapter tauschen. Ein Vertauschen von A/B führt normalerweise lediglich dazu, dass keine gültigen Daten empfangen werden.
 
-## Schritt für Schritt: Hardware
+## Schritt für Schritt
 
 1. Wärmepumpe vollständig spannungsfrei schalten.
 2. Vorhandene RS485-Leitungen identifizieren, die vom Mainboard zum Warmlink-/LTE-Modem bzw. DTU führen.
@@ -81,92 +79,27 @@ Falls trotz korrekter Schnittstellenparameter keinerlei verwertbare Telegramme e
 5. Leitung **B** des USB-RS485-Adapters parallel zur vorhandenen B-Leitung anklemmen.
 6. Am USB-RS485-Adapter sicherstellen, dass **keine zusätzliche 120-Ω-Terminierung** aktiviert ist.
 7. Darauf achten, dass keine Litzen herausstehen und kein Kurzschluss zu benachbarten Klemmen entstehen kann.
-8. USB-RS485-Adapter mit dem PC bzw. Capture-System verbinden.
+8. USB-RS485-Adapter mit dem PC bzw. Capture-Rechner verbinden.
 9. Wärmepumpe wieder einschalten.
+10. Am PC prüfen, ob der USB-RS485-Adapter als serielle Schnittstelle bzw. COM-Port erkannt wird.
+11. Für den Warmlink-/LTE-Bus **9600 Baud, 8N1** verwenden.
+12. Falls keine plausiblen Daten empfangen werden, zunächst A/B am USB-RS485-Adapter tauschen und erneut prüfen.
 
-## FoxAir Control für den USB-RS485-Abgriff einstellen
+## Praxis: längere Leitung bis zum Capture-Rechner
 
-Im aktuellen Programm erfolgt die Konfiguration unter **Programm-Einstellungen → Verbindung**:
+Der parallele Abgriff wurde an der untersuchten Anlage bereits erfolgreich mit einem **ca. 30 Meter langen Patchkabel bis in den Keller** getestet. Der USB-RS485-Adapter bzw. der Capture-Rechner muss damit nicht zwingend direkt neben der Wärmepumpe stehen.
 
-1. **Kommunikationsart:** `Modbus Warmlink LTE`
-2. **Transport:** `Serial / COM-Port`
-3. **COM-Port:** den vom USB-RS485-Adapter verwendeten Port auswählen/eintragen, z. B. `COM3`
-4. **Baudrate:** `9600`
-5. **Parität:** `None / N`
-6. **Datenbits:** `8`
-7. **Stopbits:** `1`
+Für eine solche Verlängerung empfiehlt sich:
 
-Die Warmlink-Vorgaben entsprechen damit **9600 8N1**.
+- **A und B über ein gemeinsames verdrilltes Adernpaar** des Netzwerkkabels führen.
+- Die beiden RS485-Signale nicht auf Adern unterschiedlicher Paare verteilen.
+- Keine Versorgungsspannung der Wärmepumpe über das Patchkabel zum USB-Adapter führen.
+- Die zusätzliche **120-Ω-Terminierung am USB-RS485-Adapter deaktiviert lassen**, wie beim kurzen Parallelabgriff.
+- Bei Empfangsproblemen zuerst A/B, Steckverbindungen, Leitungslänge und eventuelle zusätzliche Terminierungen prüfen.
 
-Bei aktiver Verbindung sind die Kommunikationsparameter im Einstellfenster gesperrt. Falls Kommunikationsart, Transport oder COM-Port geändert werden müssen, zuerst die bestehende Verbindung trennen.
+> **Praxiserfahrung, keine allgemeine Garantie:** Die ca. 30 m lange Verbindung funktioniert an der hier untersuchten Anlage zuverlässig. Ob dieselbe Leitungslänge bei einer anderen Wärmepumpe, einem anderen RS485-Adapter, anderer Leitungsführung oder stärkerer elektrischer Störumgebung ebenfalls problemlos funktioniert, kann nicht garantiert werden.
 
-## Empfohlen: streng passiv mit dem Langzeit-Capture mithören
-
-Für den hier beschriebenen **parallelen Abgriff bei weiterhin angeschlossenem LTE-Modem** sollte in FoxAir Control der Modus **`Firmware-Langzeit-Capture (streng passiv)`** verwendet werden.
-
-Der normale Modus **`Normaler Langzeit-Capture`** zeichnet zwar ebenfalls Daten auf, lässt aber die normalen Lese- und Schreibfunktionen von FoxAir Control weiterhin zu. Damit könnte FoxAir Control selbst Telegramme senden und wäre auf dem bereits vom LTE-Modem benutzten Bus nicht mehr nur passiver Zuhörer.
-
-### Firmware-Langzeit-Capture starten
-
-1. Im Hauptfenster auf **`Langzeit-Capture ...`** klicken.
-2. Als Modus **`Firmware-Langzeit-Capture (streng passiv)`** auswählen.
-3. Capture-Verzeichnis kontrollieren oder über **`Auswählen ...`** festlegen.
-4. Für eine spätere Analyse mindestens **`RX aufzeichnen`** und **`Events/Index schreiben`** aktiviert lassen.
-5. `TX aufzeichnen` kann aktiviert bleiben. Im streng passiven Modus sollten durch FoxAir Control **0 TX-Bytes** entstehen; der Live-Status zeigt dies zusätzlich an.
-6. Auf **`PASSIV verbinden & Firmware-Capture starten`** klicken.
-
-Der Capture kann nur gestartet werden, wenn die Kommunikationsart **`Modbus Warmlink LTE`** ausgewählt ist. Bei einem anderen Backend zeigt das Capture-Fenster einen Hinweis und deaktiviert den Start-Button.
-
-### Gezielter Mitschnitt eines Firmwareupdates
-
-Da der eigentliche Firmwaretransfer bereits auf dem **Display-Modbus** bestätigt wurde und Updates nach bisherigem Kenntnisstand nur nach Beauftragung bei **Kensol** angestoßen werden, ist für einen aussagekräftigen Forschungs-Mitschnitt folgendes Vorgehen sinnvoll:
-
-1. Warmlink-Capture **vor** der Update-Anforderung starten und streng passiv laufen lassen.
-2. Wenn möglich parallel auch den **Display-Modbus** mitschneiden, um Steuerverkehr und Firmwaretransfer zeitlich miteinander vergleichen zu können.
-3. Erst danach das Firmwareupdate bei **Kensol** beauftragen bzw. anstoßen lassen.
-4. Capture während des gesamten Updatevorgangs weiterlaufen lassen.
-5. Zeitpunkt der Beauftragung, Beginn des sichtbaren Display-Firmwaretransfers und eine eventuelle Änderung von Register 2104 möglichst genau notieren.
-
-Ein langer Warmlink-Capture ohne beauftragtes Update liefert zwar weiterhin normale Betriebsdaten, kann aber naturgemäß keinen Update-Auslöser zeigen, wenn gar kein Update angestoßen wurde.
-
-### Woran erkennt man den passiven Betrieb?
-
-Im Fenster **Warmlink Langzeit-Capture** werden unter anderem angezeigt:
-
-- Warmlink-Verbindung
-- Capture aktiv/inaktiv
-- Modus
-- **TX-Sperre**
-- Energiespar-Sperre
-- aktuelles Segment
-- RX-Bytes
-- **TX durch FoxAir Control**
-- letzter RX/TX-Zeitpunkt
-- Drops
-- Anomalien
-- Fehler
-
-Im Firmware-Modus sollte insbesondere stehen:
-
-- **Firmware-Capture AKTIV – STRENG PASSIV**
-- **TX-SPERRE AKTIV – streng passiv**
-- **TX durch FoxAir Control: 0 B ✓**
-
-Auch der Button im Hauptfenster wechselt bei aktivem Firmware-Capture auf **`● Firmware-Capture AKTIV`**.
-
-Der Firmware-Modus sperrt innerhalb von FoxAir Control eigene Sendungen bereits auf der Worker-/TX-Ebene. Zusätzlich werden unter anderem Auto-Polling, Init-Lesevorgänge und aktive Warmlink-Diagnose gestoppt bzw. verhindert. Damit ist dieser Modus für den parallelen Mitschnitt wesentlich geeigneter als der normale Langzeit-Capture.
-
-> Die TX-Sperre gilt für FoxAir Control. Andere Programme oder Geräte am gleichen RS485-Bus können selbstverständlich weiterhin senden.
-
-### Energiesparmodus
-
-Beim Firmware-Capture wird die Energiespar-Sperre automatisch aktiviert, damit Windows den Rechner während eines langen Mitschnitts möglichst nicht in Standby schickt. Im normalen Langzeit-Capture ist diese Option separat einstellbar.
-
-### Capture beenden
-
-Im Capture-Fenster **`Capture stoppen`** verwenden. Wird die Warmlink-Verbindung getrennt oder geht sie verloren, wird der aktuelle Capture ebenfalls beendet.
-
-Weitere Details zu Segmenten, Dateiformaten und Firmware-Erkennung stehen in [warmlink_raw_capture.md](warmlink_raw_capture.md).
+RS485 ist grundsätzlich für deutlich größere Leitungslängen ausgelegt. Bei einem zusätzlichen parallelen Diagnoseabgriff spielt jedoch auch die konkrete Bus-Topologie eine Rolle. Eine kurze Stichleitung ist elektrisch günstiger; die hier getesteten ca. 30 m zeigen lediglich, dass eine längere Verbindung in diesem konkreten Aufbau praktisch funktioniert.
 
 ## Wichtige Hinweise
 
@@ -180,17 +113,13 @@ Beim verwendeten USB-Adapter erfolgt die Versorgung über USB. Eine 12-V- oder s
 
 Das LTE-Modem kommuniziert bereits aktiv mit dem Mainboard. Ein parallel angeschlossener Adapter sollte deshalb beim Mitschnitt **keine eigenen Modbus-Abfragen oder Schreibbefehle senden**.
 
-In FoxAir Control dafür den **Firmware-Langzeit-Capture (streng passiv)** verwenden. Andere Software, die beim Öffnen des COM-Ports automatisch Geräte scannt, pollt oder Register liest, ist für diesen Aufbau ungeeignet.
+Auch andere Software als FoxAir Control kann beim Öffnen des COM-Ports automatisch Geräte scannen, pollen oder Register lesen. Solche aktiven Funktionen müssen bei einem reinen Parallelmitschnitt vermieden werden.
 
 ### Keine zusätzliche Terminierung
 
-Der zusätzliche Abgriff ist nur ein kurzer paralleler Stub. Am USB-RS485-Adapter sollte für diesen Zweck **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden. Eine zusätzliche Terminierung kann den bestehenden RS485-Bus unnötig belasten.
+Der USB-RS485-Adapter wird als zusätzlicher passiver Teilnehmer parallel auf den bestehenden Bus gelegt. Am Adapter sollte für diesen Aufbau **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden, da eine zusätzliche Terminierung den bestehenden RS485-Bus unnötig belasten kann.
 
 Beim gezeigten Jhoinrch-Adapter ist deshalb besonders der mit **`120Ω`** beschriftete Jumper zu kontrollieren.
-
-### Leitungen kurz halten
-
-Die Stichleitung vom vorhandenen Bus zum USB-RS485-Adapter möglichst kurz halten. Für einen temporären Diagnoseabgriff sind kurze Leitungen unkritischer als eine lange, zusätzlich parallel verlegte Verbindung.
 
 ### Galvanische Trennung
 
@@ -212,42 +141,40 @@ Wer die Klemmen oder deren Funktion nicht eindeutig identifizieren kann, sollte 
 
 ### Keine Daten
 
-- Richtiger COM-Port ausgewählt?
-- Kommunikationsart wirklich **Modbus Warmlink LTE**?
-- Transport wirklich **Serial / COM-Port**?
+- Wird der USB-RS485-Adapter vom PC als COM-/Seriellschnittstelle erkannt?
 - **9600 Baud / 8N1** eingestellt?
 - Wirklich die **485-A / 485-B**-Klemmen des DTU verwendet?
 - A und B korrekt angeschlossen?
 - A/B testweise vertauschen.
 - LTE-Modem/DTU und Wärmepumpe eingeschaltet und kommunizieren tatsächlich?
+- Ist am USB-RS485-Adapter versehentlich die 120-Ω-Terminierung aktiviert?
+- Bei langer Leitung: Steckverbindungen und verwendetes Adernpaar prüfen.
 
 ### Daten vorhanden, aber nur unbrauchbare Zeichen / ungültige Frames
 
 - Baudrate und 8N1 nochmals prüfen.
 - Sicherstellen, dass wirklich der LTE-/Warmlink-Bus und nicht der Display-/DWIN-Bus abgegriffen wurde.
 - A/B prüfen.
-
-### Capture lässt sich nicht starten
-
-- In **Programm-Einstellungen → Verbindung** die Kommunikationsart **Modbus Warmlink LTE** auswählen.
-- Falls die Verbindung bereits aktiv ist und die Kommunikationsart geändert werden muss: zuerst trennen.
-
-### Im Firmware-Capture erscheinen TX-Bytes
-
-Der Firmware-Modus ist darauf ausgelegt, eigene Telegramme von FoxAir Control zu sperren. Falls trotzdem TX-Bytes durch FoxAir Control gezählt werden oder der Status nicht **TX-SPERRE AKTIV** zeigt, Capture stoppen und die Konfiguration prüfen, bevor der parallele Mitschnitt fortgesetzt wird.
+- Bei längerer Leitung prüfen, ob A und B tatsächlich auf demselben verdrillten Adernpaar liegen.
 
 ### Kommunikation der Wärmepumpe wird nach Anschluss gestört
 
 USB-RS485-Adapter sofort wieder abklemmen und prüfen:
 
 - Ist die **120-Ω-Terminierung** am Adapter aktiviert?
-- Läuft versehentlich der normale Langzeit-Capture oder eine andere Software, die aktiv sendet?
+- Sendet die verwendete Software aktiv Daten?
 - Wurde versehentlich eine zusätzliche Leitung wie Versorgungsspannung angeschlossen?
 - Ist der Adapter für echtes RS485 geeignet und elektrisch unauffällig?
-- Ist die zusätzliche Stichleitung unnötig lang?
+- Bei langer Leitung: verbessert sich das Verhalten mit einer kürzeren Testleitung?
+
+## Software / Langzeit-Capture
+
+Diese Datei beschreibt bewusst nur den **physischen Anschluss und die Verwendung des USB-RS485-Adapters am Warmlink-/LTE-Bus**.
+
+Die Bedienung des Warmlink-Langzeit-Captures, die passiven Capture-Modi, Dateiformate, Segmentierung und die Forschungsfunktion zum Mitschneiden eines gezielt ausgelösten Updatevorgangs sind separat beschrieben:
+
+**[Warmlink RAW Langzeit-Capture](warmlink_raw_capture.md)**
 
 ## Hinweis
 
 Diese Dokumentation basiert auf der untersuchten FoxAir/PHNIX-GL9-Konfiguration und ist keine offizielle Herstelleranleitung. Klemmenbezeichnungen und Hardwarevarianten können bei anderen Mainboards oder Geräteversionen abweichen.
-
-Der eigentliche Firmwaretransfer über den **Display-Modbus** ist im Projekt bereits bestätigt. Der Firmware-Langzeit-Capture am Warmlink-/LTE-Bus ist dagegen ein experimentelles Forschungswerkzeug für den begleitenden Steuer- und Auslöseverkehr. Er stellt **keine Firmware-Update-Funktion** bereit und es gibt **keine Garantie**, dass sich aus dem Warmlink-Mitschnitt der von Kensol verwendete Update-Auslöser oder ein eigenes reproduzierbares Updateverfahren ableiten lässt.
