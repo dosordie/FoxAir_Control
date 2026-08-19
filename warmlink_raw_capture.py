@@ -7,6 +7,8 @@ from typing import Any, Callable, Optional
 
 DEFAULT_CAPTURE_SETTINGS = {
     "enabled": False,
+    "mode": "normal",
+    "prevent_standby": True,
     "directory": "captures",
     "capture_rx": True,
     "capture_tx": True,
@@ -86,6 +88,10 @@ class WarmlinkRawCapture:
             "rx": {"offset": 0, "data": bytearray()},
             "tx": {"offset": 0, "data": bytearray()},
         }
+        self._protocol_window: list[tuple[float, int, bool]] = []
+        self._last_protocol_alert = 0.0
+        self._valid_rx_frames: list[float] = []
+        self._last_rx_burst_alert = 0.0
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -99,6 +105,9 @@ class WarmlinkRawCapture:
     def capture_rx(self, b: bytes): self._put(("rx", bytes(b)))
     def capture_tx(self, b: bytes): self._put(("tx", bytes(b)))
     def force_new_segment(self): self._put(("rotate", {}))
+    def note_event(self, event: str, **details: Any):
+        """Record a public, non-raw event (for example a blocked TX attempt)."""
+        self._put(("event", {"ts": utc_iso(), "event": str(event), **details}))
     def get_status(self) -> CaptureStatus:
         with self.lock: return CaptureStatus(**self.status.__dict__)
     def _put(self, item):
@@ -309,14 +318,37 @@ class WarmlinkRawCapture:
             ev["payload_offset"] = offset_start + int(meta.get("payload_rel", 0))
             ev["payload_len"] = int(meta.get("payload_len", 0))
         self._write_event(ev)
+        if direction == "rx" and ev["crc_ok"] and ev["function"] in {"0x03", "0x06", "0x10"}:
+            now = time.monotonic()
+            self._valid_rx_frames.append(now)
+            self._valid_rx_frames = [stamp for stamp in self._valid_rx_frames if now - stamp <= 10]
     def _write_event(self, ev: dict[str,Any]):
         if self.events: self.events.write(json.dumps(ev, ensure_ascii=False, separators=(",",":"))+"\n")
     def _anomaly(self, direction, data, ev, now):
         if not self.cfg.get("anomaly_detection", True): return
         arr = self.recent_rx if direction=="rx" else self.recent_tx; arr.append((now,len(data))); del arr[:max(0,len(arr)-200)]
         rx_bytes=sum(n for t,n in self.recent_rx if now-t<=10); tx_bytes=sum(n for t,n in self.recent_tx if now-t<=10)
+        if direction == "rx":
+            self._protocol_window.append((now, len(data), False))
+            self._protocol_window = [x for x in self._protocol_window if now - x[0] <= 10]
+            self._valid_rx_frames = [stamp for stamp in self._valid_rx_frames if now - stamp <= 10]
+            window_bytes = sum(x[1] for x in self._protocol_window)
+            window_age = now - self._protocol_window[0][0] if self._protocol_window else 0.0
+            valid_frames = len(self._valid_rx_frames)
+            # At 9600 baud roughly 9.6 KiB can arrive in ten seconds. Require a
+            # sustained, high but attainable load for >=7 s and at most one
+            # CRC-valid complete known Modbus frame. Chunk boundaries are not
+            # evidence; _valid_rx_frames is populated by frame_complete only.
+            if window_age >= 7 and window_bytes >= 6 * 1024 and valid_frames <= 1 and now - self._last_protocol_alert >= 30:
+                self._last_protocol_alert = now
+                self._write_event({"ts": utc_iso(), "event": "possible_firmware_protocol", "window_s": 10,
+                                   "rx_bytes": window_bytes, "crc_valid_known_frames": valid_frames})
+                with self.lock: self.status.anomalies += 1
+                self.log_cb("Warmlink Capture: mögliches proprietäres Firmware-Protokoll erkannt")
         kind=None
-        if direction=="rx" and rx_bytes>50*1024: kind="large_rx_burst"
+        if direction == "rx" and rx_bytes >= 8 * 1024 and now - self._last_rx_burst_alert >= 30:
+            kind = "large_rx_burst"
+            self._last_rx_burst_alert = now
         if ev.get("parser") == "frame_start" and ev.get("function") and ev.get("function") not in {"0x03","0x06","0x10"} and len(data) >= 4 and ev.get("bus") in KNOWN_BUS_ADDRS:
             kind="unknown_function"
         if ev.get("function")=="0x10":
