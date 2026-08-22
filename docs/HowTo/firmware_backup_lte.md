@@ -12,9 +12,12 @@ Diese Anleitung beschreibt kurz, wie man sich unter Windows per **Micro-USB** mi
 - Diese lässt sich vorsichtig z. B. mit einer **Pinzette** entfernen.
 - Dabei unbedingt darauf achten, den USB-Port, die Kontakte und die Platine nicht zu beschädigen.
 
+> [!CAUTION]
+> Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Durch Reste der Vergussmasse kann es sein, dass der Stecker nicht vollständig in die Buchse hineinpasst oder nicht wie gewohnt einrastet. Wenn Widerstand zu spüren ist, Stecker wieder abziehen und den Anschluss vorsichtig auf verbliebene Vergussmasse prüfen.
+
 Fotos vom geöffneten LTE-Modem werden später ergänzt.
 
-## 2. Windows-Treiber installieren
+## 2. Windows-Treiber installieren und USB-Verbindung prüfen
 
 Benötigt werden die SIMCom USB-Treiber:
 
@@ -23,6 +26,16 @@ Benötigt werden die SIMCom USB-Treiber:
 ZIP-Datei entpacken und die passenden Windows-Treiber installieren.
 
 Danach das LTE-Modem über den Micro-USB-Port mit dem PC verbinden.
+
+### Erkennung im Windows-Geräte-Manager prüfen
+
+1. **Geräte-Manager** öffnen, z. B. über Rechtsklick auf das Windows-Startmenü → **Geräte-Manager**.
+2. LTE-Modem per Micro-USB mit dem PC verbinden.
+3. Beobachten, ob beim Ein- und Ausstecken neue Geräte erscheinen bzw. verschwinden.
+4. Besonders unter **Anschlüsse (COM & LPT)**, **Modems**, **USB-Controller** bzw. **Andere Geräte** nach SIMCom-/Android-/ADB-Geräten suchen.
+5. Wird ein Gerät mit gelbem Warnsymbol oder als unbekanntes Gerät angezeigt, ist der Treiber noch nicht korrekt installiert. In diesem Fall den SIMCom-Treiber installieren bzw. aktualisieren und das Modem erneut verbinden.
+
+Damit lässt sich bereits vor dem ADB-Test feststellen, ob Windows die USB-Verbindung grundsätzlich erkennt.
 
 ## 3. Android SDK Platform Tools / ADB installieren
 
@@ -38,19 +51,43 @@ C:\platform-tools
 
 entpacken.
 
-Anschließend PowerShell in diesem Ordner öffnen und testen:
+### PowerShell direkt im `platform-tools`-Ordner öffnen
+
+Im Windows Explorer den entpackten Ordner `platform-tools` öffnen. Anschließend entweder:
+
+- in einen freien Bereich des Ordners mit **Shift + Rechtsklick** klicken und **PowerShell-Fenster hier öffnen** bzw. **Im Terminal öffnen** auswählen,
+- oder oben in die Adresszeile des Explorers `powershell` eingeben und mit Enter bestätigen.
+
+Danach sollte PowerShell bereits im richtigen Ordner stehen. Das lässt sich z. B. daran erkennen, dass die Eingabezeile ungefähr so beginnt:
+
+```text
+PS C:\platform-tools>
+```
+
+Nun prüfen, ob ADB das LTE-Modem erkennt:
 
 ```powershell
 .\adb.exe devices
 ```
 
-Wenn die Verbindung funktioniert, sollte das LTE-Modem in der Geräteliste erscheinen.
+Bei funktionierender Verbindung erscheint unter `List of devices attached` eine Geräte-ID mit dem Status `device`.
 
-Optional kann man zusätzlich testen:
+Beispiel:
+
+```text
+List of devices attached
+XXXXXXXXXXXX    device
+```
+
+Erscheint dort kein Gerät, zuerst noch einmal im Geräte-Manager prüfen, ob Windows das Modem korrekt erkannt und die Treiber geladen hat.
+
+Optional kann zusätzlich eine Shell auf dem LTE-Modem geöffnet werden:
 
 ```powershell
 .\adb.exe shell
 ```
+
+Wenn eine Kommandozeile des Modems erscheint, funktioniert die ADB-Verbindung.
 
 Mit
 
