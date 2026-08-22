@@ -22,6 +22,111 @@ Für den Warmlink-/LTE-Modbus der hier untersuchten FoxAir/PHNIX-Wärmepumpe wer
 
 Nicht mit dem Display-/DWIN-Bus verwechseln: Der Displaybus arbeitet bei der untersuchten Anlage mit **4800 Baud**.
 
+## Identifizierte Warmlink-/LTE-DTU-Hardware
+
+Bei der untersuchten Anlage wurde das Warmlink-/LTE-DTU geöffnet und die sichtbaren Hardwarebezeichnungen dokumentiert. Die folgenden Angaben beziehen sich auf genau dieses Gerät und müssen nicht für andere PHNIX-/FoxAir-DTU-Versionen gelten.
+
+### Trägerplatine
+
+Auf der Leiterplatte ist direkt aufgedruckt:
+
+- **Name:** `MXL290`
+- **Board-Datum:** `2021-05-25`
+- **B/T:** `1.6 mm`
+- **C/T:** `1 oz`
+
+Eine eindeutige öffentliche technische Dokumentation zur Bezeichnung `MXL290` konnte bisher nicht gefunden werden. Es handelt sich daher sehr wahrscheinlich um eine kundenspezifische DTU-/Trägerplatine.
+
+Eindeutige gerätespezifische Serien-/IMEI-Nummern werden hier bewusst nicht vollständig veröffentlicht.
+
+### Mobilfunkmodul
+
+Auf dem abgeschirmten Mobilfunkmodul befindet sich unter anderem die Kennzeichnung:
+
+```text
+Z30AN S2-107EQ
+```
+
+Die vollständige SIMCom-PN **`S2-107EQ-Z30AN`** wird in öffentlich verfügbaren Firmware-/Hardwareunterlagen dem **SIMCom SIM7600E-H** zugeordnet. Damit ist die Identifikation als SIM7600E-H sehr wahrscheinlich.
+
+Quellen:
+
+- SIMCom Produktseite SIM7600X-H / SIM7600E-H: https://www.simcom.com/product/SIM7600X-H.html
+- Dokumentierte PN-Zuordnung `S2-107EQ-Z30AN` zum SIM7600E-H: https://github.com/Xinyuan-LilyGO/LilyGo-Modem-Series/blob/main/docs/en/esp32/sim7600-esp32/upgrade/sim7600_upgrade.md
+
+Der SIM7600E-H ist ein LTE-Cat.-4-Modul und stellt laut SIMCom unter anderem **USB, UART, GNSS und AT-Command-Schnittstellen** bereit. SIMCom nennt außerdem FOTA als unterstützte Softwarefunktion.
+
+> **Wichtig:** Die Identifikation basiert derzeit auf der sichtbaren PN-Zuordnung. Eine zusätzliche Bestätigung direkt über das Modem, z. B. mit `AT+SIMCOMATI`, `AT+CGMM` oder `AT+CGMR`, steht noch aus.
+
+### USB-Anschluss auf der DTU-Platine
+
+Auf der MXL290-Platine ist ein **Micro-USB-Anschluss** vorhanden und eindeutig mit `USB` beschriftet.
+
+Da das vermutete SIM7600E-H selbst eine USB-Schnittstelle besitzt, ist dieser Anschluss für Diagnosezwecke besonders interessant. **Noch nicht bestätigt ist jedoch, ob der Micro-USB-Port der MXL290-Platine direkt auf die USB-Leitungen des SIM7600E-H geführt ist oder ob zusätzliche Logik dazwischenliegt.**
+
+Ein sinnvoller erster Test ist deshalb ausschließlich die USB-Erkennung am PC, ohne Konfigurationsänderungen oder Firmwarezugriffe.
+
+Bei einem direkt angebundenen SIM7600E-H können unter Windows nach Installation der passenden SIMCom-Treiber mehrere USB-Interfaces erscheinen, typischerweise beispielsweise:
+
+- `SimTech HS-USB AT Port 9001`
+- `SimTech HS-USB Diagnostics 9001`
+- `SimTech HS-USB NMEA 9001`
+- ggf. weitere USB-Interfaces
+
+Ein vergleichbares USB-Interface-Layout ist z. B. in der SIM7600E-H-Dokumentation von Waveshare beschrieben:
+
+https://www.waveshare.com/wiki/SIM7600E-H_4G_HAT
+
+### Sicherer erster USB-Test
+
+Solange die Verschaltung der MXL290-Platine nicht vollständig bekannt ist, sollte der Test konservativ erfolgen:
+
+1. DTU zunächst normal über die Wärmepumpe versorgen.
+2. Vor Verbindung mit dem PC prüfen, ob USB-VBUS auf der DTU-Seite bereits Spannung führt bzw. wie die USB-Versorgung verschaltet ist.
+3. Wenn möglich für den ersten Diagnoseversuch ein USB-Datenkabel verwenden, bei dem **VBUS/+5 V nicht verbunden** ist, während D+, D- und GND verbunden bleiben.
+4. Windows-Gerätemanager beobachten und neu erscheinende USB-/COM-Geräte dokumentieren.
+5. Noch keine Firmwaretools und keine schreibenden/konfigurationsändernden AT-Kommandos verwenden.
+
+Falls ein SIMCom-AT-Port erscheint, sind als erste rein lesende Abfragen sinnvoll:
+
+```text
+AT
+ATI
+AT+SIMCOMATI
+AT+CGMI
+AT+CGMM
+AT+CGMR
+AT+CSUB
+AT+CSQ
+AT+COPS?
+AT+CPSI?
+AT+CGSN
+```
+
+`AT+CGSN` kann eine eindeutige Gerätekennung/IMEI zurückgeben. Solche eindeutigen Kennungen sollten bei öffentlichen Logs oder Screenshots vor Veröffentlichung anonymisiert werden.
+
+### Diagnose- und Firmware-Schnittstellen
+
+Die vorhandene USB-Schnittstelle ist für das Reverse Engineering interessant, weil der SIM7600-H laut Hersteller USB- und AT-Schnittstellen sowie FOTA unterstützt. Außerdem ist die konkrete PN `S2-107EQ-Z30AN` in öffentlich verfügbaren SIM7600E-H-Firmwareunterlagen ausdrücklich aufgeführt.
+
+Das bedeutet **nicht**, dass über diesen USB-Port automatisch die Firmware des Wärmepumpen-Mainboards zugänglich ist. Zu unterscheiden sind mindestens:
+
+- Firmware/Diagnose des **SIM7600E-H-Mobilfunkmoduls**,
+- mögliche Firmware/Logik der **MXL290-DTU-Platine**,
+- Firmware des eigentlichen **Wärmepumpen-Mainboards**.
+
+Für dieses Projekt ist insbesondere interessant, ob über USB zusätzliche Informationen über Cloud-Verbindung, DTU-Software, Updateablauf oder die Kommunikation zum Wärmepumpen-Mainboard sichtbar werden.
+
+> **Keine SIM7600-Firmware auf Verdacht flashen.** In den öffentlich verfügbaren Upgradehinweisen wird ausdrücklich darauf hingewiesen, dass die Firmware zur exakten PN des Moduls passen muss. Ziel ist zunächst ausschließlich passive Identifikation und Diagnose.
+
+### Sichtbare TTL-Kennzeichnung
+
+In der Nähe des Kabelsteckers ist auf der Platine außerdem die Beschriftung **`TTL`** sichtbar. Daneben befinden sich mehrere als `ESD` sowie `R27`/`R28`/`R29` bezeichnete Schutz-/Serienbauteile.
+
+Die Beschriftung ist ein deutlicher Hinweis auf eine TTL-/UART-bezogene Schnittstelle bzw. Signalgruppe. Aus dem Foto allein lassen sich jedoch weder das genaue Pinout noch die Signalpegel sicher ableiten.
+
+Vor einem Anschluss eines USB-TTL-Adapters müssen daher zunächst **GND, Versorgung und Signalpegel gemessen** bzw. die Leiterbahnen nachvollzogen werden. Insbesondere darf eine Versorgungsspannung nicht mit einem TTL-Signal verwechselt werden.
+
 ## Verwendeter USB-RS485-Adapter
 
 Für den beschriebenen Aufbau wurde ein **Jhoinrch RH-06 LK3 USB-zu-RS485/RS422-Wandler** verwendet. Der Adapter basiert auf einem FT232RNL-USB-Seriell-Chip und ist für RS485/RS422 ausgelegt.
