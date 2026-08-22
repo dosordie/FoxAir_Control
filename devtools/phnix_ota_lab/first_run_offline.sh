@@ -59,6 +59,7 @@ Timeout: ${RUN_SECS}s
 Network: private Linux network namespace; only loopback is enabled; no veth, no default route
 RootFS: $ROOTFS
 Guest: /data/phnixIot4G via qemu-arm-static -strace
+Guest cwd: / (GNU chroot on Debian 13 does not allow --skip-chdir for a different root)
 Qualcomm/RS485 devices deliberately absent: /dev/ttyHSL2 /dev/diag /dev/smd8 /dev/smem_log
 EOF
 
@@ -96,12 +97,12 @@ unshare --net --fork bash -c '
     exit 91
   fi
 
-  # chroot normally changes cwd to /. The original application lived in /data;
-  # keep cwd at /data without requiring an ARM shell inside the rootfs.
-  cd "$ROOTFS/data"
+  # Debian 13 coreutils rejects chroot --skip-chdir when NEWROOT differs from /.
+  # For this first run we deliberately use cwd=/ inside the guest. phnixIot4G
+  # uses absolute /data, /cache, /etc and /dev paths in the relevant code paths.
   ulimit -c 0
   timeout -k 2 "${RUN_SECS}s" \
-    chroot --skip-chdir "$ROOTFS" \
+    chroot "$ROOTFS" \
       /usr/bin/qemu-arm-static -L / -strace /data/phnixIot4G \
       > "$RUN_DIR/stdout.log" 2> "$RUN_DIR/qemu-strace.log"
 ' bash "$ROOTFS" "$RUN_DIR" "$RUN_SECS"
