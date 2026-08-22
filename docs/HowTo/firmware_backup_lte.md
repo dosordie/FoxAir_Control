@@ -13,7 +13,7 @@ Diese Anleitung beschreibt kurz, wie man sich unter Windows per **Micro-USB** mi
 - Dabei unbedingt darauf achten, den USB-Port, die Kontakte und die Platine nicht zu beschädigen.
 
 > [!CAUTION]
-> Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Durch Reste der Vergussmasse kann es sein, dass der Stecker nicht vollständig in die Buchse hineinpasst oder nicht wie gewohnt einrastet. Wenn Widerstand zu spüren ist, Stecker wieder abziehen und den Anschluss vorsichtig auf verbliebene Vergussmasse prüfen.
+> Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Da sich die Vergussmasse nur schwer vollständig aus der Buchse entfernen lässt, wird beim Einstecken voraussichtlich ein gewisser Widerstand zu spüren sein und der Stecker möglicherweise nicht vollständig einrasten. Den Stecker daher nur vorsichtig und so weit wie ohne Gewalt möglich einstecken, bis Windows die USB-Verbindung erkennt.
 
 Fotos vom geöffneten LTE-Modem werden später ergänzt.
 
