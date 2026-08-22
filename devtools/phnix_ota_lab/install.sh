@@ -161,10 +161,13 @@ if ! grep -Eq '^[[:space:]]*include_dir[[:space:]]+/etc/mosquitto/conf\.d([[:spa
     printf '\ninclude_dir /etc/mosquitto/conf.d\n' >> /etc/mosquitto/mosquitto.conf
 fi
 
-# Validate config before restarting the service.
-mosquitto -c /etc/mosquitto/mosquitto.conf -t
+# Mosquitto 2.0.x has no portable "config test" switch. Restarting the service
+# validates the configuration; on failure print the recent journal for diagnosis.
+if ! systemctl restart mosquitto; then
+    journalctl -u mosquitto -n 50 --no-pager || true
+    die "Mosquitto konnte mit der Lab-Konfiguration nicht gestartet werden."
+fi
 systemctl enable mosquitto >/dev/null 2>&1 || true
-systemctl restart mosquitto
 
 log "Lokalen MQTT-Broker testen"
 TMP_SUB="$(mktemp)"
@@ -187,9 +190,7 @@ printf '=== PHNIX OTA Lab ===\n'
 printf 'Host: '; grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2- | tr -d '"'
 printf 'QEMU: '; qemu-arm-static --version 2>/dev/null | head -n1 || true
 printf 'qemu-arm binfmt: '
-if command -v update-binfmt >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
-    echo enabled
-elif command -v update-binfmts >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
+if command -v update-binfmts >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
     echo enabled
 else
     echo unknown/disabled
