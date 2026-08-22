@@ -57,6 +57,8 @@ CORE_PACKAGES=(
     tcpdump
     strace
     openssl
+    rsync
+    unzip
     build-essential
     pkg-config
     cmake
@@ -121,7 +123,9 @@ install -d -m 0755 \
     "$LAB_ROOT/rootfs/lib" \
     "$LAB_ROOT/rootfs/usr/lib" \
     "$LAB_ROOT/rootfs/etc" \
+    "$LAB_ROOT/rootfs/etc/data" \
     "$LAB_ROOT/rootfs/data" \
+    "$LAB_ROOT/rootfs/data/mifi" \
     "$LAB_ROOT/rootfs/cache" \
     "$LAB_ROOT/rootfs/dev" \
     "$LAB_ROOT/rootfs/proc" \
@@ -131,6 +135,7 @@ install -d -m 0755 \
     "$LAB_ROOT/logs" \
     "$LAB_ROOT/pcap" \
     "$LAB_ROOT/tools" \
+    "$LAB_ROOT/runtime-import" \
     "$LAB_ROOT/tmp"
 chmod 1777 "$LAB_ROOT/rootfs/tmp" "$LAB_ROOT/tmp"
 
@@ -182,7 +187,9 @@ printf '=== PHNIX OTA Lab ===\n'
 printf 'Host: '; grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2- | tr -d '"'
 printf 'QEMU: '; qemu-arm-static --version 2>/dev/null | head -n1 || true
 printf 'qemu-arm binfmt: '
-if command -v update-binfmts >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
+if command -v update-binfmt >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
+    echo enabled
+elif command -v update-binfmts >/dev/null 2>&1 && update-binfmts --display qemu-arm 2>/dev/null | grep -q 'enabled'; then
     echo enabled
 else
     echo unknown/disabled
@@ -213,15 +220,23 @@ phnix-lab-info
 cat <<'EOF'
 
 Naechster Schritt:
-  1. SIM7600-Dateien noch NICHT wahllos kopieren.
-  2. Zuerst die Runtime-Abhaengigkeiten von phnixIot4G sichern.
-  3. Danach unter /opt/phnix-lab/rootfs/ ablegen.
+  1. Private SIM7600-Runtime-Dateien unter /opt/phnix-lab/runtime-import/ bereitstellen.
+  2. Keine DeviceSecrets, IMEI oder Firmwaredateien ins oeffentliche Repository committen.
+  3. Original-Libraries und Konfigurationen werden gezielt nach rootfs/ importiert.
   4. Anschliessend testen wir qemu-arm-static, Libraries und /dev/ttyHSL2 per PTY.
+
+Bekannte private Runtime-Pfade fuer den spaeteren Import:
+  /lib und /usr/lib
+  /etc/data/dsi_config.xml
+  /etc/data/netmgr_config.xml
+  /etc/data/qmi_config.xml
+  /etc/qmi_ip_cfg.xml
+  /etc/nsswitch.conf, /etc/hosts, /etc/host.conf
+  /data/mifi/resolv.conf
 
 Wichtig:
   - Der MQTT-Broker lauscht nur auf 127.0.0.1:1883.
   - Dieses Script aendert Routing/Firewall nicht.
   - Fuer ein komplett isoliertes Lab Internetzugriff in Proxmox sperren bzw. eine
     Bridge ohne Gateway/physische Uplink-Schnittstelle verwenden.
-  - Keine DeviceSecrets, IMEI oder Firmwaredateien in das oeffentliche GitHub-Repo committen.
 EOF
