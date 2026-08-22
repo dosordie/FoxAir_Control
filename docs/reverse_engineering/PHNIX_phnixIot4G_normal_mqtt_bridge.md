@@ -26,6 +26,8 @@ Mainboard /dev/ttyHSL2
 
 **Wichtig:** Der normale `/user/get`-Callback interpretiert kein JSON. Die Nutzlast wird binär und unverändert Richtung Mainboard weitergereicht. Ebenso publiziert `ali_mqtt_push_msg()` den übergebenen RS485-Puffer direkt als MQTT-Payload. Damit implementiert `phnixIot4G` im normalen Kanal im Kern eine binäre MQTT↔RS485-Bridge.
 
+Die vollständige Zerlegung von `unpack_mcu_modbus()` zeigt außerdem: **Es gibt dort keine zweite normale Registertabelle.** Die einzige Dispatch-Tabelle umfasst genau acht OTA-/Boardservice-Register. Alle übrigen gültigen Frames fallen grundsätzlich durch den Dispatcher zurück in den transparenten MQTT-Pfad, abgesehen von wenigen Sonderfällen in `getDevParameter()` selbst.
+
 ---
 
 ## 1. MQTT-Topics und Subscription
@@ -37,27 +39,21 @@ Mainboard /dev/ttyHSL2
 - OTA Publish: `/<productKey>/<deviceName>/user/OTA_UPDATE`
 - OTA Subscribe: `/<productKey>/<deviceName>/user/OTA_GET`
 
-Der normale `/user/get`-Topic wird bei `0x1F534–0x1F54C` mit QoS 1 und Callback `aliMqtt_topic_get_msg_arrive()` (`0x1EED0`) registriert.
+Der normale `/user/get`-Topic wird mit QoS 1 und Callback `aliMqtt_topic_get_msg_arrive()` (`0x1EED0`) registriert.
 
 ---
 
 ## 2. Cloud -> Mainboard: `aliMqtt_topic_get_msg_arrive()`
 
-Funktion: `0x1EED0`, Länge 356 Byte.
+Funktion: `0x1EED0`.
 
-Der Callback greift auf das vom Aliyun-SDK gelieferte Topic-/Message-Objekt zu und verwendet:
+Der Callback greift auf das vom Aliyun-SDK gelieferte Messageobjekt zu und verwendet dessen Payload-Zeiger und Payload-Länge. Nach Debugausgaben wird die komplette Payload unverändert an
 
-- Payload-Zeiger aus dem Messageobjekt,
-- Payload-Länge aus dem Messageobjekt.
+```text
+uart485_send_data_to_board(payload, payload_len)
+```
 
-Nach Debugausgaben passiert funktional fast nichts:
-
-1. Kommunikations-LED wird gestartet.
-2. Topic/Payload werden geloggt.
-3. Wenn die ersten sechs Payloadbytes exakt ASCII `status` sind, wird ein internes Fehler-/Retrybyte bei `0x988FC+0x14` auf 0 gesetzt.
-4. **Danach wird die komplette Payload unverändert an `uart485_send_data_to_board(payload, payload_len)` übergeben.**
-5. Zwei Statistikzähler werden inkrementiert.
-6. Kommunikations-LED wird gestoppt.
+übergeben. Anschließend werden Statistikzähler erhöht.
 
 Es gibt in diesem Callback:
 
@@ -67,17 +63,27 @@ Es gibt in diesem Callback:
 - keine CRC-Neuberechnung,
 - keine Register-Whitelist.
 
+### Korrektur zur früheren Interpretation von `status`
+
+Bei `0x1EF74` ruft der Callback zwar
+
+```c
+memcmp(payload, "status", 6)
+```
+
+auf, **wertet den Rückgabewert aber nicht aus**. Direkt danach wird das Byte `0x988FC+0x14` auf 0 gesetzt. Das Zurücksetzen ist daher **nicht von einem `status`-Präfix abhängig**, sondern passiert bei jedem normalen `/user/get`-Callback. Der `memcmp()`-Aufruf ist in diesem Build funktional wirkungslos (wahrscheinlich liegengebliebener/fehlerhafter Code).
+
 ### Konsequenz
 
-Für den normalen Cloudkanal muss der Server offenbar bereits ein vollständig sendefertiges Binärtelegramm liefern. `phnixIot4G` fungiert als Transportbrücke.
-
-Das unterscheidet sich deutlich vom OTA-Kanal, wo eingehende JSON-Nachrichten (`0033` usw.) semantisch ausgewertet und daraus lokale RS485-Pakete erzeugt werden.
+Für den normalen Cloudkanal liefert der Server bereits ein vollständig sendefertiges Binärtelegramm. `phnixIot4G` fungiert als Transportbrücke.
 
 ---
 
 ## 3. `uart485_send_data_to_board()` ist eine Queue, kein direkter `write()`
 
 Funktion: `0x1562C`.
+
+Sinngemäß:
 
 ```c
 if (len <= 2048) {
@@ -93,9 +99,7 @@ Relevante globale Bereiche:
 - `uart485SendLen` = `0x930E0`
 - Sendeflag = Byte bei `0x930DC`
 
-Damit schreibt der MQTT-Callback nicht selbst auf den UART. Er legt nur das Telegramm in den gemeinsamen Sendepuffer. Der UART-Pfad übernimmt die eigentliche Ausgabe.
-
-Pakete >2048 Byte werden verworfen und geloggt.
+Pakete über 2048 Byte werden ignoriert und geloggt.
 
 ---
 
@@ -103,11 +107,11 @@ Pakete >2048 Byte werden verworfen und geloggt.
 
 Funktion: `0x14D58`.
 
-`getDevParameter()` ist die zentrale Empfangsschleife des normalen Mainboardkanals. Sie liest von dem in `uart485_init()` geöffneten `/dev/ttyHSL2`, sammelt empfangene Bytes in `uart485ReadBuf` (`0x920DC`) und prüft anschließend das Telegramm.
+`getDevParameter()` ist die zentrale Empfangsschleife des Mainboardkanals. Sie liest von `/dev/ttyHSL2`, sammelt die Daten in `uart485ReadBuf` (`0x920DC`) und prüft anschließend das Telegramm.
 
 ### Zulässige Modbus-Funktionscodes
 
-Nach erfolgreicher CRC-Prüfung werden für den regulären Dispatcher nur diese Funktionscodes akzeptiert:
+Nach erfolgreicher CRC-Prüfung werden für die weitere Verarbeitung akzeptiert:
 
 - `0x10`
 - `0x03`
@@ -121,140 +125,221 @@ Danach folgt:
 unpack_mcu_modbus(uart485ReadBuf, recv_len)
 ```
 
-Wenn dieser interne Dispatcher `0` zurückgibt, wird das Telegramm **nicht** normal in die Cloud weitergereicht. Das ist unter anderem der Mechanismus, mit dem lokal behandelte OTA-/Sonderregister abgefangen werden.
-
-Wenn `unpack_mcu_modbus()` ungleich 0 zurückgibt, läuft das Telegramm in den normalen Bridgepfad weiter.
+Wenn dieser Dispatcher `0` zurückgibt, ist der Frame lokal konsumiert und wird nicht über den normalen `/user/update`-Pfad publiziert. Bei Rückgabe `-1` läuft er weiter in die transparente Bridge.
 
 ---
 
-## 5. Sonderfälle vor dem normalen MQTT-Publish
+## 5. `unpack_mcu_modbus()` vollständig zerlegt
 
-### 5.1 Fünf-Byte-Exception-Frame
+Funktion: `0x1DDE8`.
 
-Wenn die empfangene Länge exakt 5 Byte beträgt und die ersten fünf Bytes exakt
+### 5.1 Frameerkennung
+
+Der Dispatcher sucht im übergebenen Puffer nach:
+
+```text
+byte +0 = 0x63
+byte +1 = 0x10
+byte +2/+3 = Registeradresse, big endian
+byte +4/+5 = Registeranzahl, big endian
+byte +7... = Nutzdaten
+```
+
+Nur Slave `0x63` + Funktion `0x10` werden intern dispatcht. Andere Frames bleiben unbehandelt (`-1`) und können damit normal zur Cloud gehen.
+
+### 5.2 Zwei explizite lokale Bypass-Adressen
+
+Noch vor der Tabelle prüft `unpack_mcu_modbus()` die Adresse auf:
+
+- `0xC37B`
+- `0xC5A8`
+
+Für beide wird sofort `0` zurückgegeben. Damit werden diese Frames lokal konsumiert und **nicht** über `/user/update` weitergeleitet.
+
+`0xC5A8` gehört zum OTA-Datenblockpfad. `0xC37B` ist ein weiterer lokaler Board-/OTA-Servicepfad; die genaue Gegenfunktion liegt außerhalb dieser Dispatch-Tabelle.
+
+### 5.3 Die komplette Dispatch-Tabelle
+
+Tabelle ab VA `0x91C68`, acht Einträge à 8 Byte:
+
+| Index | Register | Handler | Adresse |
+|---:|---:|---|---:|
+| 0 | `0xC350` | `board_set_ser_ver_handle` | `0x1B480` |
+| 1 | `0xC357` | `board_set_bin_info_handle` | `0x1B4B4` |
+| 2 | `0xC36C` | `board_recv_cancel_upgrade_handle` | `0x1B51C` |
+| 3 | `0xC36E` | `board_is_allow_upg_handle` | `0x1BA04` |
+| 4 | `0xC371` | `board_updata_bin_handle` | `0x1B72C` |
+| 5 | `0xC378` | `board_reply_verbackroll_handle` | `0x1B600` |
+| 6 | `0xC5A8` | `board_set_updata_bin_handle` | `0x1B4E8` |
+| 7 | `0xC544` | `board_softcode_ver_handle` | `0x1C1BC` |
+
+Bei Treffer ruft der Dispatcher den Handler als
+
+```c
+handler(frame + 7, register_count * 2);
+```
+
+auf und setzt den Rückgabewert des Dispatchers auf `0`.
+
+### 5.4 Entscheidender Befund für normale Register
+
+**Es existieren in `unpack_mcu_modbus()` keine weiteren Registereinträge.**
+
+Das bedeutet:
+
+- `0xC350/C357/C36C/C36E/C371/C378/C5A8/C544` sind die acht intern interpretierten Register;
+- `0xC37B` und `0xC5A8` besitzen zusätzlich den frühen lokalen Bypass;
+- normale PHNIX-/Warmlink-Register werden hier **nicht semantisch decodiert**;
+- sie bleiben Binärframes und werden über `ali_mqtt_push_msg()` zur Cloud übertragen.
+
+Für Work ist damit die Suche nach einer großen versteckten „normalen Registertabelle“ in `phnixIot4G` beendet: **diese Tabelle gibt es in dieser Funktion nicht.** Die eigentliche Semantik normaler Mainboardregister liegt im Mainboard bzw. in Cloud/App, nicht im LTE-DTU.
+
+---
+
+## 6. Sonderfälle in `getDevParameter()` außerhalb von `unpack_mcu_modbus()`
+
+### 6.1 Fünf-Byte-Exception-Frame
+
+Wenn die empfangene Länge exakt 5 Byte beträgt und der Frame exakt
 
 ```text
 63 83 01 21 2E
 ```
 
-sind, wird das Paket direkt über `ali_mqtt_push_msg()` publiziert und die weitere Verarbeitung dieses Durchlaufs beendet.
+ist, wird er direkt über `ali_mqtt_push_msg()` publiziert und nicht weiter verarbeitet.
 
-Die Bytefolge ist ein Modbus-Exception-ähnliches Frame (`slave 0x63`, Funktion `0x83`, Exceptioncode `0x01`, CRC `21 2E`).
+### 6.2 Acht-Byte-Paket
 
-### 5.2 Acht-Byte-Paket
+Ein gültiges 8-Byte-Telegramm wird nach den lokalen Sonderchecks direkt über `ali_mqtt_push_msg()` publiziert.
 
-Bei einer empfangenen Gesamtlänge von exakt 8 Byte wird das Telegramm ebenfalls unmittelbar mit `ali_mqtt_push_msg()` publiziert und anschließend nicht weiter verarbeitet.
+### 6.3 Register 500 / `0x01F4`: lokaler DTU-Info-Request
 
-### 5.3 Register 500: lokaler DTU-Info-Request
+Für einen 8-Byte-Read-Request mit:
 
-Ein spezieller Read-Request mit:
+```text
+slave = 0x60 oder 0x63
+FC    = 0x03
+addr  = 0x01F4 (500)
+```
 
-- Slave `0x60` **oder** `0x63`
-- Funktion `0x03`
-- Registeradresse `500` (`0x01F4`)
+wird `response_DTU_info_request()` (`0x14A84`) aufgerufen. Die Registeranzahl aus Bytes 4/5 wird auf ein Byte reduziert und als Argument übergeben.
 
-wird nicht zur Cloud geschickt. Stattdessen ruft die Firmware `response_DTU_info_request()` (`0x14A84`) auf und erzeugt die Antwort lokal.
+Dieser Request geht **nicht** zur Cloud.
 
-Damit ist Register 500 ein echtes DTU-lokales Service-/Info-Register.
+`response_DTU_info_request()` baut lokal eine Antwort:
 
-### 5.4 ProductKey-Sonderpfad
+```text
+byte 0 = 0x63
+byte 1 = 0x03
+byte 2 = register_count * 2
+byte 3.. = Daten aus Get_ErrorStatue()
+CRC     = Modbus CRC16
+```
 
-Ein weiterer Sonderfall behandelt einen Mainboard-Rückkanal für den ProductKey. Wenn dieser noch nicht im internen `aliMqtt_get_product_buf()` gesetzt ist, wird er aus dem Mainboardtelegramm übernommen. Ist bereits ein ProductKey vorhanden, wird die Meldung verworfen bzw. nur geloggt.
+Die ersten vier Datenbytes bestehen aus dem 32-Bit-Rückgabewert von `Get_ErrorStatue()` in der auffälligen Reihenfolge:
 
-Dieser Pfad erklärt, warum der UART-Worker vor dem eigentlichen Normalbetrieb zunächst wiederholt `uart485_get_productKey()` ausführt.
+```text
+status[15:8], status[7:0], status[31:24], status[23:16]
+```
+
+Der lokale Antwortpuffer ist 16 Byte groß und die Funktion schreibt in diesem Build fest 16 Byte auf den UART. Bei kleineren angeforderten Datenmengen bleiben nicht belegte Bytes nullinitialisiert.
+
+### 6.4 Register `0x00C8` / 200: ProductKey vom Mainboard
+
+Nach dem Dispatcher liest `getDevParameter()` die Registeradresse aus Bytes 2/3. Wenn sie **200 (`0x00C8`)** ist, wird ein lokaler Provisionierungszweig betreten:
+
+```text
+if aliMqtt_get_product_buf()[0] == 0:
+    memcpy(product_buf, uart485ReadBuf + 7, 32)
+else:
+    nur loggen
+```
+
+Der ProductKey wird also direkt aus den 32 Nutzdatenbytes ab Offset 7 übernommen. Dieser Frame wird anschließend nicht normal zur Cloud weitergereicht.
+
+Das erklärt den Startup-Pfad `uart485_get_productKey()`: Das DTU fragt den ProductKey beim Mainboard ab und speichert ihn im gemeinsamen MQTT-Puffer.
+
+### 6.5 Feste lokale Read-Requests im Binary
+
+Direkt in `.rodata` liegen mehrere vollständige 8-Byte-Modbus-Requests:
+
+```text
+63 03 00 06 00 01 6C 49
+63 03 00 04 00 01 CD 89
+63 03 07 D1 00 5A 9C FE
+```
+
+sowie der bereits bekannte Exceptionframe:
+
+```text
+63 83 01 21 2E
+```
+
+Die ersten drei Frames zeigen, dass das DTU selbst gezielt Mainboardregister liest. Die genaue Zuordnung der drei Requests zu ProductKey/Device-ID/weiteren Startupinformationen wird separat über die jeweiligen Aufrufer weiterverfolgt.
 
 ---
 
-## 6. Normaler Publish: `ali_mqtt_push_msg()`
+## 7. Normaler Publish: `ali_mqtt_push_msg()`
 
-Funktion: `0x1F6FC`, Länge 692 Byte.
-
-Signatur nach Aufrufern:
-
-```c
-int ali_mqtt_push_msg(void *payload, uint32_t payload_len)
-```
+Funktion: `0x1F6FC`.
 
 Vorbedingungen:
 
 1. `UimAPI_get_card_status() == 1`
 2. `IOT_MQTT_CheckStateNormal(mqtt_client) > 0`
 
-Wenn MQTT nicht im Normalzustand ist, wird ein Fehlerzähler erhöht und `-1` zurückgegeben.
-
-### MQTT-Message-Struktur
-
-Die Funktion initialisiert eine ca. 20-Byte große Message-Struktur bei `0x98AC4` und setzt unter anderem:
+Die Funktion füllt die Aliyun-Message-Struktur bei `0x98AC4` mit:
 
 - QoS = 1
 - Retain = 0
 - Duplicate = 0
-- Payload-Zeiger = Funktionsargument `payload`
-- Payload-Länge = Funktionsargument `payload_len`
+- Payload-Zeiger = Originalpuffer
+- Payload-Länge = Originallänge
 
-Danach:
+und ruft dann
 
 ```text
 IOT_MQTT_Publish(mqtt_client, TOPIC_UPDATE, &message)
 ```
 
-Das Topic ist der zuvor erzeugte String
+auf.
 
-```text
-/<productKey>/<deviceName>/user/update
-```
+Es gibt **keine Nutzdatentransformation** zwischen UART und MQTT.
 
-### Entscheidend
-
-Es gibt **keine Transformation der Nutzdaten** zwischen `getDevParameter()` und `IOT_MQTT_Publish()`:
-
-- kein JSON,
-- keine Hexdarstellung,
-- keine Base64-Kodierung,
-- keine zusätzliche PHNIX-Hülle.
-
-Die RS485-Bytes werden als Binärpayload publiziert.
+Bei negativem Publish-Rückgabewert wird der MQTT-Client sogar über `IOT_MQTT_Destroy()` verworfen; bei Erfolg werden mehrere Kommunikations-/Statistikzähler erhöht.
 
 ---
 
-## 7. FC `0x10`: lokales ACK nach dem Cloud-Publish
+## 8. FC `0x10`: lokales ACK nach dem Cloud-Publish
 
-Nach dem normalen `ali_mqtt_push_msg()` prüft `getDevParameter()` zusätzlich:
+Nach dem normalen `ali_mqtt_push_msg()` prüft `getDevParameter()` zusätzlich auf
 
 ```text
 uart485ReadBuf[0] == 0x63
 uart485ReadBuf[1] == 0x10
 ```
 
-Wenn beides zutrifft, baut die Firmware aus den ersten sechs Bytes des empfangenen Requests ein acht Byte langes Standard-Modbus-Write-Multiple-Registers-ACK:
+Dann werden die ersten sechs Bytes kopiert, CRC16 ergänzt und ein acht Byte langes FC10-ACK lokal zurückgequeued:
 
 ```text
-[slave]
-[0x10]
-[register_hi]
-[register_lo]
-[count_hi]
-[count_lo]
-[CRC_hi/lo nach implementierter helper-Reihenfolge]
+[slave][0x10][register_hi][register_lo][count_hi][count_lo][CRC]
 ```
 
-und queued dieses mit `uart485_send_data_to_board(..., 8)` zurück zum Mainboard.
-
-Damit ist für normale `0x10`-Meldungen die Reihenfolge:
+Damit ist für einen normalen, nicht lokal abgefangenen FC10-Frame die Reihenfolge:
 
 ```text
 Mainboard -> DTU: FC10 Datenframe
 DTU -> Cloud: identischer Binärframe auf /user/update
-DTU -> Mainboard: lokales 8-Byte-FC10-ACK
+DTU -> Mainboard: lokales FC10-ACK
 ```
 
 Das ACK hängt nicht von einer Cloudantwort ab.
 
 ---
 
-## 8. UART-Worker-Startup
+## 9. UART-Worker-Startup
 
-`uart485_thread_handle()` (`0x14918`) macht vor der eigentlichen Endlosschleife:
+`uart485_thread_handle()` (`0x14918`) führt vor dem normalen Bridgebetrieb aus:
 
 ```text
 uart485_init()
@@ -270,43 +355,17 @@ loop forever:
     getDevParameter()
 ```
 
-Der normale RS485-Bridgebetrieb startet also erst, nachdem ein ProductKey verfügbar ist.
-
-Das ist ein wichtiger Zusammenhang zur Cloudinitialisierung: UART- und MQTT-Thread laufen parallel, teilen aber ProductKey/Device-ID-Zustände.
+Der Mainboard-UART ist damit nicht nur Datenbridge, sondern auch Quelle für Provisionierungsdaten.
 
 ---
 
-## 9. Gegenrichtung `/user/get` ist vollständig transparent
-
-Aus statischer Sicht ist der normale Downlink besonders eindeutig:
-
-```text
-MQTT payload
-  -> aliMqtt_topic_get_msg_arrive()
-  -> uart485_send_data_to_board(payload, payload_len)
-  -> uart485WriteBuf
-  -> UART send flag
-  -> /dev/ttyHSL2
-```
-
-Der Callback validiert weder Slaveadresse noch Funktionscode noch CRC. Die eigentliche Protokollgültigkeit muss daher entweder:
-
-- bereits serverseitig sichergestellt sein, oder
-- vom Mainboard selbst geprüft werden.
-
-Die einzige erkennbare Sonderbehandlung im Callback ist der ASCII-Präfix `status`, der einen internen Retry-/Fehlerzähler zurücksetzt; auch dieses Payload wird anschließend trotzdem zum UART weitergereicht.
-
----
-
-## 10. Architektur: zwei getrennte Cloudprotokolle
-
-Die Firmware besitzt damit zwei klar verschiedene Kommunikationsmodelle:
+## 10. Zwei getrennte Cloudprotokolle
 
 ### Normaler Kanal
 
 ```text
-/user/update  : rohe RS485-/Modbus-Bytes nach oben
-/user/get     : rohe Binärbytes nach unten
+/user/update : rohe RS485-/Modbus-Bytes nach oben
+/user/get    : rohe Binärbytes nach unten
 ```
 
 ### OTA-Kanal
@@ -316,36 +375,38 @@ Die Firmware besitzt damit zwei klar verschiedene Kommunikationsmodelle:
 /user/OTA_GET    : PHNIX JSON mit Codes wie 0033, 0073 ...
 ```
 
-Die OTA-Logik ist also **nicht** einfach Teil der normalen transparenten Bridge. Sie ist ein eigener semantischer Protokollstack im selben Prozess.
+OTA ist ein eigener semantischer Stack und nicht bloß ein Teil der transparenten Bridge.
 
 ---
 
-## 11. Relevanz für weitere Analyse / Work
+## 11. Ergebnis für Work
 
-Für die Rekonstruktion der normalen Warmlink/PHNIX-Kommunikation ist jetzt bewiesen:
+Für die weitere Registeranalyse ist jetzt statisch geklärt:
 
-1. Ein aufgezeichnetes `/user/update`-MQTT-Payload kann direkt als RS485-Frame interpretiert werden.
-2. Ein `/user/get`-Payload ist sehr wahrscheinlich bereits das komplette Frame, das das Mainboard sehen soll.
-3. Für normale Register muss deshalb primär der Inhalt von `unpack_mcu_modbus()` und die Mainboard-Registersemantik zerlegt werden; es existiert keine zusätzliche JSON-Zuordnungsschicht.
-4. OTA muss separat behandelt werden, weil dort JSON-Codes in lokale RS485-OTA-Kommandos übersetzt werden.
-5. Die lokal behandelten Sonderfälle (DTU-Info Register 500, ProductKey, OTA-Register) dürfen nicht mit normalen Cloudregistertelegrammen vermischt werden.
+1. Ein `/user/update`-Payload kann direkt als Mainboard-RS485-Frame interpretiert werden.
+2. `/user/get` wird praktisch unverändert zum Mainboard weitergegeben.
+3. `unpack_mcu_modbus()` besitzt **nur acht echte Dispatch-Einträge**, allesamt OTA-/Boardservice-bezogen.
+4. Normale Heizungs-/Status-/Parameterregister werden vom LTE-Programm nicht in eine eigene Struktur übersetzt.
+5. Zwei zusätzliche lokal behandelte normale Sonderbereiche sind nachgewiesen: DTU-Info `0x01F4` und ProductKey `0x00C8`.
+6. Für das unbekannte normale Registermapping muss die Semantik deshalb aus Mainboard-Firmware, passiven RS485-Mitschnitten oder Cloud/App-Decodierung gewonnen werden – nicht aus einer versteckten LTE-Registermap.
 
 ## 12. Beweisgrad
 
 ### Bewiesen
 
-- normaler `/user/get` Callback bei `0x1EED0` gibt Payload unverändert an `uart485_send_data_to_board()`;
-- `uart485_send_data_to_board()` kopiert max. 2048 Byte in den UART-Sendepuffer und setzt ein Sendeflag;
-- `ali_mqtt_push_msg()` publiziert den übergebenen Puffer unverändert auf `/user/update`;
-- QoS 1 für normalen Publish und Subscribe;
-- `getDevParameter()` akzeptiert nach CRC-Prüfung FC `0x10`, `0x03`, `0x83` für den Dispatcher;
-- `unpack_mcu_modbus()==0` verhindert normalen Cloud-Publish;
-- Register 500 wird lokal beantwortet;
-- bei normalen Slave-`0x63`/FC10-Meldungen wird lokal ein 8-Byte-ACK erzeugt.
+- komplette 8-Einträge-Tabelle von `unpack_mcu_modbus()`;
+- Handleradresse und Register jedes Eintrags;
+- keine weitere normale Dispatch-Tabelle in dieser Funktion;
+- Register `0x00C8` wird lokal als 32-Byte-ProductKey übernommen;
+- Register `0x01F4` wird lokal durch `response_DTU_info_request()` beantwortet;
+- normaler `/user/get` Callback gibt Payload unverändert an den UART weiter;
+- der scheinbare `memcmp(...,"status",6)` beeinflusst den Kontrollfluss nicht;
+- `ali_mqtt_push_msg()` publiziert Originalpuffer und Originallänge unverändert;
+- normale FC10-Frames erhalten nach dem Publish ein lokales ACK.
 
 ### Noch offen
 
-- vollständige Registerliste des **normalen** `unpack_mcu_modbus()`-Dispatchers;
-- genaue Bedeutung aller internen Statistik-/Fehlerfelder um `0x988FC` und `0x91B60`;
-- genaue UART-Senderoutine hinter dem Sendeflag und deren Timing/Retrylogik;
-- ob einzelne normale Cloudframes außerhalb des Callbacks noch vor dem physikalischen UART-Write verändert werden (bisher kein Hinweis darauf).
+- exakte Zweckbezeichnung der drei festen Read-Requests `0x0006`, `0x0004`, `0x07D1`;
+- genaue Bedeutung aller Statistik-/Fehlerfelder um `0x988FC` und `0x91B60`;
+- komplette UART-Senderoutine hinter dem Sendeflag inklusive Timing;
+- welche Mainboardregister die Cloud im normalen Betrieb aktiv über `/user/get` abfragt/schreibt – dafür ist Live-/Logkorrelation oder Cloud/App-Code nötig.
