@@ -65,6 +65,9 @@ CORE_PACKAGES=(
     python3-venv
     qemu-user-static
     binfmt-support
+    qemu-guest-agent
+    openssh-server
+    sudo
     mosquitto
     mosquitto-clients
 )
@@ -95,6 +98,10 @@ for pkg in "${OPTIONAL_PACKAGES[@]}"; do
         warn "Paket nicht verfuegbar, uebersprungen: $pkg"
     fi
 done
+
+log "Proxmox-Gastdienste aktivieren"
+systemctl enable --now qemu-guest-agent >/dev/null 2>&1 || true
+systemctl enable --now ssh >/dev/null 2>&1 || true
 
 log "ARM binfmt/QEMU aktivieren"
 if command -v update-binfmts >/dev/null 2>&1; then
@@ -180,6 +187,8 @@ if command -v update-binfmts >/dev/null 2>&1 && update-binfmts --display qemu-ar
 else
     echo unknown/disabled
 fi
+printf 'QEMU guest agent: '; systemctl is-active qemu-guest-agent 2>/dev/null || true
+printf 'SSH: '; systemctl is-active ssh 2>/dev/null || true
 printf 'Mosquitto: '
 if systemctl is-active --quiet mosquitto; then
     echo 'active (127.0.0.1:1883)'
