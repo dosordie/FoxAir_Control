@@ -10,10 +10,11 @@ Das Lab ist ausdruecklich fuer Offline-/Testbetrieb gedacht. Firmware, DeviceSec
 - 2 vCPU
 - 2 GB RAM
 - 16 GB Disk
+- VirtIO-Disk und VirtIO-Netzwerk sind passend
 - kein Desktop erforderlich
 - fuer spaetere Live-Cloudtests optional Internet; fuer die normale Analyse bevorzugt isoliertes Netz
 
-Auf Proxmox ist eine eigene Bridge ohne physischen Uplink/Gateway fuer den komplett isolierten Betrieb ideal.
+Auf Proxmox ist eine eigene Bridge ohne physischen Uplink/Gateway fuer den komplett isolierten Betrieb ideal. Das Installationsscript installiert und aktiviert auch `qemu-guest-agent` sowie SSH.
 
 ## Installation
 
@@ -41,6 +42,8 @@ Unter anderem:
 
 - `qemu-arm-static` / `qemu-user-static`
 - `binfmt-support`
+- `qemu-guest-agent`
+- `openssh-server`
 - Python 3 + venv
 - `socat`
 - Mosquitto + MQTT-Clients
