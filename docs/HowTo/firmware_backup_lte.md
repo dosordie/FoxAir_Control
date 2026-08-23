@@ -2,6 +2,9 @@
 
 Diese Anleitung beschreibt kurz, wie man sich unter Windows per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB** sichert.
 
+> [!NOTE]
+> Die in dieser Anleitung verwendeten ADB-Befehle **verändern nichts am LTE-Modem**. Mit `adb pull` werden die angegebenen Dateien lediglich vom LTE-Modem auf den PC **heruntergeladen/kopiert**. Die beschriebenen Backup-Schritte können daher gefahrlos verwendet werden.
+
 > [!WARNING]
 > Die aus dem LTE-Modem ausgelesenen Firmware- und Datendateien **nicht öffentlich hochladen oder weiterveröffentlichen**. Sie können herstellerspezifische Software, Konfigurationsdaten oder andere nicht für die Veröffentlichung bestimmte Inhalte enthalten.
 
@@ -12,10 +15,20 @@ Diese Anleitung beschreibt kurz, wie man sich unter Windows per **Micro-USB** mi
 - Diese lässt sich vorsichtig z. B. mit einer **Pinzette** entfernen.
 - Dabei unbedingt darauf achten, den USB-Port, die Kontakte und die Platine nicht zu beschädigen.
 
+### Geöffnetes LTE-Modem
+
+Das folgende Bild zeigt das LTE-Modem mit abgenommenem Deckel und die Lage des Micro-USB-Anschlusses auf der Platine:
+
+![Geöffnetes LTE-Modem](lte1.jpeg)
+
+### Micro-USB-Anschluss mit Vergussmasse
+
+Im folgenden Detailbild ist der Bereich des Micro-USB-Anschlusses zu sehen. Im Anschluss befindet sich noch Vergussmasse, die den Stecker beim Einstecken behindern kann:
+
+![Micro-USB-Anschluss mit Vergussmasse](lte2.jpeg)
+
 > [!CAUTION]
 > Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Da sich die Vergussmasse nur schwer vollständig aus der Buchse entfernen lässt, wird beim Einstecken voraussichtlich ein gewisser Widerstand zu spüren sein und der Stecker möglicherweise nicht vollständig einrasten. Den Stecker daher nur vorsichtig und so weit wie ohne Gewalt möglich einstecken, bis Windows die USB-Verbindung erkennt.
-
-Fotos vom geöffneten LTE-Modem werden später ergänzt.
 
 ## 2. Windows-Treiber installieren und USB-Verbindung prüfen
 
@@ -111,6 +124,8 @@ Download in den aktuellen Ordner:
 .\adb.exe pull /cache/phnixIot_device_OTA
 ```
 
+`adb pull` kopiert die Datei lediglich vom LTE-Modem auf den PC. Die Datei auf dem LTE-Modem wird dabei nicht verändert oder gelöscht.
+
 ## 5. Zusätzliche Dateien sichern
 
 Zusätzlich können folgende Dateien bzw. Datenbereiche interessant sein.
@@ -133,7 +148,7 @@ Zusätzlich können folgende Dateien bzw. Datenbereiche interessant sein.
 .\adb.exe pull /data/phnixIot_device_statisic
 ```
 
-Die Dateien werden jeweils in den Ordner heruntergeladen, in dem PowerShell aktuell geöffnet ist.
+Die Dateien werden jeweils in den Ordner heruntergeladen, in dem PowerShell aktuell geöffnet ist. Auch hierbei werden die Originaldateien auf dem LTE-Modem nicht verändert.
 
 ## 6. Gesicherte Dateien prüfen
 
