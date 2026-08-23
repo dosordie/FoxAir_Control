@@ -180,8 +180,10 @@ C371 Sender   0x08068CE2
 Commitworker  0x08076848
 Copy/Erase    0x080770EC
 C5A8 Worker   0x08078628
+Transition    0x08079040
 Jumpworker    0x08079354
 MD5           0x0807964C
+Role setter   0x080763E2
 ```
 
 Ablauf:
@@ -277,7 +279,14 @@ Im externen I²C-EEPROM wurden CRC-geschützte Records gefunden:
 0x3F0   C357-/Download-Ready-State
 ```
 
-Die genaue Herstellersemantik von Role 1/2 ist noch offen.
+`0x080763E2(1)` setzt Role 1 und schreibt Role + CRC nach EEPROM `0x3D8`; `0x080763E2(2)` setzt Role 2.
+
+Die genaue Herstellerbezeichnung von Role 1/2 ist offen. Sehr wahrscheinlich gilt:
+
+```text
+Role 2 = normale Anwendung
+Role 1 = Loader/Promotion/Recovery
+```
 
 ## 9. Vortest-Sicherheitsgrenze
 
@@ -287,29 +296,92 @@ Für einen abbrechbaren Handshake ohne Firmwaredaten gilt weiterhin:
 C5A8 niemals senden
 ```
 
-C350 bleibt RAM-basiert. C357 setzt EEPROM `0x3F0`, schreibt aber noch keine Firmwaredaten. Ein frühes C36A setzt `0x3F0` zurück; der Flash-Erase-Zweig ist vor C5A8 nicht erreichbar.
+C350 bleibt RAM-basiert. Status 0 ist kein globaler OTA-Reset, verursacht aber selbst keine neuen Flash-/EEPROM-Schreibzugriffe. Für C350 Status 1 ohne C357 wurde kein eigener Mainboard-Wartetimeout gefunden.
+
+C357 setzt EEPROM `0x3F0`, schreibt aber noch keine Firmwaredaten. Ein frühes C36A setzt `0x3F0` zurück; der Flash-Erase-Zweig ist vor C5A8 nicht erreichbar.
 
 Details: [`FW3.3-OTA-VORTEST-SICHERHEIT.md`](FW3.3-OTA-VORTEST-SICHERHEIT.md).
 
-## 10. Noch offene Punkte
+## 10. Neue Promotion-/Recovery-Erkenntnis
 
-Nicht vollständig geklärt ist der residente Loader bei `0x08000000`:
+Der Transitionworker `0x08079040` enthält **zwei getrennte 600-Zyklen-Gates**.
 
-- Power-Loss-Recovery während Erase/Copy
-- genaue Role-1/Role-2-Bootpolicy
-- Verhalten bei ungültigem Candidate
-- automatischer Recovery-/Retrypfad nach unterbrochener Promotion
+Ein Gate setzt bei Erreichen von `600`:
 
-Damit ist die frühere Link-/Copy-Frage gelöst; der Loader bleibt der wesentliche Sicherheitsblocker für einen unbeaufsichtigten echten OTA-Test.
+```text
+Erasecounter = 124
+```
 
-## 11. Wichtige Detaildokumente
+und startet damit den großen Target-Erase.
+
+Ein anderer Gate-Pfad persistiert zuerst Transitiondaten nach EEPROM `0x3E0`. Bei exakt `600` passiert anschließend:
+
+```text
+0x080763E2(1)      # Role 1 + CRC -> EEPROM 0x3D8
+Boot-Control +0x42 = 0
+Boot-Control +0x22 = 1
+```
+
+`+0x22` ist der Eingang des Jumpworkers für den residenten Loader:
+
+```text
+MSP = [0x08000000]
+PC  = [0x08000004]
+BLX PC
+```
+
+Damit ist nun direkt belegt, dass vor mindestens einem kritischen OTA-Übergang:
+
+1. Transition-State persistent gespeichert wird,
+2. Role 1 persistent gespeichert wird,
+3. anschließend ein Chain-Jump zum residenten Loader `0x08000000` vorbereitet wird.
+
+## 11. Verbleibende harte Unsicherheit
+
+Der Promotionworker `0x080770EC` liegt selbst im später zu löschenden Bereich. Ebenso liegen die verwendeten Flash-Helfer:
+
+```text
+0x0808D144
+0x0808D190
+0x0808D1C0
+0x0808D2E4
+```
+
+innerhalb des Target-Erasebereichs `0x08050000..0x0809BFFF`.
+
+Für eine vollständige reale Promotion kann dieser Code daher nicht ausschließlich aus der gerade zu löschenden Imageinstanz ausgeführt werden.
+
+Gezielte Suche im bekannten V3.3-Binary ergab keinen belastbaren Nachweis für:
+
+- RAM-Kopie des Promotionworkers,
+- RAM-Kopie der Flash-Helfer,
+- `BLX` auf einen SRAM-Trampolinpfad,
+- Startup-Copy-Tabelle, die genau diesen Code nach RAM verlagert.
+
+Die persistente Role-1-/Transition-Sequenz und der direkte Loader-Handoff sprechen deshalb jetzt **stark** dafür, dass der residente Loader `0x08000000` den sicheren Promotion-/Recoverykontext bereitstellt oder mindestens steuert.
+
+Was ohne dessen Dump weiterhin nicht bewiesen werden kann:
+
+- ob er selbst Target-Erase/Copy ausführt,
+- ob er eine unterbrochene Promotion vollständig neu startet,
+- ob ein teilweise geschriebenes Target niemals nur aufgrund eines gültigen Vector Tables gebootet wird,
+- welche Commit-/MD5-/Descriptorbedingungen er beim Power-on verlangt,
+- wie er auf Power-Loss während Erase oder Copy reagiert.
+
+Genau dieser Loader-/Power-Loss-Punkt ist inzwischen der wesentliche Sicherheitsblocker für einen echten vollständigen OTA-Test.
+
+Vollständige Analyse und Power-Loss-Matrix:
+[`FW3.3-OTA-PROMOTION-RECOVERY.md`](FW3.3-OTA-PROMOTION-RECOVERY.md).
+
+## 12. Wichtige Detaildokumente
 
 - [`FW3.3-IAP-COPY-SPRUNGPFAD-KORREKTUR.md`](FW3.3-IAP-COPY-SPRUNGPFAD-KORREKTUR.md)
 - [`FW3.3-OTA-ERKENNTNISSE.md`](FW3.3-OTA-ERKENNTNISSE.md)
+- [`FW3.3-OTA-PROMOTION-RECOVERY.md`](FW3.3-OTA-PROMOTION-RECOVERY.md)
 - [`FW3.3-OTA-VORTEST-SICHERHEIT.md`](FW3.3-OTA-VORTEST-SICHERHEIT.md)
 - [`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md)
 
-## 12. Sicherheitsregel für weitere Arbeit
+## 13. Sicherheitsregel für weitere Arbeit
 
 Ohne ausdrückliche Freigabe:
 
