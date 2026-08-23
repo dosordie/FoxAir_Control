@@ -2,6 +2,9 @@
 
 Stand: 2026-08-23
 
+Für gefahrlose Komplett- und Fehlertests steht zusätzlich der
+[OTA-Simulator auf der Offline-VM](PHNIX_OTA_VM_SIMULATOR.md) zur Verfügung.
+
 ## Wichtiger Status
 
 Der Launcher ist ein **experimentelles Laborwerkzeug** für genau den geprüften

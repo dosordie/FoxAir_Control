@@ -290,6 +290,7 @@ def run_update(args, adb: Adb) -> None:
     last_progress = time.monotonic()
     safe_terminal = False
     guarded_hold = False
+    helper_exit_seen_at = None
     try:
         while True:
             status = remote_status(adb)
@@ -314,6 +315,10 @@ def run_update(args, adb: Adb) -> None:
             if phase != previous_phase:
                 previous_phase = phase
                 phase_started = time.monotonic()
+                if phase == "c5a8":
+                    # C5A8 has its own no-progress watchdog. Time spent in the
+                    # parser and handshakes must not consume this allowance.
+                    last_progress = phase_started
                 print_event("phase-change", phase=phase)
             if phase == "c5a8":
                 metadata_ok = (
@@ -328,10 +333,21 @@ def run_update(args, adb: Adb) -> None:
             if hook.get("terminal") is True:
                 safe_terminal = phase in {"success", "failed", "parser-rejected"}
                 if phase == "success":
+                    if hook.get("board_ota_step") != 12:
+                        safe_terminal = False
+                        raise OtaError("success was reported without confirmed board_ota_step 12")
                     print_event("complete", offset=info["offset"], length=info["length"])
                     return
                 raise OtaError(f"terminal OTA state: {phase}")
             if helper.poll() is not None:
+                # The helper writes its terminal status immediately before it
+                # exits. A poll can observe that exit while this iteration
+                # still contains the preceding status snapshot.
+                if helper_exit_seen_at is None:
+                    helper_exit_seen_at = time.monotonic()
+                if time.monotonic() - helper_exit_seen_at < 1.0:
+                    time.sleep(args.poll_interval)
+                    continue
                 raise OtaError(f"runtime helper exited unexpectedly with code {helper.returncode}")
 
             now = time.monotonic()
