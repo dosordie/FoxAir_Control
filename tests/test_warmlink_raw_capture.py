@@ -379,10 +379,13 @@ def test_exact_ota_precheck_frames_are_correlated_and_decoded(tmp_path, chunking
     assert complete[2]["device_id"] == 0x0063
     assert complete[2]["status"] == 0
     assert len([event for event in shown if event.get("addr") == 50000]) == 2
+    assert len([event for event in shown if event.get("addr") == 50030]) == 1
+    assert len([event for event in shown if event.get("event") == "ota_sequence_summary"]) == 1
     assert any("ANGEBOT" in event.get("display_text", "") for event in shown)
     assert any("ACK" in event.get("display_text", "") for event in shown)
     assert any("STATUS" in event.get("display_text", "") for event in shown)
-    assert any("OTA-VORPRÜFUNG ERFOLGREICH" in event.get("display_text", "") for event in shown)
+    assert any("OTA-GLEICHVERSIONSTEST BEENDET" in event.get("display_text", "") for event in shown)
+    assert any("kein C357/C5A8 beobachtet" in event.get("display_text", "") for event in shown)
 
 
 @pytest.mark.parametrize("frame", [OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS])

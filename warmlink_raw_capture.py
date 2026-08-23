@@ -499,10 +499,10 @@ class WarmlinkRawCapture:
                     f"Softwarecode={event.get('software_code', '?')}, Version={event.get('firmware_version', '?')}, "
                     "Adresse=50000/0xC350, erwartete Richtung=LTE/Updater → Mainboard, CRC=OK")
         if addr == 50000 and event.get("frame_kind") == "write_ack":
-            return (f"{prefix} ACK: Register={event.get('qty', '?')}, Bezug=OTA-Angebot, "
+            return (f"{prefix} ACK: Register={event.get('qty', '?')}, Bezug=C350-Angebot, "
                     "Adresse=50000/0xC350, CRC=OK")
         if addr == 50030:
-            status = int(event.get("status", -1)); meaning = " (angenommen/erlaubt)" if status == 0 else ""
+            status = int(event.get("status", -1)); meaning = " (Build identisch oder Ziel unpassend)" if status == 0 else ""
             delay = f", Antwortzeit={event['response_ms']} ms" if event.get("response_ms") is not None else ""
             return (f"{prefix} STATUS: Gerät=0x{int(event.get('device_id', 0)):04X}, Status={status}{meaning}{delay}, "
                     "Adresse=50030/0xC36E, erwartete Richtung=Mainboard → LTE/Updater, CRC=OK")
@@ -514,8 +514,8 @@ class WarmlinkRawCapture:
         missing = []
         if 50007 not in self._ota_followups_seen: missing.append("C357")
         if 50600 not in self._ota_followups_seen: missing.append("C5A8")
-        suffix = f"; kein {' oder '.join(missing)} im Mitschnitt" if missing else ""
-        message = f"OTA-VORPRÜFUNG ERFOLGREICH: C350 → ACK → C36E/Status 0{suffix}"
+        suffix = f"; kein {'/'.join(missing)} beobachtet" if missing else ""
+        message = f"OTA-GLEICHVERSIONSTEST BEENDET: C350 → ACK → C36E/0{suffix}"
         event = {"ts": utc_iso(), "event": "ota_sequence_summary", "result": "precheck_success",
                  "followups_seen": sorted(self._ota_followups_seen), "display_text": message}
         self._write_event(event)
