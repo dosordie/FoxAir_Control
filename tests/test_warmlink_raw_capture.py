@@ -346,6 +346,70 @@ def _events(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines()]
 
 
+OTA_OFFER = bytes.fromhex("63 10 C3 50 00 07 0E 00 63 38 32 34 30 30 36 34 34 30 30 33 33 59 4D")
+OTA_OFFER_ACK = bytes.fromhex("63 10 C3 50 00 07 B5 DC")
+OTA_BOARD_STATUS = bytes.fromhex("63 10 C3 6E 00 02 04 00 63 00 00 35 59")
+
+
+def _feed_ota(tmp_path: Path, chunks: list[bytes]):
+    shown = []
+    cap = WarmlinkRawCapture({"directory": str(tmp_path), "write_events": True}, str(tmp_path),
+                            special_frame_cb=shown.append)
+    cap.start()
+    for chunk in chunks:
+        cap.capture_rx(chunk)
+    cap.stop(join=True)
+    return _events(next(tmp_path.glob("*.events.jsonl"))), shown
+
+
+@pytest.mark.parametrize("chunking", ["whole", "bytes", "together"])
+def test_exact_ota_precheck_frames_are_correlated_and_decoded(tmp_path, chunking):
+    frames = [OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS]
+    if chunking == "whole": chunks = frames
+    elif chunking == "bytes": chunks = [bytes([byte]) for frame in frames for byte in frame]
+    else: chunks = [b"".join(frames)]
+    events, shown = _feed_ota(tmp_path, chunks)
+
+    complete = [event for event in events if event.get("event") == "frame_complete"]
+    assert len(complete) == 3
+    assert [event["frame_kind"] for event in complete] == ["write_request", "write_ack", "special_response"]
+    assert complete[0]["software_code"] == "82400644"
+    assert complete[0]["firmware_version"] == "0033"
+    assert complete[1]["correlation"] == "OTA_OFFER"
+    assert complete[2]["device_id"] == 0x0063
+    assert complete[2]["status"] == 0
+    assert len([event for event in shown if event.get("addr") == 50000]) == 2
+    assert any("ANGEBOT" in event.get("display_text", "") for event in shown)
+    assert any("ACK" in event.get("display_text", "") for event in shown)
+    assert any("STATUS" in event.get("display_text", "") for event in shown)
+    assert any("OTA-VORPRÜFUNG ERFOLGREICH" in event.get("display_text", "") for event in shown)
+
+
+@pytest.mark.parametrize("frame", [OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS])
+def test_exact_ota_frames_work_at_every_split_position(tmp_path, frame):
+    for split in range(1, len(frame)):
+        case = tmp_path / str(split); case.mkdir()
+        events, shown = _feed_ota(case, [frame[:split], frame[split:]])
+        assert len([event for event in events if event.get("event") == "frame_complete"]) == 1
+        assert len([event for event in shown if event.get("addr")]) == 1
+
+
+def test_buffered_unit_byte_is_not_lost_or_reported_as_unknown(tmp_path):
+    events, shown = _feed_ota(tmp_path, [b"\x63", OTA_BOARD_STATUS[1:7], OTA_BOARD_STATUS[7:]])
+    assert len([event for event in events if event.get("event") == "frame_complete"]) == 1
+    assert len([event for event in shown if event.get("addr") == 50030]) == 1
+    assert not [event for event in events if event.get("kind") == "unknown_function"]
+
+
+def test_crc_invalid_ota_is_not_displayed_and_next_valid_frame_is_found(tmp_path):
+    damaged = bytearray(OTA_OFFER); damaged[-1] ^= 0x01
+    events, shown = _feed_ota(tmp_path, [bytes(damaged), OTA_BOARD_STATUS])
+    complete = [event for event in events if event.get("event") == "frame_complete"]
+    assert len(complete) == 1
+    assert complete[0]["addr"] == 50030
+    assert not any(event.get("addr") == 50000 for event in shown)
+
+
 def test_capture_skips_existing_segment_prefix_and_starts_offsets_at_zero(tmp_path):
     today = datetime.date.today().isoformat()
     old_rx = tmp_path / f"warmlink_capture_{today}_001.rx.bin"
