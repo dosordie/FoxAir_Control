@@ -33,7 +33,11 @@ Wichtig für dynamische Tests: Nach dem ACK des letzten Blocks noch mindestens e
 
 Step 12 erzeugt in `dtu_upgrade_pro()` keinen eigenen Abschlussreport und setzt nicht automatisch Step 5. Der Worker läuft weiter und wartet auf ein eingehendes Board-Statusframe, das über `board_is_allow_upg_handle()` verarbeitet wird.
 
-Der echte Erfolgspfad wird durch Board-Status **5** ausgelöst.
+Aus Sicht des LTE-Prozesses wird der Cloud-Erfolgsabschluss durch Board-Status
+**5** ausgelöst. Die inzwischen analysierte V3.3-Mainboard-Firmware unterscheidet
+aber zwei Erfolgsstufen: Nach der Gesamtimage-MD5-Prüfung sendet sie zunächst
+Status **3**. Status **5** folgt erst nach dem späteren Descriptor-, Copy-/Slot-
+und Commit-/Handoff-Pfad. Status 5 bedeutet daher nicht lediglich „MD5 OK“.
 
 ## 3. Eingehendes C36E Status 5
 
@@ -66,6 +70,12 @@ CRC-Drahtfolge ist wie bei den anderen Modbusframes Low/High:
 ```
 
 Die Bytes `data[0]` und `data[2]` werden im Handler nicht ausgewertet. Das obige Frame ist daher für den Emulator funktional ausreichend; ob das reale Mainboard dort exakt `00` sendet, ist aus dem LTE-Binary allein nicht beweisbar.
+
+Das reale V3.3-Mainboard baut C36E mit zwei Registern beziehungsweise vier
+Nutzbytes. Die hier gezeigte synthetische Variante mit drei Registern und sechs
+Nutzbytes wurde nur verwendet, um dem LTE-Handler zusätzlich die optionale
+Blockgröße 168 zu übergeben; sie ist handler-kompatibel, aber kein behaupteter
+Live-Mitschnitt.
 
 ## 4. Exakter Status-5-Pfad im Handler
 
@@ -105,6 +115,12 @@ if (board_status == 5) {
 ```
 
 Damit ist Status 5 eindeutig der Board-Erfolgsabschluss.
+
+Status 3 wird vom LTE-Prozess ebenfalls mit C37B/status 3 quittiert, löst aber
+noch nicht den Cloudabschluss `0053` aus. Für einen Mainboard-nahen Emulator
+sollte deshalb die reale Reihenfolge nachgebildet werden: finaler C371 mit
+`ackB=2`, C36E/status 3 nach erfolgreicher Gesamt-MD5-Prüfung und erst nach dem
+späteren Commit-/Handoff-Pfad C36E/status 5.
 
 ## 5. DTU-Antwort auf Status 5: Register C37B
 
@@ -195,14 +211,15 @@ Empfohlene kontrollierte Abschlusssequenz:
 
 ```text
 1. C5A8 block 1712 empfangen und bytegenau prüfen
-2. C371 ACK für block 1712 senden
+2. C371 ACK-Art 2 für block 1712 senden; LTE-Endoffset muss 287598 werden
 3. DTU mindestens einen weiteren Worker-Durchlauf geben
 4. beobachten: board_ota_step 6 -> 12
-5. erst dann C36E Status 5 senden
-6. DTU muss C37B Status-5-ACK senden
-7. beobachten: board_ota_step 12 -> 5
-8. auf MQTT OTA_UPDATE muss Code 0053 / progress 100 erscheinen
-9. danach board_ota_step 5 -> 12
+5. C36E Status 3 senden und C37B Status-3-ACK beobachten
+6. erst nach simuliertem Commit-/Handoff-Pfad C36E Status 5 senden
+7. DTU muss C37B Status-5-ACK senden
+8. beobachten: board_ota_step 12 -> 5
+9. auf MQTT OTA_UPDATE muss Code 0053 / progress 100 erscheinen
+10. danach board_ota_step 5 -> 12
 ```
 
 Wichtig: C36E Status 5 **vor** Step 12 räumt zwar Offset und Dateilänge auf und quittiert Status 5, setzt aber wegen der expliziten `if (board_ota_step == 12)`-Bedingung nicht Step 5. Für einen sauberen Emulatorlauf sollte Status 5 daher erst nach beobachtetem Transferende / Step 12 kommen.
@@ -229,6 +246,7 @@ b *0x19250   # unmittelbar vor ali_mqtt_push_OTA_msg() für 0053
 - Step 5 publiziert OTA-Code 0053 / progress 100
 - danach Rückkehr auf Step 12
 - C37B-Frameaufbau und CRC
+- V3.3-Mainboardpfad: Status 3 nach Gesamt-MD5, Status 5 erst nach späterem Commit-/Handoff-Pfad
 
 **Synthetisch, aber handler-kompatibel:**
 

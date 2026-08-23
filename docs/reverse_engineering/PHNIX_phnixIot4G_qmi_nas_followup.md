@@ -127,7 +127,15 @@ Mainboard response 0x0004
  -> /user/update
 ```
 
-Damit ist `0x0004` ein cloud-relevanter Board-/Device-Info-Wert. Die Semantik des Registerinhalts muss aus der Mainboardfirmware bestimmt werden.
+Damit ist `0x0004` ein cloud-relevanter Board-/Device-Info-Trigger.
+
+Ein einmaliger Live-Read am realen Warmlink-Bus bestätigte am 23. August 2026
+einen breiteren Ablauf als einen isolierten Ein-Register-Response: Das Mainboard
+sendete anschließend die acht 90-Register-Blöcke `03E9`, `0443`, `049D`, `04F7`,
+`0551`, `05AB`, `07D1`, `082B` und rund 49 Sekunden später ein vollständiges
+C544. Das LTE-Modem bestätigte C544 mit C37B/status 7. Eine 120-sekündige
+Nachbeobachtung zeigte keinen OTA-Start. Details und Frames:
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md).
 
 ## 8. Fester Read `0x0006`
 
@@ -143,7 +151,7 @@ QMI/NAS:
 - process_simcom_ind_message() = Debug-Stub
 
 RS485:
-- 0x0004: Device-info Read nach erfolgreichem MQTT init; Antwort roh zur Cloud
+- 0x0004: Device-info-/Paketzyklus-Trigger nach erfolgreichem MQTT init; live folgten acht Paketblöcke und später C544
 - 0x0006: Check485Statue-Watchdogprobe; Antwort roh zur Cloud
 
 Error:

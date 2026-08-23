@@ -76,7 +76,15 @@ MQTT-Initialisierung erfolgreich
     -> 63 03 00 04 00 01 CD 89
 ```
 
-Die genaue Semantik von Register `0x0004` ist im LTE-Binary nicht weiter aufgelöst; der Funktionsname zeigt jedoch, dass die Firmware diesen Read als „device info“ einordnet.
+Die genaue Bedeutung des einzelnen Registers ist im LTE-Binary nicht weiter
+aufgelöst. Ein einmaliger Live-Read auf dem Warmlink-Bus zeigte jedoch die
+praktische Wirkung: Das Mainboard sendete danach die acht bekannten
+90-Register-Blöcke ab `0x03E9`, `0x0443`, `0x049D`, `0x04F7`, `0x0551`,
+`0x05AB`, `0x07D1` und `0x082B`; rund 49 Sekunden später folgte C544 mit der
+Boardversion. Damit ist `0x0004` als Trigger eines vollständigen
+Device-Info-/Paketzyklus dynamisch belegt. Nach C544 blieben weitere 120
+Sekunden ohne OTA-Frames. Details stehen in
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md).
 
 ---
 
@@ -230,7 +238,7 @@ Für die Mainboard-Analyse sind folgende Register jetzt als DTU-spezifische Serv
 
 | Register | Zugriff | LTE-Bedeutung |
 |---:|---|---|
-| `0x0004` | FC03 Read 1 | `uart485_get_device_info()` nach MQTT-Init |
+| `0x0004` | FC03 Read 1 | `uart485_get_device_info()` nach MQTT-Init; live als Trigger des Geräteinfo-/Paketzyklus bis C544 bestätigt |
 | `0x0006` | FC03 Read 1 | UART-/485-Status/Handshake, genaue Semantik offen |
 | `0x00C8` | FC10 Daten | ProductKey, 32 Byte |
 | `0x01F4` | FC03 Read | lokaler DTU-Info-/Errorstatus-Request |
@@ -244,6 +252,7 @@ Diese Register sollten bei der Mainboard-Firmware gezielt auf Schreib-/Lesehandl
 
 - exakte drei eingebettete FC03-Requests und CRCs;
 - `0x0004` wird von `uart485_get_device_info()` gesendet und nach erfolgreicher MQTT-Initialisierung ausgelöst;
+- ein einzelner Live-Read `0x0004` löste acht Geräteinfoblöcke und später C544 aus, aber während 120 Sekunden Nachbeobachtung keinen OTA-Start;
 - `0x07D1/90` wird bei `dtu_run_step==4` gesendet und setzt danach Step 5;
 - FC03-Antwort mit 180 Datenbytes liefert die ersten 12 Bytes als Device-ID;
 - FC10 `0x07D1` kann ebenfalls 12 Byte Device-ID liefern;
@@ -252,6 +261,6 @@ Diese Register sollten bei der Mainboard-Firmware gezielt auf Schreib-/Lesehandl
 
 ### Offen
 
-- exakte Semantik von `0x0004` und `0x0006` auf Mainboardseite;
+- Bedeutung des einzelnen Registerwerts `0x0004` und exakte Semantik von `0x0006` auf Mainboardseite;
 - Bedeutung der verbleibenden 168 Datenbytes des `0x07D1`-Readblocks;
 - ob `0x07D1` im Mainboard eine zusammenhängende Infostruktur oder mehrere logisch unabhängige Register enthält.

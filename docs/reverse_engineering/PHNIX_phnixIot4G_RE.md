@@ -87,7 +87,7 @@ Rekonstruiertes, semantisch vollständiges Beispiel:
   "param": {
     "softwareCode": "82400644",
     "softwareVer": "V3.3",
-    "ssid": "0033",
+    "ssid": "0063",
     "fileMD5": "CEB6A4BF386FF644E23E410023E74673",
     "fileSize": 287598,
     "otaFileDownloadAddr": "http://<cloud-gelieferter-host>/<cloud-gelieferter-pfad>"
@@ -97,7 +97,7 @@ Rekonstruiertes, semantisch vollständiges Beispiel:
 
 **Bewiesen:** Diese sechs `param`-Felder werden gelesen. `deviceCode`, `productCode`, Token oder Signatur sind für diesen Handler nicht erforderlich und werden dort nicht ausgewertet. `cmd` gehört zum verwendeten Protokoll, wird im zentralen Handler aber nicht geprüft. Die genaue Feldreihenfolge ist JSON-typisch irrelevant.
 
-**Wahrscheinlich:** Die Cloud sendet `code` und `ssid` als Strings, weil alle ausgehenden PHNIX-Nachrichten so formatiert sind. Für `ssid` muss die Implementierung praktisch eine mindestens vier Zeichen lange Ziffernfolge liefern.
+**Wahrscheinlich:** Die Cloud sendet `code` und `ssid` als Strings, weil alle ausgehenden PHNIX-Nachrichten so formatiert sind. Für `ssid` muss die Implementierung praktisch eine mindestens vier Zeichen lange Ziffernfolge liefern. `0033` ist der MQTT-Code dieses Antworttyps und nicht automatisch dessen SSID; für den live bestätigten V3.3-Datensatz lautet die SSID `0063`.
 
 ## 4. Woher die Download-URL kommt
 
@@ -232,7 +232,7 @@ Der ausgehende Versionsbericht besitzt exakt dieses Format:
 
 - **Bewiesen:** Der Check wird durch ein gültiges RS485-Mainboard-Informationsereignis `0xC544` ausgelöst und anschließend von der kontinuierlich laufenden Zustandsmaschine abgearbeitet.
 - **Bewiesen:** Es gibt keinen zyklischen HTTP-Firmwarepoller und keinen statischen Firmware-API-Call.
-- **Sehr wahrscheinlich:** Das Mainboard liefert seine Info periodisch oder nach einer Abfrage; das Modem meldet sie dann an die Cloud. `uart485_get_device_info()` selbst ist in diesem Build nur ein Stub.
+- **Live bestätigt:** Ein einmaliger FC03-Read `0x0004` löste acht 90-Register-Geräteinfoblöcke und rund 49 Sekunden später C544 aus. Das Modem quittierte C544 mit C37B/status 7; danach blieben weitere 120 Sekunden ohne OTA-RS485-Frames. Der daraus folgende `0003`-Pfad ist statisch bewiesen, wurde in diesem reinen RS485-Mitschnitt aber nicht gleichzeitig auf MQTT aufgezeichnet.
 - **Live bestätigt:** Ein syntaktisch gültiger manueller `0003`-Publish ist möglich; bei den kontrollierten Tests wurde jedoch keine `OTA_GET`-/`0033`-Antwort beobachtet.
 
 ## 7. Geräteidentität und Credentials
@@ -397,7 +397,11 @@ tcp port 1883 and host 8.209.64.105
 
 Danach in Wireshark nach Topic-Suffix `/user/OTA_GET` oder Payloadstring `otaFileDownloadAddr` filtern. Weil MQTT unverschlüsselt ist, sind Topic und JSON sichtbar. Der Mitschnitt sollte lokal bleiben; ProductKey, DeviceName, DeviceSecret, IMEI und vollständige signierte URLs sind als vertraulich zu behandeln.
 
-Alternativ wäre ein bewusst gesendeter `0003`-Versionsbericht reproduzierbar, aber das ist ein aktiver Cloud-/OTA-Vorgang und wurde nicht ausgeführt. Für eine spätere, ausdrücklich freigegebene Prüfung wären nötig:
+Kontrollierte manuelle `0003`-Versionsberichte wurden inzwischen aktiv
+publiziert. Sie waren syntaktisch gültig; es wurde dabei jedoch keine
+`OTA_GET`-/`0033`-Antwort und damit keine neue Firmwarezuweisung beobachtet.
+Der bestätigte Originaldatensatz des Boards lautet `82400644`, `V3.3`, SSID
+`0063`. Ein erneuter Test würde weiterhin voraussetzen:
 
 1. live `productKey` und `deviceName` (nicht veröffentlichen),
 2. die aktuelle Mainboardmeldung mit Softwarecode, Version und SSID,
@@ -418,10 +422,13 @@ Erst wenn die reale `otaFileDownloadAddr` vorliegt, kann gefahrlos mit einem rei
 - 9600 8N1, Slave `0x63`, Funktion `0x10`, Register und Paketlayouts;
 - Standardblockgröße 168 Byte, ACK/Retry und persistenter Offset;
 - `board_request_upgrade()` sendet `0023`, nicht `0003`.
+- kontrollierte aktive `0003`-Publishes ergaben keine beobachtete `0033`-Antwort;
+- reales C544 mit `82400644 / 0033` und SSID `0063`, einschließlich C37B/status-7-Quittung;
+- isolierter Volltransfer des V3.3-Images in 1712 C5A8-Blöcken mit bytegleicher Rekonstruktion.
 
 ### Sehr wahrscheinlich
 
-- Clouddarstellung der Version `V3.3` und SSID `"0033"`;
+- Clouddarstellung der internen Version `0033` als `V3.3`; die live bestätigte SSID dieses Datensatzes lautet unabhängig davon `0063`;
 - Mainboard-Bootloader flasht das Image ab `0x08080000`;
 - Download ist anonym oder über URL-Queryparameter autorisiert, da der Client keine separaten Authheader setzt.
 

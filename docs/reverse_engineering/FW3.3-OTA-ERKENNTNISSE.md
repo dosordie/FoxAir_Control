@@ -251,6 +251,17 @@ C371 wird erst nach erfolgtem Block-Commit ausgelöst. Bei einem bereits bekannt
 
 Beim letzten Block werden außerdem der Last-Block-Zähler und der C5A8-Empfangszustand zurückgesetzt und die Gesamtimageprüfung gestartet.
 
+Die Gegenrichtung wurde zusätzlich mit dem originalen LTE-Prozess dynamisch
+validiert: 1712 C5A8-Frames rekonstruierten exakt die 287598-Byte-V3.3-Datei.
+Der letzte Block enthielt 150 reale Bytes und 18 Byte `0xFF`-Padding. Details:
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md).
+
+Wichtig zur Abgrenzung eines LTE-Emulatortests: Ein künstliches `ackB=1` für den
+letzten Block erhöht den LTE-Offset auf 287616 und ist als Grenztest gültig. Der
+hier rekonstruierte echte Mainboardpfad verwendet am letzten Block jedoch
+`ackB=2`; das LTE-Modem setzt seinen persistenten Offset dann auf die gemeldete
+Dateilänge 287598.
+
 **Bewertung: bestätigt.**
 
 ---

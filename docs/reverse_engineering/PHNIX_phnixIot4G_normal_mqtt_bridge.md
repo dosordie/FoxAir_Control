@@ -406,7 +406,7 @@ Für die weitere Registeranalyse ist jetzt statisch geklärt:
 
 ### Noch offen
 
-- exakte Zweckbezeichnung der drei festen Read-Requests `0x0006`, `0x0004`, `0x07D1`;
+- exakte Zweckbezeichnung von `0x0006` und die Bedeutung des einzelnen Registerwerts `0x0004`; dessen Ablaufwirkung als Trigger für acht Geräteinfoblöcke und späteres C544 ist inzwischen [live bestätigt](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md);
 - genaue Bedeutung aller Statistik-/Fehlerfelder um `0x988FC` und `0x91B60`;
 - komplette UART-Senderoutine hinter dem Sendeflag inklusive Timing;
 - welche Mainboardregister die Cloud im normalen Betrieb aktiv über `/user/get` abfragt/schreibt – dafür ist Live-/Logkorrelation oder Cloud/App-Code nötig.

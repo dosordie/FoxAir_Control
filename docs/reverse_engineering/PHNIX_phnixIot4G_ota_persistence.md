@@ -512,6 +512,15 @@ einen Resume-Pfad aktivieren, obwohl im aktuellen Test gar kein neuer Download d
 
 Die Statistikdatei kann zusätzlich eine alte OTA-SSID liefern.
 
+Im vollständigen LTE-Labortest wurde auch die Offsetgrenze verifiziert: Ein
+synthetisches `C371 ackB=1` für den letzten, auf 168 Byte aufgefüllten Block
+persistiert `287616`. Das ist ein gezielter Grenztest. Das echte V3.3-Mainboard
+sendet am letzten Block dagegen `ackB=2`; dadurch setzt der LTE-Handler den
+normalen persistenten Endoffset unmittelbar auf die Dateilänge `287598`.
+Beide Werte dürfen deshalb nicht als widersprüchliche Beobachtungen vermischt
+werden. Siehe
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md).
+
 Für reine Beobachtung eines synthetischen `0033` bleibt der bereits bestimmte Breakpoint:
 
 ```gdb

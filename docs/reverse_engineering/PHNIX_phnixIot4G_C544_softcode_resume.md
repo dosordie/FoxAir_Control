@@ -28,7 +28,7 @@ Ein vollständiger C544-Frame hat damit mindestens die Form:
 CRC_LO CRC_HI
 ```
 
-Die konkrete Hardwarecode/-versionsbelegung der realen V3.3-Platine ist im vorliegenden ELF nicht enthalten; deshalb kann ohne einen realen Mitschnitt kein bytegenau vollständiges C544-Beispielframe für genau dieses Board angegeben werden.
+Die konkrete Hardwarecode/-versionsbelegung ist im LTE-ELF nicht enthalten. Seit dem Live-Mitschnitt vom 23. August 2026 liegt für die untersuchte V3.3-Platine jedoch ein bytegenaues reales C544 vor; siehe Abschnitt 11.
 
 ## 2. Exaktes C544-Payloadlayout
 
@@ -373,7 +373,48 @@ B5 A8
 
 Damit ist C544 nicht nur ein passiver Versionsbericht: Das DTU quittiert jedes verarbeitete C544 explizit mit `C37B/status=7`.
 
-## 11. Minimal rekonstruierbares C544 für V3.3
+## 11. Dynamisch bestätigtes reales C544 für V3.3
+
+Nach einem einmaligen FC03-Read auf `0x0004` sendete das reale Mainboard rund
+49 Sekunden später:
+
+```text
+63 10 C5 44 00 0D 1A
+00 63
+38 32 33 30 30 33 31 34
+30 30 30 30
+38 32 34 30 30 36 34 34
+30 30 33 33
+CC F0
+```
+
+Damit sind für die untersuchte Anlage bestätigt:
+
+```text
+SSID             = 0063
+Hardwarecode     = 82300314
+Hardwareversion  = 0000
+Softwarecode     = 82400644
+Softwareversion  = 0033 -> Anzeige V3.3
+```
+
+Das LTE-Modem antwortete exakt wie statisch rekonstruiert:
+
+```text
+63 10 C3 7B 00 02 04 00 63 00 07 B5 A8
+```
+
+Das Mainboard bestätigte dieses FC10-Frame anschließend mit:
+
+```text
+63 10 C3 7B 00 02 05 D7
+```
+
+Der vollständige Versuch ist in
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md)
+dokumentiert.
+
+### 11.1 Minimal rekonstruierbares Schema für andere Boards
 
 Ohne reale Hardwarecode/-version kann nur das Softwaresegment bytegenau angegeben werden.
 
@@ -403,7 +444,10 @@ acht HH     Hardwarecode
 vier HV     rohe Hardwareversion
 ```
 
-Für einen Emulator sollte man diese unbekannten Hardwarefelder nicht willkürlich als real bestätigt dokumentieren. Der LTE-Code benötigt für die OTA-Resume-Entscheidung ausschließlich SSID sowie das Softwarepaar ab `data[14]`.
+Für andere Boards sollten abweichende Hardwarefelder weiterhin nicht
+willkürlich als real bestätigt dokumentiert werden. Der LTE-Code benötigt für
+die OTA-Resume-Entscheidung ausschließlich SSID sowie das Softwarepaar ab
+`data[14]`.
 
 ## 12. Wichtigste Korrekturen/Ergebnisse
 
@@ -413,3 +457,4 @@ Für einen Emulator sollte man diese unbekannten Hardwarefelder nicht willkürli
 4. Resume verlangt gleichen Softwarecode, aber unterschiedliche aktuelle und gespeicherte Zielversion.
 5. Ein erfolgreicher Vergleich startet zunächst einen erneuten C350-Handschlag; der direkte Wiedereinstieg in Step 6 erfolgt erst später über C36E Status 2 im Resume-Modus.
 6. Jedes C544 wird mit `C37B/status 7` bestätigt.
+7. Für die untersuchte V3.3-Platine sind Hardwarecode `82300314`, rohe Hardwareversion `0000` und das vollständige C544 einschließlich CRC dynamisch bestätigt.

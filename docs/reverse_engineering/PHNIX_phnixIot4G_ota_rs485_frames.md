@@ -390,6 +390,22 @@ CRC_LO CRC_HI
 
 Der letzte Block wird auf die volle Blockgröße mit `0xFF` aufgefüllt.
 
+Für die V3.3-Datei wurde dies im isolierten Originalprozess dynamisch bestätigt:
+
+```text
+offset vor Block 1712 = 287448
+reale Restdaten       = 150 Byte
+Padding               = 18 × FF
+```
+
+Ein gezielter Emulator-Grenztest bestätigte zusätzlich den LTE-Handlerpfad für
+`ackB=1` beim letzten Block: Der Offset steigt dann um die volle Blockgröße auf
+`287616`, und der nächste Worker-Durchlauf erkennt `file_len <= file_offset`.
+Dies ist nicht der normale reale Mainboardabschluss. Die Mainboard-Firmware V3.3
+sendet beim letzten Block `ackB=2`; dadurch setzt das LTE-Modem den Offset direkt
+auf `fileSize = 287598`. Siehe
+[`PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md`](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md).
+
 ---
 
 ## 12. Runtime-Korrektur 2026-08-23
@@ -401,3 +417,8 @@ Der erste streng bytegenaue Emulatorlauf erwartete fälschlich C350 mit `V3.3` u
 ```
 
 Die anschließende statische Nachprüfung zeigt, dass dies kein Laufzeitzufall ist: `ota_device_set_ota_file_download_info()` erzeugt explizit die vierstellige interne Versionsdarstellung `0033`, bevor `set_sev_code_and_ver()` sie in C350 einsetzt.
+
+Der spätere vollständige isolierte Lauf bestätigte außerdem alle 1712 C5A8-Frames
+bytegenau gegen die V3.3-Referenzdatei einschließlich CRC, Blocknummern und
+Final-Padding. Der rekonstruierte SHA-256 war
+`6C635D8E9A1E7246EA492B81ACFF5B748E85CC86C0FE0DEF35C2F0A597E4389A`.

@@ -122,7 +122,7 @@ Damit sind drei feste Reads bestätigt:
 | Startregister | Menge | Funktion im LTE-Code |
 |---:|---:|---|
 | `0x0006` | 1 | früher Startup-/Handshake-Read; genaue Semantik noch offen |
-| `0x0004` | 1 | `uart485_get_device_info()` / nach erfolgreicher MQTT-Initialisierung |
+| `0x0004` | 1 | `uart485_get_device_info()` / nach erfolgreicher MQTT-Initialisierung; live als Trigger für acht Geräteinfoblöcke und späteres C544 bestätigt |
 | `0x07D1` | 90 | Geräteidentitätsblock; erste 12 Datenbytes = Device-ID |
 
 ## 7. Interessanter Punkt für Mainboard-RE
@@ -155,4 +155,4 @@ Die beste weitere Quelle dafür ist daher nicht `phnixIot4G`, sondern:
 ### Offen
 
 - Bedeutung der restlichen 84 Register des `0x07D1`-Blocks;
-- genaue Semantik der festen Reads `0x0004` und `0x0006` auf Mainboardseite.
+- Bedeutung des einzelnen Registerwerts `0x0004` und genaue Semantik des festen Reads `0x0006` auf Mainboardseite. Die Ablaufwirkung von `0x0004` ist dagegen [dynamisch bestätigt](PHNIX_OTA_DYNAMISCHE_VALIDIERUNG.md): acht 90-Register-Blöcke und rund 49 Sekunden später C544.
