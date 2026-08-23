@@ -1,6 +1,6 @@
 # PHNIX `phnixIot4G` – OTA-/Firmware-Update-Pfad
 
-Stand: 2026-08-22
+Stand: 2026-08-23
 
 Grundlage ist die statische Analyse des bereitgestellten ARM-ELF `phnixIot4G`. Diese Datei konzentriert sich auf die Firmware-Update-Logik für **DTU/LTE-Modul** und **Mainboard**.
 
@@ -12,7 +12,7 @@ Grundlage ist die statische Analyse des bereitgestellten ARM-ELF `phnixIot4G`. D
 DTU-Self-Update
 MQTT OTA_GET -> JSON Code 0032 -> URL/MD5/Size übernehmen
  -> HTTP/curl Download nach /data/phnixIot4G_OTA
- -> Dateigröße + MD5 prüfen
+ -> MD5 über das erwartete fileSize-Fenster prüfen
  -> chmod +x
  -> mv auf /data/phnixIot4G
  -> killall -9 phnixIot4G
@@ -24,13 +24,15 @@ und:
 Mainboard-Update
 MQTT OTA_GET -> JSON Code 0033 -> URL/MD5/Size/SSID übernehmen
  -> HTTP/curl Download nach /cache/phnixIot_device_OTA
- -> Dateigröße + MD5 prüfen
+ -> MD5 über das erwartete fileSize-Fenster prüfen
  -> Metadaten persistent speichern
  -> Mainboard-OTA-State-Machine
  -> RS485 OTA-Register C350/C357/C36C/C36E/C371/C378/C5A8/C544
 ```
 
 Die beiden Pfade teilen MQTT/JSON-Dispatcher und Download-/Progress-Infrastruktur, sind danach aber klar getrennt.
+
+Wichtige Korrektur gegenüber älteren Fassungen dieser Datei: `fileSize` wird in den lokalen MD5-Prüffunktionen **nicht als tatsächliche Dateilänge validiert**. Die Funktionen lesen höchstens `fileSize` Bytes in einen vorher genullten Puffer und hashen anschließend immer exakt `fileSize` Bytes. `fileSize` ist damit praktisch das MD5-Prüffenster.
 
 ---
 
@@ -81,7 +83,7 @@ Damit besteht der DTU-Downloaddatensatz mindestens aus:
 Soll-Softwarecode
 Soll-Version
 Soll-MD5
-Soll-Dateigröße
+Soll-Dateigröße / MD5-Prüffenster
 Download-URL
 ```
 
@@ -161,26 +163,50 @@ Globaler OTA-Typ:
 Cloudcodes:
 
 ```text
-DTU Progress      0042
+DTU Progress       0042
 Mainboard Progress 0043
 ```
 
 ---
 
-## 5. DTU-Dateiprüfung
+## 5. DTU-Dateiprüfung – Korrektur zur Dateilänge
 
-Nach erfolgreichem Download wird `ota_check_dtu_otaFile_md5()` aufgerufen.
+Nach erfolgreichem Download wird `ota_check_dtu_otaFile_md5()` (`0x1A0C8`) aufgerufen.
 
-Die Funktion prüft zwei Dinge:
+Die Funktion führt **keinen separaten Vergleich der tatsächlichen Dateigröße mit `otaDtuInfo.fileSize`** durch. Rekonstruiert ist vielmehr:
+
+```c
+expected = otaDtuInfo.fileSize;
+buf = malloc(expected + 1);
+memset(buf, 0, expected + 1);
+
+fp = fopen("/data/phnixIot4G_OTA", "rb");
+nread = fread(buf, 1, expected, fp);
+
+MD5Init(&ctx);
+MD5Update(&ctx, buf, expected);   // nicht nread
+MD5Final(...);
+```
+
+`nread` wird zwar geloggt, aber nicht als Akzeptanzbedingung gegen `expected` geprüft.
+
+Folgen:
 
 ```text
-1. tatsächliche Dateigröße gegen otaDtuInfo.fileSize
-2. berechnetes MD5 gegen otaDtuInfo.fileMD5
+Datei kürzer als fileSize:
+  fehlende Bytes bleiben im vorher genullten Puffer 0x00
+  und gehen so in den MD5 ein.
+
+Datei länger als fileSize:
+  nur die ersten fileSize Bytes werden gehasht;
+  angehängte Daten bleiben unberücksichtigt.
 ```
+
+Damit ist `fileSize` lokal ein **MD5-Prüffenster**, keine echte Dateilängenvalidierung.
 
 Die MD5-Implementierung liegt im Executable (`MD5Init`, `MD5Update`, `MD5Final`).
 
-Es gibt in diesem PHNIX-DTU-Pfad **keine zusätzlich erkannte RSA-/Signaturprüfung des heruntergeladenen Binaries**. Die Integritätsentscheidung beruht hier auf Größe + MD5.
+Es gibt in diesem PHNIX-DTU-Pfad **keine zusätzlich erkannte RSA-/Signaturprüfung des heruntergeladenen Binaries**. Die lokale Integritätsentscheidung beruht auf dem MD5-Vergleich über das erwartete Fenster.
 
 Hinweis: Das Executable enthält zusätzlich generischen Aliyun-OTA-Code mit RSA-/MD5-Symbolen, dieser ist vom hier beschriebenen PHNIX-`CMD_OTA`-Pfad zu unterscheiden.
 
@@ -206,7 +232,7 @@ neues ELF herunterladen
  -> laufenden Prozess hart beenden
 ```
 
-Der Neustart erfolgt damit offenbar über den Plattform-/Supervisor-Mechanismus, der `phnixIot4G` erneut startet.
+Der Neustart erfolgt damit offenbar über einen Plattform-/Supervisor-Mechanismus außerhalb dieses ELF, der `phnixIot4G` erneut startet. Welcher konkrete Supervisor dafür verantwortlich ist, ist aus diesem Binary allein noch nicht belegt.
 
 Bei Downloadfehler wird Code `0092` gesendet (`FirmwareDownloadFailed`).
 
@@ -267,7 +293,7 @@ Nach Übernahme der Daten werden OTA-Zustände und persistente Parameter aktuali
 
 ---
 
-## 9. Mainboard-Firmwaredownload
+## 9. Mainboard-Firmwaredownload und lokale Prüfung
 
 Downloadziel:
 
@@ -290,11 +316,22 @@ ota_download_device_otaFile()
 
 auf.
 
-Auch hier gelten:
+`ota_check_device_otaFile_md5()` (`0x1A370`) verwendet dieselbe problematische Längenlogik wie die DTU-Prüfung:
 
 ```text
-Dateigröße muss stimmen
-MD5 muss stimmen
+malloc(fileSize + 1)
+memset(..., 0)
+fread(..., fileSize)
+MD5Update(..., fileSize)
+```
+
+Auch hier wird der tatsächliche `fread()`-Rückgabewert nicht gegen `fileSize` als Akzeptanzbedingung geprüft.
+
+Daher gilt auch für das Mainboard-Payload:
+
+```text
+fileSize = MD5-Prüffenster
+keine eigenständige echte Dateilängenvalidierung
 ```
 
 Bei Downloadfehler:
@@ -351,6 +388,8 @@ Sie wird für Resume-/Offset-/OTA-Zustandsinformationen verwendet.
 
 Damit kann der Mainboard-OTA-Vorgang einen unterbrochenen Transfer zumindest teilweise persistent fortsetzen.
 
+`board_ota_step` selbst ist dagegen RAM-only; Resume basiert auf den persistenten Firmwaremetadaten und dem bestätigten Dateioffset plus erneutem Handshake.
+
 ---
 
 ## 11. Mainboard-OTA-State-Machine
@@ -375,21 +414,34 @@ dtu_run_step == 11
 
 also nach vollständig erfolgreichem MQTT-Startup.
 
-Die Board-State-Machine verwendet unter anderem `board_ota_step`.
+Die Board-State-Machine verwendet `board_ota_step`.
 
-Bekannte Schritte/Aktionen:
+Bestätigte Zustände:
+
+| Step | Bedeutung |
+|---:|---|
+| `1` | Upgrade-Erlaubnis / Cloud-Anfrage |
+| `3` | Board-Firmware herunterladen und MD5 prüfen |
+| `6` | Firmware via RS485 übertragen |
+| `12` | Warte-/Abschlusszustand; Boardantworten treiben weiter |
+| `5` | Erfolg an Cloud melden |
+| `10` | Fehler an Cloud melden |
+| `7` | Cancel-/Recovery-Pfad |
+| `8` | Rollback-/Backroll-Steuerung |
+| `9` | Rollback-Ergebnis an Cloud melden |
+
+Der reguläre Pfad lautet damit vereinfacht:
 
 ```text
-Version des Mainboards melden
-OTA-Erlaubnis vom Mainboard/Cloud abstimmen
-Firmware per HTTP herunterladen
-MD5 prüfen
-OTA-Metadaten per RS485 senden
-Firmwareblöcke übertragen
-Fortschritt melden
-Cancel behandeln
-Rollback behandeln
-Erfolg/Fehler melden
+Step 1
+ -> Step 3
+ -> HTTP Download + MD5
+ -> Persistenz
+ -> Step 6
+ -> RS485 Firmwaretransfer
+ -> Step 12
+ -> Board-Ergebnis
+ -> Step 5 oder Step 10
 ```
 
 Cloud-Kommandos `0062` und `0063` setzen lediglich Flags für ein erneutes Versionsreporting; sie starten nicht direkt einen Download.
@@ -398,7 +450,7 @@ Cloud-Kommandos `0062` und `0063` setzen lediglich Flags für ein erneutes Versi
 
 ## 12. Mainboard-RS485-OTA-Register
 
-Der bereits rekonstruierte `unpack_mcu_modbus()` behandelt exklusiv diese OTA-/Serviceadressen:
+Der rekonstruierte `unpack_mcu_modbus()` behandelt exklusiv diese OTA-/Serviceadressen:
 
 | Register | Handler |
 |---:|---|
@@ -411,7 +463,7 @@ Der bereits rekonstruierte `unpack_mcu_modbus()` behandelt exklusiv diese OTA-/S
 | `0xC5A8` | `board_set_updata_bin_handle()` |
 | `0xC544` | `board_softcode_ver_handle()` |
 
-Damit sind Mainboard-OTA und normaler Modbusbetrieb logisch klar getrennt.
+Damit sind Mainboard-OTA und normaler Modbusbetrieb auf Parser-/Handler-Ebene logisch getrennt. Auf der physischen UART-TX-Seite teilen sie sich dagegen dieselbe Sendeschiene; siehe Abschnitt 15.
 
 ---
 
@@ -462,23 +514,181 @@ Für den PHNIX-DTU-Self-Update-Pfad ist statisch erkennbar:
 ```text
 Authentisierung des MQTT-Kanals: ja
 TLS/Serverprüfung: ja
-Download-Integrität: Dateigröße + MD5
+Download-Integrität: MD5 über erwartetes fileSize-Fenster
 separate Firmware-Signaturprüfung im PHNIX-DTU-Pfad: nicht gefunden
 ```
 
 Das bedeutet nicht automatisch, dass der reale Cloudprozess unsicher ist; die Download-URL kann serverseitig geschützt/signiert sein. Im Client selbst ist für das heruntergeladene DTU-ELF jedoch keine zusätzliche kryptografische Signaturvalidierung sichtbar.
 
-Beim Mainboard-Image ist ebenfalls Größe + MD5 die erkennbare lokale Downloadprüfung; weitere Validierungen können zusätzlich im Mainboard-Bootloader/Firmwarepfad stattfinden und sind nicht Bestandteil dieses ELF.
+Beim Mainboard-Image ist ebenfalls der MD5 über das erwartete `fileSize`-Fenster die erkennbare lokale Downloadprüfung; weitere Validierungen finden zusätzlich im Mainboard-OTA-/Bootpfad statt.
 
 ---
 
-## 15. Nächste sinnvolle Zerlegung
+## 15. UART-/Warmlink-Abhängigkeit des OTA-Pfads
 
-Noch gezielt offen:
+Die Detailanalyse des konkreten `phnixIot4G`-Builds zeigt, dass OTA und normaler Warmlink-Verkehr **dieselbe zentrale UART-Sendeschiene** verwenden.
 
-- exaktes `otaDtuInfo`- und `otaDeviceInfo`-Structlayout mit allen Offsets;
-- vollständige `board_ota_step`-State-Tabelle aus `dtu_upgrade_pro()`;
-- exakte RS485-Payloads für C350/C357/C36E/C371/C5A8;
-- Resume-Logik über `/data/phnixIot_device_OTA_INFO` und `offset/down_cnt`;
-- genaue Entscheidung, wann Mainboard-Blöcke erneut gesendet werden;
-- DTU-Self-Update: exakter Verhalten nach `killall` und welcher externe Supervisor neu startet.
+### 15.1 `uart485_send_data_to_board()` ist kein direkter `write()`
+
+Funktion:
+
+```text
+uart485_send_data_to_board() @ 0x1562C
+```
+
+Sie schreibt nicht direkt auf `/dev/ttyHSL2`, sondern kopiert das Telegramm in einen globalen Sendeslot:
+
+```c
+if (len <= 2048) {
+    memcpy(uart485WriteBuf, data, len);
+    uart485SendLen = len;
+    uart485SendFlag = 1;
+}
+```
+
+Bestätigte Globals:
+
+```text
+uart485WriteBuf   0x928DC   2048 Byte
+uart485SendFlag   0x930DC
+uart485SendLen    0x930E0
+UART-FD           0x930E4
+```
+
+Damit gilt:
+
+```text
+OTA-Producer --------+
+                     |
+Normalbetrieb -------+--> uart485_send_data_to_board()
+                     |       |
+weitere UART-Sender -+       v
+                         ein gemeinsamer
+                         2048-Byte-Sendeslot
+                              |
+                              v
+                         uart485SendFlag
+                              |
+                              v
+                         UART-Thread
+                              |
+                              v
+                         write(fd,...)
+```
+
+### 15.2 Keine Queue und kein Mutex im Sendeslot
+
+In `uart485_send_data_to_board()` wurde keine Synchronisierung über
+
+```text
+pthread_mutex_lock/unlock
+sem_wait/sem_post
+```
+
+oder eine erkennbare atomare Reservierung gefunden.
+
+Der Sendemechanismus ist außerdem **keine Queue**, sondern nur ein einzelner globaler Puffer plus Länge und Flag.
+
+Daraus ergibt sich statisch eine mögliche Race-/Overwrite-Situation:
+
+```text
+Thread A legt OTA-Frame ab
+  -> flag = 1
+
+vor Verarbeitung schreibt Thread B einen anderen Frame
+  -> gleicher Puffer wird überschrieben
+  -> Länge wird ersetzt
+  -> flag bleibt 1
+```
+
+Ob diese Situation im realen Betrieb tatsächlich auftritt, hängt von höherer Zustandslogik und zeitlicher Serialisierung der Produzenten ab. Der Sendeslot selbst schützt jedoch nicht davor.
+
+### 15.3 Physisches Senden erfolgt im UART-Thread
+
+`uart485_thread_handle()` läuft nach der Initialisierung dauerhaft über `getDevParameter()`.
+
+Dort wird bei gesetztem Sendeflag schließlich ausgeführt:
+
+```c
+write(uart_fd, uart485WriteBuf, uart485SendLen);
+```
+
+Danach werden bei jedem Rückgabewert ungleich `-1`:
+
+```text
+uart485SendLen  = 0
+uart485SendFlag = 0
+```
+
+gesetzt.
+
+Damit ist der UART-Thread der zentrale physische Sender für die über `uart485_send_data_to_board()` eingelegten Frames.
+
+### 15.4 Partial `write()` wird nicht behandelt
+
+Der Code prüft nur:
+
+```text
+write_result != -1
+```
+
+nicht aber:
+
+```text
+write_result == uart485SendLen
+```
+
+Ein theoretischer partieller Write würde daher als Erfolg behandelt und der restliche Puffer anschließend verworfen.
+
+Auf einer lokalen seriellen Linux-Schnittstelle und bei den hier verwendeten Framegrößen dürfte dies selten sein, ist im Code aber nicht robust abgefangen.
+
+### 15.5 Normaler RS485-Empfang läuft während OTA weiter
+
+Für Mainboard-OTA wird der permanente UART-Empfangsthread nicht beendet oder grundsätzlich suspendiert.
+
+`getDevParameter()` verarbeitet weiterhin eingehende Mainboardtelegramme. OTA-Adressen werden intern an ihre speziellen Handler geleitet; anderer Verkehr kann weiterhin den normalen Modbus-/MQTT-Pfad erreichen.
+
+Damit ist bestätigt:
+
+> Ein Mainboard-OTA schaltet den normalen RS485-RX/Warmlink-Uplink nicht grundsätzlich ab.
+
+Noch offen ist die vollständige Klassifizierung aller konkurrierenden TX-Produzenten während eines aktiven C5A8-Transfers. Gerade wegen des Single-Slot-Puffers ist dies für die weitere Analyse relevant.
+
+### 15.6 Konsequenz für den OTA-Pfad
+
+Der Mainboard-OTA besitzt keinen separat geöffneten UART und keinen exklusiven OTA-TX-Kanal:
+
+```text
+C350/C357/C5A8/C36A/C375/... 
+        ↓
+uart485_send_data_to_board()
+        ↓
+gemeinsamer Sendeslot
+        ↓
+UART-Thread
+        ↓
+/dev/ttyHSL2
+```
+
+Für einzelne Handshake-Telegramme wie C350 ist diese Architektur überschaubar. Während eines vollständigen Firmwaretransfers mit vielen C5A8-Blöcken ist die genaue TX-Serialisierung mit normalem Warmlink-Verkehr dagegen ein wichtiger noch zu prüfender Punkt.
+
+---
+
+## 16. Nächste sinnvolle Zerlegung
+
+Bereits separat detailliert dokumentiert sind inzwischen unter anderem:
+
+- vollständige `board_ota_step`-State-Machine;
+- C350/C357/C5A8/C371-Transferpfad;
+- Resume über `/data/phnixIot_device_OTA_INFO`;
+- C544-Resume-Erkennung;
+- Cancel und Rollback;
+- Board-seitiger IAP-/Copy-/Jump-Pfad.
+
+Noch gezielt offen bzw. als nächstes sinnvoll:
+
+- alle Schreiber auf `uart485WriteBuf` / `uart485SendFlag` klassifizieren und mögliche reale TX-Kollisionen bewerten;
+- die OTA-Timer-/Retryfelder in `app @ 0x988FC` vollständig benennen und ihre Tickquelle bestimmen;
+- Timeoutverhalten C350 ohne C36E, C357 ohne Folgeantwort sowie C5A8 ohne C371 exakt rekonstruieren;
+- normalen MQTT-Downlink während aktivem OTA-Transfer auf mögliche Konkurrenz zum UART-Sendeslot untersuchen;
+- DTU-Self-Update: externen Supervisor bestimmen, der `phnixIot4G` nach `killall -9` erneut startet.
