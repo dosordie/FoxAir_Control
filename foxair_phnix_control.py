@@ -14,7 +14,12 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
-from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture, format_special_frame_for_main_log
+from warmlink_raw_capture import (
+    DEFAULT_CAPTURE_SETTINGS,
+    WarmlinkRawCapture,
+    format_ota_frame_for_visible_log,
+    format_special_frame_for_main_log,
+)
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
@@ -668,6 +673,13 @@ class ReaderWorker(QObject):
                     "DEBUG RX-Parser: nach Eingang kein gueltiges Frame; "
                     f"Restdaten verworfen: {before_parse_len} Byte"
                 )
+        # find_frames returns only complete, CRC-valid frames.  Surface the
+        # useful OTA meaning here as well as the parser diagnostics, even when
+        # raw capture is disabled.  This does not touch normal Modbus decoding.
+        for parsed in parsed_frames:
+            ota_text = format_ota_frame_for_visible_log(parsed[6])
+            if ota_text:
+                self.log.emit(ota_text)
         return parsed_frames
 
     def _discard_stale_rx_restbuffer(self) -> None:

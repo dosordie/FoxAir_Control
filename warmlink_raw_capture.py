@@ -105,6 +105,66 @@ def format_special_frame_for_main_log(event: dict[str, Any]) -> str:
     )
 
 
+OTA_STATUS_MEANINGS = {
+    0: "gleiche Firmware, keine Übertragung",
+    1: "Update angenommen",
+    2: "Update abgelehnt",
+    3: "Übertragung fehlgeschlagen",
+}
+
+
+def format_ota_frame_for_visible_log(frame: bytes) -> Optional[str]:
+    """Decode a CRC-validated OTA FC16 frame for the ordinary UI log.
+
+    This deliberately operates beside the normal Modbus decoder.  Callers must
+    only pass frames which the stream parser has already CRC-validated; no
+    register-map or request/response state is changed here.
+    """
+    if len(frame) < 8 or frame[1] != 0x10:
+        return None
+    addr = int.from_bytes(frame[2:4], "big")
+    if addr not in {0xC350, 0xC357, 0xC36E, 0xC5A8}:
+        return None
+    qty = int.from_bytes(frame[4:6], "big")
+    if len(frame) == 8:
+        if addr == 0xC350:
+            return "OTA C350 ACK empfangen"
+        return f"OTA {addr:04X} ACK empfangen (Anzahl={qty})"
+
+    # Standard FC16 puts byte count at index 6.  C5A8 is a PHNIX-specific
+    # CRC-delimited layout and consequently starts its body one byte earlier.
+    if frame[6] == len(frame) - 9:
+        payload = frame[7:-2]
+    elif addr == 0xC5A8:
+        payload = frame[6:-2]
+    else:
+        return None
+
+    if addr == 0xC350 and len(payload) >= 14:
+        target_ssid = int.from_bytes(payload[:2], "big")
+        software_code = payload[2:10].decode("ascii", "replace")
+        version = payload[10:14].decode("ascii", "replace")
+        return (f"OTA C350: Updateangebot, Softwarecode={software_code}, "
+                f"Version={version}, Ziel-SSID={target_ssid:04X}")
+    if addr == 0xC36E and len(payload) >= 4:
+        status = int.from_bytes(payload[2:4], "big")
+        meaning = OTA_STATUS_MEANINGS.get(status, "unbekannter Status")
+        return f"OTA C36E: Status={status} – {meaning}"
+    if addr == 0xC357:
+        offset = int.from_bytes(payload[:4], "big") if len(payload) >= 4 else 0
+        length = len(payload) - 4
+        if len(payload) >= 6:
+            declared = int.from_bytes(payload[4:6], "big")
+            if declared <= len(payload) - 6:
+                length = declared
+        return f"OTA C357: Firmware-Datenblock, Offset={offset}, Länge={length} Byte"
+    if addr == 0xC5A8:
+        phase = int.from_bytes(payload[:2], "big") if len(payload) >= 2 else None
+        suffix = f", Phase={phase}" if phase is not None else ""
+        return f"OTA C5A8: Flash-/Schreibphase{suffix}, Länge={len(payload)} Byte"
+    return None
+
+
 def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[str, Any]:
     """Conservatively classify a TCP chunk without assuming frame alignment."""
     ev: dict[str, Any] = {"parser": "partial" if len(data) < 4 else "chunk"}
