@@ -87,6 +87,8 @@ def _special_register_fields(addr: Any) -> dict[str, Any]:
 
 def format_special_frame_for_main_log(event: dict[str, Any]) -> str:
     """Kompakte, payload-freie Darstellung fuer das LTE-Hauptfenster."""
+    if event.get("display_text"):
+        return str(event["display_text"])
     addr = int(event.get("addr", 0))
     qty = event.get("qty")
     expected_qty = event.get("expected_quantity")
@@ -152,6 +154,9 @@ class WarmlinkRawCapture:
         self._last_protocol_alert = 0.0
         self._valid_rx_frames: list[float] = []
         self._last_rx_burst_alert = 0.0
+        self._ota_pending_writes: list[dict[str, Any]] = []
+        self._ota_precheck: Optional[dict[str, Any]] = None
+        self._ota_followups_seen: set[int] = set()
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -197,6 +202,7 @@ class WarmlinkRawCapture:
             except Exception as exc:
                 with self.lock: self.status.error = str(exc); self.status.active = False
                 self.log_cb(f"Warmlink Capture: Schreibfehler: {exc}"); self.stop_evt.set()
+        self._finalize_ota_sequence()
         self._close_files()
     def _dir(self) -> Path:
         p = Path(str(self.cfg.get("directory") or DEFAULT_CAPTURE_SETTINGS["directory"]));
@@ -256,7 +262,7 @@ class WarmlinkRawCapture:
         off=self.offsets[direction]; self.offsets[direction]+=len(data)
         ev={"ts":utc_iso(),"mono_s":now,"dir":direction,"offset":off,"len":len(data),"hex_head":data[:32].hex()}
         ev.update(self._parse_capture_chunk(direction, data)); self._write_event(ev)
-        self._index_complete_frames(direction, off, data)
+        self._index_complete_frames(direction, off, data, observed_mono=now)
         with self.lock:
             if direction=="rx": self.status.rx_size=self.offsets["rx"]; self.status.last_rx=ev["ts"]
             else: self.status.tx_size=self.offsets["tx"]; self.status.last_tx=ev["ts"]
@@ -284,7 +290,7 @@ class WarmlinkRawCapture:
                 parsed["continuation_remaining"] = expected - len(data)
         return parsed
 
-    def _index_complete_frames(self, direction: str, offset: int, data: bytes):
+    def _index_complete_frames(self, direction: str, offset: int, data: bytes, observed_mono: Optional[float] = None):
         buf_state = self._frame_index_buffers[direction]
         buf = buf_state["data"]
         if not buf:
@@ -309,7 +315,7 @@ class WarmlinkRawCapture:
                 del buf[:start]
                 buf_state["offset"] = int(buf_state["offset"]) + start
             frame_start = int(buf_state["offset"])
-            self._write_frame_complete_event(direction, frame_start, frame, meta)
+            self._write_frame_complete_event(direction, frame_start, frame, meta, observed_mono=observed_mono)
             del buf[:len(frame)]
             buf_state["offset"] = frame_start + len(frame)
 
@@ -336,11 +342,17 @@ class WarmlinkRawCapture:
                 candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": 1}))
             elif fc == 0x10:
                 addr = int.from_bytes(tail[2:4], "big") if len(tail) >= 4 else None
+                looks_like_request = False
                 if len(tail) >= 7:
                     bc = tail[6]
                     if bc % 2 == 0 and bc > 0 and 9 + bc <= 260:
+                        looks_like_request = bc == int.from_bytes(tail[4:6], "big") * 2
                         candidates.append((9 + bc, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
-                candidates.append((8, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+                # A fragmented request may currently contain exactly eight
+                # bytes. Its byte-count is not an ACK CRC and must not be
+                # tested as one before the advertised payload has arrived.
+                if not looks_like_request:
+                    candidates.append((8, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
                 if addr == 50600:
                     special = self._find_crc_delimited_special_frame(tail)
                     if special is not None:
@@ -381,7 +393,8 @@ class WarmlinkRawCapture:
                 crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
         return crc == int.from_bytes(frame[-2:], "little")
 
-    def _write_frame_complete_event(self, direction: str, offset_start: int, frame: bytes, meta: dict[str, Any]):
+    def _write_frame_complete_event(self, direction: str, offset_start: int, frame: bytes, meta: dict[str, Any],
+                                    observed_mono: Optional[float] = None):
         ev = {
             "ts": utc_iso(),
             "event": "frame_complete",
@@ -399,6 +412,7 @@ class WarmlinkRawCapture:
             if meta.get(key) is not None:
                 ev[key] = meta.get(key)
         ev.update(_special_register_fields(ev.get("addr")))
+        ev.update(self._classify_fc16_frame(frame, ev, observed_mono))
         if meta.get("payload_rel") is not None:
             ev["payload_offset"] = offset_start + int(meta.get("payload_rel", 0))
             ev["payload_len"] = int(meta.get("payload_len", 0))
@@ -414,7 +428,12 @@ class WarmlinkRawCapture:
                 "expected_direction": ev.get("expected_direction"),
                 "expected_quantity": ev.get("expected_quantity"),
                 "special_layout": bool(ev.get("special_layout")),
+                "frame_kind": ev.get("frame_kind"),
             }
+            for key in ("device_id", "software_code", "firmware_version", "status", "correlation", "response_ms"):
+                if key in ev:
+                    special_event[key] = ev[key]
+            special_event["display_text"] = self._format_ota_display(special_event)
             self._write_event(special_event)
             # Nur strukturierte Metadaten an die GUI geben. Die grossen bzw.
             # ggf. sensiblen OTA-/ProductKey-Nutzdaten bleiben ausschliesslich
@@ -427,6 +446,83 @@ class WarmlinkRawCapture:
             now = time.monotonic()
             self._valid_rx_frames.append(now)
             self._valid_rx_frames = [stamp for stamp in self._valid_rx_frames if now - stamp <= 10]
+
+    def _classify_fc16_frame(self, frame: bytes, ev: dict[str, Any], observed_mono: Optional[float]) -> dict[str, Any]:
+        """Decode FC16 only after the complete frame has passed its CRC check."""
+        if ev.get("function") != "0x10":
+            return {}
+        addr, qty = ev.get("addr"), ev.get("qty")
+        now = time.monotonic() if observed_mono is None else float(observed_mono)
+        if len(frame) == 8:
+            match = next((item for item in reversed(self._ota_pending_writes)
+                          if item["addr"] == addr and item["qty"] == qty), None)
+            out: dict[str, Any] = {"frame_kind": "write_ack"}
+            if match:
+                out["correlation"] = match["name"]
+                match["acked_at"] = now
+            return out
+        out = {"frame_kind": "special_response" if addr in {50028, 50030, 50033, 50040} else "write_request"}
+        payload = frame[7:-2] if len(frame) >= 9 and frame[6] == len(frame) - 9 else b""
+        if addr == 50000 and len(payload) == 14:
+            out.update(device_id=int.from_bytes(payload[:2], "big"),
+                       software_code=payload[2:10].decode("ascii", "replace"),
+                       firmware_version=payload[10:14].decode("ascii", "replace"))
+        elif addr == 50030 and len(payload) >= 4:
+            out.update(device_id=int.from_bytes(payload[:2], "big"), status=int.from_bytes(payload[2:4], "big"))
+            offer = next((item for item in reversed(self._ota_pending_writes)
+                          if item["addr"] == 50000 and item.get("acked_at") is not None), None)
+            if offer:
+                out["response_ms"] = round((now - offer["created_at"]) * 1000)
+                out["correlation"] = "OTA_OFFER_ACK"
+                if out["status"] == 0:
+                    self._ota_precheck = {"offer": offer, "status": 0}
+        if out["frame_kind"] == "write_request" and addr in PHNIX_LTE_SPECIAL_REGISTERS:
+            self._ota_pending_writes.append({"addr": addr, "qty": qty,
+                                             "name": PHNIX_LTE_SPECIAL_REGISTERS[addr]["name"],
+                                             "created_at": now})
+        if addr in {50007, 50600}:
+            self._ota_followups_seen.add(int(addr))
+        return out
+
+    @staticmethod
+    def _event_clock(ts: Any) -> str:
+        text = str(ts or "")
+        if "T" in text:
+            return text.split("T", 1)[1][:12]
+        return text[:12]
+
+    def _format_ota_display(self, event: dict[str, Any]) -> str:
+        addr = int(event.get("addr", 0)); clock = self._event_clock(event.get("ts"))
+        prefix = f"[{clock}] OTA {addr:04X}"
+        if addr == 50000 and event.get("frame_kind") == "write_request":
+            return (f"{prefix} ANGEBOT: Gerät=0x{int(event.get('device_id', 0)):04X}, "
+                    f"Softwarecode={event.get('software_code', '?')}, Version={event.get('firmware_version', '?')}, "
+                    "Adresse=50000/0xC350, erwartete Richtung=LTE/Updater → Mainboard, CRC=OK")
+        if addr == 50000 and event.get("frame_kind") == "write_ack":
+            return (f"{prefix} ACK: Register={event.get('qty', '?')}, Bezug=OTA-Angebot, "
+                    "Adresse=50000/0xC350, CRC=OK")
+        if addr == 50030:
+            status = int(event.get("status", -1)); meaning = " (angenommen/erlaubt)" if status == 0 else ""
+            delay = f", Antwortzeit={event['response_ms']} ms" if event.get("response_ms") is not None else ""
+            return (f"{prefix} STATUS: Gerät=0x{int(event.get('device_id', 0)):04X}, Status={status}{meaning}{delay}, "
+                    "Adresse=50030/0xC36E, erwartete Richtung=Mainboard → LTE/Updater, CRC=OK")
+        return format_special_frame_for_main_log({k: v for k, v in event.items() if k != "display_text"})
+
+    def _finalize_ota_sequence(self) -> None:
+        if not self._ota_precheck:
+            return
+        missing = []
+        if 50007 not in self._ota_followups_seen: missing.append("C357")
+        if 50600 not in self._ota_followups_seen: missing.append("C5A8")
+        suffix = f"; kein {' oder '.join(missing)} im Mitschnitt" if missing else ""
+        message = f"OTA-VORPRÜFUNG ERFOLGREICH: C350 → ACK → C36E/Status 0{suffix}"
+        event = {"ts": utc_iso(), "event": "ota_sequence_summary", "result": "precheck_success",
+                 "followups_seen": sorted(self._ota_followups_seen), "display_text": message}
+        self._write_event(event)
+        try:
+            self.special_frame_cb(event)
+        except Exception as exc:
+            self.log_cb(f"Warmlink Capture: OTA-Sequenzanzeige fehlgeschlagen: {exc}")
     def _write_event(self, ev: dict[str,Any]):
         if self.events: self.events.write(json.dumps(ev, ensure_ascii=False, separators=(",",":"))+"\n")
     def _anomaly(self, direction, data, ev, now):

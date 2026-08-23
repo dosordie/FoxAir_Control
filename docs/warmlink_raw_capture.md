@@ -36,6 +36,17 @@ Stufe 1 markiert einfache Heuristiken, z. B. unbekannte Funktionscodes, ungewöh
 
 ## PHNIX-LTE-Logger- und OTA-Sonderregister
 
+### Fehlerursache und Korrektur
+
+Der frühere Capture fand zwar vollständige `frame_complete`-Frames, behandelte
+FC `0x10` für die sichtbare Ausgabe aber nur als generisches Sonderregister.
+Die GUI erhielt absichtlich keine Nutzdaten und konnte daher Angebot, kurzes
+Echo-ACK und Board-Antwort weder fachlich dekodieren noch miteinander
+korrelieren. Außerdem klassifizierte die separate Chunk-Vorschau jeden
+Eingangsblock für sich; TCP-/Seriell-Blockgrenzen sind jedoch keine
+Framegrenzen. Die Korrektur verlegt Dekodierung und GUI-Weitergabe hinter den
+zustandsbehafteten Stream-Indexer und dessen erfolgreiche CRC-Prüfung.
+
 Nur der passive **Modbus Warmlink LTE** Raw-Capture erkennt zusätzlich die
 Loggerregister `4`, `6`, `200–215` (ProductKey ab `200`) und `500` sowie die
 OTA-Kommandos `50000`, `50007`, `50026`, `50028`, `50030`, `50033`, `50037`,
@@ -53,6 +64,26 @@ ProductKey – werden aus Sicherheits- und Performancegründen nicht ins GUI
 kopiert; sie bleiben vollständig in den Capture-Dateien. Der streng passive
 Firmware-Capture schreibt dieselben Indexevents, hält das Hauptfenster aber wie
 bisher ruhig.
+
+FC `0x10` wird dabei anhand der CRC-validierten Gesamtlänge unterschieden: Ein
+Schreibauftrag enthält Bytecount und Nutzdaten, das acht Byte lange Echo ist
+das Schreib-ACK, und eine bekannte Board-Adresse mit Bytecount ist eine
+fachliche PHNIX-Antwort. Der zustandsbehaftete Decoder ordnet ACK und Antwort
+dem vorausgehenden Auftrag zu. `C350` wird als OTA-Angebot (Gerätekennung,
+achtstelliger Softwarecode, vierstellige Version) und `C36E` als Board-Status
+ausgegeben. Status `0` bedeutet laut Protokoll „angenommen/erlaubt“; unbekannte
+Werte bleiben rein numerisch. Die angezeigte Richtung ist ausdrücklich die
+**erwartete/semantische Richtung**, nicht eine im passiven Mitschnitt elektrisch
+gemessene Senderichtung. Adressen erscheinen stets dezimal und hexadezimal.
+
+Der Stream-Indexer puffert unvollständige Anfänge über beliebige serielle
+Eingangsblöcke hinweg. Weder ein einzelnes Unit-Byte `63` noch ein sieben Byte
+langer Frameanfang erzeugt deshalb eine Sondermeldung. Erst vollständige Frames
+mit gültiger Modbus-CRC gelangen ins JSONL-Event und in die sichtbare Anzeige;
+ein Schreib-ACK wird nicht nochmals als Angebot behandelt. Beim Capture-Ende
+fasst der Decoder eine erfolgreiche Folge `C350 → ACK → C36E/Status 0` zusammen
+und nennt, ob die dokumentierten Folgeschritte `C357 / 50007` (`OTA_FILE_INFO`)
+oder `C5A8 / 50600` (`OTA_FIRMWARE_BLOCK`) im Mitschnitt vorkamen.
 
 `50600 / 0xC5A8` (`OTA_FIRMWARE_BLOCK`) besitzt kein normales FC10-Bytecount-
 Layout. Der Capture bestimmt sein Ende deshalb über die Modbus-CRC, behält auch
