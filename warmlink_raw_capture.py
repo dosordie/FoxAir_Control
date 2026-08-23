@@ -45,6 +45,63 @@ NORMAL_FC16_BLOCKS = {
     (0x082B, 90),
 }
 
+# Logger-/OTA-Kommandos des PHNIX-DTU. Diese Zuordnung gilt absichtlich nur
+# fuer den passiven Warmlink-LTE-Raw-Capture und wird nicht in die normalen
+# WP-, Standard- oder Display-Modbus-Registermaps gemischt.
+PHNIX_LTE_SPECIAL_REGISTERS: dict[int, dict[str, Any]] = {
+    4: {"name": "DEVICE_INFO_CYCLE_TRIGGER", "category": "logger", "quantity": 1},
+    6: {"name": "UART_485_STARTUP_HANDSHAKE", "category": "logger", "quantity": 1},
+    200: {"name": "PRODUCT_KEY", "category": "logger", "quantity": 16},
+    500: {"name": "DTU_INFO_ERROR_STATUS", "category": "logger", "quantity": None},
+    50000: {"name": "OTA_OFFER", "category": "ota", "quantity": 7, "expected_direction": "DTU_TO_BOARD"},
+    50007: {"name": "OTA_FILE_INFO", "category": "ota", "quantity": 19, "expected_direction": "DTU_TO_BOARD"},
+    50026: {"name": "OTA_CANCEL_REQUEST", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50028: {"name": "OTA_CANCEL_RESPONSE", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    50030: {"name": "OTA_BOARD_STATUS", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    50033: {"name": "OTA_BLOCK_ACK", "category": "ota", "quantity": 4, "expected_direction": "BOARD_TO_DTU"},
+    50037: {"name": "OTA_ROLLBACK_REQUEST", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50040: {"name": "OTA_ROLLBACK_RESPONSE", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    50043: {"name": "OTA_STATUS_ACK", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50500: {"name": "BOARD_VERSION_INFO", "category": "ota", "quantity": 13, "expected_direction": "BOARD_TO_DTU"},
+    50600: {"name": "OTA_FIRMWARE_BLOCK", "category": "ota", "quantity": None, "expected_direction": "DTU_TO_BOARD", "special_layout": True},
+}
+
+
+def _special_register_fields(addr: Any) -> dict[str, Any]:
+    try:
+        reg = int(addr)
+    except (TypeError, ValueError):
+        return {}
+    info = PHNIX_LTE_SPECIAL_REGISTERS.get(reg)
+    if not info:
+        return {}
+    return {
+        "phnix_special": True,
+        "phnix_name": info["name"],
+        "phnix_category": info["category"],
+        **({"expected_quantity": info["quantity"]} if info.get("quantity") is not None else {}),
+        **({"expected_direction": info["expected_direction"]} if info.get("expected_direction") else {}),
+        **({"special_layout": True} if info.get("special_layout") else {}),
+    }
+
+
+def format_special_frame_for_main_log(event: dict[str, Any]) -> str:
+    """Kompakte, payload-freie Darstellung fuer das LTE-Hauptfenster."""
+    addr = int(event.get("addr", 0))
+    qty = event.get("qty")
+    expected_qty = event.get("expected_quantity")
+    qty_text = str(qty) if qty is not None else "?"
+    if expected_qty is not None and int(qty or -1) != int(expected_qty):
+        qty_text += f" (erwartet {int(expected_qty)})"
+    direction = str(event.get("expected_direction") or "Richtung unbekannt")
+    layout = ", PHNIX-Sonderlayout" if event.get("special_layout") else ""
+    return (
+        f"PHNIX-LTE {str(event.get('category', 'Sonderframe')).upper()}: "
+        f"{event.get('name', 'unbekannt')} – Register {addr}/0x{addr:04X}, "
+        f"FC={event.get('function', '?')}, Qty={qty_text}, {direction}, "
+        f"{int(event.get('len', 0))} Byte{layout}"
+    )
+
 
 def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[str, Any]:
     """Conservatively classify a TCP chunk without assuming frame alignment."""
@@ -69,14 +126,17 @@ def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[st
             ev.update({"parser": "frame", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
         elif fc in (0x06, 0x10) and len(data) >= 8:
             ev.update({"parser": "frame", "frame_type": f"0x{int.from_bytes(data[2:4], 'big'):04X}", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
+        ev.update(_special_register_fields(ev.get("addr")))
     except Exception:
         ev["parser"] = "partial"
     return ev
 
 class WarmlinkRawCapture:
-    def __init__(self, settings: dict[str, Any], base_dir: str, log_cb: Optional[Callable[[str], None]] = None):
+    def __init__(self, settings: dict[str, Any], base_dir: str, log_cb: Optional[Callable[[str], None]] = None,
+                 special_frame_cb: Optional[Callable[[dict[str, Any]], None]] = None):
         cfg = dict(DEFAULT_CAPTURE_SETTINGS); cfg.update(settings or {})
         self.cfg = cfg; self.base_dir = base_dir; self.log_cb = log_cb or (lambda _m: None)
+        self.special_frame_cb = special_frame_cb or (lambda _event: None)
         self.q: queue.Queue = queue.Queue(maxsize=2000); self.thread: Optional[threading.Thread] = None; self.stop_evt = threading.Event()
         self.lock = threading.Lock(); self.status = CaptureStatus(); self.segment_date = ""; self.segment_no = 0
         self.rx = self.tx = self.events = None; self.summary_path = ""; self.active_paths: set[str] = set(); self.offsets = {"rx":0,"tx":0}
@@ -214,7 +274,7 @@ class WarmlinkRawCapture:
             out = {"parser": "continuation", "continuation_addr": cont.get("addr"), "continuation_qty": cont.get("qty"), "continuation_remaining": remaining}
             cont["remaining"] = remaining
             return out
-        if parsed.get("function") == "0x10" and parsed.get("parser") == "frame":
+        if parsed.get("function") == "0x10" and parsed.get("parser") == "frame" and not parsed.get("special_layout"):
             qty = int(parsed.get("qty", 0)); addr = int(parsed.get("addr", -1))
             expected = 1 + 1 + 2 + 2 + 1 + (qty * 2) + 2 if qty > 0 and len(data) >= 7 and data[6] == (qty * 2) & 0xFF else 0
             if expected and len(data) < expected:
@@ -236,8 +296,11 @@ class WarmlinkRawCapture:
         while True:
             found = self._find_complete_frame(bytes(buf))
             if found is None:
-                if len(buf) > 4096:
-                    drop = len(buf) - 512
+                # OTA_FIRMWARE_BLOCK kann deutlich groesser als ein normales
+                # Modbus-RTU-Frame sein. Genug Historie behalten, damit dessen
+                # abschliessende CRC auch bei stark zerstueckeltem TCP erkannt wird.
+                if len(buf) > 1024 * 1024:
+                    drop = len(buf) - 256 * 1024
                     del buf[:drop]
                     buf_state["offset"] = int(buf_state["offset"]) + drop
                 return
@@ -272,18 +335,39 @@ class WarmlinkRawCapture:
             elif fc == 0x06:
                 candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": 1}))
             elif fc == 0x10:
+                addr = int.from_bytes(tail[2:4], "big") if len(tail) >= 4 else None
                 if len(tail) >= 7:
                     bc = tail[6]
                     if bc % 2 == 0 and bc > 0 and 9 + bc <= 260:
-                        candidates.append((9 + bc, {"addr": int.from_bytes(tail[2:4], "big"), "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
-                candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+                        candidates.append((9 + bc, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
+                candidates.append((8, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+                if addr == 50600:
+                    special = self._find_crc_delimited_special_frame(tail)
+                    if special is not None:
+                        candidates.insert(0, (special, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big"), "payload_rel": 6, "payload_len": special - 8, "special_layout": True}))
             for length, meta in candidates:
                 if len(tail) < length:
                     continue
                 frame = tail[:length]
                 if self._modbus_crc_ok(frame):
                     meta.update({"bus": frame[0], "function": f"0x{fc:02X}", "crc": int.from_bytes(frame[-2:], "little"), "crc_ok": True})
+                    meta.update(_special_register_fields(meta.get("addr")))
                     return start, frame, meta
+        return None
+
+    @staticmethod
+    def _find_crc_delimited_special_frame(data: bytes) -> Optional[int]:
+        """Find the end of C5A8 without imposing standard FC10 byte-count rules."""
+        if len(data) < 10:
+            return None
+        crc = 0xFFFF
+        for index, byte in enumerate(data):
+            crc ^= byte
+            for _ in range(8):
+                crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+            frame_len = index + 3
+            if index >= 7 and frame_len <= len(data) and crc == int.from_bytes(data[index + 1:index + 3], "little"):
+                return frame_len
         return None
 
     @staticmethod
@@ -314,10 +398,31 @@ class WarmlinkRawCapture:
         for key in ("addr", "qty", "byte_count"):
             if meta.get(key) is not None:
                 ev[key] = meta.get(key)
+        ev.update(_special_register_fields(ev.get("addr")))
         if meta.get("payload_rel") is not None:
             ev["payload_offset"] = offset_start + int(meta.get("payload_rel", 0))
             ev["payload_len"] = int(meta.get("payload_len", 0))
         self._write_event(ev)
+        if ev.get("phnix_special"):
+            special_event = {
+                "ts": ev["ts"], "event": "phnix_lte_special_register",
+                "dir": direction, "offset_start": offset_start,
+                "offset_end": offset_start + len(frame), "len": len(frame),
+                "function": ev["function"], "addr": ev.get("addr"),
+                "qty": ev.get("qty"), "crc_ok": True,
+                "name": ev.get("phnix_name"), "category": ev.get("phnix_category"),
+                "expected_direction": ev.get("expected_direction"),
+                "expected_quantity": ev.get("expected_quantity"),
+                "special_layout": bool(ev.get("special_layout")),
+            }
+            self._write_event(special_event)
+            # Nur strukturierte Metadaten an die GUI geben. Die grossen bzw.
+            # ggf. sensiblen OTA-/ProductKey-Nutzdaten bleiben ausschliesslich
+            # in den Capture-Dateien und fluten nicht die Hauptfenster-Tabelle.
+            try:
+                self.special_frame_cb(dict(special_event))
+            except Exception as exc:
+                self.log_cb(f"Warmlink Capture: Sonderframe-Anzeige fehlgeschlagen: {exc}")
         if direction == "rx" and ev["crc_ok"] and ev["function"] in {"0x03", "0x06", "0x10"}:
             now = time.monotonic()
             self._valid_rx_frames.append(now)
@@ -353,8 +458,8 @@ class WarmlinkRawCapture:
             kind="unknown_function"
         if ev.get("function")=="0x10":
             self.fc16_window.append((now, int(ev.get("addr",-1)), int(ev.get("qty",0)), len(data))); self.fc16_window=[x for x in self.fc16_window if now-x[0]<=60]
-            normal = (int(ev.get("addr",-1)), int(ev.get("qty",0))) in NORMAL_FC16_BLOCKS
-            unknown_addrs = {x[1] for x in self.fc16_window if (x[1], x[2]) not in NORMAL_FC16_BLOCKS}
+            normal = (int(ev.get("addr",-1)), int(ev.get("qty",0))) in NORMAL_FC16_BLOCKS or int(ev.get("addr", -1)) in PHNIX_LTE_SPECIAL_REGISTERS
+            unknown_addrs = {x[1] for x in self.fc16_window if (x[1], x[2]) not in NORMAL_FC16_BLOCKS and x[1] not in PHNIX_LTE_SPECIAL_REGISTERS}
             fc16_bytes = sum(x[3] for x in self.fc16_window)
             if (unknown_addrs and (len(self.fc16_window) >= 20 or fc16_bytes > 50*1024)) or fc16_bytes > 200*1024 or (self.firmware_changed and len(self.fc16_window) >= 10 and not normal):
                 kind="firmware_like_fc16_sequence"
