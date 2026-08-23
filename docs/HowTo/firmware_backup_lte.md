@@ -1,6 +1,6 @@
 # Firmware-Backup des LTE-Modems über Micro-USB
 
-Diese Anleitung beschreibt kurz, wie man sich per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB** sichert.
+Diese Anleitung beschreibt kurz, wie man sich per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB (Android Debug Bridge, Bestandteil der Android SDK Platform Tools)** sichert.
 
 > [!NOTE]
 > Es gibt zwei alternative Wege:
