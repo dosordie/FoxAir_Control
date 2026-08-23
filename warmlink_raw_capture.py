@@ -67,6 +67,40 @@ PHNIX_LTE_SPECIAL_REGISTERS: dict[int, dict[str, Any]] = {
 }
 
 
+# The ordinary Modbus decoder expands FC16 payloads into one table row per
+# 16-bit word.  Keep these UI labels separate from RegisterMap: these are
+# protocol fields, not independently readable/writable heat-pump registers.
+PHNIX_OTA_TABLE_FIELDS: dict[int, tuple[str, str]] = {
+    50000: ("OTA C350", "Updateangebot · Ziel-SSID/Gerätekennung"),
+    50001: ("OTA C350", "Updateangebot · Softwarecode (ASCII 1/4)"),
+    50002: ("OTA C350", "Updateangebot · Softwarecode (ASCII 2/4)"),
+    50003: ("OTA C350", "Updateangebot · Softwarecode (ASCII 3/4)"),
+    50004: ("OTA C350", "Updateangebot · Softwarecode (ASCII 4/4)"),
+    50005: ("OTA C350", "Updateangebot · Firmwareversion (ASCII 1/2)"),
+    50006: ("OTA C350", "Updateangebot · Firmwareversion (ASCII 2/2)"),
+    50030: ("OTA C36E", "Board-Status · Gerätekennung"),
+    50031: ("OTA C36E", "Board-Status · Update-Ergebnis"),
+}
+
+
+def ota_table_display_parts(reg_no: int) -> tuple[str, str]:
+    """Return a compact code/name for known OTA payload words in the GUI."""
+    return PHNIX_OTA_TABLE_FIELDS.get(int(reg_no), ("", ""))
+
+
+def ota_table_display_value(reg_no: int, raw_value: int) -> str:
+    """Make known ASCII/status OTA words readable without changing decoding."""
+    reg_no, raw_value = int(reg_no), int(raw_value) & 0xFFFF
+    if 50001 <= reg_no <= 50006:
+        raw = raw_value.to_bytes(2, "big")
+        text = raw.decode("ascii", "replace")
+        if all(32 <= byte < 127 for byte in raw):
+            return f"{text}  (ASCII)"
+    if reg_no == 50031:
+        return f"{raw_value} – {OTA_STATUS_MEANINGS.get(raw_value, 'unbekannter Status')}"
+    return ""
+
+
 def _special_register_fields(addr: Any) -> dict[str, Any]:
     try:
         reg = int(addr)

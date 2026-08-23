@@ -179,6 +179,19 @@ def test_all_documented_phnix_ota_registers_are_known():
     assert {50500, 50600} <= set(PHNIX_LTE_SPECIAL_REGISTERS)
 
 
+def test_ota_table_fields_make_offer_and_status_words_readable():
+    from warmlink_raw_capture import ota_table_display_parts, ota_table_display_value
+
+    assert ota_table_display_parts(50000) == ("OTA C350", "Updateangebot · Ziel-SSID/Gerätekennung")
+    assert ota_table_display_parts(50003) == ("OTA C350", "Updateangebot · Softwarecode (ASCII 3/4)")
+    assert ota_table_display_parts(50031) == ("OTA C36E", "Board-Status · Update-Ergebnis")
+    assert ota_table_display_parts(1234) == ("", "")
+    assert ota_table_display_value(50001, 0x3832) == "82  (ASCII)"
+    assert ota_table_display_value(50005, 0x3030) == "00  (ASCII)"
+    assert "gleiche Firmware" in ota_table_display_value(50031, 0)
+    assert ota_table_display_value(1234, 99) == ""
+
+
 def test_capture_keeps_crc_delimited_c5a8_special_layout_across_chunks(tmp_path):
     # C5A8 intentionally does not use the normal FC10 byte-count layout.
     body = bytes.fromhex("63 10 c5 a8 00 09") + bytes(range(256)) * 2

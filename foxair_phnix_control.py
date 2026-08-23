@@ -19,6 +19,8 @@ from warmlink_raw_capture import (
     WarmlinkRawCapture,
     format_ota_frame_for_visible_log,
     format_special_frame_for_main_log,
+    ota_table_display_parts,
+    ota_table_display_value,
 )
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
@@ -5211,6 +5213,9 @@ class MainWindow(QMainWindow):
             block, code, clean = register_meta_parts(data)
             if code or block or clean:
                 return block, code, clean
+        ota_code, ota_name = ota_table_display_parts(int(reg_no))
+        if ota_code or ota_name:
+            return "Firmware-Update", ota_code, ota_name
         return register_block_and_clean_name(fallback_name)
 
     def _code_for_register(self, reg_no: int) -> str:
@@ -7009,6 +7014,7 @@ class MainWindow(QMainWindow):
             row = self._insert_sorted_register_row(reg.reg)
 
         block, code, clean_name = self._display_parts_for_register(reg.reg, reg.name)
+        ota_value = ota_table_display_value(reg.reg, reg.raw_value)
         values = [
             str(reg.reg),
             code or block,
@@ -7017,7 +7023,7 @@ class MainWindow(QMainWindow):
             f"{reg.raw_value} / 0x{reg.raw_value:04X}",
             self.previous_value_texts.get(reg.reg, "--"),
             str(reg.signed_value),
-            self._display_value_for_main_table(reg),
+            ota_value or self._display_value_for_main_table(reg),
             f"0x{reg.frame_type:04X}",
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
