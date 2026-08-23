@@ -61,8 +61,10 @@ PHNIX_LTE_SPECIAL_REGISTERS: dict[int, dict[str, Any]] = {
     50033: {"name": "OTA_BLOCK_ACK", "category": "ota", "quantity": 4, "expected_direction": "BOARD_TO_DTU"},
     50037: {"name": "OTA_ROLLBACK_REQUEST", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
     50040: {"name": "OTA_ROLLBACK_RESPONSE", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
-    50043: {"name": "OTA_STATUS_ACK", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
-    50500: {"name": "BOARD_VERSION_INFO", "category": "ota", "quantity": 13, "expected_direction": "BOARD_TO_DTU"},
+    # C37B/Status 7 acknowledges the board information cycle.  It is not an
+    # OTA indicator by itself (the same address can also occur during OTA).
+    50043: {"name": "BOARD_INFO_STATUS_ACK", "category": "logger", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50500: {"name": "BOARD_VERSION_INFO", "category": "logger", "quantity": 13, "expected_direction": "BOARD_TO_DTU"},
     50600: {"name": "OTA_FIRMWARE_BLOCK", "category": "ota", "quantity": None, "expected_direction": "DTU_TO_BOARD", "special_layout": True},
 }
 
@@ -80,6 +82,19 @@ PHNIX_OTA_TABLE_FIELDS: dict[int, tuple[str, str]] = {
     50006: ("OTA C350", "Updateangebot · Firmwareversion (ASCII 2/2)"),
     50030: ("OTA C36E", "Board-Status · Gerätekennung"),
     50031: ("OTA C36E", "Board-Status · Update-Ergebnis"),
+    50500: ("BOARD C544", "Versions-/Geräteinformation · SSID"),
+    50501: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 1/4)"),
+    50502: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 2/4)"),
+    50503: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 3/4)"),
+    50504: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 4/4)"),
+    50505: ("BOARD C544", "Versions-/Geräteinformation · Hardwareversion (ASCII 1/2)"),
+    50506: ("BOARD C544", "Versions-/Geräteinformation · Hardwareversion (ASCII 2/2)"),
+    50507: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 1/4)"),
+    50508: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 2/4)"),
+    50509: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 3/4)"),
+    50510: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 4/4)"),
+    50511: ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 1/2)"),
+    50512: ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 2/2)"),
 }
 
 
@@ -91,7 +106,7 @@ def ota_table_display_parts(reg_no: int) -> tuple[str, str]:
 def ota_table_display_value(reg_no: int, raw_value: int) -> str:
     """Make known ASCII/status OTA words readable without changing decoding."""
     reg_no, raw_value = int(reg_no), int(raw_value) & 0xFFFF
-    if 50001 <= reg_no <= 50006:
+    if 50001 <= reg_no <= 50006 or 50501 <= reg_no <= 50512:
         raw = raw_value.to_bytes(2, "big")
         text = raw.decode("ascii", "replace")
         if all(32 <= byte < 127 for byte in raw):
@@ -157,7 +172,7 @@ def format_ota_frame_for_visible_log(frame: bytes) -> Optional[str]:
     if len(frame) < 8 or frame[1] != 0x10:
         return None
     addr = int.from_bytes(frame[2:4], "big")
-    if addr not in {0xC350, 0xC357, 0xC36E, 0xC5A8}:
+    if addr not in {0xC350, 0xC357, 0xC36E, 0xC37B, 0xC544, 0xC5A8}:
         return None
     qty = int.from_bytes(frame[4:6], "big")
     if len(frame) == 8:
@@ -180,6 +195,20 @@ def format_ota_frame_for_visible_log(frame: bytes) -> Optional[str]:
         version = payload[10:14].decode("ascii", "replace")
         return (f"OTA C350: Updateangebot, Softwarecode={software_code}, "
                 f"Version={version}, Ziel-SSID={target_ssid:04X}")
+    if addr == 0xC544 and qty == 13 and len(payload) == 26:
+        ssid = int.from_bytes(payload[:2], "big")
+        hardware_code = payload[2:10].decode("ascii", "replace").rstrip("\x00 ")
+        hardware_version = payload[10:14].decode("ascii", "replace").rstrip("\x00 ")
+        software_code = payload[14:22].decode("ascii", "replace").rstrip("\x00 ")
+        firmware_version = payload[22:26].decode("ascii", "replace").rstrip("\x00 ")
+        return (f"BOARD C544: Versions-/Geräteinformation, SSID={ssid:04X}, "
+                f"Hardwarecode={hardware_code}, Hardwareversion={hardware_version}, "
+                f"Softwarecode={software_code}, Firmwareversion={firmware_version}")
+    if addr == 0xC37B and len(payload) >= 4:
+        status = int.from_bytes(payload[2:4], "big")
+        if status == 7:
+            return "BOARD C37B: Status 7 – Geräteinformation bestätigt"
+        return f"BOARD C37B: Status {status}"
     if addr == 0xC36E and len(payload) >= 4:
         status = int.from_bytes(payload[2:4], "big")
         meaning = OTA_STATUS_MEANINGS.get(status, "unbekannter Status")
@@ -524,7 +553,8 @@ class WarmlinkRawCapture:
                 "special_layout": bool(ev.get("special_layout")),
                 "frame_kind": ev.get("frame_kind"),
             }
-            for key in ("device_id", "software_code", "firmware_version", "status", "correlation", "response_ms"):
+            for key in ("device_id", "ssid", "hardware_code", "hardware_version", "software_code",
+                        "firmware_version", "status", "correlation", "response_ms"):
                 if key in ev:
                     special_event[key] = ev[key]
             special_event["display_text"] = self._format_ota_display(special_event)
@@ -570,7 +600,19 @@ class WarmlinkRawCapture:
                 out["correlation"] = "OTA_OFFER_ACK"
                 if out["status"] == 0:
                     self._ota_precheck = {"offer": offer, "status": 0}
-        if out["frame_kind"] == "write_request" and addr in PHNIX_LTE_SPECIAL_REGISTERS:
+        elif addr == 50500 and qty == 13 and len(payload) == 26:
+            out.update(
+                frame_kind="board_version_info",
+                ssid=int.from_bytes(payload[:2], "big"),
+                hardware_code=payload[2:10].decode("ascii", "replace").rstrip("\x00 "),
+                hardware_version=payload[10:14].decode("ascii", "replace").rstrip("\x00 "),
+                software_code=payload[14:22].decode("ascii", "replace").rstrip("\x00 "),
+                firmware_version=payload[22:26].decode("ascii", "replace").rstrip("\x00 "),
+            )
+        elif addr == 50043 and len(payload) >= 4:
+            out.update(frame_kind="board_info_ack", status=int.from_bytes(payload[2:4], "big"))
+        if (out["frame_kind"] == "write_request" and addr in PHNIX_LTE_SPECIAL_REGISTERS
+                and PHNIX_LTE_SPECIAL_REGISTERS[addr]["category"] == "ota"):
             self._ota_pending_writes.append({"addr": addr, "qty": qty,
                                              "name": PHNIX_LTE_SPECIAL_REGISTERS[addr]["name"],
                                              "created_at": now})
@@ -600,6 +642,16 @@ class WarmlinkRawCapture:
             delay = f", Antwortzeit={event['response_ms']} ms" if event.get("response_ms") is not None else ""
             return (f"{prefix} STATUS: Gerät=0x{int(event.get('device_id', 0)):04X}, Status={status}{meaning}{delay}, "
                     "Adresse=50030/0xC36E, erwartete Richtung=Mainboard → LTE/Updater, CRC=OK")
+        if addr == 50500 and event.get("frame_kind") == "board_version_info":
+            return (f"BOARD C544: Versions-/Geräteinformation, SSID={int(event.get('ssid', 0)):04X}, "
+                    f"Hardwarecode={event.get('hardware_code', '?')}, "
+                    f"Hardwareversion={event.get('hardware_version', '?')}, "
+                    f"Softwarecode={event.get('software_code', '?')}, "
+                    f"Firmwareversion={event.get('firmware_version', '?')}")
+        if addr == 50043 and event.get("frame_kind") == "board_info_ack":
+            status = int(event.get("status", -1))
+            suffix = " – Geräteinformation bestätigt" if status == 7 else ""
+            return f"BOARD C37B: Status {status}{suffix}"
         return format_special_frame_for_main_log({k: v for k, v in event.items() if k != "display_text"})
 
     def _finalize_ota_sequence(self) -> None:

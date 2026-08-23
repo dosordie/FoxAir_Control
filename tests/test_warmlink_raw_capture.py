@@ -161,7 +161,7 @@ def test_parse_modbus_does_not_treat_payload_chunks_as_unknown_frames():
      (50026, "OTA_CANCEL_REQUEST"), (50028, "OTA_CANCEL_RESPONSE"),
      (50030, "OTA_BOARD_STATUS"), (50033, "OTA_BLOCK_ACK"),
      (50037, "OTA_ROLLBACK_REQUEST"), (50040, "OTA_ROLLBACK_RESPONSE"),
-     (50043, "OTA_STATUS_ACK"), (50500, "BOARD_VERSION_INFO"),
+     (50043, "BOARD_INFO_STATUS_ACK"), (50500, "BOARD_VERSION_INFO"),
      (50600, "OTA_FIRMWARE_BLOCK")],
 )
 def test_parse_modbus_labels_phnix_lte_special_registers(addr, name):
@@ -185,9 +185,12 @@ def test_ota_table_fields_make_offer_and_status_words_readable():
     assert ota_table_display_parts(50000) == ("OTA C350", "Updateangebot · Ziel-SSID/Gerätekennung")
     assert ota_table_display_parts(50003) == ("OTA C350", "Updateangebot · Softwarecode (ASCII 3/4)")
     assert ota_table_display_parts(50031) == ("OTA C36E", "Board-Status · Update-Ergebnis")
+    assert ota_table_display_parts(50500) == ("BOARD C544", "Versions-/Geräteinformation · SSID")
+    assert ota_table_display_parts(50512) == ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 2/2)")
     assert ota_table_display_parts(1234) == ("", "")
     assert ota_table_display_value(50001, 0x3832) == "82  (ASCII)"
     assert ota_table_display_value(50005, 0x3030) == "00  (ASCII)"
+    assert ota_table_display_value(50501, 0x3832) == "82  (ASCII)"
     assert "gleiche Firmware" in ota_table_display_value(50031, 0)
     assert ota_table_display_value(1234, 99) == ""
 
