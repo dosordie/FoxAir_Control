@@ -5215,7 +5215,8 @@ class MainWindow(QMainWindow):
                 return block, code, clean
         ota_code, ota_name = ota_table_display_parts(int(reg_no))
         if ota_code or ota_name:
-            return "Firmware-Update", ota_code, ota_name
+            block = "Board-Geräteinfo" if ota_code.startswith("BOARD ") else "Firmware-Update"
+            return block, ota_code, ota_name
         return register_block_and_clean_name(fallback_name)
 
     def _code_for_register(self, reg_no: int) -> str:
@@ -6671,7 +6672,8 @@ class MainWindow(QMainWindow):
                 cap = getattr(self, "warmlink_capture", None)
                 if cap is not None:
                     cap.note_register_2104(getattr(reg, "raw_value", 0), str(getattr(reg, "display_value", getattr(reg, "raw_value", ""))))
-            if self.known_only_cb.isChecked() and not reg.name:
+            special_code, special_name = ota_table_display_parts(int(reg.reg))
+            if self.known_only_cb.isChecked() and not reg.name and not (special_code or special_name):
                 continue
 
             old_known = reg.reg in self.last_values

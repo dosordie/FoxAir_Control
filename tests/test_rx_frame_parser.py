@@ -10,6 +10,11 @@ OTA_BOARD_STATUS = bytes.fromhex("63 10 C3 6E 00 02 04 00 63 00 00 35 59")
 OTA_FRAMES = (OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS)
 
 
+def _with_crc(body: bytes) -> bytes:
+    from core.foxair_phnix_core import crc16_modbus
+    return body + crc16_modbus(body).to_bytes(2, "little")
+
+
 def _feed(chunks):
     buffer = bytearray()
     frames = []
@@ -116,3 +121,29 @@ def test_visible_ota_formatter_describes_later_transfer_phases():
     assert format_ota_frame_for_visible_log(c5a8) == (
         "OTA C5A8: Flash-/Schreibphase, Phase=3, Länge=4 Byte"
     )
+
+
+def test_fragmented_c544_is_emitted_only_when_complete_and_described_as_board_info():
+    payload = b"\x00\x63" + b"82345678" + b"H123" + b"87654321" + b"F456"
+    frame = _with_crc(bytes.fromhex("63 10 C5 44 00 0D 1A") + payload)
+
+    for split in range(1, len(frame)):
+        parsed, rests = _feed([frame[:split], frame[split:]])
+        assert rests[0] == frame[:split]
+        assert parsed == [frame]
+
+    assert format_ota_frame_for_visible_log(frame) == (
+        "BOARD C544: Versions-/Geräteinformation, SSID=0063, Hardwarecode=82345678, "
+        "Hardwareversion=H123, Softwarecode=87654321, Firmwareversion=F456"
+    )
+
+
+def test_c544_bad_crc_is_not_logged_and_c37b_status_7_is_normal_confirmation():
+    payload = b"\x00\x63" + b"82345678" + b"H123" + b"87654321" + b"F456"
+    damaged = bytearray(_with_crc(bytes.fromhex("63 10 C5 44 00 0D 1A") + payload))
+    damaged[-1] ^= 1
+    parsed, _rests = _feed([bytes(damaged)])
+    assert parsed == []
+
+    ack = _with_crc(bytes.fromhex("63 10 C3 7B 00 02 04 00 63 00 07"))
+    assert format_ota_frame_for_visible_log(ack) == "BOARD C37B: Status 7 – Geräteinformation bestätigt"
