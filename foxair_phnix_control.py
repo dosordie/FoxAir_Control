@@ -14,7 +14,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
-from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture
+from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture, format_special_frame_for_main_log
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
@@ -4179,6 +4179,7 @@ class MainWindow(QMainWindow):
         self.warmlink_capture_dialog: Optional[WarmlinkCaptureDialog] = None
         self.capture_power_inhibit_active = False
         self.capture_log_queue: queue.Queue[str] = queue.Queue()
+        self.capture_special_frame_queue: queue.Queue[dict[str, Any]] = queue.Queue()
         self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
@@ -6242,6 +6243,13 @@ class MainWindow(QMainWindow):
         except queue.Full:
             pass
 
+    def _capture_thread_special_frame(self, event: dict[str, Any]) -> None:
+        """Thread-sichere Übergabe erkannter PHNIX-Frames ans Hauptfenster."""
+        try:
+            self.capture_special_frame_queue.put_nowait(dict(event))
+        except queue.Full:
+            pass
+
     @Slot()
     def _drain_capture_gui_log_queue(self):
         self._update_warmlink_capture_button()
@@ -6251,6 +6259,21 @@ class MainWindow(QMainWindow):
             except queue.Empty:
                 break
             self._log(text)
+        # Firmware-Capture bleibt absichtlich ruhig/passiv. Im normalen
+        # LTE-Modbus-Capture werden die neu erkannten Frames dagegen direkt im
+        # Hauptfenster-Log sichtbar, ohne OTA-Binaerdaten dort auszugeben.
+        normal_lte_capture = (
+            self._is_warmlink_backend_key(self.current_backend_key())
+            and str(self._capture_settings().get("mode", "normal")) == "normal"
+        )
+        for _ in range(50):
+            try:
+                event = self.capture_special_frame_queue.get_nowait()
+            except queue.Empty:
+                break
+            if not normal_lte_capture:
+                continue
+            self._log(format_special_frame_for_main_log(event))
 
     def _capture_settings(self) -> dict:
         cfg = dict(DEFAULT_CAPTURE_SETTINGS)
@@ -6330,7 +6353,12 @@ class MainWindow(QMainWindow):
                 baseline = int(self.latest_regs[2104].raw_value)
         except Exception:
             baseline = None
-        self.warmlink_capture = WarmlinkRawCapture(cfg, getattr(self, "user_data_dir", self.base_dir), self._capture_thread_log)
+        self.warmlink_capture = WarmlinkRawCapture(
+            cfg,
+            getattr(self, "user_data_dir", self.base_dir),
+            self._capture_thread_log,
+            getattr(self, "_capture_thread_special_frame", None),
+        )
         self.warmlink_capture.start(baseline=baseline)
         self._set_capture_power_inhibit(str(cfg.get("mode", "normal")) == "firmware" or bool(cfg.get("prevent_standby", True)))
 

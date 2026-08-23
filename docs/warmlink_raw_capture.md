@@ -34,6 +34,32 @@ Maximaler Gesamtspeicher und Aufbewahrungstage dienen dazu, alte abgeschlossene 
 ## Anomalien und Firmware-Verdacht
 Stufe 1 markiert einfache Heuristiken, z. B. unbekannte Funktionscodes, ungewöhnlich große RX-Datenmengen, viele FC16-/Write-Multiple-Register-Frames, fortlaufende Adressen oder unbekannte Datenfolgen. `unknown_function` bedeutet nur dann auffällig, wenn ein plausibler neuer Frame mit erwarteter Busadresse, aber unbekanntem Function Code erkannt wurde. Partial-, Chunk- und Continuation-Daten großer Warmlink-Statusblöcke werden nicht als `unknown_function` gewertet. Normale FC16-Statusblöcke wie `0x0443`, `0x07D1` und `0x082B` mit 90 Registern gelten nicht als Firmware-Verdacht. Im normalen GUI-Log erscheinen nur kurze Statuszeilen, keine Rohdaten.
 
+## PHNIX-LTE-Logger- und OTA-Sonderregister
+
+Nur der passive **Modbus Warmlink LTE** Raw-Capture erkennt zusätzlich die
+Loggerregister `4`, `6`, `200–215` (ProductKey ab `200`) und `500` sowie die
+OTA-Kommandos `50000`, `50007`, `50026`, `50028`, `50030`, `50033`, `50037`,
+`50040`, `50043`, `50500` und `50600`. Vollständig CRC-validierte Frames werden
+weiterhin unverändert in den RX-/TX-Binärdateien gespeichert und zusätzlich als
+`phnix_lte_special_register` in der JSONL-Ereignisdatei indexiert. Das Ereignis
+enthält Loggername, Kategorie, Adresse, Quantity, Dateioffsets und – soweit
+bekannt – die erwartete Richtung zwischen DTU und Board.
+
+Im Modus **Normaler Langzeit-Capture** erscheint jedes vollständig erkannte
+Sonderframe außerdem als kompakte Zeile im Log des Hauptfensters. Angezeigt
+werden Name, Adresse, Function Code, tatsächliche beziehungsweise erwartete
+Quantity, Richtung und Framelänge. Binäre Nutzdaten – insbesondere Firmware und
+ProductKey – werden aus Sicherheits- und Performancegründen nicht ins GUI
+kopiert; sie bleiben vollständig in den Capture-Dateien. Der streng passive
+Firmware-Capture schreibt dieselben Indexevents, hält das Hauptfenster aber wie
+bisher ruhig.
+
+`50600 / 0xC5A8` (`OTA_FIRMWARE_BLOCK`) besitzt kein normales FC10-Bytecount-
+Layout. Der Capture bestimmt sein Ende deshalb über die Modbus-CRC, behält auch
+große, auf mehrere TCP-Chunks verteilte Frames im Indexpuffer und schreibt die
+Nutzdaten ohne Interpretation oder Kürzung mit. Diese Sonderbehandlung wird
+bewusst nicht auf Standard- oder Display-Modbus übertragen.
+
 ## Firmware-/Update-Watch Register 2104
 Register `2104 / 0x0838` ist als Hauptsoftwareversion bekannt. Eine Änderung von Register 2104 gilt als starkes Indiz für ein abgeschlossenes oder laufendes Firmwareupdate. Ob der Wert numerisch höher wird, hängt vom Versionsformat ab; daher wird jede Änderung erfasst.
 
