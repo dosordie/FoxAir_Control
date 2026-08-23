@@ -1,0 +1,387 @@
+#!/bin/sh
+# Build-specific runtime bridge for phnixIot4G.
+# Target: ARM32 ELF Build-ID af4dcae12639bedce833ee5efa5da009777b6319
+set -eu
+
+SERVICE=/data/phnixIot4G
+EXPECTED_SHA256=7c573431f0a67620d473419644a83a4f4dc04b8a91bde5923c74a63ba1eaedb7
+STATE_DIR=/tmp/phnix_ota_hook
+GDB_SCRIPT=$STATE_DIR/runtime.gdb
+HELPER_PID=$STATE_DIR/helper.pid
+GDB_PID=$STATE_DIR/gdb.pid
+GDBSERVER_PID=$STATE_DIR/gdbserver.pid
+WATCHDOG_PIDS=$STATE_DIR/watchdogs.pids
+RUN_ACTIVE=$STATE_DIR/run.active
+SAFE_TO_CLEAN=$STATE_DIR/safe-to-clean
+DEFAULT_STATUS=/tmp/phnix_ota_status.json
+
+fail() {
+    printf '{"phase":"error","terminal":true,"message":"%s"}\n' "$1" > "${STATUS:-$DEFAULT_STATUS}"
+    echo "ERROR: $1" >&2
+    exit 1
+}
+
+service_pid() {
+    pidof phnixIot4G | awk '{print $1}'
+}
+
+watchdog_pids() {
+    ps | awk '$4 == "{helloworld}" {print $1}'
+}
+
+verify() {
+    test -x "$SERVICE" || fail "original service missing"
+    ACTUAL_SHA256=$(sha256sum "$SERVICE" | awk '{print $1}')
+    test "$ACTUAL_SHA256" = "$EXPECTED_SHA256" || fail "service build mismatch"
+    test -x /usr/bin/gdb || fail "gdb missing"
+    test -x /usr/bin/gdbserver || fail "gdbserver missing"
+    busybox --list | grep -qx httpd || fail "busybox httpd missing"
+    PID=$(service_pid)
+    test -n "$PID" || fail "original service not running"
+    WDS=$(watchdog_pids)
+    test -n "$WDS" || fail "service watchdog not found"
+    WDS_JSON=$(printf '%s\n' "$WDS" | awk 'BEGIN{s=""} {s=s sep $1; sep=","} END{print s}')
+    TRACER=$(awk '/^TracerPid:/ {print $2}' "/proc/$PID/status")
+    test "$TRACER" = 0 || fail "service is already traced"
+    printf '{"phase":"verified","terminal":false,"service_pid":%s,"watchdogs":[%s]}\n' "$PID" "$WDS_JSON" > "${STATUS:-$DEFAULT_STATUS}"
+    echo "verified service_pid=$PID watchdogs=$WDS sha256=$ACTUAL_SHA256"
+}
+
+resume_watchdogs() {
+    if test -f "$WATCHDOG_PIDS"; then
+        while read -r pid; do
+            test -n "$pid" && kill -CONT "$pid" 2>/dev/null || true
+        done < "$WATCHDOG_PIDS"
+    fi
+}
+
+remove_cloud_guard() {
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -D OUTPUT -o rmnet_data0 -p tcp --dport 1883 -j DROP 2>/dev/null || true
+        iptables -D INPUT -i rmnet_data0 -p tcp --sport 1883 -j DROP 2>/dev/null || true
+    fi
+}
+
+cleanup_original_state() {
+    if test -f "$GDB_PID"; then
+        kill -INT "$(cat "$GDB_PID")" 2>/dev/null || true
+    fi
+    if test -f "$GDBSERVER_PID"; then
+        kill -TERM "$(cat "$GDBSERVER_PID")" 2>/dev/null || true
+    fi
+    PID=$(service_pid || true)
+    test -n "$PID" && kill -CONT "$PID" 2>/dev/null || true
+    resume_watchdogs
+    remove_cloud_guard
+    rm -f "$HELPER_PID" "$GDB_PID" "$GDBSERVER_PID" "$RUN_ACTIVE" "$SAFE_TO_CLEAN"
+}
+
+cleanup() {
+    if test -f "$RUN_ACTIVE" && ! test -f "$SAFE_TO_CLEAN"; then
+        PID=$(service_pid || true)
+        test -n "$PID" && kill -STOP "$PID" 2>/dev/null || true
+        printf '{"phase":"guarded-hold","terminal":false,"recovery_required":true}\n' > "${STATUS:-$DEFAULT_STATUS}"
+        echo "ACTIVE OTA LEFT IN GUARDED HOLD; CLOUD AND WATCHDOGS REMAIN BLOCKED" >&2
+        return
+    fi
+    cleanup_original_state
+}
+
+stop_hook() {
+    if test -f "$RUN_ACTIVE" && ! test -f "$SAFE_TO_CLEAN" && test "${FORCE:-0}" != 1; then
+        fail "active OTA is not terminal; refusing unsafe cleanup"
+    fi
+    if test -f "$HELPER_PID"; then
+        PID=$(cat "$HELPER_PID")
+        test "$PID" != "$$" && kill -TERM "$PID" 2>/dev/null || true
+    fi
+    cleanup_original_state
+    printf '{"phase":"stopped","terminal":true}\n' > "$STATUS"
+}
+
+attach_test() {
+    verify
+    mkdir -p "$STATE_DIR"
+    PID=$(service_pid)
+    watchdog_pids > "$WATCHDOG_PIDS"
+    trap cleanup EXIT INT TERM
+    touch "$SAFE_TO_CLEAN"
+    while read -r wd; do kill -STOP "$wd"; done < "$WATCHDOG_PIDS"
+    gdbserver --attach 127.0.0.1:12345 "$PID" > "$STATE_DIR/gdbserver-test.log" 2>&1 &
+    echo $! > "$GDBSERVER_PID"
+    sleep 1
+    cat > "$GDB_SCRIPT" <<EOF
+set architecture arm
+set pagination off
+set confirm off
+target remote 127.0.0.1:12345
+info threads
+x/1ub 0x98903
+x/1ub 0x98a94
+x/1ub 0x930dc
+detach
+quit
+EOF
+    printf '{"phase":"attach-test","terminal":false}\n' > "$STATUS"
+    if ! gdb -q -batch -x "$GDB_SCRIPT" > "$STATE_DIR/attach-test.log" 2>&1; then
+        fail "read-only GDB attach/detach test failed"
+    fi
+    printf '{"phase":"attach-test-ok","terminal":true}\n' > "$STATUS"
+    echo "attach/detach test passed"
+}
+
+breakpoint_test() {
+    verify
+    mkdir -p "$STATE_DIR"
+    PID=$(service_pid)
+    watchdog_pids > "$WATCHDOG_PIDS"
+    trap cleanup EXIT INT TERM
+    touch "$SAFE_TO_CLEAN"
+    while read -r wd; do kill -STOP "$wd"; done < "$WATCHDOG_PIDS"
+    gdbserver --attach 127.0.0.1:12345 "$PID" > "$STATE_DIR/gdbserver-breakpoint-test.log" 2>&1 &
+    echo $! > "$GDBSERVER_PID"
+    sleep 1
+    cat > "$GDB_SCRIPT" <<EOF
+set architecture arm
+set pagination off
+set confirm off
+target remote 127.0.0.1:12345
+break *0x1fdac
+break *0x1d2f8
+break *0x1c4bc
+break *0x1cea0
+break *0x1c7cc
+break *0x18d04
+break *0x191c0
+break *0x19264
+break *0x1da3c
+break *0x1d748
+info breakpoints
+delete breakpoints
+detach
+quit
+EOF
+    printf '{"phase":"breakpoint-test","terminal":false}\n' > "$STATUS"
+    if ! gdb -q -batch -x "$GDB_SCRIPT" > "$STATE_DIR/breakpoint-test.log" 2>&1; then
+        fail "GDB breakpoint install/remove test failed"
+    fi
+    printf '{"phase":"breakpoint-test-ok","terminal":true}\n' > "$STATUS"
+    echo "breakpoint install/remove test passed"
+}
+
+make_gdb_script() {
+    JSON=$(tr -d '\r\n' < "$COMMAND")
+    ESCAPED=$(printf '%s' "$JSON" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    cat > "$GDB_SCRIPT" <<EOF
+set architecture arm
+set pagination off
+set confirm off
+set print thread-events off
+set auto-load safe-path /
+set libthread-db-search-path /lib
+handle SIGILL nostop noprint pass
+handle SIGFPE nostop noprint pass
+target remote 127.0.0.1:12345
+set \$launcher_armed = 1
+set \$injection_state = 0
+set \$local_ota_active = 0
+set \$terminal_pending = 0
+
+break *0x1fdac
+commands 1
+  silent
+  if \$injection_state == 0
+    set \$injection_state = 1
+    set \$return_pc = \$pc
+    set {char[512]} 0x94ab4 = "$ESCAPED"
+    shell echo '{"phase":"parser-injection","terminal":false,"armed":true,"active":false}' > $STATUS
+    set \$r0 = 0x94ab4
+    set \$lr = \$return_pc
+    set \$pc = 0x19958
+  else
+    if \$injection_state == 1
+      set \$injection_state = 2
+      if *(unsigned char *)0x98a94 == 1
+        set \$local_ota_active = 1
+        disable 1
+        shell echo '{"phase":"accepted","terminal":false,"armed":true,"active":true}' > $STATUS
+      else
+        shell echo '{"phase":"parser-rejected","terminal":true,"armed":false,"active":false}' > $STATUS
+        shell touch $SAFE_TO_CLEAN
+        detach
+        quit
+      end
+    end
+  end
+  continue
+end
+
+break *0x1d2f8
+commands 2
+  silent
+  if \$launcher_armed == 1 && \$r0 == 7
+    set \$r0 = 11
+  end
+  continue
+end
+
+break *0x1c4bc
+commands 3
+  silent
+  if \$local_ota_active == 1
+    disable 3
+    shell echo '{"phase":"c350","terminal":false}' > $STATUS
+  end
+  continue
+end
+
+break *0x1cea0
+commands 4
+  silent
+  if \$local_ota_active == 1
+    disable 4
+    shell echo '{"phase":"c357","terminal":false}' > $STATUS
+  end
+  continue
+end
+
+break *0x1c7cc
+commands 5
+  silent
+  if \$local_ota_active == 1
+    disable 5
+    shell echo '{"phase":"c5a8","terminal":false}' > $STATUS
+  end
+  continue
+end
+
+break *0x18d04
+commands 6
+  silent
+  if \$local_ota_active == 1
+    set \$r0 = 0
+    set \$pc = \$lr
+  end
+  continue
+end
+
+break *0x191c0
+commands 7
+  silent
+  if \$local_ota_active == 1
+    set \$terminal_pending = 1
+    shell echo '{"phase":"success-report","terminal":false}' > $STATUS
+    set \$r0 = 0
+    set \$pc = \$lr
+  end
+  continue
+end
+
+break *0x19264
+commands 8
+  silent
+  if \$local_ota_active == 1
+    set \$terminal_pending = 2
+    shell echo '{"phase":"failure-report","terminal":false}' > $STATUS
+    set \$r0 = 0
+    set \$pc = \$lr
+  end
+  continue
+end
+
+break *0x1da3c
+commands 9
+  silent
+  if \$local_ota_active == 1 && \$terminal_pending == 1 && *(unsigned char *)0x98a94 == 12
+    set \$local_ota_active = 0
+    set \$launcher_armed = 0
+    shell echo '{"phase":"success","terminal":true,"board_ota_step":12}' > $STATUS
+    shell touch $SAFE_TO_CLEAN
+    detach
+    quit
+  end
+  continue
+end
+
+break *0x1d748
+commands 10
+  silent
+  if \$local_ota_active == 1 && \$terminal_pending == 2 && *(unsigned char *)0x98a94 == 12
+    set \$local_ota_active = 0
+    set \$launcher_armed = 0
+    shell echo '{"phase":"failed","terminal":true,"board_ota_step":12}' > $STATUS
+    shell touch $SAFE_TO_CLEAN
+    detach
+    quit
+  end
+  continue
+end
+
+continue
+EOF
+}
+
+run_hook() {
+    test "$BUILD_ID" = af4dcae12639bedce833ee5efa5da009777b6319 || fail "requested Build-ID mismatch"
+    test "$ALLOW" = 0023,0053,0083 || fail "publish allow-list mismatch"
+    test -r "$COMMAND" || fail "OTA command missing"
+    verify
+    command -v iptables >/dev/null 2>&1 || fail "iptables missing; cloud cannot be isolated"
+    mkdir -p "$STATE_DIR"
+    rm -f "$SAFE_TO_CLEAN"
+    touch "$RUN_ACTIVE"
+    echo $$ > "$HELPER_PID"
+    trap cleanup EXIT INT TERM
+    PID=$(service_pid)
+    watchdog_pids > "$WATCHDOG_PIDS"
+    iptables -I OUTPUT -o rmnet_data0 -p tcp --dport 1883 -j DROP
+    iptables -I INPUT -i rmnet_data0 -p tcp --sport 1883 -j DROP
+    while read -r wd; do kill -STOP "$wd"; done < "$WATCHDOG_PIDS"
+    make_gdb_script
+    printf '{"phase":"attaching","terminal":false}\n' > "$STATUS"
+    gdbserver --attach 127.0.0.1:12345 "$PID" > "$STATE_DIR/gdbserver.log" 2>&1 &
+    echo $! > "$GDBSERVER_PID"
+    sleep 1
+    gdb -q -batch -x "$GDB_SCRIPT" > "$STATE_DIR/gdb.log" 2>&1 &
+    echo $! > "$GDB_PID"
+    wait "$(cat "$GDB_PID")"
+}
+
+hold_hook() {
+    if ! test -f "$RUN_ACTIVE"; then
+        fail "no active local OTA run"
+    fi
+    PID=$(service_pid || true)
+    test -n "$PID" || fail "original service missing during hold"
+    kill -STOP "$PID"
+    printf '{"phase":"guarded-hold","terminal":false,"recovery_required":true}\n' > "$STATUS"
+    echo "guarded hold active; cloud remains blocked and watchdogs remain paused"
+}
+
+ACTION=${1:-}
+shift || true
+STATUS=$DEFAULT_STATUS
+BUILD_ID=
+COMMAND=
+ALLOW=
+FORCE=0
+while test $# -gt 0; do
+    case "$1" in
+        --status) STATUS=$2; shift 2 ;;
+        --build-id) BUILD_ID=$2; shift 2 ;;
+        --command) COMMAND=$2; shift 2 ;;
+        --allow-publish) ALLOW=$2; shift 2 ;;
+        --force) FORCE=1; shift ;;
+        *) fail "unknown argument: $1" ;;
+    esac
+done
+
+case "$ACTION" in
+    verify) verify ;;
+    attach-test) attach_test ;;
+    breakpoint-test) breakpoint_test ;;
+    run) run_hook ;;
+    hold) hold_hook ;;
+    stop) stop_hook ;;
+    *) echo "usage: $0 verify|attach-test|breakpoint-test|run|hold|stop [options]" >&2; exit 2 ;;
+esac

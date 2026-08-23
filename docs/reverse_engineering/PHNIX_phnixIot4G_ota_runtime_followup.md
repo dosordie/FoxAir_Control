@@ -622,9 +622,12 @@ Die Funktion pulst GPIO 50:
 
 ```text
 GPIO 50 = 1
-sleep(2)
+usleep(2)
 GPIO 50 = 0
 ```
+
+Die Disassemblierung ruft `usleep@plt` mit dem Argument `2` auf. Es handelt
+sich damit um ungefähr zwei Mikrosekunden und nicht um zwei Sekunden.
 
 Ihre direkten Aufrufer liegen überwiegend in den AT-/Modem-Kommandofunktionen (`AT_CPIN`, `AT_APN1`, `AT_GetCSQ`, HTTP/MQTT-AT-Pfade usw.).
 

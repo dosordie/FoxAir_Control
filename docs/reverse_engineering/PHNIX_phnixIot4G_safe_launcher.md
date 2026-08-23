@@ -24,9 +24,20 @@ Im ELF ist kein eigener `fork()`-/`vfork()`-/`daemon()`-/`exec*()`-Restartpfad i
 
 **Folgerung:** Ein externer Init-/Supervisorprozess muss den Dienst starten und nach seinem Ende erneut hochbringen, sofern der Updatepfad im Feld funktionieren soll.
 
-### Noch nicht aus dem ELF bestimmbar
+### Auf dem realen LTE-Modem bestätigt
 
-Der konkrete Supervisorname bzw. das Init-Skript ist nicht Bestandteil dieses ELF. Aus dem Binary allein ist daher nicht seriös ableitbar, ob der Prozess über BusyBox `init`, `/etc/inittab`, `/etc/init.d`, einen vendor-spezifischen Daemon oder einen anderen Watcher gestartet wird.
+Der konkrete Supervisor ist nicht aus dem ELF ableitbar, wurde inzwischen aber
+auf dem realen LTE-Modem identifiziert:
+
+- zwei parallele `/bin/sh /data/helloworld`-Schleifen;
+- Prüfung von `phnixIot4G` ungefähr alle fünf Sekunden;
+- Neustart über `cd /data; ./phnixIot4G &`;
+- zusätzliche Erkennung eines Debugger-Stopzustands `T`, der ebenfalls einen
+  harten Neustart auslösen kann.
+
+Der echte Dienst war Kind einer dieser Schleifen. Ein kontrollierter
+Restarttest bestätigte den automatischen Wiederanlauf mit neuer PID nach etwa
+zwei Sekunden. Beide Watchdog-Prozesse liefen danach unverändert weiter.
 
 ### Read-only Prüfung auf dem realen LTE-Modem
 
@@ -54,7 +65,9 @@ ps -ef | grep '[p]hnixIot4G'
 
 Vor einem echten OTA sollte damit geklärt sein, ob der Prozess nach Crash automatisch wiederkommt, wie lange dies dauert und ob ein Debugger-Stop vom Supervisor als Fehler interpretiert wird.
 
-**Bewertung:** externe Restart-Abhängigkeit bestätigt; konkrete Supervisor-Identität bleibt bis zum PPID/RootFS-Readout offen.
+**Bewertung:** externe Restart-Abhängigkeit und konkreter Doppel-Watchdog auf
+dem realen Modem bestätigt. Während eines Debugger-Laufs müssen beide
+Watchdogs kontrolliert pausiert und danach wieder fortgesetzt werden.
 
 ---
 
@@ -72,12 +85,14 @@ Pseudocode:
 void Reset_All_DOG(void)
 {
     EAT_WriteGpio(50, 1);
-    sleep(2);
+    usleep(2);
     EAT_WriteGpio(50, 0);
 }
 ```
 
-`initHardware()` initialisiert GPIO 50 zuvor über:
+Der Maschinenbefehl ruft `usleep@plt` mit dem Argument `2` auf. Gemeint sind
+damit ungefähr zwei Mikrosekunden, nicht zwei Sekunden. `initHardware()`
+initialisiert GPIO 50 zuvor über:
 
 ```text
 EAT_InitGpio(50, 0, 0)
@@ -97,7 +112,7 @@ HTTP/libcurl -> C350 -> C357 -> C5A8/C371 -> C36E/C37B
 
 existiert kein direkter Aufruf von `Reset_All_DOG()`.
 
-Damit wird GPIO 50 während eines rund zwölfminütigen C5A8-Transfers nicht durch die OTA-State-Machine periodisch gepulst.
+Damit wird GPIO 50 während eines rund zwölfminütigen C5A8-Transfers nicht durch die OTA-State-Machine periodisch gepulst. Auf dem realen Modem war GPIO 50 als Ausgang konfiguriert und bei fünf passiven Stichproben jeweils `0`.
 
 Ein unmittelbarer Reset des gesamten Linux-LTE-Modems ist sehr unwahrscheinlich: `Reset_All_DOG()` wird vor vielen normalen AT-Transaktionen aufgerufen; ein Reset des Linux/AP-Prozessors würde den aufrufenden Prozess selbst zerstören.
 
