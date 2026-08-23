@@ -273,15 +273,15 @@ def shell(command: str) -> tuple[int, bytes]:
     if command.startswith("mkdir -p /data/phnix_local_ota"):
         root_path("/data/phnix_local_ota").mkdir(parents=True, exist_ok=True)
         return 0, b""
-    if command.startswith("md5sum /data/phnix_local_ota/FW3.3.bin"):
-        digest = hashlib.md5(root_path("/data/phnix_local_ota/FW3.3.bin").read_bytes()).hexdigest()
+    if command.startswith("md5sum /data/phnix_local_ota/phnixIot_device_OTA.bin"):
+        digest = hashlib.md5(root_path("/data/phnix_local_ota/phnixIot_device_OTA.bin").read_bytes()).hexdigest()
         return 0, (digest + "\n").encode()
     if "busybox httpd -p 127.0.0.1:8081" in command:
         runtime_state(httpd=True)
         root_path("/tmp/phnix_ota_httpd.pid").write_text("4200\n")
         return 0, b""
-    if command.startswith("curl -fsS http://127.0.0.1:8081/FW3.3.bin"):
-        digest = hashlib.md5(root_path("/data/phnix_local_ota/FW3.3.bin").read_bytes()).hexdigest()
+    if command.startswith("curl -fsS http://127.0.0.1:8081/phnixIot_device_OTA.bin"):
+        digest = hashlib.md5(root_path("/data/phnix_local_ota/phnixIot_device_OTA.bin").read_bytes()).hexdigest()
         return 0, (digest + "\n").encode()
     if command.startswith("cat /tmp/phnix_ota_status.json"):
         path = root_path("/tmp/phnix_ota_status.json")

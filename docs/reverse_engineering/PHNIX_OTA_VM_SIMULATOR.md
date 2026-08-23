@@ -86,7 +86,7 @@ Der Launcher führt dabei wirklich seine normalen Hostschritte aus:
 1. Firmwaregröße und lokalen MD5 prüfen;
 2. OTA_INFO und Statistik sichern;
 3. Firmware mit dem simulierten `adb push` nach
-   `/data/phnix_local_ota/FW3.3.bin` kopieren;
+   `/data/phnix_local_ota/phnixIot_device_OTA.bin` kopieren;
 4. den MD5 der kopierten Datei prüfen;
 5. die lokale HTTP-Bereitstellung prüfen;
 6. das OTA-Kommando kopieren;
@@ -100,7 +100,7 @@ Der simulierte Zielpfad befindet sich physisch unter:
 ```
 
 Auf dem echten LTE-Modem verwendet derselbe Launcher über echtes ADB den
-tatsächlichen Pfad `/data/phnix_local_ota/FW3.3.bin`.
+tatsächlichen Pfad `/data/phnix_local_ota/phnixIot_device_OTA.bin`.
 
 ## Fehlerszenarien
 

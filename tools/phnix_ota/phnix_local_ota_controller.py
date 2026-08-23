@@ -34,11 +34,11 @@ REMOTE_INFO = "/data/phnixIot_device_OTA_INFO"
 REMOTE_STATISTICS = "/data/phnixIot_device_statisic"
 REMOTE_HELPER = "/data/phnix_ota_runtime_hook"
 REMOTE_STAGE_DIR = "/data/phnix_local_ota"
-REMOTE_FIRMWARE = f"{REMOTE_STAGE_DIR}/FW3.3.bin"
+REMOTE_FIRMWARE = f"{REMOTE_STAGE_DIR}/phnixIot_device_OTA.bin"
 REMOTE_COMMAND = f"{REMOTE_STAGE_DIR}/ota-command.json"
 REMOTE_STATUS = "/tmp/phnix_ota_status.json"
 REMOTE_HTTP_PID = "/tmp/phnix_ota_httpd.pid"
-DEFAULT_FIRMWARE_URL = "http://127.0.0.1:8081/FW3.3.bin"
+DEFAULT_FIRMWARE_URL = "http://127.0.0.1:8081/phnixIot_device_OTA.bin"
 
 
 class OtaError(RuntimeError):

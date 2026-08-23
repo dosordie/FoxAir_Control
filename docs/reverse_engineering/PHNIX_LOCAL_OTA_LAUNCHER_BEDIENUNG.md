@@ -36,7 +36,7 @@ Auf dem Pi müssen folgende Dateien liegen:
 ```text
 phnix_local_ota_controller.py
 phnix_ota_runtime_hook
-FW3.3.bin
+phnixIot_device_OTA.bin
 ```
 
 Die erwartete Firmware besitzt:
@@ -63,7 +63,7 @@ SHA-256:  7c573431f0a67620d473419644a83a4f4dc04b8a91bde5923c74a63ba1eaedb7
 ## 3. Nur lesende Vorprüfung
 
 ```sh
-python3 phnix_local_ota_controller.py preflight --firmware FW3.3.bin
+python3 phnix_local_ota_controller.py preflight --firmware phnixIot_device_OTA.bin
 ```
 
 Erwartetes Ergebnis:
@@ -97,7 +97,7 @@ Diese Tests injizieren kein `0033` und senden keine OTA-Frames.
 ## 5. Kompletter Trockenlauf
 
 ```sh
-python3 phnix_local_ota_controller.py run --firmware FW3.3.bin
+python3 phnix_local_ota_controller.py run --firmware phnixIot_device_OTA.bin
 ```
 
 Ohne `--execute` werden weder Modem- noch Buszustand verändert.
@@ -106,7 +106,7 @@ Ohne `--execute` werden weder Modem- noch Buszustand verändert.
 
 ```sh
 python3 phnix_local_ota_controller.py run \
-  --firmware FW3.3.bin \
+  --firmware phnixIot_device_OTA.bin \
   --execute
 ```
 

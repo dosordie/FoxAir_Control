@@ -36,7 +36,7 @@ class OtaInfoTests(unittest.TestCase):
         self.assertFalse(parse_ota_info(bytes(raw)).crc_ok)
 
     def test_0033_is_protocol_code_not_version_field(self):
-        payload = command_payload("http://127.0.0.1:8081/FW3.3.bin")
+        payload = command_payload("http://127.0.0.1:8081/phnixIot_device_OTA.bin")
         self.assertEqual(payload["code"], "0033")
         self.assertEqual(payload["param"]["softwareVer"], "V3.3")
 
