@@ -281,3 +281,18 @@ kein sicher bestätigter normaler Upgradefall.
 - [`PHNIX_phnixIot4G_board_ota_http_download.md`](PHNIX_phnixIot4G_board_ota_http_download.md)
 - [`PHNIX_phnixIot4G_ota_persistence.md`](PHNIX_phnixIot4G_ota_persistence.md)
 - [`PHNIX_phnixIot4G_board_ota_completion.md`](PHNIX_phnixIot4G_board_ota_completion.md)
+
+## 13. Kontrollierter unabhängiger Sender
+
+Auf Basis der dynamisch bestätigten Frames wurde anschließend
+[`devtools/phnix_ota_sender.py`](../../devtools/phnix_ota_sender.py) erstellt.
+Sein offline erzeugter V3.3-Bytestrom wurde mit dem Rohmitschnitt des originalen
+`phnixIot4G` aus der isolierten VM verglichen. Alle 1714 Requests – C350, C357
+und 1712 C5A8-Frames – wurden bytegenau und in derselben Reihenfolge gefunden.
+
+Der Sender unterstützt einen reinen Planungsmodus, interne Simulation, Vergleich
+mit Originalcaptures sowie gesperrte TCP-/ser2net- und USB-RS485-Transporte. Die
+aktuelle Sicherheitsgrenze liegt unmittelbar nach dem finalen C371/`ackB=2`;
+C37B/status 3 oder status 5 wird nicht erzeugt. Anleitung und vollständige
+Testergebnisse:
+[`docs/HowTo/phnix_ota_sender.md`](../HowTo/phnix_ota_sender.md).
