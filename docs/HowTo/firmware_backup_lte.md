@@ -1,9 +1,16 @@
 # Firmware-Backup des LTE-Modems über Micro-USB
 
-Diese Anleitung beschreibt kurz, wie man sich unter Windows per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB** sichert.
+Diese Anleitung beschreibt kurz, wie man sich per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB** sichert.
 
 > [!NOTE]
-> Die in dieser Anleitung verwendeten ADB-Befehle **verändern nichts am LTE-Modem**. Mit `adb pull` werden die angegebenen Dateien lediglich vom LTE-Modem auf den PC **heruntergeladen/kopiert**. Die beschriebenen Backup-Schritte können daher gefahrlos verwendet werden.
+> Es gibt zwei alternative Wege:
+> - **Windows**: siehe Abschnitte 2 bis 6
+> - **Linux / Raspberry Pi**: siehe Abschnitt 7
+>
+> Es muss **nur einer der beiden Wege** verwendet werden. Die Linux-Anleitung ist eine Alternative zur Windows-Anleitung, kein zusätzlicher notwendiger Schritt.
+
+> [!NOTE]
+> Die in dieser Anleitung verwendeten ADB-Befehle **verändern nichts am LTE-Modem**. Mit `adb pull` werden die angegebenen Dateien lediglich vom LTE-Modem auf den PC bzw. Raspberry Pi **heruntergeladen/kopiert**. Die beschriebenen Backup-Schritte können daher gefahrlos verwendet werden.
 
 > [!WARNING]
 > Die aus dem LTE-Modem ausgelesenen Firmware- und Datendateien **nicht öffentlich hochladen oder weiterveröffentlichen**. Sie können herstellerspezifische Software, Konfigurationsdaten oder andere nicht für die Veröffentlichung bestimmte Inhalte enthalten.
@@ -28,7 +35,7 @@ Im folgenden Detailbild ist der Bereich des Micro-USB-Anschlusses zu sehen. Im A
 ![Micro-USB-Anschluss mit Vergussmasse](lte2.jpeg)
 
 > [!CAUTION]
-> Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Da sich die Vergussmasse nur schwer vollständig aus der Buchse entfernen lässt, wird beim Einstecken voraussichtlich ein gewisser Widerstand zu spüren sein und der Stecker möglicherweise nicht vollständig einrasten. Den Stecker daher nur vorsichtig und so weit wie ohne Gewalt möglich einstecken, bis Windows die USB-Verbindung erkennt.
+> Den Micro-USB-Stecker **nicht mit Gewalt einstecken**. Da sich die Vergussmasse nur schwer vollständig aus der Buchse entfernen lässt, wird beim Einstecken voraussichtlich ein gewisser Widerstand zu spüren sein und der Stecker möglicherweise nicht vollständig einrasten. Den Stecker daher nur vorsichtig und so weit wie ohne Gewalt möglich einstecken, bis das Betriebssystem die USB-Verbindung erkennt.
 
 ## 2. Windows-Treiber installieren und USB-Verbindung prüfen
 
@@ -158,3 +165,111 @@ Zur Sicherheit empfiehlt es sich, die Originaldateien zunächst **unverändert z
 
 > [!IMPORTANT]
 > Diese Backups bitte **nicht in ein öffentliches GitHub-Repository, Forum oder einen anderen öffentlich zugänglichen Speicher hochladen**.
+
+---
+
+# 7. Alternative: Linux / Raspberry Pi
+
+> [!IMPORTANT]
+> Dieser Abschnitt ist ein **alternativer Weg zur Windows-Anleitung**. Wer das Backup bereits unter Windows durchführt, braucht diesen Abschnitt nicht zusätzlich auszuführen.
+
+Die folgenden Schritte wurden für einen **Raspberry Pi mit Raspberry Pi OS / Debian-basiertem Linux** vorgesehen. Dort sind für das LTE-Modem in der Regel keine zusätzlichen Windows-/SIMCom-Treiber notwendig.
+
+## 7.1 ADB und USB-Werkzeuge installieren
+
+Zunächst Paketlisten aktualisieren und die benötigten Pakete installieren:
+
+```bash
+sudo apt update
+sudo apt install adb usbutils
+```
+
+Mit `lsusb` kann geprüft werden, ob beim Einstecken des LTE-Modems ein neues USB-Gerät erkannt wird:
+
+```bash
+lsusb
+```
+
+Anschließend prüfen, ob ADB das LTE-Modem sieht:
+
+```bash
+adb devices -l
+```
+
+Bei funktionierender Verbindung erscheint eine Geräte-ID mit dem Status `device`.
+
+Optional kann auch eine Shell geöffnet werden:
+
+```bash
+adb shell
+```
+
+Die Shell wird mit
+
+```bash
+exit
+```
+
+wieder verlassen.
+
+## 7.2 Backup-Ordner anlegen
+
+Damit alle Dateien an einer Stelle landen, empfiehlt sich ein eigener Ordner, z. B. im Home-Verzeichnis:
+
+```bash
+mkdir -p ~/lte_backup
+cd ~/lte_backup
+```
+
+Alle folgenden `adb pull`-Befehle speichern die Dateien dann in diesem Ordner.
+
+## 7.3 Firmware sichern
+
+```bash
+adb pull /cache/phnixIot_device_OTA
+```
+
+Danach liegt die Datei unter:
+
+```text
+~/lte_backup/phnixIot_device_OTA
+```
+
+## 7.4 Zusätzliche Dateien sichern
+
+```bash
+adb pull /data/phnixIot4G
+adb pull /data/phnixIot_device_OTA_INFO
+adb pull /data/phnixIot_device_statisic
+```
+
+Danach befinden sich die Dateien bzw. Verzeichnisse ebenfalls unter:
+
+```text
+~/lte_backup/
+```
+
+Zur Kontrolle:
+
+```bash
+ls -lah ~/lte_backup
+```
+
+Auch unter Linux gilt: `adb pull` **liest und kopiert** die Dateien lediglich. Die Originaldateien auf dem LTE-Modem werden dadurch nicht verändert oder gelöscht.
+
+## 7.5 Dateien vom Raspberry Pi auf einen PC kopieren
+
+Wenn der Raspberry Pi per Netzwerk erreichbar ist, können die gesicherten Dateien beispielsweise mit **SCP** auf einen anderen Rechner übertragen werden.
+
+Beispiel: vom Windows-PC mit PowerShell den gesamten Backup-Ordner herunterladen:
+
+```powershell
+scp -r pi@192.168.1.100:/home/pi/lte_backup .
+```
+
+Dabei müssen Benutzername und IP-Adresse an den eigenen Raspberry Pi angepasst werden.
+
+Alternativ können unter Windows auch Programme wie **WinSCP** verwendet werden. Dort verbindet man sich per SFTP/SSH mit dem Raspberry Pi und kopiert den Ordner `lte_backup` auf den PC.
+
+> [!WARNING]
+> Auch die unter Linux ausgelesenen Dateien bitte **nicht öffentlich hochladen oder weiterveröffentlichen**.
