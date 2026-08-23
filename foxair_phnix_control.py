@@ -612,37 +612,7 @@ class ReaderWorker(QObject):
                         self.log.emit(f"SERIAL RX Rohdaten: {len(chunk)} Byte, HEX={hexdump(chunk, -1)}")
                     self.rx_after_last_send = True
                     self.rx_timeout_logged = False
-                    self.buf.extend(chunk)
-                    before_parse_len = len(self.buf)
-                    parsed_frames = find_frames(self.buf, max_len=512)
-                    after_parse_len = len(self.buf)
-                    if parsed_frames:
-                        self.log.emit(
-                            f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
-                            f"Buffer {before_parse_len}->{after_parse_len} Byte"
-                        )
-                        if after_parse_len:
-                            self.rx_restbuffer_since_monotonic = time.monotonic()
-                            self.log.emit(
-                                f"RX-Restbuffer nach Frame-Verarbeitung behalten: {after_parse_len} Byte, "
-                                f"HEX={hexdump(bytes(self.buf), -1)}"
-                            )
-                        else:
-                            self.rx_restbuffer_since_monotonic = 0.0
-                    elif before_parse_len:
-                        if after_parse_len:
-                            if self.rx_restbuffer_since_monotonic <= 0.0:
-                                self.rx_restbuffer_since_monotonic = time.monotonic()
-                            self.log.emit(
-                                f"DEBUG RX-Parser: nach Eingang noch kein vollstaendiges Frame, "
-                                f"Restbuffer behalten: {after_parse_len} Byte, HEX={hexdump(bytes(self.buf), -1)}"
-                            )
-                        else:
-                            self.rx_restbuffer_since_monotonic = 0.0
-                            self.log.emit(
-                                f"DEBUG RX-Parser: nach Eingang kein gueltiges Frame; "
-                                f"Restdaten verworfen: {before_parse_len} Byte"
-                            )
+                    parsed_frames = self._parse_rx_chunk(chunk)
 
                     self._discard_stale_rx_restbuffer()
 
@@ -664,6 +634,41 @@ class ReaderWorker(QObject):
                 self.client.close()
             self.running = False
             self.disconnected.emit()
+
+    def _parse_rx_chunk(self, chunk: bytes) -> list:
+        """Append one transport chunk, parse all frames and report the real tail."""
+        self.buf.extend(chunk)
+        before_parse_len = len(self.buf)
+        parsed_frames = find_frames(self.buf, max_len=512)
+        after_parse_len = len(self.buf)
+        if parsed_frames:
+            self.log.emit(
+                f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
+                f"Buffer {before_parse_len}->{after_parse_len} Byte"
+            )
+            if after_parse_len:
+                self.rx_restbuffer_since_monotonic = time.monotonic()
+                self.log.emit(
+                    f"RX-Restbuffer nach Frame-Verarbeitung behalten: {after_parse_len} Byte, "
+                    f"HEX={hexdump(bytes(self.buf), -1)}"
+                )
+            else:
+                self.rx_restbuffer_since_monotonic = 0.0
+        elif before_parse_len:
+            if after_parse_len:
+                if self.rx_restbuffer_since_monotonic <= 0.0:
+                    self.rx_restbuffer_since_monotonic = time.monotonic()
+                self.log.emit(
+                    "DEBUG RX-Parser: nach Eingang noch kein vollstaendiges Frame, "
+                    f"Restbuffer behalten: {after_parse_len} Byte, HEX={hexdump(bytes(self.buf), -1)}"
+                )
+            else:
+                self.rx_restbuffer_since_monotonic = 0.0
+                self.log.emit(
+                    "DEBUG RX-Parser: nach Eingang kein gueltiges Frame; "
+                    f"Restdaten verworfen: {before_parse_len} Byte"
+                )
+        return parsed_frames
 
     def _discard_stale_rx_restbuffer(self) -> None:
         if not self.buf:
