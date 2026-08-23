@@ -24,6 +24,7 @@ Solange kein C5A8 verarbeitet wurde, bleibt `OTA+0x1C == 0`. Dieses Flag bewacht
 | C36A-Erkennung | `0x08067D74` | Cancel RX |
 | C37B-Erkennung | `0x08067EB6` | Status-ACK RX |
 | Status-/Handshake-Worker | `0x0806899C` | C36E/C544/C36C/C371 senden |
+| C350/C357-Verarbeitung | `0x08076A88` ff. | Zielvergleich / Metadaten |
 | OTA-Retry/EEPROM-Control | `0x08076470` | Timeouts, Retries, EEPROM-Recovery |
 | C5A8-Worker | `0x08078628` | Datenblock/Flash-Staging |
 | C36A-Abbruchworker | `0x08078D68` | Cancel, EEPROM-Clear, optional Staging-Erase |
@@ -60,6 +61,10 @@ Auswirkungen:
 - Jump/Reset: keiner
 - normale Regelung: läuft weiter
 
+**Wichtig:** Status 0 ist ein Ablehnungs-/„kein neues Update“-Pfad, aber **kein globaler OTA-Reset**. Bereits vorher vorhandene persistente OTA-Records werden durch C350 Status 0 nicht pauschal gelöscht.
+
+Im direkten C350->Status-0-Pfad wurden keine verzögerten Flash-, EEPROM- oder Boot-Control-Aktionen gefunden.
+
 ## Inkompatibles Ziel
 
 Wenn Bytes 0..7 nicht passen:
@@ -79,6 +84,19 @@ C36E Status 1
 ```
 
 Die angebotene Kennung wird nur in OTA-RAM-Metadaten übernommen. Kein persistenter Write.
+
+### Wenn danach niemals C357 kommt
+
+Für diesen Zustand wurde in der Mainboard-V3.3 **kein eigener C350->C357-Wartetimeout** gefunden.
+
+Die bekannten `0x7530 = 30000`-Zähler gehören zu späteren OTA-Daten-/Status-/Retrypfaden und dürfen nicht als C350->C357-Timeout interpretiert werden.
+
+Damit gilt:
+
+- normaler Regel- und Warmlinkbetrieb läuft weiter,
+- der C350-Status-1-Zustand bleibt nur in RAM,
+- ein späteres C357 kann während derselben Laufzeit weiterhin verarbeitet werden,
+- ein Neustart verwirft diesen C350-only-Zustand, weil noch nichts persistiert wurde.
 
 # C357 ohne C5A8
 
@@ -112,7 +130,7 @@ Weiterhin gilt:
 - kein Jump
 - kein Reset
 
-Der C5A8-Wartepfad besitzt eine Timeoutschwelle von:
+Der spätere C5A8-Wartepfad besitzt eine Timeoutschwelle von:
 
 ```text
 0x7530 = 30000 Worker-Aufrufe
@@ -222,9 +240,13 @@ Das ist für einen reinen C350/C357-Vortest nicht relevant.
 
 # Neustartverhalten
 
-## nach C350
+## nach C350 Status 0
 
-Kein persistenter OTA-State. Neustart beginnt wieder normal.
+Kein durch C350 neu geschriebener persistenter OTA-State. Ein normaler Neustart beginnt wieder normal. Status 0 löscht jedoch nicht garantiert ältere, bereits vorher vorhandene persistente OTA-Records.
+
+## nach C350 Status 1 ohne C357
+
+Nur RAM-State. Ein Neustart verwirft die angebotene Ziel-/Buildkennung und startet ohne diesen Pending-C350-Zustand.
 
 ## nach C357
 
@@ -324,3 +346,9 @@ C350 identisch → C36E 0 → STOP
 ```
 
 die bevorzugte Grenze.
+
+## Weiterführende Promotion-/Recoveryanalyse
+
+Der vollständige Pfad nach C5A8 einschließlich Target-Erase, zweiter MD5-Prüfung, EEPROM-Role-/Transition-State, Loader-Handoff und Power-Loss-Matrix ist separat dokumentiert:
+
+[`FW3.3-OTA-PROMOTION-RECOVERY.md`](FW3.3-OTA-PROMOTION-RECOVERY.md)
