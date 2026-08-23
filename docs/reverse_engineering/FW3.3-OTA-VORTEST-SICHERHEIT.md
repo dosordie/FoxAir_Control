@@ -4,36 +4,36 @@ Stand: 23. August 2026
 
 Diese Datei untersucht ausschließlich einen OTA-Vorhandshake, der **vor dem ersten C5A8-Firmwaredatenblock** abgebrochen wird. Es wurde keine Verbindung zu ser2net oder realer Hardware geöffnet und nichts gesendet.
 
+> **Korrektur zur Mainboardbasis:** Die V3.3-BIN ist für `0x08050000` gelinkt. Frühere absolute Funktionsadressen aus einer fälschlich angenommenen Basis `0x08080000` lagen `+0x30000` zu hoch. Die hier verwendeten Adressen sind korrigiert. RAM-Adressen, EEPROM-Offets und echte Flashzielbereiche bleiben unverändert.
+
 ## Harte Sicherheitsgrenze
 
-Für den hier beschriebenen Vortest gilt:
-
 ```text
-C5A8 darf niemals gesendet werden.
+C5A8 darf beim Vortest niemals gesendet werden.
 ```
 
-Solange kein C5A8 verarbeitet wurde, bleibt `OTA+0x1C == 0`. Genau dieses Flag ist der Guard, der beim C36A-Abbruch den Flash-Erase-Zweig aktiviert. Deshalb ist ein C36A vor jedem C5A8 ein anderer und deutlich sichererer Pfad als ein Cancel nach Firmwaredaten.
+Solange kein C5A8 verarbeitet wurde, bleibt `OTA+0x1C == 0`. Dieses Flag bewacht den destruktiven Flash-Erase-Zweig des C36A-Abbruchpfads.
 
 ## Relevante Funktionen
 
-| Funktion | VA | Rolle |
+| Funktion | Korrekte VA | Rolle |
 |---|---:|---|
-| zentraler OTA/FC10-Dispatcher | `0x08097Cxx–0x080981xx` | C350/C357/C36A/C37B/C5A8 empfangen |
-| C350-Erkennung | `0x08097CE4` | C350 RX |
-| C357-Erkennung | `0x08097D30` | C357 RX |
-| C36A-Erkennung | `0x08097D74` | Cancel RX |
-| C37B-Erkennung | `0x08097EB6` | Status-ACK RX |
-| Status-/Handshake-Worker | `0x0809899C` | C36E/C544/C36C/C371 senden |
-| OTA-Retry/EEPROM-Control | `0x080A6470` | Timeouts, Retries, EEPROM-Recovery |
-| C5A8-Worker | `0x080A8628` | Datenblock/Flash-Staging |
-| C36A-Abbruchworker | `0x080A8D68` | Cancel, EEPROM-Clear, optional Staging-Erase |
-| Boot-/Jumpworker | `0x080A9354` | Jump `0x08000000` / `0x08050000` |
-| EEPROM Write | `0x08080C08` | I²C-EEPROM schreiben |
-| EEPROM Read | `0x08080C5E` | I²C-EEPROM lesen |
-| Flash Unlock | `0x080BD144` | Flash |
-| Flash Page Erase | `0x080BD1C0` | Flash |
-| Flash Program Word | `0x080BD2E4` | Flash |
-| Flash Lock | `0x080BD190` | Flash |
+| zentraler OTA/FC10-Dispatcher | `0x08067Cxx–0x080681xx` | C350/C357/C36A/C37B/C5A8 empfangen |
+| C350-Erkennung | `0x08067CE4` | C350 RX |
+| C357-Erkennung | `0x08067D30` | C357 RX |
+| C36A-Erkennung | `0x08067D74` | Cancel RX |
+| C37B-Erkennung | `0x08067EB6` | Status-ACK RX |
+| Status-/Handshake-Worker | `0x0806899C` | C36E/C544/C36C/C371 senden |
+| OTA-Retry/EEPROM-Control | `0x08076470` | Timeouts, Retries, EEPROM-Recovery |
+| C5A8-Worker | `0x08078628` | Datenblock/Flash-Staging |
+| C36A-Abbruchworker | `0x08078D68` | Cancel, EEPROM-Clear, optional Staging-Erase |
+| Boot-/Jumpworker | `0x08079354` | Jump `0x08000000` / `0x08050000` |
+| EEPROM Write | `0x08050C08` | I²C-EEPROM schreiben |
+| EEPROM Read | `0x08050C5E` | I²C-EEPROM lesen |
+| Flash Unlock | `0x0808D144` | Flash |
+| Flash Page Erase | `0x0808D1C0` | Flash |
+| Flash Program Word | `0x0808D2E4` | Flash |
+| Flash Lock | `0x0808D190` | Flash |
 
 # C350
 
@@ -48,29 +48,27 @@ Bytes 8..11  Build-/Versionsanteil
 
 ## Identische V3.3-Kennung
 
-Wenn beide Teile identisch sind:
-
 ```text
 C36E Status 0
 ```
 
 Auswirkungen:
 
-- RAM: RX-/Handshakeflags werden kurz gesetzt/zurückgesetzt
-- EEPROM: kein durch C350 ausgelöster Write gefunden
+- RAM: temporäre Handshakeflags
+- EEPROM: kein Write
 - Flash: kein Zugriff
 - Jump/Reset: keiner
 - normale Regelung: läuft weiter
 
 ## Inkompatibles Ziel
 
-Wenn bereits Bytes 0..7 nicht passen:
+Wenn Bytes 0..7 nicht passen:
 
 ```text
 C36E Status 0
 ```
 
-Auswirkungen entsprechen dem identischen Build: kein EEPROM-, Flash-, Jump- oder Resetpfad.
+Ebenfalls kein EEPROM-, Flash-, Jump- oder Resetpfad.
 
 ## Kompatibles Ziel, anderer Build
 
@@ -80,9 +78,7 @@ Wenn Bytes 0..7 passen und Bytes 8..11 abweichen:
 C36E Status 1
 ```
 
-Die angebotene 12-Byte-Kennung wird in die OTA-RAM-Metadaten übernommen. In diesem Schritt wurde kein persistenter EEPROM-Write und kein Flashzugriff gefunden.
-
-Damit ist C350 Status 1 allein weiterhin RAM-basiert.
+Die angebotene Kennung wird nur in OTA-RAM-Metadaten übernommen. Kein persistenter Write.
 
 # C357 ohne C5A8
 
@@ -100,7 +96,7 @@ Nach akzeptierten Metadaten:
 C36E Status 2
 ```
 
-Zusätzlich wird erstmals ein persistenter Updatezustand geschrieben:
+Erstmals persistente Änderung:
 
 ```text
 EEPROM Offset 0x3F0
@@ -108,34 +104,35 @@ Byte 0 = 1
 Byte 1..2 = CRC16 über Byte 0
 ```
 
-Noch immer gilt:
+Weiterhin gilt:
 
-- keine Firmwaredaten werden in Flash geschrieben
-- kein Staging-Flash wird beschrieben
-- kein Candidate-Slot wird beschrieben
-- kein Jump/Reset wird ausgelöst
+- keine Firmwaredaten im Flash
+- kein Staging-Flashwrite
+- kein Image-Copy
+- kein Jump
+- kein Reset
 
-Der C5A8-Worker wartet anschließend auf Daten. Sein Timeoutzähler erreicht bei:
+Der C5A8-Wartepfad besitzt eine Timeoutschwelle von:
 
 ```text
-0x7530 = 30000 Worker-Aufrufen
+0x7530 = 30000 Worker-Aufrufe
 ```
 
-den Timeoutpfad. Danach wird der aktive C5A8-Empfangszustand beendet und ein Re-Handshake/Recoverypfad angestoßen. Eine belastbare Umrechnung dieses Zählers in Sekunden ist aus der statischen Analyse noch nicht bewiesen und wird deshalb bewusst nicht angegeben.
+Eine sichere Umrechnung in Sekunden ist statisch nicht belegt.
 
 # C36A / C36C – Cancel
 
-C36A wird bei `0x08097D74` erkannt. Der RX-Handler setzt zunächst nur `OTA+0x1B = 1`.
+C36A wird bei `0x08067D74` erkannt. Der RX-Handler setzt zunächst nur das Cancel-Flag `OTA+0x1B`.
 
-Der Abbruchworker bei `0x080A8D68` verarbeitet das Flag:
+Der Worker bei `0x08078D68`:
 
-1. `OTA+0x1B` wird wieder 0.
-2. C5A8-/RX-Unterzustände werden beendet.
-3. der aktive C5A8-Wartezustand wird gelöscht.
-4. EEPROM `0x3F0` wird auf `Byte0=0` plus neue CRC gesetzt.
-5. C36C wird als Cancel-Bestätigung vorbereitet.
+1. löscht das Cancel-Flag wieder,
+2. beendet C5A8-/RX-Unterzustände,
+3. beendet den aktiven C5A8-Wartezustand,
+4. setzt EEPROM `0x3F0` auf `0` plus neue CRC,
+5. bereitet C36C als Cancel-Bestätigung vor.
 
-## Entscheidend: Flash-Guard
+## Flash-Guard
 
 Ein Flash-Erase wird nur aktiviert, wenn:
 
@@ -143,15 +140,15 @@ Ein Flash-Erase wird nur aktiviert, wenn:
 OTA+0x1C == 1
 ```
 
-Dieses Flag wird im C5A8-Worker erst bei `0x080A873E–0x080A8744` gesetzt, wenn:
+Dieses Flag wird erst im C5A8-Worker bei ungefähr:
 
 ```text
-current_block >= total/last_block
+0x0807873E–0x08078744
 ```
 
-also nachdem Firmwaredaten empfangen wurden und der letzte Block erreicht wurde.
+gesetzt, wenn `current_block >= total/last_block` gilt.
 
-Daraus folgt direkt:
+Damit:
 
 ```text
 C36A vor jedem C5A8
@@ -159,9 +156,9 @@ C36A vor jedem C5A8
 → kein Flash-Erase
 ```
 
-## C36A nach Datenphase
+## C36A nach einer abgeschlossenen Datenphase
 
-Falls `OTA+0x1C == 1`, startet C36A eine Staging-Löschmaschine. Sie löscht den OTA-Descriptor und die Staging-Pages:
+Nur bei gesetztem Guard kann der Cancelpfad den Stagingbereich löschen:
 
 ```text
 0x080A0000
@@ -171,11 +168,11 @@ Falls `OTA+0x1C == 1`, startet C36A eine Staging-Löschmaschine. Sie löscht den
 0x080EB000
 ```
 
-also Descriptor plus 75 Datenpages à 4 KiB. Dieser Zweig ist für den hier definierten Vorhandshake nicht erreichbar, solange nie C5A8 gesendet wird.
+Dieser Zweig ist für den definierten Vorhandshake ohne C5A8 nicht erreichbar.
 
 ## C36C
 
-C36C wird als FC10 erzeugt:
+Erwartet:
 
 ```text
 Unit          0x63
@@ -185,25 +182,13 @@ Quantity      2
 Payload       00 63 00 01
 ```
 
-Vollständiger erwarteter RTU-Frame inklusive CRC16:
+Kompletter RTU-Frame:
 
 ```text
 63 10 C3 6C 00 02 04 00 63 00 01 75 40
 ```
 
-# C36E-Antworten des Vorhandshakes
-
-C36E verwendet:
-
-```text
-Unit          0x63
-Function      0x10
-Startregister 0xC36E
-Quantity      2
-Payload       00 63 00 STATUS
-```
-
-Für die Vortest-relevanten Statuswerte ergeben sich:
+# Erwartete C36E-Antworten
 
 ```text
 Status 0:
@@ -218,50 +203,48 @@ Status 2:
 
 # C37B und fehlendes ACK
 
-Der eingehende C37B-Handler bei `0x08097EB6` behandelt nur Status:
+Der C37B-Handler bei `0x08067EB6` verarbeitet nur Status:
 
 ```text
-3, 4, 5, 6 und 7
+3, 4, 5, 6, 7
 ```
 
-C36E Status 0, 1 und 2 benötigen in diesem Handler kein C37B-ACK.
+C36E 0/1/2 benötigen dort kein C37B-ACK.
 
-Für Status 3–6 existiert ein Retrymechanismus:
+Für Status 3–6 existiert ein Retrymechanismus mit:
 
 ```text
-Retry-Schwelle: 0x7530 = 30000 interne Aufrufe
+Retry-Schwelle: 30000 interne Aufrufe
 Retryanzahl:    bis 15
 ```
 
-Ein fehlendes C37B erzeugt selbst keinen zusätzlichen Flashwrite; es führt zum erneuten Senden des jeweiligen Status. Dieser Pfad wird bei einem reinen C350/C357-Vortest nicht erreicht.
+Das ist für einen reinen C350/C357-Vortest nicht relevant.
 
 # Neustartverhalten
 
 ## nach C350
 
-C350 allein hinterlässt nach bisherigem Nachweis keinen persistenten Updatezustand. Ein Neustart beginnt daher wieder aus dem normalen Role-2/Main-App-Zustand.
+Kein persistenter OTA-State. Neustart beginnt wieder normal.
 
 ## nach C357
 
-C357 hinterlässt den CRC-geschützten EEPROM-Record bei `0x3F0`. Beim nächsten Start wird dieser Record gelesen. Ein gültiger gesetzter Record stellt den OTA-/Re-Handshake-Zustand wieder her; er bewirkt aber keinen direkten Bootslot-Jump und keinen Flashwrite.
+EEPROM `0x3F0=1+CRC` bleibt bestehen. Beim Boot wird der Pending-/Re-Handshake-Zustand erkannt, aber dadurch weder Flash programmiert noch direkt auf einen anderen Vector gesprungen.
 
-## nach C36A vor C5A8
+## nach frühem C36A
 
-C36A setzt `0x3F0` wieder auf 0 plus gültige CRC. Damit ist der C357-Ready-Zustand persistent gelöscht. Ein anschließender Neustart startet wieder ohne diesen pending-Metadatenzustand.
+EEPROM `0x3F0` wird auf 0 plus gültige CRC gesetzt. Der Pending-Zustand ist persistent beendet.
 
 # Normalbetrieb während des Vorhandshakes
 
-Die OTA-Funktionen sind in den normalen Hauptscheduler eingebettet. C350/C357/C36A werden parallel zu den normalen Kommunikations- und Regelpfaden abgearbeitet.
+C350/C357/C36A sind Schedulerpfade innerhalb der normalen Anwendung. Für diese frühen Zustände wurden keine direkten Writer gefunden, die:
 
-Für C350 und C357 wurden keine direkten Writer gefunden, die:
+- Wärmepumpe stoppen,
+- Verdichterfreigabe löschen,
+- Regel-State-Machines deaktivieren,
+- auf `0x08000000` oder `0x08050000` springen,
+- einen MCU-Systemreset auslösen.
 
-- die Wärmepumpe stoppen
-- die Verdichterfreigabe löschen
-- die Regel-State-Machines deaktivieren
-- auf Bootloader/IAP springen
-- einen MCU-Systemreset auslösen
-
-Bis zur eigentlichen Flash-/Promotionphase läuft die normale Main-App weiter. Auf dem gemeinsam genutzten RS485-Bus entstehen lediglich zusätzliche OTA-Telegramme.
+Die normale Main-App und Kommunikation laufen bis zur späteren Flash-/Promotionphase weiter.
 
 # Erreichbare destruktive Funktionen und Guards
 
@@ -270,11 +253,11 @@ Bis zur eigentlichen Flash-/Promotionphase läuft die normale Main-App weiter. A
 | EEPROM `0x3F0` setzen durch C357 | ja | gültige C357-Metadaten |
 | EEPROM `0x3F0` löschen durch C36A | ja | C36A |
 | Staging-Flash schreiben | **nein** | C5A8-Datenworker |
-| Staging-Flash löschen via C36A | **nein** | `OTA+0x1C == 1`, erst nach letztem C5A8 gesetzt |
-| Candidate-Slot löschen/kopieren | **nein** | spätere MD5-/Commit-State-Machines |
-| Jump `0x08050000` | **nein** | spätere Slot-/Bootflags |
-| Jump `0x08000000` | **nein** | persistenter später Transition-/Role-State |
-| Systemreset | kein normaler OTA-Vorhandshakepfad gefunden | – |
+| Staging-Flash löschen via C36A | **nein** | `OTA+0x1C == 1` |
+| Imagebereich `0x08050000` löschen/kopieren | **nein** | spätere MD5-/Commit-State-Machines |
+| Jump `0x08050000` | **nein** | spätere Bootflags |
+| Jump `0x08000000` | **nein** | später Transition-/Role-State |
+| Systemreset | kein Vorhandshakepfad gefunden | – |
 
 # Risikobewertung
 
@@ -282,50 +265,34 @@ Bis zur eigentlichen Flash-/Promotionphase läuft die normale Main-App weiter. A
 |---|---|---|---|---|
 | C350 identische V3.3-Kennung | nein | nein | nein | **sehr niedrig** |
 | C350 inkompatibles Ziel | nein | nein | nein | **sehr niedrig** |
-| C350 kompatibel, anderer Build | nein | nein | nein | **niedrig**; OTA-RAM-State bleibt aktiv |
-| C357 ohne C5A8 | nein | **ja, `0x3F0`** | nein | **niedrig bis moderat**; persistent pending bis Cancel/Recovery |
+| C350 kompatibel, anderer Build | nein | nein | nein | **niedrig** |
+| C357 ohne C5A8 | nein | **ja, `0x3F0`** | nein | **niedrig bis moderat** |
 
 # Empfohlener minimaler ser2net-Vortest
 
-## Stufe 1 – bevorzugt
-
-Nur C350 mit der **identischen aktuellen 12-Byte-Kennung**, die zuvor passiv aus dem Protokoll/C544 bestimmt wurde.
-
-Erwartung:
+## Stufe 1
 
 ```text
-C36E Status 0
+C350 mit identischer aktueller Kennung
+→ C36E Status 0
+→ STOP
 ```
 
-Dann **sofort stoppen**. Kein C357, kein C36A erforderlich, kein C37B.
+Kein C357, kein C36A, kein C37B.
 
-Dieser Test bleibt nach statischer Analyse vollständig RAM-basiert.
-
-## Stufe 2 – Status-1-Test
-
-C350 mit gleicher 8-Byte-Zielkennung und bewusst abweichendem 4-Byte-Buildteil.
-
-Erwartung:
+## Stufe 2
 
 ```text
-C36E Status 1
+C350 mit gleichem Ziel, anderem Build
+→ C36E Status 1
+C36A
+→ C36C
+STOP
 ```
 
-Danach optional C36A zum expliziten Verlassen des OTA-Handshakes.
+Solange kein C5A8 gesendet wurde, ist der Flash-Guard nicht gesetzt.
 
-Erwartung:
-
-```text
-C36C payload 00 63 00 01
-```
-
-Da noch nie C5A8 gesendet wurde, ist der C36A-Flash-Guard nicht gesetzt.
-
-## Stufe 3 – C357 nur wenn ausdrücklich gewünscht
-
-C357 erzeugt erstmals einen persistenten EEPROM-Zustand. Deshalb nur testen, wenn anschließend zwingend C36A gesendet und C36C empfangen wird.
-
-Ablauf:
+## Stufe 3
 
 ```text
 C350 kompatibel/anderer Build
@@ -340,14 +307,20 @@ STOP
 
 # Harte Stopbedingungen
 
-Den Vortest sofort abbrechen und nichts Weiteres senden, falls:
+Sofort nichts weiter senden, falls:
 
-- irgendein C5A8 auftaucht oder versehentlich vorbereitet wurde
-- ein anderer C36E-Status als 0/1/2 erscheint
-- C36C nach Cancel nicht erscheint
-- das Gerät unerwartet rebootet
-- reguläre Modbus-/Warmlink-Kommunikation aussetzt
-- ein unbekanntes OTA-Kommando vom LTE-Modem eine weitere Phase startet
-- die beobachtete 12-Byte-Kennung nicht exakt der zuvor passiv bestimmten Kennung entspricht
+- irgendein C5A8 auftaucht oder vorbereitet wurde,
+- ein C36E-Status > 2 erscheint,
+- C36C nach Cancel ausbleibt,
+- das Gerät unerwartet rebootet,
+- reguläre Modbus-/Warmlink-Kommunikation aussetzt,
+- ein unbekanntes OTA-Kommando eine weitere Phase startet,
+- die 12-Byte-Kennung nicht exakt dem zuvor passiv bestimmten Ziel entspricht.
 
-Für einen maximal konservativen ersten Test ist **C350 identisch → C36E 0 → STOP** die empfohlene Grenze.
+Für einen maximal konservativen ersten Test bleibt:
+
+```text
+C350 identisch → C36E 0 → STOP
+```
+
+die bevorzugte Grenze.
