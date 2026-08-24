@@ -8226,11 +8226,13 @@ class MainWindow(QMainWindow):
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
                     fault_dialog.show_read_timeout()
-            if str(req.get("label", "")) in (SGReadyEditorDialog.READ_LABEL_VALUES, SGReadyEditorDialog.READ_LABEL_STATUS):
+            if str(req.get("label", "")) in (SGReadyEditorDialog.READ_LABEL_VALUES, SGReadyEditorDialog.READ_LABEL_STATUS, SGReadyEditorDialog.READ_LABEL_VIRTUAL):
                 sg_dialog = getattr(self, "sg_dialog", None)
                 if sg_dialog is not None and sg_dialog.isVisible():
                     if str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_STATUS:
                         sg_dialog.show_sg_status_timeout()
+                    elif str(req.get("label", "")) == SGReadyEditorDialog.READ_LABEL_VIRTUAL:
+                        sg_dialog.status_label.setText("Virtueller SG-Modus 8801 Timeout / keine Antwort.")
                     else:
                         sg_dialog.status_label.setText("SG Ready Werte Timeout / keine Antwort.")
             if req_label.startswith("WP-Steuerung"):
@@ -8350,6 +8352,14 @@ class MainWindow(QMainWindow):
                     for reg in frame.registers:
                         if int(reg.reg) == 2133:
                             sg_dialog.update_from_live_register(reg, force=True)
+                            break
+            if req_label == SGReadyEditorDialog.READ_LABEL_VIRTUAL:
+                sg_dialog = getattr(self, "sg_dialog", None)
+                if sg_dialog is not None and sg_dialog.isVisible():
+                    for reg in frame.registers:
+                        if int(reg.reg) == 8801:
+                            sg_dialog.update_from_live_register(reg, force=True)
+                            sg_dialog.status_label.setText("Virtueller SG-Modus 8801 erfolgreich gelesen.")
                             break
             if req_label.startswith("WP-Steuerung"):
                 wp_dialog = getattr(self, "wp_control_dialog", None)
