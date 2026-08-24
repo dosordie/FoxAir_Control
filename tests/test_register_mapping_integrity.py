@@ -80,3 +80,31 @@ def test_backend_register_map_separation_uses_actual_loaded_maps():
     assert {2122, 2133}.issubset(main.items)
     assert set(range(3012, 3022)).isdisjoint(main.items)
     assert {2122, 2124}.isdisjoint(display.items)
+
+
+def test_fw33_confirmed_register_metadata_and_interface_boundary():
+    main, _display = _load_static_maps()
+
+    assert main["1334"]["value_map"]["3"] == "Modbus / virtueller SG-Eingang"
+    assert "tatsächlich laufend" in main["2019"]["bit_map"]["0"]
+    assert "Lüfter tatsächlich aktiv" in main["2019"]["bit_map"]["2"]
+    assert main["2057"]["name"] == "T35 / AC Input Current"
+    assert main["2071"]["name"] == "Kompressor-Sollfrequenz"
+    assert main["2109"]["name"] == "Interner V3.3-Statuswert"
+    assert main["2136"]["type"] == "TEMP1"
+    assert main["2137"]["type"] == main["2138"]["type"] == "POWER_KW_X10"
+
+    # The shared map is also used by Warmlink. 8801 must therefore remain out
+    # until maps can be selected per interface without implying FC03 support.
+    assert "8801" not in main
+
+
+def test_sg_ready_editor_handles_direct_only_8801():
+    source = (ROOT / "dialogs" / "sg_ready_editor_dialog.py").read_text(encoding="utf-8")
+    docs = (ROOT / "docs" / "sg_ready.md").read_text(encoding="utf-8")
+
+    assert "READ_LABEL_VIRTUAL = \"SG virtueller Eingang 8801\"" in source
+    assert 'current_backend_key() == "standard_modbus"' in source
+    assert "Virtueller SG-Modus (8801, nur direkt)" in source
+    assert "10-minütige Umschaltsperre" in docs
+    assert "zunächst auf `0` und anschließend wieder auf `3`" in docs

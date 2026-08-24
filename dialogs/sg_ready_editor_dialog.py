@@ -15,9 +15,10 @@ FLASH_CHANGED_ROW_MS = 2000
 
 
 class SGReadyEditorDialog(QDialog):
-    SG_REGS = set(range(1334, 1342)) | {2133}
+    SG_REGS = set(range(1334, 1342)) | {2133, 8801}
     READ_LABEL_VALUES = "SG Ready 1334-1341"
     READ_LABEL_STATUS = "SG Status 2133"
+    READ_LABEL_VIRTUAL = "SG virtueller Eingang 8801"
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -34,7 +35,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only aktiver SG-Modus 2133. SG01: Aus / 1 Kontakt / 2 Kontakte. Kontaktstatus wird sofort über Register 2034 angezeigt. Der aktive SG-Modus in Register 2133 kann zeitverzögert umschalten. SG Kontakt 1: Klemme 1–2 / AI-DI16 / Fernschalter. SG Kontakt 2: Klemme 7–8 / DIN_1 / Heat/Cool On/Off / PV-Kontakt. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only aktiver SG-Modus 2133. SG01: Aus / 1 Kontakt / 2 Kontakte / virtueller SG-Eingang (Wert 3). Der virtuelle Zustand 8801 ist nur am direkten User-/Mainboard-Modbus verfügbar, nicht über Warmlink/LTE. Nach einer Änderung von 8801 bleibt die Umschaltung 10 Minuten gesperrt; anschließend wird der neue Wert übernommen. 1334 kurz auf 0 und danach wieder auf 3 zu stellen löscht die Sperre. Kontaktstatus wird sofort über Register 2034 angezeigt. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -54,7 +55,23 @@ class SGReadyEditorDialog(QDialog):
         self.sg_mode_combo.addItem("Aus", 0)
         self.sg_mode_combo.addItem("1 Kontakt", 1)
         self.sg_mode_combo.addItem("2 Kontakte", 2)
+        self.sg_mode_combo.addItem("Modbus / virtueller SG-Eingang (nur direkt)", 3)
         form.addRow("SG Ready Auswahl (1334):", self.sg_mode_combo)
+
+        self.virtual_sg_combo = QComboBox()
+        self.virtual_sg_combo.addItem("Mode 1 / Schlafmodus", 1)
+        self.virtual_sg_combo.addItem("Mode 2 / Normal / wenig PV", 2)
+        self.virtual_sg_combo.addItem("Mode 3 / mittel PV", 3)
+        self.virtual_sg_combo.addItem("Mode 4 / High PV", 4)
+        direct_modbus = self.main_window.current_backend_key() == "standard_modbus"
+        self.virtual_sg_combo.setEnabled(direct_modbus)
+        self.virtual_sg_combo.setToolTip(
+            "Direktes User-/Mainboard-Modbus-Register. Eine Änderung startet eine "
+            "10-minütige Umschaltsperre; 1334=0 und anschließend 1334=3 löscht sie."
+            if direct_modbus else
+            "Register 8801 ist über Warmlink/LTE und Display-Modbus nicht verfügbar."
+        )
+        form.addRow("Virtueller SG-Modus (8801, nur direkt):", self.virtual_sg_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
         for reg_no, label in [
@@ -116,6 +133,8 @@ class SGReadyEditorDialog(QDialog):
     def _widget_for_reg(self, reg_no: int) -> Optional[QWidget]:
         if reg_no == 1334:
             return self.sg_mode_combo
+        if reg_no == 8801:
+            return self.virtual_sg_combo
         if reg_no in self.raw_spins:
             return self.raw_spins[reg_no]
         if reg_no in self.temp_spins:
@@ -158,6 +177,11 @@ class SGReadyEditorDialog(QDialog):
                     idx = self.sg_mode_combo.findData(raw)
                     if idx >= 0:
                         self.sg_mode_combo.setCurrentIndex(idx)
+            elif reg_no == 8801:
+                if force or not self._has_focus(self.virtual_sg_combo):
+                    idx = self.virtual_sg_combo.findData(raw)
+                    if idx >= 0:
+                        self.virtual_sg_combo.setCurrentIndex(idx)
             elif reg_no in self.raw_spins:
                 spin = self.raw_spins[reg_no]
                 if force or not self._has_focus(spin):
@@ -189,13 +213,15 @@ class SGReadyEditorDialog(QDialog):
         for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kuehlen-Anhebung")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
         values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"))
+        if self.main_window.current_backend_key() == "standard_modbus" and int(self.sg_mode_combo.currentData()) == 3:
+            values.append((8801, int(self.virtual_sg_combo.currentData()) & 0xFFFF, "Virtueller SG-Modus (nur direkter Modbus)"))
         return values
 
     def read_from_wp(self):
         try:
             slave_addr = DEFAULT_BUS_ADDR
             self.main_window.remove_pending_read_requests_by_label(
-                {self.READ_LABEL_VALUES, self.READ_LABEL_STATUS},
+                {self.READ_LABEL_VALUES, self.READ_LABEL_STATUS, self.READ_LABEL_VIRTUAL},
                 log_prefix="SG Ready Editor",
             )
             self._sg_read_generation += 1
@@ -222,9 +248,20 @@ class SGReadyEditorDialog(QDialog):
             self.sg_status_label.setText("wird gelesen ...")
             self._sg_status_read_pending = True
             self.main_window.send_read_request(2133, 1, slave_addr=slave_addr, label=self.READ_LABEL_STATUS)
+            if self.main_window.current_backend_key() == "standard_modbus":
+                QTimer.singleShot(0, lambda: self._send_virtual_read_after_status(slave_addr, generation))
         except Exception as exc:
             self._sg_status_read_pending = False
             QMessageBox.warning(self, "Ungültige SG-Status-Leseanforderung", str(exc))
+
+    def _send_virtual_read_after_status(self, slave_addr: int, generation: int):
+        if not self.isVisible() or generation != self._sg_read_generation:
+            return
+        if self.main_window.has_pending_read_request(self.READ_LABEL_STATUS, slave_addr=slave_addr):
+            QTimer.singleShot(250, lambda: self._send_virtual_read_after_status(slave_addr, generation))
+            return
+        self.status_label.setText("SG Status gelesen. Lese virtuellen SG-Modus 8801 ...")
+        self.main_window.send_read_request(8801, 1, slave_addr=slave_addr, label=self.READ_LABEL_VIRTUAL)
 
     def send_values(self):
         try:

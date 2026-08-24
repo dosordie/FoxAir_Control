@@ -1475,7 +1475,7 @@
     "source": "Display-FW ReturnPumpTimer / 0x0535"
   },
   "1334": {
-    "knowledge": "Legt fest, ob SG Ready deaktiviert ist oder mit 1 bzw. 2 Kontakten arbeitet. Bei Zweifach/2 Kontakte werden die Kontaktzustände über das Schalter-/Kontakt-Bitfeld 2034 ausgewertet.",
+    "knowledge": "Legt fest, ob SG Ready deaktiviert ist, mit 1 bzw. 2 Kontakten arbeitet oder bei Wert 3 den virtuellen SG-Eingang 8801 verwendet. 8801 ist ausschließlich am direkten User-/Mainboard-Modbus bestätigt und kein normales Warmlink-/LTE-Register.",
     "source": "Display-FW ASM SG01-SG08"
   },
   "1335": {
@@ -1994,8 +1994,8 @@
     "source": "ASM DEMONS_V1.3.ASM"
   },
   "2057": {
-    "description": "tatsächlicher Testwert Nicht T34; Bedeutung unbestätigt.",
-    "source": "User correction 2026-06-19"
+    "description": "T35 / AC Input Current (AC-Eingangsstrom).",
+    "source": "FW3.3 Reverse Engineering"
   },
   "2058": {
     "description": "tatsächlicher Testwert"
@@ -2054,7 +2054,7 @@
     "source": "ASM DEMONS.ASM"
   },
   "2071": {
-    "description": "tatsächlicher Testwert"
+    "description": "Kompressor-Sollfrequenz; 2072 ist die tatsächliche Kompressor-Ist-/Betriebsfrequenz."
   },
   "2072": {
     "description": "tatsächlicher Testwert"
@@ -2203,7 +2203,9 @@
     "source": "ASM DEMONS.ASM"
   },
   "2109": {
-    "default": "63"
+    "default": "63",
+    "description": "Interner V3.3-Statuswert. Wird von V3.3 aktiv beschrieben; genaue fachliche Bedeutung noch offen.",
+    "source": "FW3.3 Reverse Engineering"
   },
   "211": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; aktuell leer/Reserve. Nicht als WP-Parameter verwenden.",
@@ -2286,5 +2288,17 @@
     "format": "foxair_phnix_knowledge_v2",
     "last_private_update": "0.2.32 z-block video 2026-06-14",
     "note": "Beschreibungen, Hinweise, Quellen und Defaultwerte getrennt vom technischen Register-Mapping."
+  },
+  "2136": {
+    "description": "T04 Außentemperatur – zweiter Veröffentlichungsweg; TEMP1-Skalierung 0,1 °C.",
+    "source": "FW3.3 Reverse Engineering"
+  },
+  "2137": {
+    "description": "Elektrische WP-/Inverterleistung ohne Zusatzanteil; RAW / 10 = kW; kein bloßer Spiegel von 2054.",
+    "source": "FW3.3 Reverse Engineering"
+  },
+  "2138": {
+    "description": "Thermische WP-Leistung ohne Zusatzanteil; RAW / 10 = kW; kein bloßer Spiegel von 2059.",
+    "source": "FW3.3 Reverse Engineering"
   }
 }
