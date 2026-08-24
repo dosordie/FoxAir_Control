@@ -1,5 +1,18 @@
 # Firmware-Backup des LTE-Modems über Micro-USB
 
+> [!WARNING]
+> ## Veraltete Anleitung – bitte die aktuelle Version verwenden
+>
+> Diese Datei wird **nur noch aus Kompatibilitätsgründen** im Repository `FoxAir_Control` beibehalten, weil der Link zu dieser Anleitung bereits in einem Forum veröffentlicht wurde und deshalb weiterhin funktionieren soll.
+>
+> Die Anleitung in diesem Repository wird **nicht mehr aktiv gepflegt** und kann daher veraltet sein.
+>
+> Die aktuelle und künftig gepflegte Version befindet sich im Repository `FoxAir_updater`:
+>
+> **[Aktuelle Anleitung: firmware_backup_lte.md im FoxAir_updater](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/firmware_backup_lte.md)**
+>
+> Bitte für neue Arbeiten und Verweise ausschließlich die dortige Version verwenden.
+
 Diese Anleitung beschreibt kurz, wie man sich per **Micro-USB** mit dem LTE-Modem verbindet und die Firmware sowie einige zusätzliche Dateien mit **ADB (Android Debug Bridge, Bestandteil der Android SDK Platform Tools)** sichert.
 
 > [!NOTE]
