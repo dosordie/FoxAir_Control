@@ -84,7 +84,7 @@ Beispielausgabe:
 
 ## 💙 Unterstützung
 
-Ich bastle an diesem Adapter in meiner Freizeit.  
+Ich bastle an diesem Tool in meiner Freizeit.  
 Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
 
 [![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
@@ -92,6 +92,3 @@ Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spen
 
 ## Lizenz
 [GPLv3](LICENSE)
-
-## License
-GNU General Public License v3.0
