@@ -1,4 +1,4 @@
-# FoxAir / Phnix Control PUBLIC V0.5.52
+# FoxAir / Phnix Control PUBLIC V0.2.60
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
@@ -81,3 +81,17 @@ Beispielausgabe:
 ```json
 {"event":"register_change","ts":"...","backend":"display_modbus","reg":2106,"old_raw":0,"raw":1,"hex":"0x0001","name":"Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)"}
 ```
+
+## 💙 Unterstützung
+
+Ich bastle an diesem Adapter in meiner Freizeit.  
+Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
+
+[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
+
+
+## Lizenz
+[GPLv3](LICENSE)
+
+## License
+GNU General Public License v3.0
