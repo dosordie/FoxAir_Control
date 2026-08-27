@@ -13,7 +13,7 @@ Umbenannt/ergänzt:
 - Paket 7: 1541-1550 = Blockkopf/Paketkopf
 
 Aufteilung je Paketkopf:
-1-6: Kennung WF2210250475
+1-6: Kennung WF2403150123
 7-8: Reserve
 9: Marker/Länge (meist 0x0210 / 528)
 10: erstes Blockkopf-Register / Paketbasis
