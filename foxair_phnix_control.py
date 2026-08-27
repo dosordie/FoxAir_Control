@@ -4364,9 +4364,16 @@ class MainWindow(QMainWindow):
         if worker is None:
             QMessageBox.warning(self, "Geräte-Info", "Keine aktive Busverbindung.")
             return
-        self._log("Geräte-Info wird per FC03 gelesen: 200/1, 2001/8 und 50500/13.")
-        self.send_read_request(200, 1, slave_addr=0x63, label="Geräte-Info Sonderread 200")
-        self.send_read_request(2001, 8, slave_addr=0x63, label="Geräte-Info WiFi-ID")
+        pause_ms = 1000
+        self._log(
+            "Geräte-Info wird per FC03 gelesen: 200/1, 2001/8 und 50500/13 "
+            f"(je {pause_ms} ms Pause zwischen den Registerblöcken)."
+        )
+        # The communication module stops answering when these three requests
+        # arrive back-to-back. Worker-side post delays keep their order while
+        # leaving the GUI responsive.
+        self.send_read_request(200, 1, slave_addr=0x63, label="Geräte-Info Sonderread 200", delay_ms=pause_ms)
+        self.send_read_request(2001, 8, slave_addr=0x63, label="Geräte-Info WiFi-ID", delay_ms=pause_ms)
         self.send_read_request(50500, 13, slave_addr=0x63, label="Geräte-Info C544")
 
     def open_warmlink_cloud_dialog(self):
