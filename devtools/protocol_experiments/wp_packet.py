@@ -6,6 +6,6 @@ in diesem Schritt noch unverändert im bestehenden Code, damit keine funktionale
 Änderung entsteht.
 """
 
-WP_PACKET_SIGNATURE_TEXT = "WF2210250475"
+WP_PACKET_SIGNATURE_TEXT = "WF2403150123"
 WP_PACKET_MARKER = 0x0210
 WP_PACKET_WORDS = 90

@@ -1,118 +1,116 @@
 {
   "_comment": "Hier sind alle Register welche auf allen Modbussen gleich sind. 1xxx les-/schreibbar, 2xxx nur lesen.",
   "200": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1 / ASCII Zeichen 1-2",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "1-2",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 1/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "201": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2 / ASCII Zeichen 3-4",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "3-4",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 2/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "202": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3 / ASCII Zeichen 5-6",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "5-6",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 3/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "203": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4 / ASCII Zeichen 7-8",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "7-8",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 4/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "204": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5 / ASCII Zeichen 9-10",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "9-10",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 5/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "205": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6 / ASCII Zeichen 11-12",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "11-12",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 6/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "206": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 7/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "207": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 8/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "208": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 9/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "209": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 10/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "210": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 11/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "211": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 12/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "212": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 13/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "213": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 14/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "214": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 15/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "215": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 16/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "1001": {
     "function": "03",
@@ -5627,5 +5625,110 @@
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "50043": {
+    "function": "10",
+    "mode": "service",
+    "name": "Service-/OTA-SSID (C37B)",
+    "type": "U16",
+    "info": "Semantische Service-SSID; 0x0063 entspricht dezimal 99."
+  },
+  "50044": {
+    "function": "10",
+    "mode": "service",
+    "name": "C37B Quittungsstatus",
+    "type": "U16",
+    "info": "Status 3–7; Status 7 bestätigt die Verarbeitung der C544-Geräteinformation."
+  },
+  "50500": {
+    "function": "10",
+    "mode": "service",
+    "name": "Service-/OTA-SSID (C544)",
+    "type": "U16",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50501": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwarecode ASCII Wort 1/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50502": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwarecode ASCII Wort 2/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50503": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwarecode ASCII Wort 3/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50504": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwarecode ASCII Wort 4/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50505": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwareversion ASCII Wort 1/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50506": {
+    "function": "10",
+    "mode": "service",
+    "name": "Hardwareversion ASCII Wort 2/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50507": {
+    "function": "10",
+    "mode": "service",
+    "name": "Softwarecode ASCII Wort 1/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50508": {
+    "function": "10",
+    "mode": "service",
+    "name": "Softwarecode ASCII Wort 2/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50509": {
+    "function": "10",
+    "mode": "service",
+    "name": "Softwarecode ASCII Wort 3/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50510": {
+    "function": "10",
+    "mode": "service",
+    "name": "Softwarecode ASCII Wort 4/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50511": {
+    "function": "10",
+    "mode": "service",
+    "name": "Interne Softwareversion ASCII Wort 1/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+  },
+  "50512": {
+    "function": "10",
+    "mode": "service",
+    "name": "Interne Softwareversion ASCII Wort 2/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
   }
 }

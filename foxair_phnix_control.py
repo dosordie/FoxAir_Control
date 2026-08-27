@@ -43,6 +43,8 @@ from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
 from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
+from dialogs.device_info_dialog import DeviceInfoDialog
+from core.device_info import DeviceInfoTracker, decode_wifi_id
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
@@ -2220,7 +2222,7 @@ class DualBusLoggerDialog(QDialog):
                 internal_hint = ""
                 try:
                     raw_words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in regs]
-                    if len(raw_words) >= 10 and tuple(raw_words[:6]) == self._display_packet_signature_words():
+                    if len(raw_words) >= 10 and self._display_packet_signature_valid(raw_words):
                         internal_hint = f"; Signatur OK, Marker=0x{raw_words[8]&0xFFFF:04X}, interner Start={raw_words[9]&0xFFFF}"
                 except Exception:
                     internal_hint = ""
@@ -2344,7 +2346,7 @@ class DualBusLoggerDialog(QDialog):
                 internal_hint = ""
                 try:
                     raw_words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in regs]
-                    if len(raw_words) >= 10 and tuple(raw_words[:6]) == self._display_packet_signature_words():
+                    if len(raw_words) >= 10 and self._display_packet_signature_valid(raw_words):
                         internal_hint = f"; Signatur OK, Marker=0x{raw_words[8]&0xFFFF:04X}, interner Start={raw_words[9]&0xFFFF}"
                 except Exception:
                     internal_hint = ""
@@ -2448,15 +2450,16 @@ class DualBusLoggerDialog(QDialog):
         return self.main_window.display_regmap
 
     @staticmethod
-    def _display_packet_signature_words() -> tuple[int, ...]:
-        # ASCII "WF2210250475" als 6 Big-Endian Register-Worte.
-        return (0x5746, 0x3232, 0x3130, 0x3235, 0x3034, 0x3735)
+    def _display_packet_signature_valid(words: list[int]) -> bool:
+        """Recognise the observed format without embedding an installation identity."""
+        value = decode_wifi_id(words[:6])
+        return bool(value and re.fullmatch(r"WF\d{10}", value))
 
     def _validated_packet_info_from_words(self, start: int, words: list[int]) -> Optional[dict[str, int]]:
         """Prueft die WP-Paketkopf-Regel aus den Display-Bus-RAW-Analysen.
 
         Gültige WP-Kopie auf dem Display-Bus:
-        - Register start..start+5 enthalten die Signatur "WF2210250475"
+        - Register start..start+5 enthalten zwölf ASCII-Zeichen im Format WF + zehn Ziffern
         - Register start+8 enthält den Paketmarker 0x0210 / 528
         - Register start+9 enthält nochmal die interne Startadresse
         - interne Startadresse muss zur Modbus-Startadresse passen
@@ -2465,9 +2468,7 @@ class DualBusLoggerDialog(QDialog):
         """
         if len(words) < 10:
             return None
-        sig = self._display_packet_signature_words()
-        head = tuple((int(v) & 0xFFFF) for v in words[:6])
-        if head != sig:
+        if not self._display_packet_signature_valid(words):
             return None
         marker = int(words[8]) & 0xFFFF
         internal_start = int(words[9]) & 0xFFFF
@@ -2641,7 +2642,7 @@ class DualBusLoggerDialog(QDialog):
 
         # Fix18: generische Vertrauensregel fuer Display-Bus-Paketbloecke.
         # Wenn der FC16-Write einen gueltigen internen WP-Paketkopf traegt
-        # (Signatur WF2210250475, Marker 0x0210, interner Start == Modbus-Start),
+        # (Signatur WF2403150123, Marker 0x0210, interner Start == Modbus-Start),
         # wird der komplette Block als echte WP-Datenkopie ins Hauptfenster uebernommen.
         if func == 0x10 and mode in {"word-frame", "write-request"}:
             packet_info = self._validated_packet_info_from_regs(start, getattr(frame, "registers", []) or [])
@@ -3502,12 +3503,6 @@ class AboutDialog(QDialog):
         cloud_credit.setStyleSheet("color: #666666;")
         layout.addWidget(cloud_credit)
 
-        self.wifi_barcode_label = QLabel()
-        self.wifi_barcode_label.setWordWrap(True)
-        self.wifi_barcode_label.setStyleSheet("background: #eef6ff; border: 1px solid #b7d7f5; padding: 6px;")
-        layout.addWidget(self.wifi_barcode_label)
-        self._refresh_wifi_barcode_info()
-
         repo = QLabel(f'GitHub: <a href="https://github.com/{UPDATE_REPO}">https://github.com/{UPDATE_REPO}</a>')
         repo.setTextFormat(Qt.RichText)
         repo.setOpenExternalLinks(True)
@@ -3526,25 +3521,6 @@ class AboutDialog(QDialog):
         self.update_btn.clicked.connect(main_window.check_for_updates)
         repo_btn.clicked.connect(lambda: open_update_url(f"https://github.com/{UPDATE_REPO}"))
         close_btn.clicked.connect(self.accept)
-
-    def showEvent(self, event):
-        self._refresh_wifi_barcode_info()
-        super().showEvent(event)
-
-    def _refresh_wifi_barcode_info(self) -> None:
-        barcode, code_date = self.main_window._wifi_barcode_info()
-        if not barcode:
-            self.wifi_barcode_label.setVisible(False)
-            self.wifi_barcode_label.setText("")
-            return
-        lines = [f"<b>WiFi Barcode / Kommunikationsmodul-ID:</b> {barcode}"]
-        if code_date:
-            lines.append(f"<b>Dekodiertes Code-Datum:</b> {code_date}")
-        lines.append("Hinweis: Nicht identisch mit Geräte-Serial-No. auf dem Typenschild.")
-        lines.append("Format-Vermutung: WF + YYMMDD + laufende Nummer")
-        self.wifi_barcode_label.setText("<br>".join(lines))
-        self.wifi_barcode_label.setVisible(True)
-
 
 class WPControlDialog(QDialog):
     """Einfache WP-Steuerung ähnlich Warmlink-App. Schreiben nur mit Bestätigung."""
@@ -4205,6 +4181,8 @@ class MainWindow(QMainWindow):
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
         self.pending_write_requests: list[dict[str, Any]] = []
+        self.device_info_tracker = DeviceInfoTracker()
+        self.device_info_dialog: Optional[DeviceInfoDialog] = None
         self.pending_read_timeout_timer = QTimer(self)
         self.pending_read_timeout_timer.setInterval(500)
         self.pending_read_timeout_timer.timeout.connect(self._check_pending_read_timeouts)
@@ -4346,6 +4324,28 @@ class MainWindow(QMainWindow):
         else:
             self.about_dialog.raise_()
             self.about_dialog.activateWindow()
+
+    def open_device_info_dialog(self):
+        cached = {int(reg): int(item.raw_value) for reg, item in self.latest_regs.items()}
+        self.device_info_tracker.hydrate_cache(cached)
+        if self.device_info_dialog is None:
+            self.device_info_dialog = DeviceInfoDialog(self)
+            self.device_info_dialog.finished.connect(lambda _=None: setattr(self, "device_info_dialog", None))
+        self.device_info_dialog.show()
+        self.device_info_dialog.raise_()
+        self.device_info_dialog.activateWindow()
+
+    def start_device_info_cycle(self):
+        """Send the special register-4 trigger without creating a normal FC03 pending read."""
+        worker = self._active_io_worker()
+        if worker is None:
+            QMessageBox.warning(self, "Geräte-Info", "Keine aktive Busverbindung.")
+            return
+        self.device_info_tracker.start()
+        self._log("Geräteinfozyklus angefordert: FC03 Register 4, read-only; keine OTA-Übertragung.")
+        worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
+        if self.device_info_dialog is not None:
+            self.device_info_dialog.refresh()
 
     def open_warmlink_cloud_dialog(self):
         if self.warmlink_cloud_dialog is None:
@@ -4521,11 +4521,13 @@ class MainWindow(QMainWindow):
 
         self.about_btn = QPushButton("About")
         self.about_btn.setMaximumWidth(86)
+        self.device_info_btn = QPushButton("Geräte-Info")
         apply_button_icon(self.comm_settings_btn, "assets/icons/settings.svg", "Programmeinstellungen öffnen", "Einstellungen", "Programmeinstellungen öffnen")
         apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "Warmlink Cloud öffnen", "Warmlink Cloud", "Warmlink Cloud öffnen")
         apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
+        apply_button_icon(self.device_info_btn, "assets/icons/device_info.svg", "Geräte-Info", "Geräte-Info", "Mainboard-, ProductKey- und Geräteidentitätsinformationen anzeigen", show_text=True)
         apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", show_text=True)
         apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", "Hauptfenster leeren", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", show_text=True)
 
@@ -4547,6 +4549,7 @@ class MainWindow(QMainWindow):
         top.addWidget(self.clear_log_btn)
         top.addWidget(self.clear_main_btn)
         top.addStretch(1)
+        top.addWidget(self.device_info_btn)
         top.addWidget(self.about_btn)
 
         splitter = QSplitter(Qt.Vertical)
@@ -4860,6 +4863,7 @@ class MainWindow(QMainWindow):
 
         self.comm_settings_btn.clicked.connect(self.open_communication_settings)
         self.about_btn.clicked.connect(self.open_about_dialog)
+        self.device_info_btn.clicked.connect(self.open_device_info_dialog)
         self.cloud_btn.clicked.connect(self.open_warmlink_cloud_dialog)
         self.connect_btn.clicked.connect(self.connect_to_device)
         self.disconnect_btn.clicked.connect(self.disconnect_from_device)
@@ -5244,28 +5248,6 @@ class MainWindow(QMainWindow):
             if 32 <= ch <= 126:
                 chars.append(chr(ch))
         return "".join(chars)
-
-    def _wifi_barcode_words(self) -> list[str]:
-        words: list[str] = []
-        for reg_no in range(1001, 1008):
-            reg = self.latest_regs.get(reg_no)
-            if reg is None:
-                words.append("")
-            else:
-                words.append(self._decode_printable_ascii_word(int(reg.raw_value)))
-        return words
-
-    def _wifi_barcode_info(self) -> tuple[str, str]:
-        text = "".join(self._wifi_barcode_words()).strip().strip("\x00")
-        if not (text.startswith("WF") and len(text) >= 8 and text[2:8].isdigit()):
-            return "", ""
-        yy = int(text[2:4])
-        month = int(text[4:6])
-        day = int(text[6:8])
-        date_text = ""
-        if 1 <= month <= 12 and 1 <= day <= 31:
-            date_text = f"20{yy:02d}-{month:02d}-{day:02d}"
-        return text, date_text
 
     @staticmethod
     def _is_ascii_block_header_register(reg_no: int) -> bool:
@@ -6559,6 +6541,13 @@ class MainWindow(QMainWindow):
         self.last_bus_label.setText(f"0x{frame.slave_addr:02X}")
         self.direction_label.setText(direction)
         self._update_bus_table(frame)
+        if frame.crc_ok:
+            if frame.mode == "read-request":
+                self.device_info_tracker.feed_read_request(int(frame.typ))
+            if self.device_info_tracker.feed_fc16(bytes(frame.raw)):
+                dlg = self.device_info_dialog
+                if dlg is not None and dlg.isVisible():
+                    dlg.refresh()
         matched_pending_read = self._apply_pending_read_response(frame)
         matched_passive_read = False
         if self.current_backend_key() == "display_modbus" and not matched_pending_read:
@@ -6693,7 +6682,10 @@ class MainWindow(QMainWindow):
                 else:
                     self.previous_value_texts[reg.reg] = f"{old_value} / 0x{old_value:04X}"
             if changed:
-                self._send_udp_register_change(reg, old_value)
+                # Identity/ProductKey words stay local; do not leak them into
+                # optional support/UDP diagnostics.
+                if not (200 <= int(reg.reg) <= 215 or 2001 <= int(reg.reg) <= 2006):
+                    self._send_udp_register_change(reg, old_value)
                 changed_regs_for_live_search.append(reg.reg)
             self.last_values[reg.reg] = reg.raw_value
 
@@ -6735,10 +6727,13 @@ class MainWindow(QMainWindow):
 
             if changed and (not self.log_changes_only_cb.isChecked() or reg.name):
                 name = f" {reg.name}" if reg.name else ""
-                self._log(
-                    f"REG {reg.reg}{name}: {old_value if old_value is not None else '--'} -> "
-                    f"{reg.raw_value} ({reg.display_value})"
-                )
+                if 200 <= int(reg.reg) <= 215 or 2001 <= int(reg.reg) <= 2006:
+                    self._log(f"REG {reg.reg}{name}: [Geräteidentität maskiert]")
+                else:
+                    self._log(
+                        f"REG {reg.reg}{name}: {old_value if old_value is not None else '--'} -> "
+                        f"{reg.raw_value} ({reg.display_value})"
+                    )
 
         # Display-HMI: 1012 (Sollmodus) und 2012 (Ist-/Betriebsstatus) verwenden
         # unterschiedliche Codetabellen. Ein früherer Diagnose-Fallback 1012 -> 2012
@@ -9172,10 +9167,12 @@ class MainWindow(QMainWindow):
     def _display_block_header_warning(self, start_addr: int, words: list[int]) -> str:
         if len(words) < 10:
             return "Block ist kürzer als 10 Wörter."
-        expected_sig = [0x5746, 0x3232, 0x3130, 0x3235, 0x3034, 0x3735]
         warnings = []
-        if words[:6] != expected_sig:
-            warnings.append("Signatur WF2210250475 passt nicht")
+        signature = decode_wifi_id(words[:6])
+        if signature is None:
+            warnings.append("Blockkennung ist nicht exakt zwölfstelliges druckbares ASCII")
+        elif not re.fullmatch(r"WF\d{10}", signature):
+            warnings.append("Blockkennung entspricht nicht dem bekannten Format WF + zehn Ziffern")
         if (words[8] & 0xFFFF) != 0x0210:
             warnings.append(f"Marker-Länge W9 ist 0x{words[8] & 0xFFFF:04X}, erwartet 0x0210")
         if (words[9] & 0xFFFF) != int(start_addr):

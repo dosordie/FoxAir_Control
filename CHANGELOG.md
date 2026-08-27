@@ -1,3 +1,12 @@
+## Unreleased
+
+### Geräte-Info
+- Neuer eigenständiger, nicht blockierender Geräte-Info-Dialog neben dem About-Button.
+- Read-only Register-4-Sonderabfrage ohne falschen generischen FC03-Timeout; Fortschritt über acht eindeutige Datenblöcke und 90-Sekunden-Teilabschluss.
+- Gemeinsame Decoder für WiFi-ID und Datum, PHNIX/Aliyun ProductKey, C544-Hardware-/Softwareinformation sowie C37B-Quittung.
+- Geräteidentität aus dem About-Dialog entfernt und fest codierte reale Gerätekennung durch strukturelle Prüfung ersetzt.
+- Register 200–215, 50043–50044 und 50500–50512 vollständig beschriftet.
+
 ## 0.5.51
 
 ### Highlights
