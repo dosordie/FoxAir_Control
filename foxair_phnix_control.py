@@ -142,8 +142,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.54"
-BUILD_DATE = "2026-07-17"
+APP_VERSION = "0.2.61"
+BUILD_DATE = "2026-08-27"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -4336,16 +4336,38 @@ class MainWindow(QMainWindow):
         self.device_info_dialog.activateWindow()
 
     def start_device_info_cycle(self):
-        """Send the special register-4 trigger without creating a normal FC03 pending read."""
+        """Ask the LTE modem to publish the device information to the cloud."""
         worker = self._active_io_worker()
         if worker is None:
             QMessageBox.warning(self, "Geräte-Info", "Keine aktive Busverbindung.")
             return
+        answer = QMessageBox.question(
+            self,
+            "Sonderfunktion Update Anfrage Cloud",
+            "Diese Sonderfunktion liest die Geräteinformationen nicht direkt aus.\n\n"
+            "Das LTE-Modem wird veranlasst, ein MQTT-Telegramm mit den Geräteinformationen "
+            "an die Cloud zu senden. Anfrage wirklich auslösen?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
         self.device_info_tracker.start()
-        self._log("Geräteinfozyklus angefordert: FC03 Register 4, read-only; keine OTA-Übertragung.")
+        self._log("Sonderfunktion Update Anfrage Cloud: LTE-Modem sendet Geräteinformationen per MQTT an die Cloud.")
         worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
         if self.device_info_dialog is not None:
             self.device_info_dialog.refresh()
+
+    def read_device_info_registers(self):
+        """Read the available device information via the documented FC03 requests."""
+        worker = self._active_io_worker()
+        if worker is None:
+            QMessageBox.warning(self, "Geräte-Info", "Keine aktive Busverbindung.")
+            return
+        self._log("Geräte-Info wird per FC03 gelesen: 200/1, 2001/8 und 50500/13.")
+        self.send_read_request(200, 1, slave_addr=0x63, label="Geräte-Info Sonderread 200")
+        self.send_read_request(2001, 8, slave_addr=0x63, label="Geräte-Info WiFi-ID")
+        self.send_read_request(50500, 13, slave_addr=0x63, label="Geräte-Info C544")
 
     def open_warmlink_cloud_dialog(self):
         if self.warmlink_cloud_dialog is None:

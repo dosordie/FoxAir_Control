@@ -42,15 +42,18 @@ class DeviceInfoDialog(QDialog):
                     ("ack", "C544-Quittungsstatus"), ("ack_meaning", "Bedeutung")])
 
         row = QHBoxLayout()
-        self.read_btn = QPushButton("Geräteinformationen auslesen")
+        self.read_btn = QPushButton("Sonderfunktion Update Anfrage Cloud")
+        self.direct_read_btn = QPushButton("Geräte-Info auslesen")
         copy_btn = QPushButton("Werte kopieren")
         close_btn = QPushButton("Schließen")
         row.addWidget(self.read_btn)
+        row.addWidget(self.direct_read_btn)
         row.addWidget(copy_btn)
         row.addStretch(1)
         row.addWidget(close_btn)
         root.addLayout(row)
         self.read_btn.clicked.connect(main_window.start_device_info_cycle)
+        self.direct_read_btn.clicked.connect(main_window.read_device_info_registers)
         copy_btn.clicked.connect(self.copy_values)
         close_btn.clicked.connect(self.close)
         self.timer = QTimer(self)
@@ -77,6 +80,8 @@ class DeviceInfoDialog(QDialog):
 
     def refresh(self):
         tracker = self.main_window.device_info_tracker
+        cached = {int(reg): int(item.raw_value) for reg, item in self.main_window.latest_regs.items()}
+        tracker.hydrate_cache(cached)
         tracker.check_timeout()
         snap = tracker.snapshot
         self.fields["transport"].setText(self.main_window.current_backend_label())
@@ -101,8 +106,17 @@ class DeviceInfoDialog(QDialog):
                  (snap.hardware_code is not None, "Hardware-/Softwareinformation empfangen"),
                  (snap.ack_status == 7, "Versionsinformation vom LTE-Modem bestätigt")]
         marks[3] = (marks[3][0], f"Datenblöcke {snap.block_count}/8 empfangen")
-        self.progress.setPlainText("\n".join(("✓ " if done else "○ ") + text for done, text in marks))
+        progress_text = "\n".join(("✓ " if done else "○ ") + text for done, text in marks)
+        # Do not replace identical content every 500 ms: QTextEdit would otherwise
+        # reset a user-selected scroll position to the beginning.
+        if self.progress.toPlainText() != progress_text:
+            scrollbar = self.progress.verticalScrollBar()
+            old_position = scrollbar.value()
+            was_at_bottom = old_position >= scrollbar.maximum()
+            self.progress.setPlainText(progress_text)
+            scrollbar.setValue(scrollbar.maximum() if was_at_bottom else old_position)
         self.read_btn.setEnabled(not snap.running and self.main_window._active_io_worker() is not None)
+        self.direct_read_btn.setEnabled(self.main_window._active_io_worker() is not None)
 
     def copy_values(self):
         lines = [f"{label}: {self.fields[key].text()}" for key, label in [

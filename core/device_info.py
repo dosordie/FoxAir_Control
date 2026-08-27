@@ -11,11 +11,11 @@ from typing import Optional, Sequence
 
 DEVICE_INFO_BLOCK_STARTS = (1001, 1091, 1181, 1271, 1361, 1451, 2001, 2091)
 C37B_STATUS = {
-    3: "Datenphase und erste MD5-/Stagingprüfung erfolgreich; Abschluss läuft",
+    3: "Datenphase und erste MD5-/Stagingprüfung erfolgreich; Abschluss/Promotion läuft noch",
     4: "Daten-/Staging-/MD5- beziehungsweise Push-Fehler",
     5: "Mainboard-OTA/Promotion erfolgreich abgeschlossen",
     6: "Mainboard-Upgrade/Promotion fehlgeschlagen",
-    7: "C544-Geräte-/Versionsinformation verarbeitet und quittiert",
+    7: "C544-Geräte-/Versionsinformation vom LTE-Modem verarbeitet und quittiert",
 }
 
 
@@ -143,7 +143,7 @@ def fc16_data_words(raw: bytes) -> Optional[tuple[int, list[int]]]:
 
 
 class DeviceInfoTracker:
-    TIMEOUT_SECONDS = 90.0
+    TIMEOUT_SECONDS = 180.0
 
     def __init__(self) -> None:
         self.snapshot = DeviceInfoSnapshot()

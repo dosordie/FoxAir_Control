@@ -5638,97 +5638,104 @@
     "mode": "service",
     "name": "C37B Quittungsstatus",
     "type": "U16",
-    "info": "Status 3–7; Status 7 bestätigt die Verarbeitung der C544-Geräteinformation."
+    "info": "C37B-Status der Geräte-/Versionsinformation; Bedeutungen 3–7 werden in der Registerliste angezeigt.",
+    "value_map": {
+      "3": "Datenphase und erste MD5-/Stagingprüfung erfolgreich; Abschluss/Promotion läuft noch",
+      "4": "Daten-/Staging-/MD5- beziehungsweise Push-Fehler",
+      "5": "Mainboard-OTA/Promotion erfolgreich abgeschlossen",
+      "6": "Mainboard-Upgrade/Promotion fehlgeschlagen",
+      "7": "C544-Geräte-/Versionsinformation vom LTE-Modem verarbeitet und quittiert"
+    }
   },
   "50500": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Service-/OTA-SSID (C544)",
     "type": "U16",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50501": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwarecode ASCII Wort 1/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50502": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwarecode ASCII Wort 2/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50503": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwarecode ASCII Wort 3/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50504": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwarecode ASCII Wort 4/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50505": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwareversion ASCII Wort 1/2",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50506": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Hardwareversion ASCII Wort 2/2",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50507": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Softwarecode ASCII Wort 1/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50508": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Softwarecode ASCII Wort 2/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50509": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Softwarecode ASCII Wort 3/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50510": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Softwarecode ASCII Wort 4/4",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50511": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Interne Softwareversion ASCII Wort 1/2",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
   "50512": {
-    "function": "10",
-    "mode": "service",
+    "function": "03/16",
+    "mode": "read",
     "name": "Interne Softwareversion ASCII Wort 2/2",
     "type": "ASCII",
-    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation."
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   }
 }
