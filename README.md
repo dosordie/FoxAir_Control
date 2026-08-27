@@ -66,12 +66,14 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 
 ### Geräte-Info über Warmlink/LTE
 
-Die Schaltfläche **Geräte-Info** öffnet eine lokale, read-only Diagnoseansicht. Eine
-Abfrage sendet FC03 an Busadresse `0x63`, Register `4`, Anzahl `1`. Dieser besondere
-Read erwartet keine normale FC03-Antwort, sondern startet den asynchronen
-Geräteinfozyklus; er startet **kein OTA** und überträgt keine Firmware. Die acht
+Die Schaltfläche **Geräte-Info** öffnet eine lokale Diagnoseansicht. **Geräte-Info
+auslesen** liest die verfügbaren Angaben regulär per FC03 (`200/1`, `2001/8` und
+`50500/13`). Die bestätigungspflichtige **Sonderfunktion Update Anfrage Cloud**
+sendet dagegen FC03 an Busadresse `0x63`, Register `4`, Anzahl `1`. Dieser besondere
+Read erwartet keine normale FC03-Antwort, sondern veranlasst das LTE-Modem, ein
+MQTT-Telegramm mit den Geräteinformationen an die Cloud zu senden. Die acht
 normalen Datenblöcke enden bei Register 2180. Hardware-/Softwareinformation kann
-erst nach ungefähr 50 Sekunden eintreffen, der Dialog wartet insgesamt 90 Sekunden
+erst nach ungefähr 50 Sekunden eintreffen, der Dialog wartet insgesamt 180 Sekunden
 und behält bei einem Timeout alle Teilergebnisse.
 
 Angezeigt werden die individuelle WiFi-/Kommunikationsmodul-ID aus 2001–2006, der

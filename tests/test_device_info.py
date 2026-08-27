@@ -63,12 +63,13 @@ def test_progress_counts_only_eight_unique_confirmed_blocks():
     assert 2181 not in DEVICE_INFO_BLOCK_STARTS
 
 
-def test_timeout_preserves_partial_results_after_90_seconds():
+def test_timeout_preserves_partial_results_after_180_seconds():
     tracker = DeviceInfoTracker()
     tracker.start(now=10)
     tracker.snapshot.product_key = "testProduct1"
     assert tracker.check_timeout(now=99) is False
-    assert tracker.check_timeout(now=100) is True
+    assert tracker.check_timeout(now=189) is False
+    assert tracker.check_timeout(now=190) is True
     assert tracker.snapshot.state == DeviceInfoCycleState.PARTIAL_TIMEOUT
     assert tracker.snapshot.product_key == "testProduct1"
 
@@ -78,6 +79,14 @@ def test_register_four_trigger_is_not_a_pending_read_source():
     body = source.split("def start_device_info_cycle", 1)[1].split("\n    def ", 1)[0]
     assert "pending_read_requests.append" not in body
     assert "enqueue_read(4, 1" in body
+
+
+def test_direct_device_info_read_uses_documented_fc03_requests():
+    source = open("foxair_phnix_control.py", encoding="utf-8").read()
+    body = source.split("def read_device_info_registers", 1)[1].split("\n    def ", 1)[0]
+    assert "send_read_request(200, 1" in body
+    assert "send_read_request(2001, 8" in body
+    assert "send_read_request(50500, 13" in body
 
 
 def test_about_has_no_wifi_identity_and_button_is_adjacent():

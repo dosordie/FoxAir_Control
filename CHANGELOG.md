@@ -1,6 +1,11 @@
 ## Unreleased
 
+## 0.2.61
+
 ### Geräte-Info
+- Reguläres FC03-Auslesen über 200/1, 2001/8 und C544 50500/13 ergänzt.
+- Cloud-Sonderfunktion eindeutig benannt, mit MQTT-Hinweis und Sicherheitsabfrage versehen.
+- Wartezeit auf 180 Sekunden erhöht und scrollbare Fortschrittsanzeige stabilisiert.
 - Neuer eigenständiger, nicht blockierender Geräte-Info-Dialog neben dem About-Button.
 - Read-only Register-4-Sonderabfrage ohne falschen generischen FC03-Timeout; Fortschritt über acht eindeutige Datenblöcke und 90-Sekunden-Teilabschluss.
 - Gemeinsame Decoder für WiFi-ID und Datum, PHNIX/Aliyun ProductKey, C544-Hardware-/Softwareinformation sowie C37B-Quittung.
