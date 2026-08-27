@@ -1,118 +1,116 @@
 {
   "_comment": "Hier sind alle Register welche auf allen Modbussen gleich sind. 1xxx les-/schreibbar, 2xxx nur lesen.",
   "200": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 1 / ASCII Zeichen 1-2",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "1-2",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 1/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "201": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 2 / ASCII Zeichen 3-4",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "3-4",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 2/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "202": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 3 / ASCII Zeichen 5-6",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "5-6",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 3/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "203": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 4 / ASCII Zeichen 7-8",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "7-8",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 4/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "204": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 5 / ASCII Zeichen 9-10",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "9-10",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 5/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "205": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Kennung Wort 6 / ASCII Zeichen 11-12",
-    "type": "BLOCK",
-    "ascii_group": "block_header",
-    "ascii_pos": "11-12",
-    "info": "ASCII Big Endian je 16-Bit-Wort; nur druckbare ASCII-Zeichen werden in der Wertspalte angezeigt."
+    "name": "PHNIX/Aliyun ProductKey Wort 6/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "206": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 7/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "207": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 8/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "208": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 9/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "209": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 10/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "210": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 11/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "211": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 12/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "212": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 13/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "213": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 14/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "214": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 15/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "215": {
-    "function": "03",
+    "function": "10",
     "mode": "read",
-    "name": "Interner HMI-Kommunikationsblock / Reserve",
-    "type": "BLOCK"
+    "name": "PHNIX/Aliyun ProductKey Wort 16/16",
+    "type": "ASCII",
+    "info": "Big-Endian ASCII; vollständiger Schlüssel wird nur lokal im Geräte-Info-Dialog angezeigt."
   },
   "1001": {
     "function": "03",
@@ -3683,9 +3681,10 @@
     "value_map": {
       "0": "Aus",
       "1": "Einfach / 1 Kontakt",
-      "2": "2 Kontakte"
+      "2": "2 Kontakte",
+      "3": "Modbus / virtueller SG-Eingang"
     },
-    "description": "Aktivierung/Auswahl SG Ready: Aus / 1 Kontakt / 2 Kontakte"
+    "description": "Aktivierung/Auswahl SG Ready: Aus / 1 Kontakt / 2 Kontakte / virtueller SG-Eingang über direktes User-/Mainboard-Modbus-Register 8801"
   },
   "1335": {
     "block": "SG",
@@ -4487,7 +4486,7 @@
   },
   "2019": {
     "bit_map": {
-      "0": "Kompressor-Ausgang (0=AUS/1=EIN)",
+      "0": "Kompressor tatsächlich laufend / Inverter-Istfrequenz ungleich 0 (0=AUS/1=EIN)",
       "1": "Reserviert",
       "10": "011 Alarm-Ausgang (0=AUS/1=EIN)",
       "11": "012 Kurbelgehäuseheizung (0=AUS/1=EIN)",
@@ -4495,7 +4494,7 @@
       "13": "021 Heizungswasserpumpe (0=AUS/1=EIN)",
       "14": "022 Hydraulikmodul Wasserkreislauf Elektroheizung (0=AUS/1=EIN)",
       "15": "023 Hydraulikmodul WW-Tank Elektroheizung (0=AUS/1=EIN)",
-      "2": "003 Lüfter Hochgeschwindigkeitsausgang (0=AUS/1=EIN)",
+      "2": "Mindestens ein Lüfter tatsächlich aktiv / Lüfter-Istrückmeldung ungleich 0 (0=AUS/1=EIN)",
       "3": "Lüfter Niedriggeschwindigkeitsausgang (0=AUS/1=EIN)",
       "4": "005 Wasserpumpen-Ausgang (0=AUS/1=EIN)",
       "5": "006 Warmwasserpumpen-Ausgang (0=AUS/1=EIN)",
@@ -4815,11 +4814,11 @@
   "2057": {
     "function": "16",
     "mode": "read",
-    "name": "Livewert 2057 (nicht T34; Bedeutung unbestätigt)",
+    "name": "T35 / AC Input Current",
     "type": "RAW",
-    "unit": "",
-    "notes": "Korrektur V0.2.41 fix8: 2057 ist nicht T34. T34 / AC-Spannung ist 2062.",
-    "last_review": "v0.2.41 fix8 user correction"
+    "unit": "A",
+    "notes": "Firmware V3.3: T35 / AC-Eingangsstrom. T34 / AC-Spannung ist Register 2062.",
+    "last_review": "FW3.3 Reverse Engineering"
   },
   "2058": {
     "block": "T",
@@ -4946,7 +4945,7 @@
     "code": "T30",
     "function": "16",
     "mode": "read",
-    "name": "Kompressorfrequenz",
+    "name": "Kompressor-Sollfrequenz",
     "type": "DIGI1"
   },
   "2072": {
@@ -5330,8 +5329,9 @@
   "2109": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Interner V3.3-Statuswert",
+    "type": "RAW",
+    "description": "Wird von V3.3 aktiv beschrieben; genaue fachliche Bedeutung noch offen."
   },
   "2110": {
     "function": "16",
@@ -5439,26 +5439,30 @@
   "2125": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Warmwasser – High Word",
+    "type": "RAW",
+    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2126": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Warmwasser – Low Word",
+    "type": "RAW",
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2127": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler thermisch Warmwasser – High Word",
+    "type": "RAW",
+    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
   },
   "2128": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler thermisch Warmwasser – Low Word",
+    "type": "RAW",
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
   },
   "2129": {
     "function": "16",
@@ -5530,24 +5534,24 @@
     "mode": "read",
     "type": "TEMP1",
     "unit": "°C",
-    "name": "Berechneter x0,1-Regel-/Modulwert (Kandidat)",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Wert driftete langsam ungefähr im Bereich 286–301. Live-Ergänzung 2026-07-17: als 0,1 °C in der Wertspalte formatieren; Interpretation als 30,3 bis 31,4 °C ist plausibel. Denkbar sind Temperatur-, Leistungs-, Modul- oder berechnete Regelgrößen. Funktion und Einheit unbestätigt."
+    "name": "T04 Außentemperatur – zweiter Veröffentlichungsweg",
+    "note": "Firmware V3.3: zweiter Veröffentlichungsweg der T04-Außentemperatur; TEMP1-Skalierung 0,1 °C."
   },
   "2137": {
     "function": "03",
     "mode": "read",
     "type": "POWER_KW_X10",
-    "name": "Elektrische Leistung / Spiegel von 2054 (Kandidat)",
+    "name": "Elektrische WP-/Inverterleistung ohne Zusatzanteil",
     "unit": "kW",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2137 folgte Register 2054 sehr eng. Starker Kandidat für einen Spiegelwert von 2054 und damit vermutlich elektrische Leistung bzw. aktuelle Leistungsaufnahme. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
+    "note": "Firmware V3.3: elektrische WP-/Inverterleistung ohne Zusatzanteil; RAW / 10 = kW. Kein bloßer Spiegel von Register 2054."
   },
   "2138": {
     "function": "03",
     "mode": "read",
     "type": "POWER_KW_X10",
-    "name": "Thermische Leistung / Spiegel von 2059 (Kandidat)",
+    "name": "Thermische WP-Leistung ohne Zusatzanteil",
     "unit": "kW",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register 2138 folgte Register 2059 sehr eng. Starker Kandidat für einen Spiegelwert von 2059 und damit vermutlich thermische Leistung. Skalierung und exakte Einheit noch nicht abschließend bestätigt."
+    "note": "Firmware V3.3: thermische WP-Leistung ohne Zusatzanteil; RAW / 10 = kW. Kein bloßer Spiegel von Register 2059."
   },
   "2139": {
     "function": "03",
@@ -5625,5 +5629,141 @@
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "50043": {
+    "function": "10",
+    "mode": "service",
+    "name": "Service-/OTA-SSID (C37B)",
+    "type": "U16",
+    "info": "Semantische Service-SSID; 0x0063 entspricht dezimal 99."
+  },
+  "50044": {
+    "function": "10",
+    "mode": "service",
+    "name": "C37B Quittungsstatus",
+    "type": "U16",
+    "info": "C37B-Status der Geräte-/Versionsinformation; Bedeutungen 3–7 werden in der Registerliste angezeigt.",
+    "value_map": {
+      "3": "Datenphase und erste MD5-/Stagingprüfung erfolgreich; Abschluss/Promotion läuft noch",
+      "4": "Daten-/Staging-/MD5- beziehungsweise Push-Fehler",
+      "5": "Mainboard-OTA/Promotion erfolgreich abgeschlossen",
+      "6": "Mainboard-Upgrade/Promotion fehlgeschlagen",
+      "7": "C544-Geräte-/Versionsinformation vom LTE-Modem verarbeitet und quittiert"
+    }
+  },
+  "50500": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Service-/OTA-SSID (C544)",
+    "type": "U16",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50501": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwarecode ASCII Wort 1/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50502": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwarecode ASCII Wort 2/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50503": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwarecode ASCII Wort 3/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50504": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwarecode ASCII Wort 4/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50505": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwareversion ASCII Wort 1/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50506": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Hardwareversion ASCII Wort 2/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50507": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Softwarecode ASCII Wort 1/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50508": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Softwarecode ASCII Wort 2/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50509": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Softwarecode ASCII Wort 3/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50510": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Softwarecode ASCII Wort 4/4",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50511": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Interne Softwareversion ASCII Wort 1/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "50512": {
+    "function": "03/16",
+    "mode": "read",
+    "name": "Interne Softwareversion ASCII Wort 2/2",
+    "type": "ASCII",
+    "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "2178": {
+    "function": "03",
+    "mode": "read",
+    "name": "Temperatur des Temperatur-/Feuchtesensors",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
+  },
+  "2179": {
+    "function": "03",
+    "mode": "read",
+    "name": "Relative Luftfeuchtigkeit",
+    "type": "DIGI5",
+    "unit": "% rF",
+    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
+  },
+  "2180": {
+    "function": "03",
+    "mode": "read",
+    "name": "Berechneter Taupunkt",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
   }
 }

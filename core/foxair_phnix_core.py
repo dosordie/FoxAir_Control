@@ -563,13 +563,21 @@ def parse_frame_at(buf: bytearray, j: int, max_words: int = 512):
 
 
 def find_frames(buf: bytearray, max_len: int = 512):
-    frames = []
-    i = 0
-    saw_incomplete_frame = False
+    """Remove and return complete frames while preserving an incomplete tail.
 
+    ``parse_frame_at`` returns offsets relative to the current buffer.  Consume
+    each complete frame immediately so those offsets can never become stale if
+    the next candidate is incomplete.
+    """
+    frames = []
     while True:
-        j = next_frame_pos(buf, i - 1)
+        j = next_frame_pos(buf, -1)
         if j < 0:
+            # Kein sicherer Frame-Anfang gefunden: nur kleines Resync-Fenster
+            # behalten. A possible unit byte at the end must survive recv().
+            keep_from = max(0, len(buf) - 32)
+            if keep_from > 0:
+                del buf[:keep_from]
             break
 
         parsed = parse_frame_at(buf, j, max_len)
@@ -580,25 +588,16 @@ def find_frames(buf: bytearray, max_len: int = 512):
             # fortsetzen. Nicht in eingebettete Marker wie "02 10 07 D1" resyncen.
             if j > 0:
                 del buf[:j]
-            saw_incomplete_frame = True
             break
 
         if parsed is None:
-            i = j + 1
+            # This marker cannot start a valid frame. Drop it and rescan the
+            # remaining bytes, rather than retaining offsets into old data.
+            del buf[:j + 1]
             continue
 
         frames.append(parsed)
-        i = parsed[8]
-
-    if frames:
-        del buf[:frames[-1][8]]
-    elif saw_incomplete_frame:
-        pass
-    else:
-        # Kein sicherer Frame-Anfang gefunden: nur kleines Resync-Fenster behalten.
-        keep_from = max(0, len(buf) - 32)
-        if keep_from > 0:
-            del buf[:keep_from]
+        del buf[:parsed[8]]
 
     return frames
 
@@ -885,4 +884,3 @@ class ModbusSerialClient:
             raise RuntimeError("Nicht verbunden")
         self.ser.write(data)
         self.ser.flush()
-

@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from warmlink_raw_capture import DEFAULT_CAPTURE_SETTINGS, WarmlinkRawCapture, parse_modbus
+from warmlink_raw_capture import (
+    DEFAULT_CAPTURE_SETTINGS,
+    PHNIX_LTE_SPECIAL_REGISTERS,
+    WarmlinkRawCapture,
+    format_special_frame_for_main_log,
+    parse_modbus,
+)
 from core.settings_manager import ensure_defaults
 
 
@@ -147,6 +153,130 @@ def test_parse_modbus_does_not_treat_payload_chunks_as_unknown_frames():
     assert "function" not in payload2
 
 
+@pytest.mark.parametrize(
+    ("addr", "name"),
+    [(4, "DEVICE_INFO_CYCLE_TRIGGER"), (6, "UART_485_STARTUP_HANDSHAKE"),
+     (200, "PRODUCT_KEY"), (500, "DTU_INFO_ERROR_STATUS"),
+     (50000, "OTA_OFFER"), (50007, "OTA_FILE_INFO"),
+     (50026, "OTA_CANCEL_REQUEST"), (50028, "OTA_CANCEL_RESPONSE"),
+     (50030, "OTA_BOARD_STATUS"), (50033, "OTA_BLOCK_ACK"),
+     (50037, "OTA_ROLLBACK_REQUEST"), (50040, "OTA_ROLLBACK_RESPONSE"),
+     (50043, "BOARD_INFO_STATUS_ACK"), (50500, "BOARD_VERSION_INFO"),
+     (50600, "OTA_FIRMWARE_BLOCK")],
+)
+def test_parse_modbus_labels_phnix_lte_special_registers(addr, name):
+    frame = bytes([0x63, 0x10]) + addr.to_bytes(2, "big") + b"\x00\x02\x04\x00"
+    parsed = parse_modbus(frame)
+    assert parsed["addr"] == addr
+    assert parsed["phnix_special"] is True
+    assert parsed["phnix_name"] == name
+
+
+def test_all_documented_phnix_ota_registers_are_known():
+    assert set(range(50000, 50044)) & set(PHNIX_LTE_SPECIAL_REGISTERS) == {
+        50000, 50007, 50026, 50028, 50030, 50033, 50037, 50040, 50043,
+    }
+    assert {50500, 50600} <= set(PHNIX_LTE_SPECIAL_REGISTERS)
+
+
+def test_ota_table_fields_make_offer_and_status_words_readable():
+    from warmlink_raw_capture import ota_table_display_parts, ota_table_display_value
+
+    assert ota_table_display_parts(50000) == ("OTA C350", "Updateangebot · Ziel-SSID/Gerätekennung")
+    assert ota_table_display_parts(50003) == ("OTA C350", "Updateangebot · Softwarecode (ASCII 3/4)")
+    assert ota_table_display_parts(50031) == ("OTA C36E", "Board-Status · Update-Ergebnis")
+    assert ota_table_display_parts(50500) == ("BOARD C544", "Versions-/Geräteinformation · SSID")
+    assert ota_table_display_parts(50512) == ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 2/2)")
+    assert ota_table_display_parts(1234) == ("", "")
+    assert ota_table_display_value(50001, 0x3832) == "82  (ASCII)"
+    assert ota_table_display_value(50005, 0x3030) == "00  (ASCII)"
+    assert ota_table_display_value(50501, 0x3832) == "82  (ASCII)"
+    assert "gleiche Firmware" in ota_table_display_value(50031, 0)
+    assert ota_table_display_value(1234, 99) == ""
+
+
+def test_capture_keeps_crc_delimited_c5a8_special_layout_across_chunks(tmp_path):
+    # C5A8 intentionally does not use the normal FC10 byte-count layout.
+    body = bytes.fromhex("63 10 c5 a8 00 09") + bytes(range(256)) * 2
+    frame = _with_crc(body.hex())
+    cap = WarmlinkRawCapture({"directory": str(tmp_path), "write_events": True}, str(tmp_path))
+    cap.start()
+    for pos in range(0, len(frame), 73):
+        cap.capture_rx(frame[pos:pos + 73])
+    cap.stop(join=True)
+
+    assert next(tmp_path.glob("*.rx.bin")).read_bytes() == frame
+    events = _events(next(tmp_path.glob("*.events.jsonl")))
+    complete = [ev for ev in events if ev.get("event") == "frame_complete"]
+    assert len(complete) == 1
+    assert complete[0]["addr"] == 50600
+    assert complete[0]["special_layout"] is True
+    assert complete[0]["payload_len"] == len(frame) - 8
+    special = [ev for ev in events if ev.get("event") == "phnix_lte_special_register"]
+    assert len(special) == 1
+    assert special[0]["name"] == "OTA_FIRMWARE_BLOCK"
+    assert special[0]["expected_direction"] == "DTU_TO_BOARD"
+
+
+def test_capture_forwards_special_frame_metadata_without_payload(tmp_path):
+    forwarded = []
+    payload = bytes(range(14))
+    frame = _fc16_frame(addr=50000, qty=7, payload=payload)
+    cap = WarmlinkRawCapture(
+        {"directory": str(tmp_path), "write_events": True},
+        str(tmp_path),
+        special_frame_cb=forwarded.append,
+    )
+    cap.start()
+    cap.capture_rx(frame)
+    cap.stop(join=True)
+
+    assert len(forwarded) == 1
+    assert forwarded[0]["name"] == "OTA_OFFER"
+    assert forwarded[0]["expected_quantity"] == 7
+    assert forwarded[0]["qty"] == 7
+    assert "payload" not in forwarded[0]
+
+
+def test_normal_lte_capture_displays_special_frame_in_main_log():
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    class FakeMain:
+        capture_log_queue = __import__("queue").Queue()
+        capture_special_frame_queue = __import__("queue").Queue()
+        logs = []
+        def _update_warmlink_capture_button(self): pass
+        def _log(self, text): self.logs.append(text)
+        def current_backend_key(self): return "warmlink_raw"
+        def _is_warmlink_backend_key(self, key): return key == "warmlink_raw"
+        def _capture_settings(self): return {"mode": "normal"}
+
+    fake = FakeMain()
+    fake.capture_special_frame_queue.put({
+        "addr": 50033, "qty": 4, "expected_quantity": 4,
+        "name": "OTA_BLOCK_ACK", "category": "ota",
+        "function": "0x10", "expected_direction": "BOARD_TO_DTU", "len": 17,
+    })
+    app.MainWindow._drain_capture_gui_log_queue(fake)
+    assert len(fake.logs) == 1
+    assert "PHNIX-LTE OTA" in fake.logs[0]
+    assert "OTA_BLOCK_ACK" in fake.logs[0]
+    assert "50033/0xC371" in fake.logs[0]
+
+
+def test_special_frame_main_log_text_is_payload_free_and_marks_mismatch():
+    text = format_special_frame_for_main_log({
+        "addr": 50000, "qty": 6, "expected_quantity": 7,
+        "name": "OTA_OFFER", "category": "ota", "function": "0x10",
+        "expected_direction": "DTU_TO_BOARD", "len": 23,
+        "payload": "must-not-be-shown",
+    })
+    assert "OTA_OFFER" in text
+    assert "50000/0xC350" in text
+    assert "Qty=6 (erwartet 7)" in text
+    assert "must-not-be-shown" not in text
+
+
 def test_capture_marks_large_fc16_payload_chunks_as_continuation_without_unknown_function(tmp_path):
     cap = WarmlinkRawCapture({"directory": str(tmp_path), "write_events": True}, str(tmp_path))
     cap.start()
@@ -230,6 +360,73 @@ def _fc16_frame(addr: int = 0x082B, qty: int = 90, payload: bytes | None = None)
 
 def _events(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+OTA_OFFER = bytes.fromhex("63 10 C3 50 00 07 0E 00 63 38 32 34 30 30 36 34 34 30 30 33 33 59 4D")
+OTA_OFFER_ACK = bytes.fromhex("63 10 C3 50 00 07 B5 DC")
+OTA_BOARD_STATUS = bytes.fromhex("63 10 C3 6E 00 02 04 00 63 00 00 35 59")
+
+
+def _feed_ota(tmp_path: Path, chunks: list[bytes]):
+    shown = []
+    cap = WarmlinkRawCapture({"directory": str(tmp_path), "write_events": True}, str(tmp_path),
+                            special_frame_cb=shown.append)
+    cap.start()
+    for chunk in chunks:
+        cap.capture_rx(chunk)
+    cap.stop(join=True)
+    return _events(next(tmp_path.glob("*.events.jsonl"))), shown
+
+
+@pytest.mark.parametrize("chunking", ["whole", "bytes", "together"])
+def test_exact_ota_precheck_frames_are_correlated_and_decoded(tmp_path, chunking):
+    frames = [OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS]
+    if chunking == "whole": chunks = frames
+    elif chunking == "bytes": chunks = [bytes([byte]) for frame in frames for byte in frame]
+    else: chunks = [b"".join(frames)]
+    events, shown = _feed_ota(tmp_path, chunks)
+
+    complete = [event for event in events if event.get("event") == "frame_complete"]
+    assert len(complete) == 3
+    assert [event["frame_kind"] for event in complete] == ["write_request", "write_ack", "special_response"]
+    assert complete[0]["software_code"] == "82400644"
+    assert complete[0]["firmware_version"] == "0033"
+    assert complete[1]["correlation"] == "OTA_OFFER"
+    assert complete[2]["device_id"] == 0x0063
+    assert complete[2]["status"] == 0
+    assert len([event for event in shown if event.get("addr") == 50000]) == 2
+    assert len([event for event in shown if event.get("addr") == 50030]) == 1
+    assert len([event for event in shown if event.get("event") == "ota_sequence_summary"]) == 1
+    assert any("ANGEBOT" in event.get("display_text", "") for event in shown)
+    assert any("ACK" in event.get("display_text", "") for event in shown)
+    assert any("STATUS" in event.get("display_text", "") for event in shown)
+    assert any("OTA-GLEICHVERSIONSTEST BEENDET" in event.get("display_text", "") for event in shown)
+    assert any("kein C357/C5A8 beobachtet" in event.get("display_text", "") for event in shown)
+
+
+@pytest.mark.parametrize("frame", [OTA_OFFER, OTA_OFFER_ACK, OTA_BOARD_STATUS])
+def test_exact_ota_frames_work_at_every_split_position(tmp_path, frame):
+    for split in range(1, len(frame)):
+        case = tmp_path / str(split); case.mkdir()
+        events, shown = _feed_ota(case, [frame[:split], frame[split:]])
+        assert len([event for event in events if event.get("event") == "frame_complete"]) == 1
+        assert len([event for event in shown if event.get("addr")]) == 1
+
+
+def test_buffered_unit_byte_is_not_lost_or_reported_as_unknown(tmp_path):
+    events, shown = _feed_ota(tmp_path, [b"\x63", OTA_BOARD_STATUS[1:7], OTA_BOARD_STATUS[7:]])
+    assert len([event for event in events if event.get("event") == "frame_complete"]) == 1
+    assert len([event for event in shown if event.get("addr") == 50030]) == 1
+    assert not [event for event in events if event.get("kind") == "unknown_function"]
+
+
+def test_crc_invalid_ota_is_not_displayed_and_next_valid_frame_is_found(tmp_path):
+    damaged = bytearray(OTA_OFFER); damaged[-1] ^= 0x01
+    events, shown = _feed_ota(tmp_path, [bytes(damaged), OTA_BOARD_STATUS])
+    complete = [event for event in events if event.get("event") == "frame_complete"]
+    assert len(complete) == 1
+    assert complete[0]["addr"] == 50030
+    assert not any(event.get("addr") == 50000 for event in shown)
 
 
 def test_capture_skips_existing_segment_prefix_and_starts_offsets_at_zero(tmp_path):

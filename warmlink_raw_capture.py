@@ -45,6 +45,188 @@ NORMAL_FC16_BLOCKS = {
     (0x082B, 90),
 }
 
+# Logger-/OTA-Kommandos des PHNIX-DTU. Diese Zuordnung gilt absichtlich nur
+# fuer den passiven Warmlink-LTE-Raw-Capture und wird nicht in die normalen
+# WP-, Standard- oder Display-Modbus-Registermaps gemischt.
+PHNIX_LTE_SPECIAL_REGISTERS: dict[int, dict[str, Any]] = {
+    4: {"name": "DEVICE_INFO_CYCLE_TRIGGER", "category": "logger", "quantity": 1},
+    6: {"name": "UART_485_STARTUP_HANDSHAKE", "category": "logger", "quantity": 1},
+    200: {"name": "PRODUCT_KEY", "category": "logger", "quantity": 16},
+    500: {"name": "DTU_INFO_ERROR_STATUS", "category": "logger", "quantity": None},
+    50000: {"name": "OTA_OFFER", "category": "ota", "quantity": 7, "expected_direction": "DTU_TO_BOARD"},
+    50007: {"name": "OTA_FILE_INFO", "category": "ota", "quantity": 19, "expected_direction": "DTU_TO_BOARD"},
+    50026: {"name": "OTA_CANCEL_REQUEST", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50028: {"name": "OTA_CANCEL_RESPONSE", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    50030: {"name": "OTA_BOARD_STATUS", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    50033: {"name": "OTA_BLOCK_ACK", "category": "ota", "quantity": 4, "expected_direction": "BOARD_TO_DTU"},
+    50037: {"name": "OTA_ROLLBACK_REQUEST", "category": "ota", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50040: {"name": "OTA_ROLLBACK_RESPONSE", "category": "ota", "quantity": 2, "expected_direction": "BOARD_TO_DTU"},
+    # C37B/Status 7 acknowledges the board information cycle.  It is not an
+    # OTA indicator by itself (the same address can also occur during OTA).
+    50043: {"name": "BOARD_INFO_STATUS_ACK", "category": "logger", "quantity": 2, "expected_direction": "DTU_TO_BOARD"},
+    50500: {"name": "BOARD_VERSION_INFO", "category": "logger", "quantity": 13, "expected_direction": "BOARD_TO_DTU"},
+    50600: {"name": "OTA_FIRMWARE_BLOCK", "category": "ota", "quantity": None, "expected_direction": "DTU_TO_BOARD", "special_layout": True},
+}
+
+
+# The ordinary Modbus decoder expands FC16 payloads into one table row per
+# 16-bit word.  Keep these UI labels separate from RegisterMap: these are
+# protocol fields, not independently readable/writable heat-pump registers.
+PHNIX_OTA_TABLE_FIELDS: dict[int, tuple[str, str]] = {
+    50000: ("OTA C350", "Updateangebot · Ziel-SSID/Gerätekennung"),
+    50001: ("OTA C350", "Updateangebot · Softwarecode (ASCII 1/4)"),
+    50002: ("OTA C350", "Updateangebot · Softwarecode (ASCII 2/4)"),
+    50003: ("OTA C350", "Updateangebot · Softwarecode (ASCII 3/4)"),
+    50004: ("OTA C350", "Updateangebot · Softwarecode (ASCII 4/4)"),
+    50005: ("OTA C350", "Updateangebot · Firmwareversion (ASCII 1/2)"),
+    50006: ("OTA C350", "Updateangebot · Firmwareversion (ASCII 2/2)"),
+    50030: ("OTA C36E", "Board-Status · Gerätekennung"),
+    50031: ("OTA C36E", "Board-Status · Update-Ergebnis"),
+    50500: ("BOARD C544", "Versions-/Geräteinformation · SSID"),
+    50501: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 1/4)"),
+    50502: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 2/4)"),
+    50503: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 3/4)"),
+    50504: ("BOARD C544", "Versions-/Geräteinformation · Hardwarecode (ASCII 4/4)"),
+    50505: ("BOARD C544", "Versions-/Geräteinformation · Hardwareversion (ASCII 1/2)"),
+    50506: ("BOARD C544", "Versions-/Geräteinformation · Hardwareversion (ASCII 2/2)"),
+    50507: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 1/4)"),
+    50508: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 2/4)"),
+    50509: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 3/4)"),
+    50510: ("BOARD C544", "Versions-/Geräteinformation · Softwarecode (ASCII 4/4)"),
+    50511: ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 1/2)"),
+    50512: ("BOARD C544", "Versions-/Geräteinformation · Firmwareversion (ASCII 2/2)"),
+}
+
+
+def ota_table_display_parts(reg_no: int) -> tuple[str, str]:
+    """Return a compact code/name for known OTA payload words in the GUI."""
+    return PHNIX_OTA_TABLE_FIELDS.get(int(reg_no), ("", ""))
+
+
+def ota_table_display_value(reg_no: int, raw_value: int) -> str:
+    """Make known ASCII/status OTA words readable without changing decoding."""
+    reg_no, raw_value = int(reg_no), int(raw_value) & 0xFFFF
+    if 50001 <= reg_no <= 50006 or 50501 <= reg_no <= 50512:
+        raw = raw_value.to_bytes(2, "big")
+        text = raw.decode("ascii", "replace")
+        if all(32 <= byte < 127 for byte in raw):
+            return f"{text}  (ASCII)"
+    if reg_no == 50031:
+        return f"{raw_value} – {OTA_STATUS_MEANINGS.get(raw_value, 'unbekannter Status')}"
+    return ""
+
+
+def _special_register_fields(addr: Any) -> dict[str, Any]:
+    try:
+        reg = int(addr)
+    except (TypeError, ValueError):
+        return {}
+    info = PHNIX_LTE_SPECIAL_REGISTERS.get(reg)
+    if not info:
+        return {}
+    return {
+        "phnix_special": True,
+        "phnix_name": info["name"],
+        "phnix_category": info["category"],
+        **({"expected_quantity": info["quantity"]} if info.get("quantity") is not None else {}),
+        **({"expected_direction": info["expected_direction"]} if info.get("expected_direction") else {}),
+        **({"special_layout": True} if info.get("special_layout") else {}),
+    }
+
+
+def format_special_frame_for_main_log(event: dict[str, Any]) -> str:
+    """Kompakte, payload-freie Darstellung fuer das LTE-Hauptfenster."""
+    if event.get("display_text"):
+        return str(event["display_text"])
+    addr = int(event.get("addr", 0))
+    qty = event.get("qty")
+    expected_qty = event.get("expected_quantity")
+    qty_text = str(qty) if qty is not None else "?"
+    if expected_qty is not None and int(qty or -1) != int(expected_qty):
+        qty_text += f" (erwartet {int(expected_qty)})"
+    direction = str(event.get("expected_direction") or "Richtung unbekannt")
+    layout = ", PHNIX-Sonderlayout" if event.get("special_layout") else ""
+    return (
+        f"PHNIX-LTE {str(event.get('category', 'Sonderframe')).upper()}: "
+        f"{event.get('name', 'unbekannt')} – Register {addr}/0x{addr:04X}, "
+        f"FC={event.get('function', '?')}, Qty={qty_text}, {direction}, "
+        f"{int(event.get('len', 0))} Byte{layout}"
+    )
+
+
+OTA_STATUS_MEANINGS = {
+    0: "gleiche Firmware, keine Übertragung",
+    1: "Update angenommen",
+    2: "Update abgelehnt",
+    3: "Übertragung fehlgeschlagen",
+}
+
+
+def format_ota_frame_for_visible_log(frame: bytes) -> Optional[str]:
+    """Decode a CRC-validated OTA FC16 frame for the ordinary UI log.
+
+    This deliberately operates beside the normal Modbus decoder.  Callers must
+    only pass frames which the stream parser has already CRC-validated; no
+    register-map or request/response state is changed here.
+    """
+    if len(frame) < 8 or frame[1] != 0x10:
+        return None
+    addr = int.from_bytes(frame[2:4], "big")
+    if addr not in {0xC350, 0xC357, 0xC36E, 0xC37B, 0xC544, 0xC5A8}:
+        return None
+    qty = int.from_bytes(frame[4:6], "big")
+    if len(frame) == 8:
+        if addr == 0xC350:
+            return "OTA C350 ACK empfangen"
+        return f"OTA {addr:04X} ACK empfangen (Anzahl={qty})"
+
+    # Standard FC16 puts byte count at index 6.  C5A8 is a PHNIX-specific
+    # CRC-delimited layout and consequently starts its body one byte earlier.
+    if frame[6] == len(frame) - 9:
+        payload = frame[7:-2]
+    elif addr == 0xC5A8:
+        payload = frame[6:-2]
+    else:
+        return None
+
+    if addr == 0xC350 and len(payload) >= 14:
+        target_ssid = int.from_bytes(payload[:2], "big")
+        software_code = payload[2:10].decode("ascii", "replace")
+        version = payload[10:14].decode("ascii", "replace")
+        return (f"OTA C350: Updateangebot, Softwarecode={software_code}, "
+                f"Version={version}, Ziel-SSID={target_ssid:04X}")
+    if addr == 0xC544 and qty == 13 and len(payload) == 26:
+        ssid = int.from_bytes(payload[:2], "big")
+        hardware_code = payload[2:10].decode("ascii", "replace").rstrip("\x00 ")
+        hardware_version = payload[10:14].decode("ascii", "replace").rstrip("\x00 ")
+        software_code = payload[14:22].decode("ascii", "replace").rstrip("\x00 ")
+        firmware_version = payload[22:26].decode("ascii", "replace").rstrip("\x00 ")
+        return (f"BOARD C544: Versions-/Geräteinformation, SSID={ssid:04X}, "
+                f"Hardwarecode={hardware_code}, Hardwareversion={hardware_version}, "
+                f"Softwarecode={software_code}, Firmwareversion={firmware_version}")
+    if addr == 0xC37B and len(payload) >= 4:
+        status = int.from_bytes(payload[2:4], "big")
+        if status == 7:
+            return "BOARD C37B: Status 7 – Geräteinformation bestätigt"
+        return f"BOARD C37B: Status {status}"
+    if addr == 0xC36E and len(payload) >= 4:
+        status = int.from_bytes(payload[2:4], "big")
+        meaning = OTA_STATUS_MEANINGS.get(status, "unbekannter Status")
+        return f"OTA C36E: Status={status} – {meaning}"
+    if addr == 0xC357:
+        offset = int.from_bytes(payload[:4], "big") if len(payload) >= 4 else 0
+        length = len(payload) - 4
+        if len(payload) >= 6:
+            declared = int.from_bytes(payload[4:6], "big")
+            if declared <= len(payload) - 6:
+                length = declared
+        return f"OTA C357: Firmware-Datenblock, Offset={offset}, Länge={length} Byte"
+    if addr == 0xC5A8:
+        phase = int.from_bytes(payload[:2], "big") if len(payload) >= 2 else None
+        suffix = f", Phase={phase}" if phase is not None else ""
+        return f"OTA C5A8: Flash-/Schreibphase{suffix}, Länge={len(payload)} Byte"
+    return None
+
 
 def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[str, Any]:
     """Conservatively classify a TCP chunk without assuming frame alignment."""
@@ -69,14 +251,17 @@ def parse_modbus(data: bytes, expected_unit_id: Optional[int] = None) -> dict[st
             ev.update({"parser": "frame", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
         elif fc in (0x06, 0x10) and len(data) >= 8:
             ev.update({"parser": "frame", "frame_type": f"0x{int.from_bytes(data[2:4], 'big'):04X}", "addr": int.from_bytes(data[2:4], "big"), "qty": int.from_bytes(data[4:6], "big")})
+        ev.update(_special_register_fields(ev.get("addr")))
     except Exception:
         ev["parser"] = "partial"
     return ev
 
 class WarmlinkRawCapture:
-    def __init__(self, settings: dict[str, Any], base_dir: str, log_cb: Optional[Callable[[str], None]] = None):
+    def __init__(self, settings: dict[str, Any], base_dir: str, log_cb: Optional[Callable[[str], None]] = None,
+                 special_frame_cb: Optional[Callable[[dict[str, Any]], None]] = None):
         cfg = dict(DEFAULT_CAPTURE_SETTINGS); cfg.update(settings or {})
         self.cfg = cfg; self.base_dir = base_dir; self.log_cb = log_cb or (lambda _m: None)
+        self.special_frame_cb = special_frame_cb or (lambda _event: None)
         self.q: queue.Queue = queue.Queue(maxsize=2000); self.thread: Optional[threading.Thread] = None; self.stop_evt = threading.Event()
         self.lock = threading.Lock(); self.status = CaptureStatus(); self.segment_date = ""; self.segment_no = 0
         self.rx = self.tx = self.events = None; self.summary_path = ""; self.active_paths: set[str] = set(); self.offsets = {"rx":0,"tx":0}
@@ -92,6 +277,9 @@ class WarmlinkRawCapture:
         self._last_protocol_alert = 0.0
         self._valid_rx_frames: list[float] = []
         self._last_rx_burst_alert = 0.0
+        self._ota_pending_writes: list[dict[str, Any]] = []
+        self._ota_precheck: Optional[dict[str, Any]] = None
+        self._ota_followups_seen: set[int] = set()
     def start(self, baseline: Any = None):
         if self.thread: return
         if baseline is not None: self.note_register_2104(baseline, str(baseline), baseline=True)
@@ -137,6 +325,7 @@ class WarmlinkRawCapture:
             except Exception as exc:
                 with self.lock: self.status.error = str(exc); self.status.active = False
                 self.log_cb(f"Warmlink Capture: Schreibfehler: {exc}"); self.stop_evt.set()
+        self._finalize_ota_sequence()
         self._close_files()
     def _dir(self) -> Path:
         p = Path(str(self.cfg.get("directory") or DEFAULT_CAPTURE_SETTINGS["directory"]));
@@ -196,7 +385,7 @@ class WarmlinkRawCapture:
         off=self.offsets[direction]; self.offsets[direction]+=len(data)
         ev={"ts":utc_iso(),"mono_s":now,"dir":direction,"offset":off,"len":len(data),"hex_head":data[:32].hex()}
         ev.update(self._parse_capture_chunk(direction, data)); self._write_event(ev)
-        self._index_complete_frames(direction, off, data)
+        self._index_complete_frames(direction, off, data, observed_mono=now)
         with self.lock:
             if direction=="rx": self.status.rx_size=self.offsets["rx"]; self.status.last_rx=ev["ts"]
             else: self.status.tx_size=self.offsets["tx"]; self.status.last_tx=ev["ts"]
@@ -214,7 +403,7 @@ class WarmlinkRawCapture:
             out = {"parser": "continuation", "continuation_addr": cont.get("addr"), "continuation_qty": cont.get("qty"), "continuation_remaining": remaining}
             cont["remaining"] = remaining
             return out
-        if parsed.get("function") == "0x10" and parsed.get("parser") == "frame":
+        if parsed.get("function") == "0x10" and parsed.get("parser") == "frame" and not parsed.get("special_layout"):
             qty = int(parsed.get("qty", 0)); addr = int(parsed.get("addr", -1))
             expected = 1 + 1 + 2 + 2 + 1 + (qty * 2) + 2 if qty > 0 and len(data) >= 7 and data[6] == (qty * 2) & 0xFF else 0
             if expected and len(data) < expected:
@@ -224,7 +413,7 @@ class WarmlinkRawCapture:
                 parsed["continuation_remaining"] = expected - len(data)
         return parsed
 
-    def _index_complete_frames(self, direction: str, offset: int, data: bytes):
+    def _index_complete_frames(self, direction: str, offset: int, data: bytes, observed_mono: Optional[float] = None):
         buf_state = self._frame_index_buffers[direction]
         buf = buf_state["data"]
         if not buf:
@@ -236,8 +425,11 @@ class WarmlinkRawCapture:
         while True:
             found = self._find_complete_frame(bytes(buf))
             if found is None:
-                if len(buf) > 4096:
-                    drop = len(buf) - 512
+                # OTA_FIRMWARE_BLOCK kann deutlich groesser als ein normales
+                # Modbus-RTU-Frame sein. Genug Historie behalten, damit dessen
+                # abschliessende CRC auch bei stark zerstueckeltem TCP erkannt wird.
+                if len(buf) > 1024 * 1024:
+                    drop = len(buf) - 256 * 1024
                     del buf[:drop]
                     buf_state["offset"] = int(buf_state["offset"]) + drop
                 return
@@ -246,7 +438,7 @@ class WarmlinkRawCapture:
                 del buf[:start]
                 buf_state["offset"] = int(buf_state["offset"]) + start
             frame_start = int(buf_state["offset"])
-            self._write_frame_complete_event(direction, frame_start, frame, meta)
+            self._write_frame_complete_event(direction, frame_start, frame, meta, observed_mono=observed_mono)
             del buf[:len(frame)]
             buf_state["offset"] = frame_start + len(frame)
 
@@ -272,18 +464,45 @@ class WarmlinkRawCapture:
             elif fc == 0x06:
                 candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": 1}))
             elif fc == 0x10:
+                addr = int.from_bytes(tail[2:4], "big") if len(tail) >= 4 else None
+                looks_like_request = False
                 if len(tail) >= 7:
                     bc = tail[6]
                     if bc % 2 == 0 and bc > 0 and 9 + bc <= 260:
-                        candidates.append((9 + bc, {"addr": int.from_bytes(tail[2:4], "big"), "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
-                candidates.append((8, {"addr": int.from_bytes(tail[2:4], "big") if len(tail) >= 6 else None, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+                        looks_like_request = bc == int.from_bytes(tail[4:6], "big") * 2
+                        candidates.append((9 + bc, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big"), "byte_count": bc, "payload_rel": 7, "payload_len": bc}))
+                # A fragmented request may currently contain exactly eight
+                # bytes. Its byte-count is not an ACK CRC and must not be
+                # tested as one before the advertised payload has arrived.
+                if not looks_like_request:
+                    candidates.append((8, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big") if len(tail) >= 6 else None}))
+                if addr == 50600:
+                    special = self._find_crc_delimited_special_frame(tail)
+                    if special is not None:
+                        candidates.insert(0, (special, {"addr": addr, "qty": int.from_bytes(tail[4:6], "big"), "payload_rel": 6, "payload_len": special - 8, "special_layout": True}))
             for length, meta in candidates:
                 if len(tail) < length:
                     continue
                 frame = tail[:length]
                 if self._modbus_crc_ok(frame):
                     meta.update({"bus": frame[0], "function": f"0x{fc:02X}", "crc": int.from_bytes(frame[-2:], "little"), "crc_ok": True})
+                    meta.update(_special_register_fields(meta.get("addr")))
                     return start, frame, meta
+        return None
+
+    @staticmethod
+    def _find_crc_delimited_special_frame(data: bytes) -> Optional[int]:
+        """Find the end of C5A8 without imposing standard FC10 byte-count rules."""
+        if len(data) < 10:
+            return None
+        crc = 0xFFFF
+        for index, byte in enumerate(data):
+            crc ^= byte
+            for _ in range(8):
+                crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+            frame_len = index + 3
+            if index >= 7 and frame_len <= len(data) and crc == int.from_bytes(data[index + 1:index + 3], "little"):
+                return frame_len
         return None
 
     @staticmethod
@@ -297,7 +516,8 @@ class WarmlinkRawCapture:
                 crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
         return crc == int.from_bytes(frame[-2:], "little")
 
-    def _write_frame_complete_event(self, direction: str, offset_start: int, frame: bytes, meta: dict[str, Any]):
+    def _write_frame_complete_event(self, direction: str, offset_start: int, frame: bytes, meta: dict[str, Any],
+                                    observed_mono: Optional[float] = None):
         ev = {
             "ts": utc_iso(),
             "event": "frame_complete",
@@ -314,14 +534,141 @@ class WarmlinkRawCapture:
         for key in ("addr", "qty", "byte_count"):
             if meta.get(key) is not None:
                 ev[key] = meta.get(key)
+        ev.update(_special_register_fields(ev.get("addr")))
+        ev.update(self._classify_fc16_frame(frame, ev, observed_mono))
         if meta.get("payload_rel") is not None:
             ev["payload_offset"] = offset_start + int(meta.get("payload_rel", 0))
             ev["payload_len"] = int(meta.get("payload_len", 0))
         self._write_event(ev)
+        if ev.get("phnix_special"):
+            special_event = {
+                "ts": ev["ts"], "event": "phnix_lte_special_register",
+                "dir": direction, "offset_start": offset_start,
+                "offset_end": offset_start + len(frame), "len": len(frame),
+                "function": ev["function"], "addr": ev.get("addr"),
+                "qty": ev.get("qty"), "crc_ok": True,
+                "name": ev.get("phnix_name"), "category": ev.get("phnix_category"),
+                "expected_direction": ev.get("expected_direction"),
+                "expected_quantity": ev.get("expected_quantity"),
+                "special_layout": bool(ev.get("special_layout")),
+                "frame_kind": ev.get("frame_kind"),
+            }
+            for key in ("device_id", "ssid", "hardware_code", "hardware_version", "software_code",
+                        "firmware_version", "status", "correlation", "response_ms"):
+                if key in ev:
+                    special_event[key] = ev[key]
+            special_event["display_text"] = self._format_ota_display(special_event)
+            self._write_event(special_event)
+            # Nur strukturierte Metadaten an die GUI geben. Die grossen bzw.
+            # ggf. sensiblen OTA-/ProductKey-Nutzdaten bleiben ausschliesslich
+            # in den Capture-Dateien und fluten nicht die Hauptfenster-Tabelle.
+            try:
+                self.special_frame_cb(dict(special_event))
+            except Exception as exc:
+                self.log_cb(f"Warmlink Capture: Sonderframe-Anzeige fehlgeschlagen: {exc}")
         if direction == "rx" and ev["crc_ok"] and ev["function"] in {"0x03", "0x06", "0x10"}:
             now = time.monotonic()
             self._valid_rx_frames.append(now)
             self._valid_rx_frames = [stamp for stamp in self._valid_rx_frames if now - stamp <= 10]
+
+    def _classify_fc16_frame(self, frame: bytes, ev: dict[str, Any], observed_mono: Optional[float]) -> dict[str, Any]:
+        """Decode FC16 only after the complete frame has passed its CRC check."""
+        if ev.get("function") != "0x10":
+            return {}
+        addr, qty = ev.get("addr"), ev.get("qty")
+        now = time.monotonic() if observed_mono is None else float(observed_mono)
+        if len(frame) == 8:
+            match = next((item for item in reversed(self._ota_pending_writes)
+                          if item["addr"] == addr and item["qty"] == qty), None)
+            out: dict[str, Any] = {"frame_kind": "write_ack"}
+            if match:
+                out["correlation"] = match["name"]
+                match["acked_at"] = now
+            return out
+        out = {"frame_kind": "special_response" if addr in {50028, 50030, 50033, 50040} else "write_request"}
+        payload = frame[7:-2] if len(frame) >= 9 and frame[6] == len(frame) - 9 else b""
+        if addr == 50000 and len(payload) == 14:
+            out.update(device_id=int.from_bytes(payload[:2], "big"),
+                       software_code=payload[2:10].decode("ascii", "replace"),
+                       firmware_version=payload[10:14].decode("ascii", "replace"))
+        elif addr == 50030 and len(payload) >= 4:
+            out.update(device_id=int.from_bytes(payload[:2], "big"), status=int.from_bytes(payload[2:4], "big"))
+            offer = next((item for item in reversed(self._ota_pending_writes)
+                          if item["addr"] == 50000 and item.get("acked_at") is not None), None)
+            if offer:
+                out["response_ms"] = round((now - offer["created_at"]) * 1000)
+                out["correlation"] = "OTA_OFFER_ACK"
+                if out["status"] == 0:
+                    self._ota_precheck = {"offer": offer, "status": 0}
+        elif addr == 50500 and qty == 13 and len(payload) == 26:
+            out.update(
+                frame_kind="board_version_info",
+                ssid=int.from_bytes(payload[:2], "big"),
+                hardware_code=payload[2:10].decode("ascii", "replace").rstrip("\x00 "),
+                hardware_version=payload[10:14].decode("ascii", "replace").rstrip("\x00 "),
+                software_code=payload[14:22].decode("ascii", "replace").rstrip("\x00 "),
+                firmware_version=payload[22:26].decode("ascii", "replace").rstrip("\x00 "),
+            )
+        elif addr == 50043 and len(payload) >= 4:
+            out.update(frame_kind="board_info_ack", status=int.from_bytes(payload[2:4], "big"))
+        if (out["frame_kind"] == "write_request" and addr in PHNIX_LTE_SPECIAL_REGISTERS
+                and PHNIX_LTE_SPECIAL_REGISTERS[addr]["category"] == "ota"):
+            self._ota_pending_writes.append({"addr": addr, "qty": qty,
+                                             "name": PHNIX_LTE_SPECIAL_REGISTERS[addr]["name"],
+                                             "created_at": now})
+        if addr in {50007, 50600}:
+            self._ota_followups_seen.add(int(addr))
+        return out
+
+    @staticmethod
+    def _event_clock(ts: Any) -> str:
+        text = str(ts or "")
+        if "T" in text:
+            return text.split("T", 1)[1][:12]
+        return text[:12]
+
+    def _format_ota_display(self, event: dict[str, Any]) -> str:
+        addr = int(event.get("addr", 0)); clock = self._event_clock(event.get("ts"))
+        prefix = f"[{clock}] OTA {addr:04X}"
+        if addr == 50000 and event.get("frame_kind") == "write_request":
+            return (f"{prefix} ANGEBOT: Gerät=0x{int(event.get('device_id', 0)):04X}, "
+                    f"Softwarecode={event.get('software_code', '?')}, Version={event.get('firmware_version', '?')}, "
+                    "Adresse=50000/0xC350, erwartete Richtung=LTE/Updater → Mainboard, CRC=OK")
+        if addr == 50000 and event.get("frame_kind") == "write_ack":
+            return (f"{prefix} ACK: Register={event.get('qty', '?')}, Bezug=C350-Angebot, "
+                    "Adresse=50000/0xC350, CRC=OK")
+        if addr == 50030:
+            status = int(event.get("status", -1)); meaning = " (Build identisch oder Ziel unpassend)" if status == 0 else ""
+            delay = f", Antwortzeit={event['response_ms']} ms" if event.get("response_ms") is not None else ""
+            return (f"{prefix} STATUS: Gerät=0x{int(event.get('device_id', 0)):04X}, Status={status}{meaning}{delay}, "
+                    "Adresse=50030/0xC36E, erwartete Richtung=Mainboard → LTE/Updater, CRC=OK")
+        if addr == 50500 and event.get("frame_kind") == "board_version_info":
+            return (f"BOARD C544: Versions-/Geräteinformation, SSID={int(event.get('ssid', 0)):04X}, "
+                    f"Hardwarecode={event.get('hardware_code', '?')}, "
+                    f"Hardwareversion={event.get('hardware_version', '?')}, "
+                    f"Softwarecode={event.get('software_code', '?')}, "
+                    f"Firmwareversion={event.get('firmware_version', '?')}")
+        if addr == 50043 and event.get("frame_kind") == "board_info_ack":
+            status = int(event.get("status", -1))
+            suffix = " – Geräteinformation bestätigt" if status == 7 else ""
+            return f"BOARD C37B: Status {status}{suffix}"
+        return format_special_frame_for_main_log({k: v for k, v in event.items() if k != "display_text"})
+
+    def _finalize_ota_sequence(self) -> None:
+        if not self._ota_precheck:
+            return
+        missing = []
+        if 50007 not in self._ota_followups_seen: missing.append("C357")
+        if 50600 not in self._ota_followups_seen: missing.append("C5A8")
+        suffix = f"; kein {'/'.join(missing)} beobachtet" if missing else ""
+        message = f"OTA-GLEICHVERSIONSTEST BEENDET: C350 → ACK → C36E/0{suffix}"
+        event = {"ts": utc_iso(), "event": "ota_sequence_summary", "result": "precheck_success",
+                 "followups_seen": sorted(self._ota_followups_seen), "display_text": message}
+        self._write_event(event)
+        try:
+            self.special_frame_cb(event)
+        except Exception as exc:
+            self.log_cb(f"Warmlink Capture: OTA-Sequenzanzeige fehlgeschlagen: {exc}")
     def _write_event(self, ev: dict[str,Any]):
         if self.events: self.events.write(json.dumps(ev, ensure_ascii=False, separators=(",",":"))+"\n")
     def _anomaly(self, direction, data, ev, now):
@@ -353,8 +700,8 @@ class WarmlinkRawCapture:
             kind="unknown_function"
         if ev.get("function")=="0x10":
             self.fc16_window.append((now, int(ev.get("addr",-1)), int(ev.get("qty",0)), len(data))); self.fc16_window=[x for x in self.fc16_window if now-x[0]<=60]
-            normal = (int(ev.get("addr",-1)), int(ev.get("qty",0))) in NORMAL_FC16_BLOCKS
-            unknown_addrs = {x[1] for x in self.fc16_window if (x[1], x[2]) not in NORMAL_FC16_BLOCKS}
+            normal = (int(ev.get("addr",-1)), int(ev.get("qty",0))) in NORMAL_FC16_BLOCKS or int(ev.get("addr", -1)) in PHNIX_LTE_SPECIAL_REGISTERS
+            unknown_addrs = {x[1] for x in self.fc16_window if (x[1], x[2]) not in NORMAL_FC16_BLOCKS and x[1] not in PHNIX_LTE_SPECIAL_REGISTERS}
             fc16_bytes = sum(x[3] for x in self.fc16_window)
             if (unknown_addrs and (len(self.fc16_window) >= 20 or fc16_bytes > 50*1024)) or fc16_bytes > 200*1024 or (self.firmware_changed and len(self.fc16_window) >= 10 and not normal):
                 kind="firmware_like_fc16_sequence"

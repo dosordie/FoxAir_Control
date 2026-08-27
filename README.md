@@ -59,9 +59,29 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Lesen und Schreiben per Modbus Standart, Modbus Display und Modbus Warmlink LTE
 - TCP/IP/ser2net oder USB-RS485/COM-Port
 - F1 Hilfe/About mit Version, GitHub-Link und Update-Prüfung
+- Eigenständige **Geräte-Info** für Mainboard-, ProductKey- und Kommunikationsmodul-Identitäten
 - Parameter-Einstellfenster mit Beschreibungen/Wissensdatenbank
 - Backup/Restore für Parameterbereiche mit Diff-Vorschau
 - Timer-Editoren, SG-Ready-Editor, Kontakt-/Lastausgang-/Fehlerdecoder
+
+### Geräte-Info über Warmlink/LTE
+
+Die Schaltfläche **Geräte-Info** öffnet eine lokale Diagnoseansicht. **Geräte-Info
+auslesen** liest die verfügbaren Angaben regulär per FC03 (`200/1`, `2001/8` und
+`50500/13`). Die bestätigungspflichtige **Sonderfunktion Update Anfrage Cloud**
+sendet dagegen FC03 an Busadresse `0x63`, Register `4`, Anzahl `1`. Dieser besondere
+Read erwartet keine normale FC03-Antwort, sondern veranlasst das LTE-Modem, ein
+MQTT-Telegramm mit den Geräteinformationen an die Cloud zu senden. Die acht
+normalen Datenblöcke enden bei Register 2180. Hardware-/Softwareinformation kann
+erst nach ungefähr 50 Sekunden eintreffen, der Dialog wartet insgesamt 180 Sekunden
+und behält bei einem Timeout alle Teilergebnisse.
+
+Angezeigt werden die individuelle WiFi-/Kommunikationsmodul-ID aus 2001–2006, der
+ProductKey als Kennzeichen der PHNIX/Aliyun Produkt- bzw. Cloudfamilie sowie
+Hardware- und Softwarecode des Mainboards. Die WiFi-ID ist nicht die Seriennummer
+des Typenschilds; der ProductKey ist ebenfalls keine individuelle Seriennummer.
+Vollständige WiFi-ID und ProductKey erscheinen bewusst nur im ausdrücklich
+geöffneten lokalen Dialog und werden nicht in normale Diagnoseausgaben übernommen.
 
 ## UDP-Diagnoseausgabe
 
