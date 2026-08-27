@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Geräte-Info und Registerdaten
+- Die drei direkten Geräte-Info-Reads werden mit jeweils einer Sekunde Buspause entzerrt.
+- Cloud-Sonderfunktion im Dialog dezent hervorgehoben und oberhalb der direkten Abfrage angeordnet.
+- Temperatur-/Feuchtesensor und Taupunkt (2178–2180) sowie die Warmwasser-Energiezähler-Wortpaare (2125–2128) dokumentiert.
+
 ## 0.2.61
 
 ### Geräte-Info

@@ -2244,10 +2244,22 @@
   "2122": {},
   "2123": {},
   "2124": {},
-  "2125": {},
-  "2126": {},
-  "2127": {},
-  "2128": {},
+  "2125": {
+    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
+    "source": "Registererkenntnisse Issue #116"
+  },
+  "2126": {
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
+    "source": "Registererkenntnisse Issue #116"
+  },
+  "2127": {
+    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
+    "source": "Registererkenntnisse Issue #116"
+  },
+  "2128": {
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
+    "source": "Registererkenntnisse Issue #116"
+  },
   "2129": {},
   "213": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; aktuell leer/Reserve. Nicht als WP-Parameter verwenden.",
@@ -2300,5 +2312,17 @@
   "2138": {
     "description": "Thermische WP-Leistung ohne Zusatzanteil; RAW / 10 = kW; kein bloßer Spiegel von 2059.",
     "source": "FW3.3 Reverse Engineering"
+  },
+  "2178": {
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "source": "Registererkenntnisse Issue #116"
+  },
+  "2179": {
+    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF.",
+    "source": "Registererkenntnisse Issue #116"
+  },
+  "2180": {
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt.",
+    "source": "Registererkenntnisse Issue #116"
   }
 }

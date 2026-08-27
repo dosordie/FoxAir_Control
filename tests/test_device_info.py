@@ -87,6 +87,16 @@ def test_direct_device_info_read_uses_documented_fc03_requests():
     assert "send_read_request(200, 1" in body
     assert "send_read_request(2001, 8" in body
     assert "send_read_request(50500, 13" in body
+    assert body.count("delay_ms=pause_ms") == 2
+    assert "pause_ms = 1000" in body
+
+
+def test_cloud_special_action_is_highlighted_above_direct_read():
+    source = open("dialogs/device_info_dialog.py", encoding="utf-8").read()
+    assert "background-color: #fff3cd" in source
+    assert source.index("read_actions.addWidget(self.read_btn)") < source.index(
+        "read_actions.addWidget(self.direct_read_btn)"
+    )
 
 
 def test_about_has_no_wifi_identity_and_button_is_adjacent():

@@ -5439,26 +5439,30 @@
   "2125": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Warmwasser – High Word",
+    "type": "RAW",
+    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2126": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Warmwasser – Low Word",
+    "type": "RAW",
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2127": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler thermisch Warmwasser – High Word",
+    "type": "RAW",
+    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
   },
   "2128": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler thermisch Warmwasser – Low Word",
+    "type": "RAW",
+    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
   },
   "2129": {
     "function": "16",
@@ -5737,5 +5741,29 @@
     "name": "Interne Softwareversion ASCII Wort 2/2",
     "type": "ASCII",
     "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
+  },
+  "2178": {
+    "function": "03",
+    "mode": "read",
+    "name": "Temperatur des Temperatur-/Feuchtesensors",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
+  },
+  "2179": {
+    "function": "03",
+    "mode": "read",
+    "name": "Relative Luftfeuchtigkeit",
+    "type": "DIGI5",
+    "unit": "% rF",
+    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
+  },
+  "2180": {
+    "function": "03",
+    "mode": "read",
+    "name": "Berechneter Taupunkt",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
   }
 }

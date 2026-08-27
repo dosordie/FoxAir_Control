@@ -42,12 +42,20 @@ class DeviceInfoDialog(QDialog):
                     ("ack", "C544-Quittungsstatus"), ("ack_meaning", "Bedeutung")])
 
         row = QHBoxLayout()
+        read_actions = QVBoxLayout()
         self.read_btn = QPushButton("Sonderfunktion Update Anfrage Cloud")
+        self.read_btn.setStyleSheet(
+            "QPushButton { background-color: #fff3cd; color: #664d03; "
+            "border: 1px solid #e6c96a; border-radius: 3px; padding: 5px 9px; }"
+            "QPushButton:hover { background-color: #ffe69c; }"
+            "QPushButton:disabled { background-color: #eee; color: #888; border-color: #bbb; }"
+        )
         self.direct_read_btn = QPushButton("Geräte-Info auslesen")
         copy_btn = QPushButton("Werte kopieren")
         close_btn = QPushButton("Schließen")
-        row.addWidget(self.read_btn)
-        row.addWidget(self.direct_read_btn)
+        read_actions.addWidget(self.read_btn)
+        read_actions.addWidget(self.direct_read_btn)
+        row.addLayout(read_actions)
         row.addWidget(copy_btn)
         row.addStretch(1)
         row.addWidget(close_btn)

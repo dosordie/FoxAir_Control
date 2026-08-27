@@ -93,6 +93,13 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert main["2109"]["name"] == "Interner V3.3-Statuswert"
     assert main["2136"]["type"] == "TEMP1"
     assert main["2137"]["type"] == main["2138"]["type"] == "POWER_KW_X10"
+    assert main["2125"]["name"].endswith("High Word")
+    assert main["2126"]["name"].endswith("Low Word")
+    assert main["2127"]["name"].endswith("High Word")
+    assert main["2128"]["name"].endswith("Low Word")
+    assert main["2178"]["type"] == main["2180"]["type"] == "TEMP1"
+    assert main["2179"]["type"] == "DIGI5"
+    assert main["2179"]["unit"] == "% rF"
 
     # The shared map is also used by Warmlink. 8801 must therefore remain out
     # until maps can be selected per interface without implying FC03 support.
