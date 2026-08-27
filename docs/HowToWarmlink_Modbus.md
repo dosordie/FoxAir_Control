@@ -2,13 +2,17 @@
 
 ## Zweck
 
-Diese Anleitung beschreibt, wie ein USB-RS485-Adapter parallel auf den Modbus zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) aufgelegt wird. Damit kann der vorhandene Datenverkehr mitgeschnitten und analysiert werden, ohne die bestehende Verbindung zum LTE-Modem zu trennen.
+Diese Anleitung beschreibt ausschließlich den **Hardware-Anschluss eines USB-RS485-Adapters** an den Warmlink-/LTE-Modbus der untersuchten FoxAir/PHNIX-Wärmepumpe.
 
-> **Wichtig:** Der zusätzliche USB-RS485-Adapter ist beim Mithören nur als Empfänger gedacht. Er darf nicht als zweiter Modbus-Master aktiv Telegramme auf den Bus senden, solange das LTE-Modem angeschlossen ist.
+Der Adapter wird parallel auf die vorhandene RS485-Verbindung zwischen Wärmepumpen-Mainboard und Warmlink-/LTE-Modem (DTU) aufgelegt. Die bestehende Verbindung zum LTE-Modem bleibt dabei unverändert bestehen.
+
+> **Hinweis zum aktiven Betrieb:** Für einen reinen Mitschnitt sollte der zusätzliche USB-RS485-Adapter möglichst nur mithören. Über denselben Adapter sind jedoch auch aktive Modbus-Abfragen und Schreibzugriffe möglich und wurden im Projekt bereits erfolgreich verwendet. Da das LTE-Modem gleichzeitig weiter kommuniziert, befinden sich dabei mehrere aktive Teilnehmer auf demselben RS485-Bus. Das kann praktisch funktionieren, es gibt dabei aber keine koordinierte Bus-Arbitrierung; zeitgleiche Telegramme können sich daher gegenseitig stören. Aktive Zugriffe sollten deshalb bewusst und nicht unnötig häufig erfolgen.
+
+Die Bedienung und Konfiguration des Langzeit-Captures in FoxAir Control ist separat in [warmlink_raw_capture.md](warmlink_raw_capture.md) beschrieben.
 
 ## Schnittstellenparameter
 
-Für den Warmlink-/LTE-Modbus der hier untersuchten FoxAir/PHNIX-Wärmepumpe wurden folgende Parameter verwendet:
+Für den Warmlink-/LTE-Modbus der hier untersuchten FoxAir/PHNIX-Wärmepumpe werden folgende Parameter verwendet:
 
 - **Baudrate:** 9600 Baud
 - **Datenbits:** 8
@@ -16,7 +20,112 @@ Für den Warmlink-/LTE-Modbus der hier untersuchten FoxAir/PHNIX-Wärmepumpe wur
 - **Stopbits:** 1
 - Kurzform: **9600 8N1**
 
-Nicht mit dem Display-/DWIN-Bus verwechseln: Dieser verwendet bei der untersuchten Anlage eine andere Schnittstelle bzw. Baudrate.
+Nicht mit dem Display-/DWIN-Bus verwechseln: Der Displaybus arbeitet bei der untersuchten Anlage mit **4800 Baud**.
+
+## Identifizierte Warmlink-/LTE-DTU-Hardware
+
+Bei der untersuchten Anlage wurde das Warmlink-/LTE-DTU geöffnet und die sichtbaren Hardwarebezeichnungen dokumentiert. Die folgenden Angaben beziehen sich auf genau dieses Gerät und müssen nicht für andere PHNIX-/FoxAir-DTU-Versionen gelten.
+
+### Trägerplatine
+
+Auf der Leiterplatte ist direkt aufgedruckt:
+
+- **Name:** `MXL290`
+- **Board-Datum:** `2021-05-25`
+- **B/T:** `1.6 mm`
+- **C/T:** `1 oz`
+
+Eine eindeutige öffentliche technische Dokumentation zur Bezeichnung `MXL290` konnte bisher nicht gefunden werden. Es handelt sich daher sehr wahrscheinlich um eine kundenspezifische DTU-/Trägerplatine.
+
+Eindeutige gerätespezifische Serien-/IMEI-Nummern werden hier bewusst nicht vollständig veröffentlicht.
+
+### Mobilfunkmodul
+
+Auf dem abgeschirmten Mobilfunkmodul befindet sich unter anderem die Kennzeichnung:
+
+```text
+Z30AN S2-107EQ
+```
+
+Die vollständige SIMCom-PN **`S2-107EQ-Z30AN`** wird in öffentlich verfügbaren Firmware-/Hardwareunterlagen dem **SIMCom SIM7600E-H** zugeordnet. Damit ist die Identifikation als SIM7600E-H sehr wahrscheinlich.
+
+Quellen:
+
+- SIMCom Produktseite SIM7600X-H / SIM7600E-H: https://www.simcom.com/product/SIM7600X-H.html
+- Dokumentierte PN-Zuordnung `S2-107EQ-Z30AN` zum SIM7600E-H: https://github.com/Xinyuan-LilyGO/LilyGo-Modem-Series/blob/main/docs/en/esp32/sim7600-esp32/upgrade/sim7600_upgrade.md
+
+Der SIM7600E-H ist ein LTE-Cat.-4-Modul und stellt laut SIMCom unter anderem **USB, UART, GNSS und AT-Command-Schnittstellen** bereit. SIMCom nennt außerdem FOTA als unterstützte Softwarefunktion.
+
+> **Wichtig:** Die Identifikation basiert derzeit auf der sichtbaren PN-Zuordnung. Eine zusätzliche Bestätigung direkt über das Modem, z. B. mit `AT+SIMCOMATI`, `AT+CGMM` oder `AT+CGMR`, steht noch aus.
+
+### USB-Anschluss auf der DTU-Platine
+
+Auf der MXL290-Platine ist ein **Micro-USB-Anschluss** vorhanden und eindeutig mit `USB` beschriftet.
+
+Da das vermutete SIM7600E-H selbst eine USB-Schnittstelle besitzt, ist dieser Anschluss für Diagnosezwecke besonders interessant. **Noch nicht bestätigt ist jedoch, ob der Micro-USB-Port der MXL290-Platine direkt auf die USB-Leitungen des SIM7600E-H geführt ist oder ob zusätzliche Logik dazwischenliegt.**
+
+Ein sinnvoller erster Test ist deshalb ausschließlich die USB-Erkennung am PC, ohne Konfigurationsänderungen oder Firmwarezugriffe.
+
+Bei einem direkt angebundenen SIM7600E-H können unter Windows nach Installation der passenden SIMCom-Treiber mehrere USB-Interfaces erscheinen, typischerweise beispielsweise:
+
+- `SimTech HS-USB AT Port 9001`
+- `SimTech HS-USB Diagnostics 9001`
+- `SimTech HS-USB NMEA 9001`
+- ggf. weitere USB-Interfaces
+
+Ein vergleichbares USB-Interface-Layout ist z. B. in der SIM7600E-H-Dokumentation von Waveshare beschrieben:
+
+https://www.waveshare.com/wiki/SIM7600E-H_4G_HAT
+
+### Sicherer erster USB-Test
+
+Solange die Verschaltung der MXL290-Platine nicht vollständig bekannt ist, sollte der Test konservativ erfolgen:
+
+1. DTU zunächst normal über die Wärmepumpe versorgen.
+2. Vor Verbindung mit dem PC prüfen, ob USB-VBUS auf der DTU-Seite bereits Spannung führt bzw. wie die USB-Versorgung verschaltet ist.
+3. Wenn möglich für den ersten Diagnoseversuch ein USB-Datenkabel verwenden, bei dem **VBUS/+5 V nicht verbunden** ist, während D+, D- und GND verbunden bleiben.
+4. Windows-Gerätemanager beobachten und neu erscheinende USB-/COM-Geräte dokumentieren.
+5. Noch keine Firmwaretools und keine schreibenden/konfigurationsändernden AT-Kommandos verwenden.
+
+Falls ein SIMCom-AT-Port erscheint, sind als erste rein lesende Abfragen sinnvoll:
+
+```text
+AT
+ATI
+AT+SIMCOMATI
+AT+CGMI
+AT+CGMM
+AT+CGMR
+AT+CSUB
+AT+CSQ
+AT+COPS?
+AT+CPSI?
+AT+CGSN
+```
+
+`AT+CGSN` kann eine eindeutige Gerätekennung/IMEI zurückgeben. Solche eindeutigen Kennungen sollten bei öffentlichen Logs oder Screenshots vor Veröffentlichung anonymisiert werden.
+
+### Diagnose- und Firmware-Schnittstellen
+
+Die vorhandene USB-Schnittstelle ist für das Reverse Engineering interessant, weil der SIM7600-H laut Hersteller USB- und AT-Schnittstellen sowie FOTA unterstützt. Außerdem ist die konkrete PN `S2-107EQ-Z30AN` in öffentlich verfügbaren SIM7600E-H-Firmwareunterlagen ausdrücklich aufgeführt.
+
+Das bedeutet **nicht**, dass über diesen USB-Port automatisch die Firmware des Wärmepumpen-Mainboards zugänglich ist. Zu unterscheiden sind mindestens:
+
+- Firmware/Diagnose des **SIM7600E-H-Mobilfunkmoduls**,
+- mögliche Firmware/Logik der **MXL290-DTU-Platine**,
+- Firmware des eigentlichen **Wärmepumpen-Mainboards**.
+
+Für dieses Projekt ist insbesondere interessant, ob über USB zusätzliche Informationen über Cloud-Verbindung, DTU-Software, Updateablauf oder die Kommunikation zum Wärmepumpen-Mainboard sichtbar werden.
+
+> **Keine SIM7600-Firmware auf Verdacht flashen.** In den öffentlich verfügbaren Upgradehinweisen wird ausdrücklich darauf hingewiesen, dass die Firmware zur exakten PN des Moduls passen muss. Ziel ist zunächst ausschließlich passive Identifikation und Diagnose.
+
+### Sichtbare TTL-Kennzeichnung
+
+In der Nähe des Kabelsteckers ist auf der Platine außerdem die Beschriftung **`TTL`** sichtbar. Daneben befinden sich mehrere als `ESD` sowie `R27`/`R28`/`R29` bezeichnete Schutz-/Serienbauteile.
+
+Die Beschriftung ist ein deutlicher Hinweis auf eine TTL-/UART-bezogene Schnittstelle bzw. Signalgruppe. Aus dem Foto allein lassen sich jedoch weder das genaue Pinout noch die Signalpegel sicher ableiten.
+
+Vor einem Anschluss eines USB-TTL-Adapters müssen daher zunächst **GND, Versorgung und Signalpegel gemessen** bzw. die Leiterbahnen nachvollzogen werden. Insbesondere darf eine Versorgungsspannung nicht mit einem TTL-Signal verwechselt werden.
 
 ## Verwendeter USB-RS485-Adapter
 
@@ -75,10 +184,27 @@ Falls trotz korrekter Schnittstellenparameter keinerlei verwertbare Telegramme e
 5. Leitung **B** des USB-RS485-Adapters parallel zur vorhandenen B-Leitung anklemmen.
 6. Am USB-RS485-Adapter sicherstellen, dass **keine zusätzliche 120-Ω-Terminierung** aktiviert ist.
 7. Darauf achten, dass keine Litzen herausstehen und kein Kurzschluss zu benachbarten Klemmen entstehen kann.
-8. USB-RS485-Adapter mit dem PC bzw. Capture-System verbinden.
-9. Serielle Schnittstelle auf **9600 Baud, 8N1** einstellen.
-10. Wärmepumpe wieder einschalten und prüfen, ob Modbus-Telegramme empfangen werden.
-11. Falls keine plausiblen Daten sichtbar sind, A/B am USB-RS485-Adapter tauschen und erneut testen.
+8. USB-RS485-Adapter mit dem PC bzw. Capture-Rechner verbinden.
+9. Wärmepumpe wieder einschalten.
+10. Am PC prüfen, ob der USB-RS485-Adapter als serielle Schnittstelle bzw. COM-Port erkannt wird.
+11. Für den Warmlink-/LTE-Bus **9600 Baud, 8N1** verwenden.
+12. Falls keine plausiblen Daten empfangen werden, zunächst A/B am USB-RS485-Adapter tauschen und erneut prüfen.
+
+## Praxis: längere Leitung bis zum Capture-Rechner
+
+Der parallele Abgriff wurde an der untersuchten Anlage bereits erfolgreich mit einem **ca. 30 Meter langen Patchkabel bis in den Keller** getestet. Der USB-RS485-Adapter bzw. der Capture-Rechner muss damit nicht zwingend direkt neben der Wärmepumpe stehen.
+
+Für eine solche Verlängerung empfiehlt sich:
+
+- **A und B über ein gemeinsames verdrilltes Adernpaar** des Netzwerkkabels führen.
+- Die beiden RS485-Signale nicht auf Adern unterschiedlicher Paare verteilen.
+- Keine Versorgungsspannung der Wärmepumpe über das Patchkabel zum USB-Adapter führen.
+- Die zusätzliche **120-Ω-Terminierung am USB-RS485-Adapter deaktiviert lassen**, wie beim kurzen Parallelabgriff.
+- Bei Empfangsproblemen zuerst A/B, Steckverbindungen, Leitungslänge und eventuelle zusätzliche Terminierungen prüfen.
+
+> **Praxiserfahrung, keine allgemeine Garantie:** Die ca. 30 m lange Verbindung funktioniert an der hier untersuchten Anlage zuverlässig. Ob dieselbe Leitungslänge bei einer anderen Wärmepumpe, einem anderen RS485-Adapter, anderer Leitungsführung oder stärkerer elektrischer Störumgebung ebenfalls problemlos funktioniert, kann nicht garantiert werden.
+
+RS485 ist grundsätzlich für deutlich größere Leitungslängen ausgelegt. Bei einem zusätzlichen parallelen Diagnoseabgriff spielt jedoch auch die konkrete Bus-Topologie eine Rolle. Eine kurze Stichleitung ist elektrisch günstiger; die hier getesteten ca. 30 m zeigen lediglich, dass eine längere Verbindung in diesem konkreten Aufbau praktisch funktioniert.
 
 ## Wichtige Hinweise
 
@@ -88,21 +214,17 @@ Für das reine Mithören werden die beiden RS485-Datenleitungen **A und B** ben�
 
 Beim verwendeten USB-Adapter erfolgt die Versorgung über USB. Eine 12-V- oder sonstige Versorgung von der Wärmepumpe wird **nicht** benötigt.
 
-### Keinen zweiten Master erzeugen
+### Aktive Modbus-Zugriffe
 
-Das LTE-Modem kommuniziert bereits aktiv mit dem Mainboard. Ein parallel angeschlossener Adapter sollte deshalb beim Mitschnitt **keine eigenen Modbus-Abfragen oder Schreibbefehle senden**.
+Für einen rein passiven Mitschnitt sind keine eigenen Modbus-Abfragen nötig. Der parallel angeschlossene USB-RS485-Adapter kann aber auch aktiv zum Lesen oder Schreiben von Registern verwendet werden; dies wurde an der untersuchten Anlage bereits erfolgreich getestet.
 
-Software, die beim Öffnen des COM-Ports automatisch Geräte scannt, pollt oder Register liest, ist für einen rein passiven Mitschnitt ungeeignet. Im Zweifel zuerst mit einem Tool arbeiten, das den seriellen Port ausschließlich beobachtet bzw. keinerlei Telegramme sendet.
+Dabei bleibt das LTE-Modem weiterhin aktiv am Bus. RS485 verhindert physikalisch nicht, dass mehrere Teilnehmer senden, bietet in diesem Aufbau aber keine automatische Kollisionsvermeidung zwischen zwei unabhängig arbeitenden Mastern. Einzelne aktive Zugriffe können daher funktionieren, während unnötig häufiges Polling oder mehrere gleichzeitig aktive Diagnoseprogramme die Wahrscheinlichkeit von Telegrammkollisionen erhöhen.
 
 ### Keine zusätzliche Terminierung
 
-Der zusätzliche Abgriff ist nur ein kurzer paralleler Stub. Am USB-RS485-Adapter sollte für diesen Zweck **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden. Eine zusätzliche Terminierung kann den bestehenden RS485-Bus unnötig belasten.
+Der USB-RS485-Adapter wird als zusätzlicher Teilnehmer parallel auf den bestehenden Bus gelegt. Am Adapter sollte für diesen Aufbau **kein zusätzlicher 120-Ohm-Abschlusswiderstand** aktiviert werden, da eine zusätzliche Terminierung den bestehenden RS485-Bus unnötig belasten kann.
 
 Beim gezeigten Jhoinrch-Adapter ist deshalb besonders der mit **`120Ω`** beschriftete Jumper zu kontrollieren.
-
-### Leitungen kurz halten
-
-Die Stichleitung vom vorhandenen Bus zum USB-RS485-Adapter möglichst kurz halten. Für einen temporären Diagnoseabgriff sind kurze Leitungen unkritischer als eine lange, zusätzlich parallel verlegte Verbindung.
 
 ### Galvanische Trennung
 
@@ -124,28 +246,39 @@ Wer die Klemmen oder deren Funktion nicht eindeutig identifizieren kann, sollte 
 
 ### Keine Daten
 
-- COM-Port korrekt ausgewählt?
+- Wird der USB-RS485-Adapter vom PC als COM-/Seriellschnittstelle erkannt?
 - **9600 Baud / 8N1** eingestellt?
 - Wirklich die **485-A / 485-B**-Klemmen des DTU verwendet?
 - A und B korrekt angeschlossen?
 - A/B testweise vertauschen.
 - LTE-Modem/DTU und Wärmepumpe eingeschaltet und kommunizieren tatsächlich?
+- Ist am USB-RS485-Adapter versehentlich die 120-Ω-Terminierung aktiviert?
+- Bei langer Leitung: Steckverbindungen und verwendetes Adernpaar prüfen.
 
 ### Daten vorhanden, aber nur unbrauchbare Zeichen / ungültige Frames
 
 - Baudrate und 8N1 nochmals prüfen.
 - Sicherstellen, dass wirklich der LTE-/Warmlink-Bus und nicht der Display-/DWIN-Bus abgegriffen wurde.
 - A/B prüfen.
+- Bei längerer Leitung prüfen, ob A und B tatsächlich auf demselben verdrillten Adernpaar liegen.
 
 ### Kommunikation der Wärmepumpe wird nach Anschluss gestört
 
 USB-RS485-Adapter sofort wieder abklemmen und prüfen:
 
 - Ist die **120-Ω-Terminierung** am Adapter aktiviert?
-- Sendet die verwendete Software aktiv Daten?
+- Sendet die verwendete Software sehr häufig oder gleichzeitig mit einem weiteren Diagnoseprogramm aktiv Daten?
 - Wurde versehentlich eine zusätzliche Leitung wie Versorgungsspannung angeschlossen?
 - Ist der Adapter für echtes RS485 geeignet und elektrisch unauffällig?
-- Ist die zusätzliche Stichleitung unnötig lang?
+- Bei langer Leitung: verbessert sich das Verhalten mit einer kürzeren Testleitung?
+
+## Software / Langzeit-Capture
+
+Diese Datei beschreibt bewusst nur den **physischen Anschluss und die Verwendung des USB-RS485-Adapters am Warmlink-/LTE-Bus**.
+
+Die Bedienung des Warmlink-Langzeit-Captures, die passiven Capture-Modi, Dateiformate, Segmentierung und die Forschungsfunktion zum Mitschneiden eines gezielt ausgelösten Updatevorgangs sind separat beschrieben:
+
+**[Warmlink RAW Langzeit-Capture](warmlink_raw_capture.md)**
 
 ## Hinweis
 
