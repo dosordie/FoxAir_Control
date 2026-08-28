@@ -329,7 +329,7 @@
   "1022": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Offset Durchfluss",
     "type": "RAW"
   },
   "1023": {
@@ -2758,7 +2758,7 @@
     "block": "C",
     "code": "C06",
     "function": "03/16",
-    "last_review": "XLS / nicht im Video sichtbar",
+    "last_review": "XLS ",
     "mode": "r/w",
     "name": "Frequenzregelungsmodus",
     "type": "DIGI1"
@@ -2805,7 +2805,7 @@
     "block": "C",
     "code": "C10",
     "function": "03/16",
-    "last_review": "v0.2.32 video2 2026-06-14",
+    "last_review": "v0.2.32",
     "mode": "r/w",
     "name": "Min. Kompressorfrequenz im Heizbetrieb bei niedriger Umgebungstemperatur",
     "type": "HZ",
@@ -2829,7 +2829,7 @@
     "block": "R",
     "code": "R43",
     "function": "03/16",
-    "last_review": "v0.2.32 video 2026-06-14",
+    "last_review": "v0.2.32",
     "mode": "r/w",
     "name": "Max. Zielwassertemperaturbegrenzung bei niedriger AT im Heizbetrieb",
     "type": "TEMP1",
@@ -2914,7 +2914,7 @@
     "mode": "r/w",
     "name": "AT-Kompensationskurve Zone 1 aktivieren",
     "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
-    "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet; nicht Z16",
+    "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
@@ -5375,79 +5375,85 @@
   "2116": {
     "function": "16",
     "mode": "read",
-    "name": "PWM-Rückmeldung der Pumpe",
+    "name": "PWM-Rückmeldung (Durchfluss) der UP",
     "type": "PERCENT",
     "unit": "%",
-    "notes": "Live-Ergänzung 2026-07-17: vermutlich PWM-Rückmeldung der Umwälzpumpe in Prozent."
+    "notes": "selbst getestet."
   },
   "2117": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+     "name": "Energiezähler elektrisch Heizen - High",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
+    "unit": "kWh"
   },
   "2118": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Heizen",
+    "name": "Energiezähler elektrisch Heizen - Low",
     "type": "KWH",
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
     "unit": "kWh"
   },
   "2119": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler Wärmemenge Heizen - High",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
+    "unit": "kWh"
   },
   "2120": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler Wärmemenge Heizen",
+    "name": "Energiezähler Wärmemenge Heizen - Low",
     "type": "KWH",
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
     "unit": "kWh"
   },
   "2121": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+   "name": "Energiezähler elektrisch Kühlen - High",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; ",
+    "unit": "kWh"
   },
   "2122": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Kühlen",
+    "name": "Energiezähler elektrisch Kühlen - Low",
     "type": "KWH",
-    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "note": "Quelle: selbst getestet; ",
     "unit": "kWh"
   },
   "2123": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler Wärmemenge Kühlen - High",
+    "type": "KWH"
   },
   "2124": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler Wärmemenge Kühlen",
+    "name": "Energiezähler Wärmemenge Kühlen - Low",
     "type": "KWH",
-    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "note": "Quelle: selbst getestet",
     "unit": "kWh"
   },
   "2125": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Warmwasser – High Word",
-    "type": "RAW",
+    "name": "Energiezähler elektrisch Warmwasser – High",
+    "type": "KWH",
     "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2126": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Warmwasser – Low Word",
-    "type": "RAW",
+    "name": "Energiezähler elektrisch Warmwasser – Low",
+    "type": "KWH",
     "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
   },
   "2127": {
