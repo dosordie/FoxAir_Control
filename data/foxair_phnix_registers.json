@@ -5599,8 +5599,8 @@
     "mode": "read",
     "type": "TEMP1",
     "unit": "°C",
-    "name": "T04 Außentemperatur – zweiter Veröffentlichungsweg",
-    "note": "Firmware V3.3: zweiter Veröffentlichungsweg der T04-Außentemperatur; TEMP1-Skalierung 0,1 °C."
+    "name": "Außentemperatur – Rohwert ungedämpft",
+    "note": "Firmware V3.3: Außentemperatur ungedämpft, Rohwert ; TEMP1-Skalierung 0,1 °C."
   },
   "2137": {
     "function": "03",
