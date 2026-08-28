@@ -933,7 +933,7 @@
   "1065": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1066": {
@@ -949,7 +949,7 @@
   "1067": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1068": {
@@ -1929,13 +1929,13 @@
   "1150": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1151": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1152": {
@@ -3891,20 +3891,23 @@
   "1353": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset Zone-1-Raumtemperatur,",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1354": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset Zone-2-Raumtemperatur",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1355": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset lokaler T04-Außentemperaturfühler",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1356": {
     "block": "H",
@@ -4085,6 +4088,60 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Automatischer Werkstest Wasserpumpe Drehzahl (ASM)",
+    "type": "RAW"
+  },
+   "1388": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Mindestabstand/Floor eines temperaturkompensierten Wasser-Sollwerts / Erforschen!",
+    "type": "RAW"
+  },
+  "1389": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "AT-Differenz-Schaltschwelle eines Sollwert-/Kompensationsmodus, mit 1 K Hysterese / Erforschen!",
+    "type": "RAW"
+  },
+   "1402": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Bestätigungs-/Entprellzeit für Defrost-Ende über D17 / Erforschen!",
+    "notes": "Interessant, genau anschauen!.",
+    "type": "RAW"
+  },
+  "1422": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Verdichter-Frequenz-Derating in %, Default 70 % / Erforschen!",
+    "notes": "Interessant, genau anschauen!.",
+    "type": "RAW"
+  },
+   "1427": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "signed Schwellwert/Hysterese für State-Machine um MAIN:2154",
+    "notes": "Interessant, genau anschauen!, Funktion bestätigt, Messgröße 2154 noch offen",
+    "type": "RAW"
+  },
+  "1464": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "obere Schwelle des ausgewählten AT-Sensors für zeitqualifizierten Status / Erforschen",
+    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
+    "type": "RAW"
+  },
+  "1466": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
+    "notes": "Interessant, genau anschauen!",
+    "type": "RAW"
+  },
+   "1476": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
+    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
     "type": "RAW"
   },
   "1432": {
@@ -4471,7 +4528,7 @@
   "2017": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Reserviert / In V3.3 unbenutzt",
     "type": "RAW"
   },
   "2018": {
@@ -4517,7 +4574,7 @@
   "2021": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Reserviert / In V3.3 unbenutzt",
     "type": "RAW"
   },
   "2022": {
@@ -4548,19 +4605,19 @@
   "2026": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "?",
     "type": "RAW"
   },
   "2027": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "?",
     "type": "RAW"
   },
   "2028": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "?",
     "type": "RAW"
   },
   "2029": {
@@ -4605,8 +4662,10 @@
   "2033": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "optionaler zweiter Außentemperaturfühler",
+    "note": "Umschaltbar per Reg....",
+    "type": "TEMP1",
+    "unit": "°C"
   },
   "2034": {
     "bit_map": {
@@ -4678,13 +4737,13 @@
   "2040": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Hydraulikmodul-Status HYD:2047; bei H30=3 das Gültigkeits-/Presence-Gate des externen Durchflusses ",
     "type": "RAW"
   },
   "2041": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Spiegel von HYD:2051",
     "type": "RAW"
   },
   "2042": {
@@ -5086,7 +5145,7 @@
   "2084": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "High-Byte von INV1:2133, zusätzlicher Inverter-/Driver-Fault-/Statuswert",
     "type": "RAW"
   },
   "2085": {
