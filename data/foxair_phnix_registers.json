@@ -4123,27 +4123,6 @@
     "notes": "Interessant, genau anschauen!, Funktion bestätigt, Messgröße 2154 noch offen",
     "type": "RAW"
   },
-  "1464": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "obere Schwelle des ausgewählten AT-Sensors für zeitqualifizierten Status / Erforschen",
-    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
-    "type": "RAW"
-  },
-  "1466": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
-    "notes": "Interessant, genau anschauen!",
-    "type": "RAW"
-  },
-   "1476": {
-    "function": "03/16",
-    "mode": "r/w",
-    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
-    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
-    "type": "RAW"
-  },
   "1432": {
     "app_current_video_value": "4.4 °C",
     "app_label": "Target Temp. Diff. for Pump Speed Control",
@@ -4312,26 +4291,26 @@
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
-  "1464": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "1464": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "obere Schwelle des ausgewählten AT-Sensors für zeitqualifizierten Status / Erforschen",
+    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
+    "type": "RAW"
   },
   "1466": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
+    "notes": "Interessant, genau anschauen!",
+    "type": "RAW"
   },
-  "1476": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+   "1476": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
+    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
+    "type": "RAW"
   },
   "1541": {
     "function": "03",
@@ -4605,19 +4584,19 @@
   "2026": {
     "function": "16",
     "mode": "read",
-    "name": "?",
+    "name": "INV1-Datenwort High-Byte (Semantik noch offen)",
     "type": "RAW"
   },
   "2027": {
     "function": "16",
     "mode": "read",
-    "name": "?",
+    "name": "INV1-Datenwort Low-Byte (Semantik noch offen)",
     "type": "RAW"
   },
   "2028": {
     "function": "16",
     "mode": "read",
-    "name": "?",
+    "name": "INV1-Datenwert 16 Bit (Semantik noch offen)",
     "type": "RAW"
   },
   "2029": {
@@ -4743,7 +4722,7 @@
   "2041": {
     "function": "16",
     "mode": "read",
-    "name": "Spiegel von HYD:2051",
+    "name": "Hydraulikmodul-Datenwert - Spiegel von HYD:2051",
     "type": "RAW"
   },
   "2042": {
@@ -5145,8 +5124,9 @@
   "2084": {
     "function": "16",
     "mode": "read",
-    "name": "High-Byte von INV1:2133, zusätzlicher Inverter-/Driver-Fault-/Statuswert",
-    "type": "RAW"
+    "name": "Fehler 10 / Störmeldebits",
+    "description": "High-Byte von INV1:2133, zusätzlicher Inverter-/Driver-Fault-/Statuswert, Bitbelegung noch nicht vollständig decodiert",
+    "type": "BITFIELD"
   },
   "2085": {
     "bit_map": {
