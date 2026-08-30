@@ -4,16 +4,18 @@ Stand: 2026-08-30
 
 Diese Notiz ergänzt `firmware_v34.md` um die inzwischen geschlossene Zuordnung des virtuellen SG-Eingangs **Register 8801** und der in V3.4 erweiterten SG-State-Machine.
 
+> **Wichtiger Versionshinweis:** Die in dieser Notiz beschriebene **zweite SG/PV-Auswahlfamilie mit SG01/1334 = 5, 6 oder 7 ist erst ab Mainboard-Firmware V3.4 nachgewiesen.** Insbesondere **1334 = 7 zusammen mit 8801 = 1...3 darf nicht auf V3.3 übertragen werden**. In V3.3 ist nur der bereits bekannte klassische virtuelle SG-Ready-Pfad **1334 = 3 mit 8801 = 1...4** bestätigt.
+
 ## Kurzfazit
 
 - **Register 8801 ist direkt als virtueller SG-Eingang im Mainboard-Code bestätigt.**
 - 8801 selbst ist **nicht neu in V3.4**; der klassische virtuelle 4-Zustands-SG-Ready-Pfad existiert bereits in V3.3.
-- V3.4 ergänzt zusätzlich eine zweite, reduzierte **3-Zustands-SG/PV-Familie**.
-- Diese zweite Familie verwendet die bisher in der Oberfläche nicht dokumentierten Auswahlwerte **SG01 = 5, 6, 7**.
-- **SG01 = 7** ist dabei der virtuelle Modbus-Pfad und verwendet wiederum **Register 8801**.
+- **Nur ab V3.4:** V3.4 ergänzt zusätzlich eine zweite, reduzierte **3-Zustands-SG/PV-Familie**.
+- **Nur ab V3.4:** Diese zweite Familie verwendet die bisher in der Oberfläche nicht dokumentierten Auswahlwerte **SG01 = 5, 6, 7**.
+- **Nur ab V3.4:** **SG01 = 7** ist dabei der virtuelle Modbus-Pfad und verwendet wiederum **Register 8801**.
 - Die Herstellerbezeichnung der neuen 5/6/7-Familie ist im Mainboard-Binary nicht als Text enthalten. Funktional verhält sie sich wie ein vereinfachter PV/SG-Modus ohne klassischen Sperrzustand und ohne mittlere PV-Stufe.
 
-> Sicherheitsnotiz: Die Werte 5/6/7 sind statisch aus dem V3.4-Code dekodiert, aber derzeit nicht als reguläre Bedienwerte in der FoxAir-Control-Registertabelle freigegeben. Vor einem kontrollierten Live-Test **nicht auf SG01/1334 schreiben**.
+> Sicherheitsnotiz: Die Werte 5/6/7 sind statisch aus dem **V3.4-Code** dekodiert, aber derzeit nicht als reguläre Bedienwerte in der FoxAir-Control-Registertabelle freigegeben. Vor einem kontrollierten Live-Test **nicht auf SG01/1334 schreiben**. Für V3.3 diese Werte **nicht verwenden**.
 
 ---
 
@@ -119,58 +121,75 @@ Aus der nachgeschalteten V3.4-Ausgabe:
   - Kühlen: `Soll -= SG07 / 1340`
   - SG08 / 1341 ist dem E-Heizer-/Mode-4-Pfad zugeordnet.
 
-Dieser klassische 8801-Pfad ist grundsätzlich bereits in V3.3 vorhanden.
+Dieser klassische **1334=3 / 8801=1...4**-Pfad ist grundsätzlich bereits in V3.3 vorhanden.
 
 ---
 
-## 4. Neu in V3.4: zweite SG/PV-Auswahlfamilie 5 / 6 / 7
+## 4. Nur ab V3.4: zweite SG/PV-Auswahlfamilie 5 / 6 / 7
+
+**Dieser gesamte Abschnitt beschreibt V3.4-spezifische Logik. Die Auswahlwerte 5/6/7 sind in V3.3 nicht als diese Funktion bestätigt und dürfen dort nicht verwendet werden.**
 
 V3.4 prüft in derselben SG-State-Machine zusätzlich explizit die SG01-Werte **5, 6 und 7**.
 
 Die Struktur ist parallel zur alten Familie:
 
-| SG01 | Eingangsart | erzeugte Zustände |
-|---:|---|---|
-| 5 | ein physischer Kontakt | 7 / 8 |
-| 6 | zwei physische Kontakte | 6 / 7 / 8 |
-| 7 | virtueller Modbus-Eingang über 8801 | 6 / 7 / 8 |
+| SG01 | Eingangsart | erzeugte Zustände | Firmware |
+|---:|---|---|---|
+| 5 | ein physischer Kontakt | 7 / 8 | **ab V3.4** |
+| 6 | zwei physische Kontakte | 6 / 7 / 8 | **ab V3.4** |
+| 7 | virtueller Modbus-Eingang über 8801 | 6 / 7 / 8 | **ab V3.4** |
 
 Damit ergibt sich sehr deutlich die Paarung:
 
 ```text
-1 <-> 5   ein Kontakt
-2 <-> 6   zwei Kontakte
-3 <-> 7   virtuell über 8801
+klassisch              neu ab V3.4
+1  <-----------------> 5   ein Kontakt
+2  <-----------------> 6   zwei Kontakte
+3  <-----------------> 7   virtuell über 8801
 ```
 
-Die Werte 5/6/7 sind im V3.4-Code reale SG01-Auswahlwerte und keine bloßen internen State-Nummern.
+Die Werte 5/6/7 sind im **V3.4-Code** reale SG01-Auswahlwerte und keine bloßen internen State-Nummern.
 
-### SG01 = 5 – vereinfachter Ein-Kontakt-Modus
+### SG01 = 5 – vereinfachter Ein-Kontakt-Modus (ab V3.4)
 
 ```text
 Kontakt = 0 -> Zustand 7
 Kontakt = 1 -> Zustand 8
 ```
 
-### SG01 = 6 – vereinfachter Zwei-Kontakt-Modus
+### SG01 = 6 – vereinfachter Zwei-Kontakt-Modus (ab V3.4)
 
 ```text
-Kontakt 1 = 1            -> Zustand 6
+Kontakt 1 = 1                 -> Zustand 6
 Kontakt 1 = 0, Kontakt 2 = 0 -> Zustand 7
 Kontakt 1 = 0, Kontakt 2 = 1 -> Zustand 8
 ```
 
-### SG01 = 7 – virtueller vereinfachter Modus über 8801
+### SG01 = 7 – virtueller vereinfachter Modus über 8801 (ab V3.4)
 
 V3.4 dekodiert hier dasselbe Register 8801 in einer zweiten Semantik:
 
-| SG01 | 8801 | interner Zustand |
-|---:|---:|---:|
-| 7 | 1 | 6 |
-| 7 | 2 | 7 |
-| 7 | 3 | 8 |
+| SG01 | 8801 | interner Zustand | Firmware |
+|---:|---:|---:|---|
+| 7 | 1 | 6 | **ab V3.4** |
+| 7 | 2 | 7 | **ab V3.4** |
+| 7 | 3 | 8 | **ab V3.4** |
 
 Für `8801 = 4` gibt es in diesem neuen SG01=7-Zweig keine entsprechend saubere explizite Zuordnung; dieser Wert sollte deshalb **nicht verwendet werden**.
+
+Nochmal ausdrücklich:
+
+```text
+V3.3:
+1334 = 3
+8801 = 1...4
+
+V3.4:
+klassischer Pfad weiterhin wie oben
+UND zusätzlich:
+1334 = 7
+8801 = 1...3
+```
 
 ---
 
@@ -243,7 +262,7 @@ Die genaue Schedulerperiode dieses Pfads ist noch nicht ausreichend geschlossen.
 
 Wichtig für das V3.3 -> V3.4-Changelog:
 
-**Nicht neu:**
+**Nicht neu / bereits in V3.3:**
 
 ```text
 SG01 = 3
@@ -251,9 +270,7 @@ SG01 = 3
 -> klassisches virtuelles 4-Zustands-SG-Ready
 ```
 
-Dieser Grundpfad existiert bereits in V3.3.
-
-**Neu bzw. deutlich erweitert in V3.4:**
+**Erst ab V3.4 nachgewiesen:**
 
 ```text
 SG01 = 5 / 6 / 7
@@ -263,6 +280,8 @@ SG01 = 7
 -> Register 8801 erneut als virtueller Eingang
 -> 8801 = 1 / 2 / 3 -> Zustände 6 / 7 / 8
 ```
+
+Diese neue 5/6/7-Familie **nicht auf Mainboard-Firmware V3.3 anwenden**.
 
 Zusätzlich wurde die Weitergabe der High-PV-Sollwertoffsets in der V3.4-State-Machine erweitert/robuster organisiert.
 
@@ -277,4 +296,4 @@ Zunächst ausschließlich lesend:
 - Register 2133 bzw. den bereits bekannten effektiven SG-Status parallel beobachten
 - 1336...1341 mitloggen
 
-Ein späterer kontrollierter Test der versteckten SG01-Werte 5/6/7 sollte erst nach Parameterbackup und mit bewusst gewähltem Anlagenzustand erfolgen. Diese Werte verändern die Regelvorgaben der Wärmepumpe und sind derzeit nicht als normale UI-Einstellungen freigegeben.
+Ein späterer kontrollierter Test der versteckten SG01-Werte 5/6/7 ist **nur auf V3.4 oder einer späteren Firmware mit separat bestätigter identischer Logik** sinnvoll. Vorher Parameterbackup erstellen und einen bewusst gewählten Anlagenzustand verwenden. Diese Werte verändern die Regelvorgaben der Wärmepumpe und sind derzeit nicht als normale UI-Einstellungen freigegeben.
