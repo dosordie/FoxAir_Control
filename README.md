@@ -16,6 +16,13 @@ Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmw
 
 Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3` oder `V3.4` gleichzeitig installiert sein.
 
+## 💙 Unterstützung
+
+Ich bastle an diesem Tool in meiner Freizeit.  
+Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
+
+[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
+
 ### Warmlink RAW / Firmware-Logging
 
 Ab Version `0.5.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
@@ -109,14 +116,6 @@ Beispielausgabe:
 ```json
 {"event":"register_change","ts":"...","backend":"display_modbus","reg":2106,"old_raw":0,"raw":1,"hex":"0x0001","name":"Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)"}
 ```
-
-## 💙 Unterstützung
-
-Ich bastle an diesem Tool in meiner Freizeit.  
-Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
-
-[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
-
 
 ## Lizenz
 [GPLv3](LICENSE)
