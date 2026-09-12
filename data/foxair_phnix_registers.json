@@ -4093,7 +4093,7 @@
     "name": "Automatischer Werkstest Wasserpumpe Drehzahl (ASM)",
     "type": "RAW"
   },
-   "1388": {
+  "1388": {
     "function": "03/16",
     "mode": "r/w",
     "name": "Mindestabstand/Floor eines temperaturkompensierten Wasser-Sollwerts / Erforschen!",
@@ -4105,7 +4105,7 @@
     "name": "AT-Differenz-Schaltschwelle eines Sollwert-/Kompensationsmodus, mit 1 K Hysterese / Erforschen!",
     "type": "RAW"
   },
-   "1402": {
+  "1402": {
     "function": "03/16",
     "mode": "r/w",
     "name": "Bestätigungs-/Entprellzeit für Defrost-Ende über D17 / Erforschen!",
@@ -4119,7 +4119,7 @@
     "notes": "Interessant, genau anschauen!.",
     "type": "RAW"
   },
-   "1427": {
+  "1427": {
     "function": "03/16",
     "mode": "r/w",
     "name": "signed Schwellwert/Hysterese für State-Machine um MAIN:2154",
@@ -4294,7 +4294,7 @@
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
-    "1464": {
+  "1464": {
     "function": "03/16",
     "mode": "r/w",
     "name": "obere Schwelle des ausgewählten AT-Sensors für zeitqualifizierten Status / Erforschen",
@@ -4308,7 +4308,7 @@
     "notes": "Interessant, genau anschauen!",
     "type": "RAW"
   },
-   "1476": {
+  "1476": {
     "function": "03/16",
     "mode": "r/w",
     "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
@@ -4855,11 +4855,13 @@
   "2057": {
     "function": "16",
     "mode": "read",
-    "name": "T35 / AC Input Current",
-    "type": "RAW",
+    "name": "AC-Eingangsstrom",
+    "type": "AMP_X10",
     "unit": "A",
-    "notes": "Firmware V3.3: T35 / AC-Eingangsstrom. T34 / AC-Spannung ist Register 2062.",
-    "last_review": "FW3.3 Reverse Engineering"
+    "notes": "Firmware V3.3/V3.4: T35 / AC-Eingangsstrom. Skalierung RAW / 10 = A; Beispiel RAW 30 = 3,0 A. T34 / AC-Spannung ist Register 2062.",
+    "last_review": "FW3.3/V3.4 Reverse Engineering + Live-Test 2026-09-12",
+    "block": "T",
+    "code": "T35"
   },
   "2058": {
     "block": "T",
@@ -5059,10 +5061,10 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Status-/Datenwort (wie Displaybus 91099)",
-    "type": "RAW",
+    "name": "Interner Betriebs-/Anforderungsstatus (Displaybus 91099)",
+    "type": "BITFIELD",
     "unit": "raw",
-    "notes": "Live-Ergänzung 2026-07-17: bisher als reserviert geführt. Beobachtet 8 Änderungen, Rohwertbereich 0 bis 531. Verläuft identisch zur virtuellen Displaybus-ID 91099; möglicherweise Bitfeld oder zusammengesetzter Status."
+    "notes": "V3.4-Firmware: internes 16-Bit-Statuswort, an mehreren Stellen bitweise gesetzt/gelöscht. Live identisch zur virtuellen Displaybus-ID 91099. Einzelne Bits sind noch nicht sicher fachlich zugeordnet."
   },
   "2081": {
     "bit_map": {
@@ -5351,9 +5353,12 @@
   "2106": {
     "function": "16",
     "mode": "read",
-    "name": "Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)",
-    "type": "RAW",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register pulste zyklisch ungefähr alle 5 Minuten von 0 auf 1 und nach etwa 9–11 Sekunden zurück auf 0. Beobachtete Pulse u. a. um 13:30, 13:35, 13:40, 13:45, 13:50, 13:55, 14:00 und 14:05 Uhr. Währenddessen blieb Register 2115 stabil bei 50 % Pumpen-PWM. Starker Kandidat für zyklisches Pumpenregel-/PWM-Regelfenster bzw. einen P12-Regelentscheid. Bedeutung noch unbestätigt."
+    "name": "Zeit-/Impulsstatus M_PULS",
+    "type": "BITFIELD",
+    "note": "Display-ASM: M_PULS = 0x083A = Register 2106. Bit 0 wird auf steigende Flanke ausgewertet und löst die 5-Minuten-Datenspeicherung aus. Damit ist die frühere Pumpenregel-/PWM-Hypothese widerlegt. Weitere Bits/Funktionen sind noch offen.",
+    "bit_map": {
+      "0": "5-Minuten-Puls für Display-Historienaufzeichnung"
+    }
   },
   "2107": {
     "function": "16",
@@ -5425,7 +5430,7 @@
   "2117": {
     "function": "16",
     "mode": "read",
-     "name": "Energiezähler elektrisch Heizen - High",
+    "name": "Energiezähler elektrisch Heizen - High",
     "type": "KWH",
     "note": "Quelle: Forum / Endif; Status: selbst getestet.",
     "unit": "kWh"
@@ -5457,7 +5462,7 @@
   "2121": {
     "function": "16",
     "mode": "read",
-   "name": "Energiezähler elektrisch Kühlen - High",
+    "name": "Energiezähler elektrisch Kühlen - High",
     "type": "KWH",
     "note": "Quelle: selbst getestet; ",
     "unit": "kWh"
@@ -5605,8 +5610,8 @@
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Mehrzonen-/Zone-1 Runtimewert (Kandidat)",
+    "note": "V3.4-Analyse: Herkunft aus dem Mehrzonen-/Zone-1-Konfigurations-/Runtimebereich. Live 2026-09-12 zwischen 0 und 32 (0x20) beobachtet; Bit 5 ist dadurch auffällig, seine fachliche Bedeutung ist noch nicht geschlossen."
   },
   "2140": {
     "function": "03",
@@ -5653,9 +5658,10 @@
   "2146": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "type": "TEMP1",
+    "name": "Interner Temperatur-/Regelwert (Quelle offen)",
+    "note": "V3.4-Firmware behandelt den veröffentlichten Wert als signed Temperatur-/Schwellwert mit 0,1-°C-Skalierung. Live RAW 44 entspricht damit 4,4 °C. Die konkrete Sensor-/Regelgröße ist noch offen.",
+    "unit": "°C"
   },
   "2147": {
     "function": "03",
@@ -5677,6 +5683,60 @@
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "2152": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Runtime-/Regelwert (gefiltert; Bedeutung offen)",
+    "type": "RAW",
+    "note": "V3.4-Analyse: Feld der Zone-1-Runtimestruktur; ein entsprechendes internes Feld existiert auch für Zone 2. Der Wert wird in Regelpfaden gefiltert/geglättet und ist daher kein einfaches 1/2-Enum. Live 2026-09-12 RAW 1/2 beobachtet; physikalische Bedeutung und Skalierung noch offen."
+  },
+  "2164": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Auslasswassertemperatur nach Außentemperaturkompensation",
+    "type": "TEMP1",
+    "unit": "°C",
+    "note": "Display-ASM: Adresse 0x0874. Direkt als Wasseraustrittstemperatur nach Umgebung-/Außentemperaturkompensation in Zone 1 bezeichnet. RAW / 10 = °C; Beispiel RAW 450 = 45,0 °C."
+  },
+  "2165": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Auslasswassertemperatur nach Außentemperaturkompensation",
+    "type": "TEMP1",
+    "unit": "°C",
+    "note": "Display-ASM: Adresse 0x0875. Direkt als Wasseraustrittstemperatur nach Umgebung-/Außentemperaturkompensation in Zone 2 bezeichnet. RAW / 10 = °C; Beispiel RAW 350 = 35,0 °C."
+  },
+  "2166": {
+    "function": "03",
+    "mode": "read",
+    "name": "Statuswert nach Mehrzonen-Liveblock (Bedeutung offen)",
+    "type": "RAW",
+    "note": "Live 2026-09-12 RAW 1 beobachtet. Register folgt direkt auf den bestätigten Mehrzonen-Livewerten 2160..2165; in der untersuchten Display-ASM gibt es für 0x0876 jedoch keine direkte Referenz. Fachliche Bedeutung deshalb offen."
+  },
+  "2178": {
+    "function": "03",
+    "mode": "read",
+    "name": "Temperatur des Temperatur-/Feuchtesensors",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
+  },
+  "2179": {
+    "function": "03",
+    "mode": "read",
+    "name": "Relative Luftfeuchtigkeit",
+    "type": "DIGI5",
+    "unit": "% rF",
+    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
+  },
+  "2180": {
+    "function": "03",
+    "mode": "read",
+    "name": "Berechneter Taupunkt",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
   },
   "8801": {
     "block": "SG",
@@ -5802,29 +5862,5 @@
     "name": "Interne Softwareversion ASCII Wort 2/2",
     "type": "ASCII",
     "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
-  },
-  "2178": {
-    "function": "03",
-    "mode": "read",
-    "name": "Temperatur des Temperatur-/Feuchtesensors",
-    "type": "TEMP1",
-    "unit": "°C",
-    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
-  },
-  "2179": {
-    "function": "03",
-    "mode": "read",
-    "name": "Relative Luftfeuchtigkeit",
-    "type": "DIGI5",
-    "unit": "% rF",
-    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
-  },
-  "2180": {
-    "function": "03",
-    "mode": "read",
-    "name": "Berechneter Taupunkt",
-    "type": "TEMP1",
-    "unit": "°C",
-    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
   }
 }
