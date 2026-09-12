@@ -1695,7 +1695,7 @@
       "2": "Smart"
     },
     "block": "E",
-    "code": "E17",
+    "code": "E01",
     "function": "03/16",
     "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
@@ -3682,9 +3682,12 @@
       "0": "Aus",
       "1": "Einfach / 1 Kontakt",
       "2": "2 Kontakte",
-      "3": "Modbus / virtueller SG-Eingang"
+      "3": "Modbus / virtueller SG-Eingang",
+      "5": "V3.4: Vereinfachtes SG / 1 Kontakt",
+      "6": "V3.4: Vereinfachtes SG / 2 Kontakte",
+      "7": "V3.4: Vereinfachtes SG / Modbus (8801)"
     },
-    "description": "Aktivierung/Auswahl SG Ready: Aus / 1 Kontakt / 2 Kontakte / virtueller SG-Eingang über direktes User-/Mainboard-Modbus-Register 8801"
+    "description": "Klassische SG-Ready-Auswahl: 0=Aus, 1=1 Kontakt, 2=2 Kontakte, 3=virtueller SG-Eingang über Register 8801. Ab V3.4 zusätzlich vereinfachte SG-/PV-Familie: 5=1 Kontakt, 6=2 Kontakte, 7=virtuell über Register 8801 (Werte 1..3)."
   },
   "1335": {
     "block": "SG",
@@ -5548,13 +5551,13 @@
     "type": "RAW",
     "value_map": {
       "0": "WP Aus oder SG deaktiviert",
-      "1": "SG Mode 1 / Schlafmodus",
-      "2": "SG Mode 2 / wenig PV",
-      "3": "SG Mode 3 / mittel PV",
-      "4": "SG Mode 4 / High PV",
-      "5": "Normalbetrieb"
+      "1": "Klassisch: Mode 1 / Schlafmodus | V3.4 vereinfacht: wenig PV / Leistungsbegrenzung",
+      "2": "Klassisch: Mode 2 / wenig PV | V3.4 vereinfacht: Neutralbetrieb",
+      "3": "Klassisch: Mode 3 / mittel PV | V3.4 vereinfacht: High PV / Temperatur-Offsets",
+      "4": "Klassisch: Mode 4 / High PV",
+      "5": "Klassisch: Normalbetrieb"
     },
-    "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
+    "description": "Aktiver SG-Ready-/Betriebsstatus. Bedeutung von 1..3 hängt von SG01/1334 ab: bei 1..3 klassische SG-Modi, bei 5..7 (V3.4) vereinfachte PV-Zustände. V3.4 bildet interne Zustände 6/7/8 auf 2133 = 1/2/3 ab. Reagiert zeitverzögert; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
   "2134": {
     "function": "03",
@@ -5674,6 +5677,19 @@
     "type": "RAW",
     "name": "Funktion unbekannt",
     "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+  },
+  "8801": {
+    "block": "SG",
+    "mode": "r/w",
+    "name": "Virtueller SG-Ready Eingang",
+    "type": "RAW",
+    "value_map": {
+      "1": "Klassisch (SG01=3): Mode 1 / Schlafmodus | V3.4 vereinfacht (SG01=7): wenig PV / Leistungsbegrenzung",
+      "2": "Klassisch (SG01=3): Mode 2 / wenig PV | V3.4 vereinfacht (SG01=7): Neutralbetrieb",
+      "3": "Klassisch (SG01=3): Mode 3 / mittel PV | V3.4 vereinfacht (SG01=7): High PV / Temperatur-Offsets",
+      "4": "Klassisch (SG01=3): Mode 4 / High PV | bei SG01=7 nicht verwenden"
+    },
+    "description": "Direkter virtueller SG-Ready-/PV-Eingang. Klassisch bei SG01/1334=3: Werte 1..4. Ab V3.4 bei SG01/1334=7: Werte 1..3 = wenig PV/Leistungsbegrenzung, Neutralbetrieb, High PV/Temperatur-Offsets; Wert 4 dort nicht verwenden."
   },
   "50043": {
     "function": "10",
