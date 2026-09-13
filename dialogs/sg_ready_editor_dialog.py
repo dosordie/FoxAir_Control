@@ -10,9 +10,9 @@ from PySide6.QtWidgets import (
 )
 
 from core.foxair_phnix_core import DEFAULT_BUS_ADDR, s16
+from core.sg_ready import sg_status_description, virtual_stage_options
 
 FLASH_CHANGED_ROW_MS = 2000
-
 
 class SGReadyEditorDialog(QDialog):
     SG_REGS = set(range(1334, 1342)) | {2133, 8801}
@@ -35,7 +35,7 @@ class SGReadyEditorDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        hint = QLabel("SG Ready Register 1334-1341 plus read-only aktiver SG-Modus 2133. SG01: Aus / 1 Kontakt / 2 Kontakte / virtueller SG-Eingang (Wert 3). Der virtuelle Zustand 8801 ist nur am direkten User-/Mainboard-Modbus verfügbar, nicht über Warmlink/LTE. Nach einer Änderung von 8801 bleibt die Umschaltung 10 Minuten gesperrt; anschließend wird der neue Wert übernommen. 1334 kurz auf 0 und danach wieder auf 3 zu stellen löscht die Sperre. Kontaktstatus wird sofort über Register 2034 angezeigt. Live-Update überschreibt keine gerade bearbeiteten Felder. Der Lese-/Schreibstatus wird global angezeigt.")
+        hint = QLabel("SG Ready Register 1334-1341 plus read-only wirksame Stufe 2133. SG01 unterstützt die klassischen Modi sowie Wert 7 für den dreistufigen PV-Pfad neuer Firmware: 8801=1 Low PV (SG03), 2 Neutral und 3 High PV (SG05/SG06 Anhebung, SG07 Absenkung). Register 8801 ist nur am direkten User-/Mainboard-Modbus verfügbar, nicht über Warmlink/LTE. Die technische Stufe folgt den Registerwerten und nicht dem teils irreführenden Kontakt-Bitfeld der PHNIX-App. Live-Update überschreibt keine gerade bearbeiteten Felder.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -56,21 +56,12 @@ class SGReadyEditorDialog(QDialog):
         self.sg_mode_combo.addItem("1 Kontakt", 1)
         self.sg_mode_combo.addItem("2 Kontakte", 2)
         self.sg_mode_combo.addItem("Modbus / virtueller SG-Eingang (nur direkt)", 3)
+        self.sg_mode_combo.addItem("Dreistufiger PV-Pfad neuer Firmware", 7)
+        self.sg_mode_combo.currentIndexChanged.connect(self._update_virtual_stage_choices)
         form.addRow("SG Ready Auswahl (1334):", self.sg_mode_combo)
 
         self.virtual_sg_combo = QComboBox()
-        self.virtual_sg_combo.addItem("Mode 1 / Schlafmodus", 1)
-        self.virtual_sg_combo.addItem("Mode 2 / Normal / wenig PV", 2)
-        self.virtual_sg_combo.addItem("Mode 3 / mittel PV", 3)
-        self.virtual_sg_combo.addItem("Mode 4 / High PV", 4)
-        direct_modbus = self.main_window.current_backend_key() == "standard_modbus"
-        self.virtual_sg_combo.setEnabled(direct_modbus)
-        self.virtual_sg_combo.setToolTip(
-            "Direktes User-/Mainboard-Modbus-Register. Eine Änderung startet eine "
-            "10-minütige Umschaltsperre; 1334=0 und anschließend 1334=3 löscht sie."
-            if direct_modbus else
-            "Register 8801 ist über Warmlink/LTE und Display-Modbus nicht verfügbar."
-        )
+        self._update_virtual_stage_choices()
         form.addRow("Virtueller SG-Modus (8801, nur direkt):", self.virtual_sg_combo)
 
         self.raw_spins: dict[int, QSpinBox] = {}
@@ -95,7 +86,7 @@ class SGReadyEditorDialog(QDialog):
             form.addRow(f"{label} ({reg_no}):", spin)
 
         self.sg_status_label = QLabel("--")
-        self.sg_status_label.setToolTip("Read-only: Register 2133 / aktiver SG-Modus. 0=WP aus oder SG deaktiviert, 1=SG Mode 1 / Schlafmodus, 2=SG Mode 2 / wenig PV, 3=SG Mode 3 / mittel PV, 4=SG Mode 4 / High PV. Kontaktstatus wird sofort über Register 2034 angezeigt; Register 2133 kann zeitverzögert umschalten.")
+        self.sg_status_label.setToolTip("Read-only: Register 2133 zeigt im klassischen Pfad den aktiven SG-Modus. Bei SG01=7 entspricht 1=Low PV, 2=Neutral und 3=High PV.")
         form.addRow("Aktiver SG-Modus (2133, read-only):", self.sg_status_label)
 
         self.delay_ms = QSpinBox(); self.delay_ms.setRange(0, 10000); self.delay_ms.setValue(500); self.delay_ms.setSingleStep(100); self.delay_ms.setSuffix(" ms")
@@ -114,6 +105,35 @@ class SGReadyEditorDialog(QDialog):
             buttons.addWidget(b)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+
+    def _update_virtual_stage_choices(self, _index: int = -1) -> None:
+        previous = self.virtual_sg_combo.currentData() if hasattr(self, "virtual_sg_combo") else None
+        if not hasattr(self, "virtual_sg_combo"):
+            return
+        self.virtual_sg_combo.blockSignals(True)
+        self.virtual_sg_combo.clear()
+        for label, value in virtual_stage_options(int(self.sg_mode_combo.currentData())):
+            self.virtual_sg_combo.addItem(label, value)
+        index = self.virtual_sg_combo.findData(previous)
+        self.virtual_sg_combo.setCurrentIndex(index if index >= 0 else 0)
+        self.virtual_sg_combo.blockSignals(False)
+        direct_modbus = self.main_window.current_backend_key() == "standard_modbus"
+        self.virtual_sg_combo.setEnabled(direct_modbus)
+        if not direct_modbus:
+            tooltip = "Register 8801 ist über Warmlink/LTE und Display-Modbus nicht verfügbar."
+        elif int(self.sg_mode_combo.currentData()) == 7:
+            tooltip = "Dreistufiger PV-Pfad: 1=Low PV, 2=Neutral, 3=High PV."
+        else:
+            tooltip = (
+                "Direktes User-/Mainboard-Modbus-Register. Im klassischen Modus 3 startet "
+                "eine Änderung eine 10-minütige Umschaltsperre; 1334=0 und danach 1334=3 löscht sie."
+            )
+        self.virtual_sg_combo.setToolTip(tooltip)
+        if 2133 in self._last_raw_values:
+            status = self._last_raw_values[2133]
+            self.sg_status_label.setText(
+                f"{status} - {sg_status_description(int(self.sg_mode_combo.currentData()), status)}"
+            )
 
     def _has_focus(self, *widgets: QWidget) -> bool:
         focus = QApplication.focusWidget()
@@ -191,7 +211,7 @@ class SGReadyEditorDialog(QDialog):
                 if force or not self._has_focus(spin):
                     spin.setValue(s16(raw) / 10.0)
             elif reg_no == 2133:
-                label = {0: "WP aus oder SG deaktiviert", 1: "SG Mode 1 / Schlafmodus", 2: "SG Mode 2 / wenig PV", 3: "SG Mode 3 / mittel PV", 4: "SG Mode 4 / High PV"}.get(raw, "unbekannt / nicht interpretiert")
+                label = sg_status_description(int(self.sg_mode_combo.currentData()), raw)
                 self.sg_status_label.setText(f"{raw} - {label}")
                 self._sg_status_read_pending = False
                 self.status_label.setText("SG Ready / SG Status erfolgreich gelesen.")
@@ -213,7 +233,7 @@ class SGReadyEditorDialog(QDialog):
         for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kuehlen-Anhebung")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
         values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"))
-        if self.main_window.current_backend_key() == "standard_modbus" and int(self.sg_mode_combo.currentData()) == 3:
+        if self.main_window.current_backend_key() == "standard_modbus" and int(self.sg_mode_combo.currentData()) in (3, 7):
             values.append((8801, int(self.virtual_sg_combo.currentData()) & 0xFFFF, "Virtueller SG-Modus (nur direkter Modbus)"))
         return values
 

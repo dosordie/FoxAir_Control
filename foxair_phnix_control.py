@@ -1646,7 +1646,7 @@ class DualBusLoggerDialog(QDialog):
         self.display_passive_analyzer_cb = QCheckBox("Display Passiv-Analyzer / Rohframes + Korrelation")
         self.display_passive_analyzer_cb.setChecked(True)
         self.display_raw_file_cb = QCheckBox("Display RAW-Datenstrom in .bin + .hex.txt mitschreiben")
-        self.display_raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
+        self.display_raw_file_cb.setChecked(False)
         self.display_scan_cb = QCheckBox("Display/DWIN Unit 0x03 Kandidaten aktiv scannen")
         self.display_scan_cb.setChecked(False)
         self.display_unit1_scan_cb = QCheckBox("Display Unit 0x01 Livewerte aktiv pollen")
@@ -2573,12 +2573,7 @@ class DualBusLoggerDialog(QDialog):
                 old_known = reg_no in mw.last_values
                 old = mw.last_values.get(reg_no)
                 value_diff = old != raw
-                was_cached = reg_no in mw.cached_regs
-                # Cachewerte sind Start-/Vergleichshilfe, aber keine Live-Basis
-                # fuer eine sichtbare Aenderungsmarkierung.
-                real_changed = bool(old_known and (not was_cached) and value_diff)
-                if was_cached:
-                    mw.cached_regs.discard(reg_no)
+                real_changed = bool(old_known and value_diff)
                 if value_diff:
                     if old is None:
                         mw.previous_value_texts.setdefault(reg_no, "--")
@@ -2588,7 +2583,7 @@ class DualBusLoggerDialog(QDialog):
                     mw._send_udp_register_change(reg, old)
                     changed.append(f"{reg_no}: {old} -> {raw} ({reg.display_value})")
                 mw.last_values[reg_no] = raw
-                if value_diff or was_cached or reg_no not in mw.table_rows:
+                if value_diff or reg_no not in mw.table_rows:
                     mw._upsert_register_row(reg, real_changed)
                 if reg_no == 2034:
                     mw._update_contact_table(raw)
@@ -3223,15 +3218,11 @@ class CommunicationSettingsDialog(QDialog):
         self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
         self.raw_log_cb.setChecked(bool(getattr(main_window, "raw_log_cb", None) and main_window.raw_log_cb.isChecked()))
         self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
-        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
-        self.raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
-        self.raw_file_cb.setToolTip("Schreibt den RAW-Datenstrom zusätzlich in eine Binärdatei im Benutzerordner.")
         self.known_only_cb = QCheckBox("nur bekannte Register anzeigen")
         self.known_only_cb.setChecked(bool(getattr(main_window, "known_only_cb", None) and main_window.known_only_cb.isChecked()))
         self.log_changes_only_cb = QCheckBox("nur Änderungen loggen")
         self.log_changes_only_cb.setChecked(bool(getattr(main_window, "log_changes_only_cb", None) and main_window.log_changes_only_cb.isChecked()))
         logging_form.addRow("RAW-Anzeige:", self.raw_log_cb)
-        logging_form.addRow("RAW-Datei:", self.raw_file_cb)
         logging_form.addRow("Registertabelle:", self.known_only_cb)
         logging_form.addRow("Logfilter:", self.log_changes_only_cb)
 
@@ -3407,9 +3398,6 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.autoconnect_cb.setChecked(bool(self.autoconnect_cb.isChecked()))
         if hasattr(self.main_window, "raw_log_cb"):
             self.main_window.raw_log_cb.setChecked(bool(self.raw_log_cb.isChecked()))
-        if hasattr(self.main_window, "raw_file_cb"):
-            self.main_window.raw_file_cb.setChecked(bool(self.raw_file_cb.isChecked()))
-            self.main_window.on_raw_file_checkbox_changed()
         if hasattr(self.main_window, "known_only_cb"):
             self.main_window.known_only_cb.setChecked(bool(self.known_only_cb.isChecked()))
             self.main_window.rebuild_table_filter()
@@ -4129,8 +4117,6 @@ class MainWindow(QMainWindow):
         # PUBLIC/Installer: AppData (Program Files ist ohne Adminrechte nicht beschreibbar).
         # PRIVATE/Portable: Programmordner.
         self.user_data_dir = app_user_data_dir()
-        self.cache_file_path = os.path.join(self.user_data_dir, "foxair_phnix_last_values.json")
-        self.old_cache_file_path = os.path.join(self.user_data_dir, "warmlink_last_values.json")
         self.settings_path = os.path.join(self.user_data_dir, "foxair_phnix_settings.json")
         self.old_settings_path = os.path.join(self.user_data_dir, "warmlink_gui_settings.json")
         self.knowledge_path = os.path.join(self.user_data_dir, "data/foxair_phnix_knowledge.json")
@@ -4168,14 +4154,11 @@ class MainWindow(QMainWindow):
         # zusammengefasst, damit das GUI-Log bei Poll-Stuermen (z. B.
         # 0x02/3001) nicht tausende identische Zeilen pro Sekunde anhaengt.
         self.log_throttle_state: Dict[tuple[Any, ...], dict[str, Any]] = {}
-        self.raw_file: Optional[BinaryIO] = None
-        self.raw_file_path: Optional[str] = None
         self.warmlink_capture: Optional[WarmlinkRawCapture] = None
         self.warmlink_capture_dialog: Optional[WarmlinkCaptureDialog] = None
         self.capture_power_inhibit_active = False
         self.capture_log_queue: queue.Queue[str] = queue.Queue()
         self.capture_special_frame_queue: queue.Queue[dict[str, Any]] = queue.Queue()
-        self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
@@ -4283,9 +4266,6 @@ class MainWindow(QMainWindow):
         # V0.2.38: alter GUI-Init-Timer entfernt.
         # Init-Lesen wird jetzt je Backend durch eigene Controller gesteuert.
         self.init_read_timer = None
-        self.cache_timer = QTimer(self)
-        self.cache_timer.timeout.connect(lambda: self.save_value_cache(silent=True))
-        self._apply_cache_timer_state()
         self.live_poll_timer = QTimer(self)
         self.live_poll_timer.timeout.connect(self._live_poll_tick)
         self.live_poll_step = 0
@@ -4293,8 +4273,6 @@ class MainWindow(QMainWindow):
         self._log(f"Register-Mapping: {self.regmap_path} ({len(self.regmap)} Einträge)")
         if os.path.exists(self.display_regmap_path):
             self._log(f"Display-Diagnose-Mapping: {self.display_regmap_path} ({len(self.display_regmap)} Einträge, getrennt von Warmlink)")
-        if self.cache_load_start_cb.isChecked():
-            self.load_value_cache(silent=False)
         # PRIVATE fix16: Bereichsfarben nach dem ersten Qt-Layout/Stylesheet-Pass
         # nochmal setzen. Dadurch greifen 10xx/30xx-Farben auch direkt nach
         # Programmstart/Cache-Aufbau, nicht erst nach dem ersten Live-Read.
@@ -4539,14 +4517,13 @@ class MainWindow(QMainWindow):
         self.log_level_combo.setCurrentIndex(lvl_idx if lvl_idx >= 0 else 1)
         self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
         self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
-        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
         self.raw_ascii_cb = QCheckBox("Raw ASCII-Vorschau")
         self.raw_ascii_cb.setChecked(True)
         self.raw_ascii_cb.setVisible(False)
         self.clear_log_btn = QPushButton("Log leeren")
-        self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.")
+        self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.")
         self.clear_main_btn = QPushButton("Hauptfenster leeren")
-        self.clear_main_btn.setToolTip("Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.")
+        self.clear_main_btn.setToolTip("Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.")
 
         self.about_btn = QPushButton("About")
         self.about_btn.setMaximumWidth(86)
@@ -4557,8 +4534,8 @@ class MainWindow(QMainWindow):
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
         apply_button_icon(self.device_info_btn, "assets/icons/device_info.svg", "Geräte-Info", "Geräte-Info", "Mainboard-, ProductKey- und Geräteidentitätsinformationen anzeigen", show_text=True)
-        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", show_text=True)
-        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", "Hauptfenster leeren", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", show_text=True)
+        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.", show_text=True)
+        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", "Hauptfenster leeren", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
@@ -4571,7 +4548,6 @@ class MainWindow(QMainWindow):
         top.addWidget(QLabel("Log:"))
         top.addWidget(self.log_level_combo)
         top.addWidget(self.raw_log_cb)
-        top.addWidget(self.raw_file_cb)
         # V0.2.41 fix6: eigene RAW-ASCII-Option ist überflüssig;
         # RAW anzeigen liefert jetzt immer HEX+ASCII. Checkbox bleibt nur
         # intern/kompatibel, wird aber nicht mehr in die Kopfzeile gesetzt.
@@ -4614,7 +4590,7 @@ class MainWindow(QMainWindow):
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
         self._enable_touch_scrolling_for_table(self.register_table)
-        self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
+        self.register_table.itemDoubleClicked.connect(self.open_register_quick_write_from_table_item)
         upper.addWidget(self.register_table)
 
         side = QWidget()
@@ -4816,40 +4792,6 @@ class MainWindow(QMainWindow):
         self.bus_table.verticalHeader().setVisible(False)
         self.bus_table.setSortingEnabled(False)
 
-        cache_box = QGroupBox("Werte-Cache")
-        side_layout.addWidget(cache_box)
-        cache_outer_layout = QVBoxLayout(cache_box)
-        cache_outer_layout.setContentsMargins(8, 8, 8, 8)
-        cache_top = QHBoxLayout()
-        self.cache_toggle_btn = QPushButton("Einstellungen ...")
-        self.cache_load_btn = QPushButton("Cache laden")
-        self.cache_save_btn = QPushButton("Cache speichern")
-        cache_top.addWidget(self.cache_toggle_btn)
-        cache_top.addWidget(self.cache_load_btn)
-        cache_top.addWidget(self.cache_save_btn)
-        cache_top.addStretch(1)
-        cache_outer_layout.addLayout(cache_top)
-
-        self.cache_options_widget = QWidget()
-        cache_layout = QFormLayout(self.cache_options_widget)
-        cache_layout.setContentsMargins(0, 4, 0, 0)
-        self.cache_load_start_cb = QCheckBox("beim Start laden")
-        self.cache_save_exit_cb = QCheckBox("beim Beenden speichern")
-        self.cache_save_cyclic_cb = QCheckBox("zyklisch speichern")
-        self.cache_interval_spin = QSpinBox()
-        self.cache_interval_spin.setRange(5, 3600)
-        self.cache_interval_spin.setValue(int(self.settings.get("cache_interval_s", 60)))
-        self.cache_interval_spin.setSuffix(" s")
-        self.cache_load_start_cb.setChecked(bool(self.settings.get("cache_load_on_start", False)))
-        self.cache_save_exit_cb.setChecked(bool(self.settings.get("cache_save_on_exit", True)))
-        self.cache_save_cyclic_cb.setChecked(bool(self.settings.get("cache_save_cyclic", False)))
-        cache_layout.addRow(self.cache_load_start_cb)
-        cache_layout.addRow(self.cache_save_exit_cb)
-        cache_layout.addRow(self.cache_save_cyclic_cb)
-        cache_layout.addRow("Intervall:", self.cache_interval_spin)
-        self.cache_options_widget.setVisible(False)
-        cache_outer_layout.addWidget(self.cache_options_widget)
-
         stats_box = QGroupBox("Status")
         side_layout.addWidget(stats_box)
         stats_layout = QGridLayout(stats_box)
@@ -4860,7 +4802,6 @@ class MainWindow(QMainWindow):
         self.last_bus_label = QLabel("--")
         self.direction_label = QLabel("--")
         self.foreign_count_label = QLabel("0")
-        self.raw_file_label = QLabel("--")
         stats_layout.addWidget(QLabel("Verbindung:"), 0, 0)
         stats_layout.addWidget(self.status_label, 0, 1)
         stats_layout.addWidget(QLabel("Frames:"), 1, 0)
@@ -4875,8 +4816,6 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.direction_label, 5, 1)
         stats_layout.addWidget(QLabel("Fremdframes:"), 6, 0)
         stats_layout.addWidget(self.foreign_count_label, 6, 1)
-        stats_layout.addWidget(QLabel("Raw-Datei:"), 7, 0)
-        stats_layout.addWidget(self.raw_file_label, 7, 1)
         side_layout.addStretch(1)
 
         self.log_text = QTextEdit()
@@ -4918,7 +4857,6 @@ class MainWindow(QMainWindow):
         self.name_search_edit.returnPressed.connect(self.search_name_now)
         self.known_only_cb.stateChanged.connect(lambda _=None: self.rebuild_table_filter())
         self.log_level_combo.currentIndexChanged.connect(lambda _=None: self._on_log_level_changed())
-        self.raw_file_cb.stateChanged.connect(lambda _=None: self.on_raw_file_checkbox_changed())
         self.clear_log_btn.clicked.connect(self.clear_log)
         self.clear_main_btn.clicked.connect(self.clear_main_window_values)
         self.contact_popup_btn.clicked.connect(self.open_contact_decoder)
@@ -4933,11 +4871,6 @@ class MainWindow(QMainWindow):
         self.dual_logger_btn.clicked.connect(self.open_dual_logger_dialog)
         self.warmlink_capture_btn.clicked.connect(self.open_warmlink_capture_dialog)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
-        self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
-        self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
-        self.cache_save_btn.clicked.connect(lambda: self.save_value_cache(silent=False))
-        self.cache_save_cyclic_cb.stateChanged.connect(lambda _=None: self._apply_cache_timer_state())
-        self.cache_interval_spin.valueChanged.connect(lambda _=None: self._apply_cache_timer_state())
         self.register_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.register_table.customContextMenuRequested.connect(self.open_register_context_menu)
 
@@ -4967,10 +4900,6 @@ class MainWindow(QMainWindow):
             "backend_settings": self.settings.get("backend_settings", {}),
             "device_model": self.current_device_model(),
             "autoconnect_on_start": self.autoconnect_cb.isChecked(),
-            "cache_load_on_start": self.cache_load_start_cb.isChecked(),
-            "cache_save_on_exit": self.cache_save_exit_cb.isChecked(),
-            "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
-            "cache_interval_s": int(self.cache_interval_spin.value()),
             "show_public_warning": bool(self.settings.get("show_public_warning", True)),
             "theme": str(self.settings.get("theme", "system")),
             "update_asset_mode": str(self.settings.get("update_asset_mode", "auto")),
@@ -5179,14 +5108,6 @@ class MainWindow(QMainWindow):
             return
         self.comm_summary_label.setText(self._communication_summary_text())
 
-    def _apply_cache_timer_state(self):
-        if not hasattr(self, "cache_timer"):
-            return
-        if self.cache_save_cyclic_cb.isChecked():
-            self.cache_timer.start(int(self.cache_interval_spin.value()) * 1000)
-            self._log(f"Werte-Cache zyklisch aktiv: alle {int(self.cache_interval_spin.value())} s")
-        else:
-            self.cache_timer.stop()
 
     def _apply_live_poll_timer_state(self):
         if not hasattr(self, "live_poll_timer"):
@@ -5212,33 +5133,7 @@ class MainWindow(QMainWindow):
         self.live_poll_step = int(getattr(self, "live_poll_step", 0)) + 1
         self.send_read_request(addr, qty, slave_addr=slave_addr, label=f"Auto-Poll {label}")
 
-    def _snapshot_for_register(self, reg_no: int) -> dict:
-        reg = self.latest_regs[reg_no]
-        return {
-            "reg": int(reg.reg),
-            "raw_value": int(reg.raw_value),
-            "slave_addr": int(getattr(reg, "slave_addr", DEFAULT_BUS_ADDR)),
-            "frame_type": int(getattr(reg, "frame_type", reg.reg)),
-            "name": str(getattr(reg, "name", "")),
-            "dtype": str(getattr(reg, "dtype", "RAW")),
-            "timestamp": float(getattr(reg, "timestamp", time.time())),
-        }
 
-    def save_value_cache(self, silent: bool = False):
-        try:
-            data = {
-                "saved_at": time.time(),
-                "host": self.host_edit.text().strip(),
-                "port": int(self.port_edit.value()),
-                "registers": [self._snapshot_for_register(reg_no) for reg_no in sorted(self.latest_regs)],
-            }
-            os.makedirs(os.path.dirname(self.cache_file_path), exist_ok=True)
-            with open(self.cache_file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            if not silent:
-                self._log(f"Werte-Cache gespeichert: {self.cache_file_path} ({len(data['registers'])} Register)")
-        except Exception as exc:
-            self._log(f"Werte-Cache speichern fehlgeschlagen: {exc}")
 
     def _display_parts_for_register(self, reg_no: int, fallback_name: str = "") -> tuple[str, str, str]:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
@@ -5355,119 +5250,8 @@ class MainWindow(QMainWindow):
             return text
         return f"{text} {unit}".strip()
 
-    def _cached_register_from_snapshot(self, item: dict) -> Optional[DecodedRegister]:
-        try:
-            reg_no = int(item["reg"])
-            raw_value = int(item["raw_value"]) & 0xFFFF
-            info = self.regmap.get(reg_no)
-            dtype = info.dtype if info.dtype != "RAW" or not item.get("dtype") else str(item.get("dtype", "RAW"))
-            name = info.name or str(item.get("name", ""))
-            return DecodedRegister(
-                slave_addr=int(item.get("slave_addr", DEFAULT_BUS_ADDR)),
-                reg=reg_no,
-                index=0,
-                frame_type=int(item.get("frame_type", reg_no)),
-                raw_value=raw_value,
-                signed_value=s16(raw_value),
-                display_value=self._format_cached_value(raw_value, dtype),
-                name=name,
-                dtype=dtype,
-                timestamp=float(item.get("timestamp", time.time())),
-            )
-        except Exception:
-            return None
 
-    def _format_cached_value(self, raw_value: int, dtype: str) -> str:
-        # Gleiche Darstellung wie der Parser; lokal gehalten, damit Cache-Laden ohne Live-Frame funktioniert.
-        signed = s16(raw_value)
-        if dtype in ("TEMP", "TEMP1"):
-            return f"{signed / 10.0:.1f} °C"
-        if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
-            return f"{signed / 2.0:.1f} °C"
-        if dtype in ("BAR_X10", "PRESSURE_BAR_X10"):
-            return f"{signed / 10.0:.1f} bar"
-        if dtype in ("AMP_X2", "CURRENT_A_X2"):
-            return f"{signed / 2.0:.1f} A"
-        if dtype in ("AMP_X10", "CURRENT_A_X10"):
-            return f"{signed / 10.0:.1f} A"
-        if dtype in ("VOLT", "VOLTS", "V"):
-            return f"{signed} V"
-        if dtype in ("WATT", "WATTS", "POWER_W"):
-            return f"{signed} W"
-        if dtype in ("RPM", "FAN_RPM"):
-            return f"{signed} rpm"
-        if dtype in ("KWH_PER_H", "KW_PER_H"):
-            return f"{signed} kW/h"
-        if dtype in ("KWH", "ENERGY_KWH"):
-            return f"{signed} kWh"
-        if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
-            return f"V{signed / 10.0:.1f}"
-        if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
-            return f"{signed / 100.0:.1f} m³/h"
-        if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
-            return f"{signed / 10.0:.1f} m³/h"
-        if dtype in ("MINUTES", "MIN"):
-            return f"{signed} min"
-        if dtype in ("SECONDS", "SEC"):
-            return f"{signed} s"
-        if dtype in ("HOURS", "HOUR"):
-            return f"{signed} h"
-        if dtype in ("DAYS", "DAY"):
-            return f"{signed} days"
-        if dtype in ("HZ", "FREQUENCY_HZ"):
-            return f"{signed} Hz"
-        if dtype in ("STEPS_N", "EEV_STEPS", "STEPS"):
-            return f"{signed} N"
-        if dtype in ("PERCENT", "PCT"):
-            return f"{signed} %"
-        if dtype in ("DIGI5",):
-            return f"{signed / 10.0:.1f}"
-        if dtype == "DIGI6":
-            return f"{signed / 1000.0:.3f}"
-        if dtype == "DIGI19":
-            return f"{signed / 100.0:.2f}"
-        if dtype == "DIGI4":
-            return f"{signed / 5.0:.1f}"
-        if dtype == "DIGI1":
-            return f"{signed}"
-        if dtype == "DIGI9":
-            return f"{signed} raw / evtl. {signed / 10.0:.1f}"
-        return str(signed)
 
-    def load_value_cache(self, silent: bool = False):
-        cache_path = self.cache_file_path
-        if not os.path.exists(cache_path) and os.path.exists(getattr(self, "old_cache_file_path", "")):
-            cache_path = self.old_cache_file_path
-        if not os.path.exists(cache_path):
-            if not silent:
-                self._log(f"Werte-Cache nicht gefunden: {self.cache_file_path}")
-            return
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            items = data.get("registers", []) if isinstance(data, dict) else []
-            loaded = 0
-            for item in items:
-                reg = self._cached_register_from_snapshot(item)
-                if reg is None:
-                    continue
-                self.cached_regs.add(reg.reg)
-                self.latest_regs[reg.reg] = reg
-                self.last_values[reg.reg] = int(reg.raw_value)
-                self.previous_value_texts.setdefault(reg.reg, "--")
-                if not (self.known_only_cb.isChecked() and not reg.name):
-                    self._upsert_register_row(reg, changed=False)
-                loaded += 1
-            self._recalculate_value_search()
-            self._recalculate_name_search()
-            self._refresh_search_highlights()
-            self.reg_count_label.setText(str(len(self.last_values)))
-            if not silent:
-                stamp = data.get("saved_at")
-                stamp_text = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(stamp)) if stamp else "unbekannt"
-                self._log(f"Werte-Cache geladen: {loaded} Register, Stand {stamp_text}. Geladene neutrale Zeilen sind grau; 10xx/30xx behalten ihre Bereichsfarbe.")
-        except Exception as exc:
-            self._log(f"Werte-Cache laden fehlgeschlagen: {exc}")
 
     def check_for_updates_on_startup(self):
         self.check_for_updates(silent_no_update=True)
@@ -5737,10 +5521,10 @@ class MainWindow(QMainWindow):
 
     def clear_log(self):
         self.log_text.clear()
-        self._log("Log geleert. Raw-Datei/Registerwerte unverändert.")
+        self._log("Log geleert. Registerwerte unverändert.")
 
     def clear_main_window_values(self):
-        """Nur die Haupt-Registeransicht leeren, ohne Log/Verbindung/Cache-Datei anzufassen."""
+        """Nur die Haupt-Registeransicht leeren, ohne Log oder Verbindung anzufassen."""
         old_count = len(self.last_values)
         self.register_table.setSortingEnabled(False)
         self.register_table.setUpdatesEnabled(False)
@@ -5750,7 +5534,6 @@ class MainWindow(QMainWindow):
             self.latest_regs.clear()
             self.last_values.clear()
             self.previous_value_texts.clear()
-            self.cached_regs.clear()
             self.register_change_highlights.clear()
             self.cloud_overlay_by_reg.clear()
             self.last_contact_value = None
@@ -5766,7 +5549,7 @@ class MainWindow(QMainWindow):
             self.reg_count_label.setText("0")
         finally:
             self.register_table.setUpdatesEnabled(True)
-        self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log, Raw-Datei und Cache-Datei unverändert.")
+        self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log und Verbindung unverändert.")
 
     def _parse_int_text(self, text: str) -> int:
         text = str(text).strip().replace("_", "")
@@ -6184,13 +5967,11 @@ class MainWindow(QMainWindow):
             self._update_init_read_progress()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
-            self._close_raw_file()
             self._log("DisplayWorker/Display-INIT Verbindung gestoppt.")
             return
 
         if self.worker:
             self.worker.stop()
-        self._close_raw_file()
 
     @Slot()
     def _clear_thread_refs(self):
@@ -6220,8 +6001,6 @@ class MainWindow(QMainWindow):
         self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
-        if self.raw_file_cb.isChecked():
-            self._open_raw_file()
         if bool(self.settings.get("auto_read_init_on_startup", False)) and not passive:
             QTimer.singleShot(800, self.send_init_reads)
         self._apply_live_poll_timer_state()
@@ -6244,7 +6023,6 @@ class MainWindow(QMainWindow):
             self._update_connection_button_icons()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
-            self._close_raw_file()
             self._log("Display-Hauptverbindung wurde vom DisplayWorker abgeloest; UI bleibt verbunden, Disconnect stoppt den DisplayWorker.")
             return
 
@@ -6258,7 +6036,6 @@ class MainWindow(QMainWindow):
         self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
-        self._close_raw_file()
         self._stop_warmlink_capture("gestoppt")
 
     @Slot(str)
@@ -6403,36 +6180,6 @@ class MainWindow(QMainWindow):
             self.warmlink_capture = None
         self._set_capture_power_inhibit(False)
         self._drain_capture_gui_log_queue()
-
-    def _open_raw_file(self):
-        if self.raw_file:
-            return
-        log_dir = os.path.join(getattr(self, "user_data_dir", self.base_dir), "raw_logs")
-        os.makedirs(log_dir, exist_ok=True)
-        stamp = time.strftime("%Y%m%d_%H%M%S")
-        self.raw_file_path = os.path.join(log_dir, f"foxair_phnix_raw_{stamp}.bin")
-        self.raw_file = open(self.raw_file_path, "ab")
-        self.raw_file_label.setText(os.path.basename(self.raw_file_path))
-        self._log(f"RAW-Datei geöffnet: {self.raw_file_path}")
-
-    def _close_raw_file(self):
-        if self.raw_file:
-            try:
-                self.raw_file.flush()
-                self.raw_file.close()
-            finally:
-                self._log(f"RAW-Datei geschlossen: {self.raw_file_path}")
-                self.raw_file = None
-                self.raw_file_path = None
-                self.raw_file_label.setText("--")
-
-    @Slot()
-    def on_raw_file_checkbox_changed(self):
-        if self.raw_file_cb.isChecked() and self.connected:
-            self._open_raw_file()
-        elif not self.raw_file_cb.isChecked():
-            self._close_raw_file()
-
     def _send_udp_raw_bus(self, direction: str, chunk: bytes) -> None:
         diag = getattr(self, "udp_diagnostic", None)
         if diag is not None:
@@ -6474,12 +6221,6 @@ class MainWindow(QMainWindow):
             self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, Pending-Read offen: {pending_preview}{more}", level=7, force=True)
         else:
             self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, kein Pending-Read offen", level=7)
-        if self.raw_file_cb.isChecked():
-            if not self.raw_file:
-                self._open_raw_file()
-            if self.raw_file:
-                self.raw_file.write(chunk)
-                self.raw_file.flush()
         if self.raw_log_cb.isChecked():
             # V0.2.41 fix6: RAW anzeigen liefert immer HEX+ASCII.
             # Die separate RAW-ASCII-Checkbox ist damit überflüssig.
@@ -6697,14 +6438,9 @@ class MainWindow(QMainWindow):
             old_known = reg.reg in self.last_values
             old_value = self.last_values.get(reg.reg)
             value_diff = old_value != reg.raw_value
-            was_cached = reg.reg in self.cached_regs
-            # PRIVATE fix51: Erster Live-Wert nach Programmstart/Leeren ist ein
-            # Initialwert und soll NICHT als Änderung markiert werden. Auch ein
-            # vom Cache geladener Altwert zaehlt noch nicht als Live-Basis; erst
-            # ab dem zweiten echten Live-Wert darf die Änderungsfarbe greifen.
-            changed = bool(old_known and (not was_cached) and value_diff)
-            if was_cached:
-                self.cached_regs.discard(reg.reg)
+            # Der erste Live-Wert nach Programmstart/Leeren ist ein Initialwert
+            # und wird erst ab dem zweiten echten Live-Wert als Änderung gewertet.
+            changed = bool(old_known and value_diff)
             if value_diff:
                 if old_value is None:
                     self.previous_value_texts.setdefault(reg.reg, "--")
@@ -6724,7 +6460,7 @@ class MainWindow(QMainWindow):
                 elif int(reg.reg) == 2012:
                     display_hmi_frame_had_true_2012 = True
 
-            if changed or was_cached or reg.reg not in self.table_rows:
+            if changed or reg.reg not in self.table_rows:
                 self._upsert_register_row(reg, changed)
 
             if reg.reg == 2034:
@@ -6821,10 +6557,7 @@ class MainWindow(QMainWindow):
         old_known = 2012 in self.last_values
         old_value = self.last_values.get(2012)
         value_diff = old_value != raw_value
-        was_cached = 2012 in self.cached_regs
-        changed = bool(old_known and (not was_cached) and value_diff)
-        if was_cached:
-            self.cached_regs.discard(2012)
+        changed = bool(old_known and value_diff)
         if value_diff:
             if old_value is None:
                 self.previous_value_texts.setdefault(2012, "--")
@@ -6843,7 +6576,7 @@ class MainWindow(QMainWindow):
             timestamp=time.time(),
         )
         self.last_values[2012] = raw_value
-        if changed or was_cached or 2012 not in self.table_rows:
+        if changed or 2012 not in self.table_rows:
             self._upsert_register_row(reg, changed)
         if changed:
             self._log(
@@ -6937,7 +6670,7 @@ class MainWindow(QMainWindow):
         self.register_change_highlights.add(reg_no)
         # PRIVATE fix51: direkt auf die bestehende Zeile anwenden. Bisher war
         # die Markierung zwar gespeichert, konnte aber danach durch normale
-        # Bereichs-/Cache-/Such-Refreshes optisch wieder verschwinden.
+        # Bereichs-/Such-Refreshes optisch wieder verschwinden.
         self._apply_register_row_visual_state(reg_no, force_changed=True)
 
     def _background_for_register(self, reg_no: int, changed: bool) -> QColor:
@@ -6946,7 +6679,7 @@ class MainWindow(QMainWindow):
 
         # Priorität: Suchtreffer und Änderungen. Änderungen bleiben bis
         # "Hauptfenster leeren" sichtbar; dadurch werden sie nicht von einem
-        # Tabellen-/Cache-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
+        # Tabellen-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
         if reg_no in self.value_search_matches or reg_no in self.name_search_matches:
             return self._register_search_color(dark)
         if changed or self._register_change_highlight_active(reg_no):
@@ -6955,11 +6688,6 @@ class MainWindow(QMainWindow):
         area = self._register_area_color(reg_no, dark)
         if area is not None:
             return area
-
-        # Cache-Grau nur für neutrale Bereiche verwenden. 10xx/30xx/91xxx behalten
-        # ihre Bereichsfarbe auch direkt nach Cache-/Tabellenaufbau.
-        if reg_no in self.cached_regs:
-            return QColor(55, 55, 55) if dark else QColor(225, 225, 225)
 
         return QColor(37, 37, 37) if dark else QColor(255, 255, 255)
 
@@ -6975,7 +6703,7 @@ class MainWindow(QMainWindow):
         """Setzt Hintergrund/Fett fuer eine komplette Haupttabellen-Zeile.
 
         Das ist die eine zentrale Stelle fuer Bereichsfarbe + dauerhafte
-        Aenderungsmarkierung. Sie wird nach Upsert, Such-Refresh, Cache-/
+        Aenderungsmarkierung. Sie wird nach Upsert sowie Such-/
         Filter-Rebuild und Theme-Wechsel verwendet.
         """
         reg_no = int(reg_no)
@@ -7496,10 +7224,6 @@ class MainWindow(QMainWindow):
         )
         self.dual_logger_btn.setVisible(visible)
 
-    def toggle_cache_options(self):
-        visible = not self.cache_options_widget.isVisible()
-        self.cache_options_widget.setVisible(visible)
-        self.cache_toggle_btn.setText("Einstellungen ausblenden" if visible else "Einstellungen ...")
 
     def _refresh_search_highlights(self):
         # PRIVATE fix51: Such-/Bereichs-/Aenderungsfarben immer ueber die
@@ -8598,6 +8322,24 @@ class MainWindow(QMainWindow):
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
         self._open_manual_register_dialog_for_register(reg_no, slave_addr)
+
+    def open_register_quick_write_from_table_item(self, item):
+        """Open the same quick-write path used by the register context menu."""
+        if item is None:
+            return
+        row = item.row()
+        reg_item = self.register_table.item(row, 0)
+        if reg_item is None:
+            return
+        try:
+            reg_no = int(reg_item.text())
+            bus_item = self.register_table.item(row, 9)
+            slave_addr = self._parse_int_text(bus_item.text() if bus_item else self.write_bus_edit.text())
+        except (TypeError, ValueError):
+            return
+        except Exception:
+            slave_addr = DEFAULT_BUS_ADDR
+        self.open_register_quick_write(reg_no, slave_addr)
 
     def open_register_context_menu(self, pos):
         item = self.register_table.itemAt(pos)
@@ -10681,8 +10423,6 @@ class MainWindow(QMainWindow):
                 pass
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
-        if self.cache_save_exit_cb.isChecked():
-            self.save_value_cache(silent=False)
         self.disconnect_from_device()
         self._stop_warmlink_capture("App wird beendet")
         event.accept()

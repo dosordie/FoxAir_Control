@@ -1,6 +1,6 @@
 # SG Ready
 
-Diese Seite dokumentiert die bestätigte SG-Ready-Zuordnung der untersuchten FoxAir/PHNIX-Mainboard-Firmware V3.3 einschließlich des inzwischen **live bestätigten virtuellen SG-Ready-Eingangs über Modbus**.
+Diese Seite dokumentiert die bestätigte SG-Ready-Zuordnung einschließlich des virtuellen SG-Ready-Eingangs und des dreistufigen PV-Pfads neuerer Firmware.
 
 Stand der Live-Verifikation: 24. August 2026.
 
@@ -20,7 +20,7 @@ Laut AirWende/PHNIX-naher Anleitung gilt damit:
 
 | Register dez | Register hex | Bedeutung |
 | ---: | ---: | --- |
-| 1334 | 0x0536 | SG-Ready-Quelle: `0` = Aus, `1` = 1 Kontakt, `2` = 2 physische Kontakte, **`3` = virtueller SG-Ready-Eingang über Modbus** |
+| 1334 | 0x0536 | SG-Ready-Quelle: `0` = Aus, `1` = 1 Kontakt, `2` = 2 physische Kontakte, `3` = klassischer virtueller SG-Eingang, **`7` = dreistufiger PV-Pfad neuer Firmware** |
 | 1335 | 0x0537 | SG Mode 1 Schlafmodus-Zeit in Minuten |
 | 1336 | 0x0538 | SG Mode 2 Leistung / wenig PV in kW, Skalierung `RAW / 10` |
 | 1337 | 0x0539 | SG Mode 3 Leistung / mittel PV in kW, Skalierung `RAW / 10` |
@@ -30,7 +30,19 @@ Laut AirWende/PHNIX-naher Anleitung gilt damit:
 | 1341 | 0x053D | SG Mode 4 E-Heizer / Zusatzfunktion |
 | 2034 | 0x07F2 | physische Schalter-/Kontaktzustände als Bitfeld |
 | 2133 | 0x0855 | tatsächlich aktiver SG-Ready-Modus |
-| **8801** | **0x2261** | **virtueller SG-Ready-Zustand, wirksam bei `1334 = 3`** |
+| **8801** | **0x2261** | **virtueller SG-Ready-Zustand, wirksam bei `1334 = 3` oder als PV-Stufe bei `1334 = 7`** |
+
+## Dreistufiger PV-Pfad neuer Firmware (`1334 = 7`)
+
+Live-Tests bestätigen für neuere Firmware eine von der klassischen Kontaktanzeige unabhängige Stufensteuerung. Bei `1334 = 7` wählt Register `8801` genau eine der folgenden Stufen; Register `2133` meldet dieselbe wirksame Stufe zurück:
+
+| 8801 / 2133 | Stufe | Wirkung |
+| ---: | --- | --- |
+| 1 | Low PV | Leistungsbegrenzung über `1336 / SG03` |
+| 2 | Neutral / Normalbetrieb | keine SG-bedingte Anhebung oder Absenkung |
+| 3 | High PV | Warmwasser-Anhebung über `1338 / SG05`, Heizungs-Anhebung über `1339 / SG06`, Kühlungs-Absenkung über `1340 / SG07` |
+
+Die PHNIX-App kann High PV dabei irreführend über das klassische SG-Kontakt-Bitfeld darstellen. Für die technische Auswertung sind `1334`, `8801` und die Rückmeldung in `2133` maßgeblich, nicht diese App-Darstellung.
 
 ## Virtueller SG-Ready-Eingang über Register 8801
 
@@ -73,7 +85,7 @@ Damit ist `8801` nicht nur ein statischer Reverse-Engineering-Fund, sondern ein 
 
 ## Fester 10-Minuten-Hold zwischen SG-Moduswechseln
 
-V3.3 übernimmt Änderungen des gewünschten SG-Modus **nicht beliebig schnell hintereinander**.
+V3.3 übernimmt Änderungen des gewünschten SG-Modus **nicht beliebig schnell hintereinander**. Diese 10-minütige Umschaltsperre betrifft den klassischen virtuellen Pfad; für Modus 7 ist sie durch die bisherigen Live-Tests nicht bestätigt.
 
 Nach jeder tatsächlich akzeptierten SG-Modusänderung wird intern ein Hold-Timer auf:
 
@@ -115,7 +127,7 @@ Ebenfalls aus V3.3 rekonstruiert und **am realen Gerät bestätigt**:
 
 > Eine Änderung der SG-Quellenauswahl in `1334` setzt den 10-Minuten-Hold und die zugehörigen internen Übergangszustände zurück.
 
-Für einen kontrollierten Test kann daher beispielsweise:
+Für einen kontrollierten Test kann `1334` zunächst auf `0` und anschließend wieder auf `3` gesetzt werden. Zusammen mit dem gewünschten virtuellen Wert entspricht dies beispielsweise:
 
 ```text
 8801 = gewünschter Modus
