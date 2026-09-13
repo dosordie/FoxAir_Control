@@ -18,3 +18,4 @@ def test_mode7_status_2133_uses_pv_stage_meanings():
 def test_classic_virtual_mode_keeps_four_existing_stages():
     assert [value for _label, value in virtual_stage_options(3)] == [1, 2, 3, 4]
     assert sg_status_description(3, 4) == "SG Mode 4 / High PV"
+    assert sg_status_description(3, 0) == "WP Aus / SG Ready Aus"

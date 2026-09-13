@@ -85,7 +85,7 @@ def test_backend_register_map_separation_uses_actual_loaded_maps():
 def test_fw33_confirmed_register_metadata_and_interface_boundary():
     main, _display = _load_static_maps()
 
-    assert main["1334"]["value_map"]["3"] == "Modbus / virtueller SG-Eingang"
+    assert main["1334"]["value_map"]["3"] == "Modbus über 8801 (4 Modes)"
     assert "tatsächlich laufend" in main["2019"]["bit_map"]["0"]
     assert "Lüfter tatsächlich aktiv" in main["2019"]["bit_map"]["2"]
     assert main["2057"]["name"] == "T35 / AC Input Current"
@@ -114,7 +114,7 @@ def test_sg_ready_editor_handles_direct_only_8801():
     assert "READ_LABEL_VIRTUAL = \"SG virtueller Eingang 8801\"" in source
     assert 'current_backend_key() == "standard_modbus"' in source
     assert "Virtueller SG-Modus (8801, nur direkt)" in source
-    assert 'addItem("Dreistufiger PV-Pfad neuer Firmware", 7)' in source
+    assert 'addItem("Modbus über 8801 (3 Modes /V3.4)", 7)' in source
     assert "int(self.sg_mode_combo.currentData()) in (3, 7)" in source
     assert "Low PV – Begrenzung über SG03 (1336)" in logic
     assert "Neutral / Normalbetrieb – keine SG-Anpassung" in logic
