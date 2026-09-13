@@ -79,7 +79,7 @@ class SGReadyEditorDialog(QDialog):
         for reg_no, label in [
             (1338, "SG05 Mode 4 WW-Sollwertanhebung"),
             (1339, "SG06 Mode 4 HZ-Sollwertanhebung"),
-            (1340, "SG07 Mode 4 Kühlen-Sollwertanhebung"),
+            (1340, "SG07 Kühl-Sollwertänderung (Modus 7: Absenkung)"),
         ]:
             spin = QDoubleSpinBox(); spin.setRange(-50.0, 25.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             self.temp_spins[reg_no] = spin
@@ -230,7 +230,7 @@ class SGReadyEditorDialog(QDialog):
         values = [(1334, int(self.sg_mode_combo.currentData()) & 0xFFFF, "SG Ready Auswahl")]
         for reg_no in (1335, 1336, 1337):
             values.append((reg_no, int(self.raw_spins[reg_no].value()) & 0xFFFF, f"SG Register {reg_no}"))
-        for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kuehlen-Anhebung")):
+        for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 Kühl-Sollwertänderung (Modus 7: Absenkung)")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
         values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 E-Heizer / Zusatzfunktion bei Mode 4"))
         if self.main_window.current_backend_key() == "standard_modbus" and int(self.sg_mode_combo.currentData()) in (3, 7):

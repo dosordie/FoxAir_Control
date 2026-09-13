@@ -119,6 +119,7 @@ def test_sg_ready_editor_handles_direct_only_8801():
     assert "Low PV – Begrenzung über SG03 (1336)" in logic
     assert "Neutral / Normalbetrieb – keine SG-Anpassung" in logic
     assert "High PV – SG05/SG06 Anhebung, SG07 Absenkung" in logic
+    assert "SG07 Kühl-Sollwertänderung (Modus 7: Absenkung)" in source
     assert "`1334 = 7`" in docs
     assert "| 1 | Low PV |" in docs
     assert "| 2 | Neutral / Normalbetrieb |" in docs

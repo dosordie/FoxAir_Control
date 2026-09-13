@@ -2,7 +2,7 @@
 
 Diese Seite dokumentiert die bestätigte SG-Ready-Zuordnung einschließlich des virtuellen SG-Ready-Eingangs und des dreistufigen PV-Pfads neuerer Firmware.
 
-Stand der Live-Verifikation: 24. August 2026.
+Stand der Live-Verifikation: 13. September 2026.
 
 ## Physische Klemmen und I/O-Zuordnung
 

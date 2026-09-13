@@ -8305,59 +8305,49 @@ class MainWindow(QMainWindow):
 
     # V0.2.38: alter generischer Init-Timerpfad entfernt. Warmlink/Standard/Display nutzen eigene Controller.
 
-    def open_manual_register_dialog_from_table_item(self, item):
-        if item is None:
-            return
-        row = item.row()
+    def _register_and_bus_from_table_row(self, row: int) -> Optional[tuple[int, int]]:
         reg_item = self.register_table.item(row, 0)
         if reg_item is None:
-            return
+            return None
         try:
             reg_no = int(reg_item.text())
-        except ValueError:
-            return
+        except (TypeError, ValueError):
+            return None
         try:
-            bus_text = self.register_table.item(row, 9).text() if self.register_table.item(row, 9) else self.write_bus_edit.text()
+            bus_item = self.register_table.item(row, 9)
+            bus_text = bus_item.text() if bus_item else self.write_bus_edit.text()
             slave_addr = self._parse_int_text(bus_text)
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
+        return reg_no, slave_addr
+
+    def open_manual_register_dialog_from_table_item(self, item):
+        if item is None:
+            return
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
+            return
+        reg_no, slave_addr = register_and_bus
         self._open_manual_register_dialog_for_register(reg_no, slave_addr)
 
     def open_register_quick_write_from_table_item(self, item):
         """Open the same quick-write path used by the register context menu."""
         if item is None:
             return
-        row = item.row()
-        reg_item = self.register_table.item(row, 0)
-        if reg_item is None:
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
             return
-        try:
-            reg_no = int(reg_item.text())
-            bus_item = self.register_table.item(row, 9)
-            slave_addr = self._parse_int_text(bus_item.text() if bus_item else self.write_bus_edit.text())
-        except (TypeError, ValueError):
-            return
-        except Exception:
-            slave_addr = DEFAULT_BUS_ADDR
+        reg_no, slave_addr = register_and_bus
         self.open_register_quick_write(reg_no, slave_addr)
 
     def open_register_context_menu(self, pos):
         item = self.register_table.itemAt(pos)
         if item is None:
             return
-        row = item.row()
-        reg_item = self.register_table.item(row, 0)
-        if reg_item is None:
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
             return
-        try:
-            reg_no = int(reg_item.text())
-        except ValueError:
-            return
-        try:
-            bus_text = self.register_table.item(row, 9).text() if self.register_table.item(row, 9) else self.write_bus_edit.text()
-            row_slave_addr = self._parse_int_text(bus_text)
-        except Exception:
-            row_slave_addr = DEFAULT_BUS_ADDR
+        reg_no, row_slave_addr = register_and_bus
 
         result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
         if result is None:
