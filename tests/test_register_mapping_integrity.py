@@ -108,10 +108,21 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
 
 def test_sg_ready_editor_handles_direct_only_8801():
     source = (ROOT / "dialogs" / "sg_ready_editor_dialog.py").read_text(encoding="utf-8")
+    logic = (ROOT / "core" / "sg_ready.py").read_text(encoding="utf-8")
     docs = (ROOT / "docs" / "sg_ready.md").read_text(encoding="utf-8")
 
     assert "READ_LABEL_VIRTUAL = \"SG virtueller Eingang 8801\"" in source
     assert 'current_backend_key() == "standard_modbus"' in source
     assert "Virtueller SG-Modus (8801, nur direkt)" in source
+    assert 'addItem("Dreistufiger PV-Pfad neuer Firmware", 7)' in source
+    assert "int(self.sg_mode_combo.currentData()) in (3, 7)" in source
+    assert "Low PV – Begrenzung über SG03 (1336)" in logic
+    assert "Neutral / Normalbetrieb – keine SG-Anpassung" in logic
+    assert "High PV – SG05/SG06 Anhebung, SG07 Absenkung" in logic
+    assert "SG07 Kühl-Sollwertänderung (Modus 7: Absenkung)" in source
+    assert "`1334 = 7`" in docs
+    assert "| 1 | Low PV |" in docs
+    assert "| 2 | Neutral / Normalbetrieb |" in docs
+    assert "| 3 | High PV |" in docs
     assert "10-minütige Umschaltsperre" in docs
     assert "zunächst auf `0` und anschließend wieder auf `3`" in docs

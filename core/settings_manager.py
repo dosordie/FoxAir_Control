@@ -32,10 +32,6 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
         settings = {}
     settings.setdefault("backend_settings", {})
     settings.setdefault("device_model", "foxair_green_gl9_1")
-    settings.setdefault("cache_load_on_start", False)
-    settings.setdefault("cache_save_on_exit", True)
-    settings.setdefault("cache_save_cyclic", False)
-    settings.setdefault("cache_interval_s", 60)
     settings.setdefault("show_public_warning", True)
     settings.setdefault("theme", "system")
     settings.setdefault("update_asset_mode", "auto")
