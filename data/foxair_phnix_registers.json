@@ -2574,10 +2574,6 @@
     "name": "EEV Heiz-Basisöffnung T04 −4,9…0,0 °C",
     "type": "STEPS_N",
     "unit": "N",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    },
     "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −4,9 bis 0,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1207": {
@@ -2604,10 +2600,6 @@
     "name": "EEV Heiz-Basisöffnung T04 ≤ −10,0 °C",
     "type": "STEPS_N",
     "unit": "N",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    },
     "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 bis einschließlich −10,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1209": {
@@ -3904,7 +3896,7 @@
     "code": "E21",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Haupt-EEV I-/Zeitfaktor (Divisor)",
+    "name": "EEV I-/Zeitfaktor (Divisor)",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
     "notes": "In App nicht sichtbar.",
@@ -4569,7 +4561,7 @@
   "2020": {
     "function": "16",
     "mode": "read",
-    "name": "015 / EEV-Schritte",
+    "name": "EEV Istposition / Schritte",
     "type": "DIGI1",
     "description": "Intern nachgeführte tatsächliche Stepperposition des Haupt-Expansionsventils in Schritten. Nicht nur ein abstrakter Regler-Sollwert."
   },
