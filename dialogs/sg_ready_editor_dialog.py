@@ -55,8 +55,8 @@ class SGReadyEditorDialog(QDialog):
         self.sg_mode_combo.addItem("Aus", 0)
         self.sg_mode_combo.addItem("1 Kontakt", 1)
         self.sg_mode_combo.addItem("2 Kontakte", 2)
-        self.sg_mode_combo.addItem("Modbus / virtueller SG-Eingang (nur direkt)", 3)
-        self.sg_mode_combo.addItem("Dreistufiger PV-Pfad neuer Firmware", 7)
+        self.sg_mode_combo.addItem("Modbus über 8801 (4 Modes)", 3)
+        self.sg_mode_combo.addItem("Modbus über 8801 (3 Modes /V3.4)", 7)
         self.sg_mode_combo.currentIndexChanged.connect(self._update_virtual_stage_choices)
         form.addRow("SG Ready Auswahl (1334):", self.sg_mode_combo)
 

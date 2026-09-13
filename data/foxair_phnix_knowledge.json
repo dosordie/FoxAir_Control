@@ -258,7 +258,7 @@
   },
   "1054": {
     "default": "1",
-    "description": "0-R32/1-R290",
+    "description": "Wählt den Kältemittel-/Kennfeldsatz. Für die Haupt-EEV-Auto-Regelung verwenden gerade A26-Werte die R32-Schwellenfamilie und ungerade A26-Werte die R290-Schwellenfamilie. A26 wird außerdem bei der Berechnung der aus Niederdruck abgeleiteten Verdampfungstemperatur berücksichtigt.",
     "source": "v36 Beschreibung/App-Review",
     "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
   },
@@ -664,19 +664,18 @@
   },
   "1131": {
     "default": "1",
-    "description": "0-Manual/1-Auto/2-Smart",
-    "knowledge": "Vermutung, noch nicht verifiziert: Smart wirkt vermutlich wie eine erweiterte Auto-Regelung. Während Auto klassisch auf Ziel-Überhitzung regelt, berücksichtigt Smart wahrscheinlich zusätzlich Betriebszustände wie Kompressorfrequenz, Startphase, Heiz-/Kühl-/WW-Modus sowie Temperatur-/Druckverhältnisse.",
-    "source": "Projektdeutung + Warmlink-App",
+    "description": "Regelmodus des Haupt-Expansionsventils: 0=Manuell, 1=Auto, 2=Smart. Auto arbeitet als geschlossene Überhitzungs-Feedbackregelung. Smart verwendet dieselbe Auto-Regelung weiter und begrenzt deren Ergebnis zusätzlich durch ein kennfeldabhängiges Smart-Fenster gemäß E19.",
+    "source": "Reverse Engineering GL9 Firmware V3.4",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1132": {
     "default": "5",
-    "description": "-20 bis 20 °C",
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Heizbetrieb. Der Feedbackregler vergleicht E02 direkt mit MAIN 2067, der Rückgas-/Saugüberhitzung. E02 bleibt auch im Smart-Modus aktiv.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1133": {
     "default": "350",
-    "description": "0 bis 500N",
+    "description": "Globaler Heiz-Basis-/Startwert des Haupt-EEV. Wenn E03 ungleich 0 ist, kann dieser Wert im Heiz-Basispfad die temperatursegmentierten E03-1…5-Werte übersteuern. Bei E03=0 wird abhängig von T04/Außentemperatur der passende E03-x-Wert verwendet.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1134": {
@@ -696,7 +695,7 @@
   },
   "1137": {
     "default": "100",
-    "description": "0 bis 500N",
+    "description": "Softwareseitige Mindestöffnung des Haupt-EEV im aktiven E07-Schutz-/Normalbetriebspfad bei Kompressor-Istfrequenz MAIN 2072 unter 61 Hz. Ab 61 Hz wird stattdessen die temperaturabhängige Mindestöffnung E07-1…5 verwendet. Keine mechanische Mindestposition und keine reine Startöffnung.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1138": {
@@ -722,7 +721,7 @@
   },
   "1142": {
     "default": "185",
-    "description": "selbst getestet / Quelle ASM; vorher: Reserviert e03-2",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für eine wirksame Außentemperatur T04 von +0,1 bis +7,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "ASM DEMONS.ASM"
   },
   "1143": {
@@ -746,16 +745,16 @@
   },
   "1147": {
     "default": "480",
-    "description": "10 bis 500N | war 430, Frost zu niedrig, jetzt 460"
+    "description": "Zielposition des Haupt-EEV während eines bestätigten Abtau-Regelzustands. E17 wird in diesem Defrost-State direkt als EEV-Zielposition verwendet."
   },
   "1148": {
     "default": "3",
-    "description": "-10 bis 10°C"
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Kühlbetrieb. Wird vom selben Feedbackregler wie E02 gegen MAIN 2067 geregelt."
   },
   "1149": {
     "default": "20%",
-    "description": "0 bis 300%",
-    "knowledge": "Vermutung, noch nicht verifiziert: E19 begrenzt vermutlich, wie stark der Smart-Algorithmus vom normalen/Auto-EEV-Wert abweichen darf. Bei Default 20 % dürfte Smart den berechneten EEV-Wert vermutlich um bis zu ca. 20 % korrigieren."
+    "description": "Prozentuales Begrenzungsfenster des Smart-Modus um den berechneten SmartCenter. Die Firmware verwendet exakt:\nlower = SmartCenter × (1 - E19/100)\nupper = SmartCenter × (1 + E19/100)\nDas normale Auto-Regelergebnis wird im Smart-Modus auf dieses Fenster begrenzt. E19=20 bedeutet somit ±20 %, nicht ±10 %.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "1150": {
     "default": "0",
@@ -975,7 +974,7 @@
   },
   "1200": {
     "default": "250",
-    "description": "Aus Display Firmware; ASM: E03-1; EVV/EEV Initial Steps Heating1",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 ab +7,1 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "ASM DEMONS.ASM"
   },
   "1201": {
@@ -1008,29 +1007,29 @@
   },
   "1206": {
     "default": "10",
-    "description": "0-NEIN/1-JA",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −4,9 bis 0,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "v36 Beschreibung/App-Review"
   },
   "1207": {
     "default": "0",
-    "description": "00 bis 23"
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −9,9 bis −5,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1208": {
     "default": "0",
-    "description": "0-NEIN/1-JA",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 bis einschließlich −10,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "v36 Beschreibung/App-Review"
   },
   "1209": {
     "default": "10",
-    "description": "00 bis 23"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 ab +7,1 °C. Keine mechanische Mindestposition."
   },
   "1210": {
     "default": "10",
-    "description": "00 bis 59"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von +0,1 bis +7,0 °C."
   },
   "1211": {
     "default": "10",
-    "description": "00 bis 59"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −4,9 bis 0,0 °C."
   },
   "1212": {
     "default": "0",
@@ -1046,12 +1045,12 @@
   },
   "1215": {
     "default": "90",
-    "description": "Aus Display Firmware  - Stimmt mit WarmeLink überein; ASM: E07-4; EVV/EEV min Steps4",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −9,9 bis −5,0 °C.",
     "source": "ASM DEMONS.ASM"
   },
   "1216": {
     "default": "85",
-    "description": "Aus Display Firmware - Stimmt mit WarmeLink überein; ASM: E07-5; EVV/EEV min Steps5",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 bis einschließlich −10,0 °C.",
     "source": "ASM DEMONS.ASM"
   },
   "1217": {
@@ -1549,11 +1548,11 @@
     "source": "User correction 2026-06-19 + ASM"
   },
   "1351": {
-    "description": "E20: Display-Firmware Parameter. In App nicht sichtbar.",
+    "description": "Proportionaler Fehler-/Gainfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Die proportionale Korrektur arbeitet mit mehreren Fehlerzonen und wird auf ungefähr ±60 Schritte begrenzt. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt.",
     "source": "User correction 2026-06-19 + ASM"
   },
   "1352": {
-    "description": "E21: Display-Firmware Parameter. In App nicht sichtbar.",
+    "description": "Zeit-/Integralskalierungsfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Der zeitabhängige Anteil enthält den Faktor 1/E21. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt; insbesondere E21=0 darf nicht als sicherer Einstellwert dokumentiert werden.",
     "source": "User correction 2026-06-19 + ASM"
   },
   "1353": {
@@ -1865,7 +1864,7 @@
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2020": {
-    "description": "0 bis 500N"
+    "description": "Intern nachgeführte tatsächliche Stepperposition des Haupt-Expansionsventils in Schritten. Nicht nur ein abstrakter Regler-Sollwert."
   },
   "2021": {},
   "2022": {
@@ -1952,7 +1951,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2045": {
-    "description": "tatsächlicher Testwert"
+    "description": "Einlasswassertemperatur. Wird im Smart-EEV-Kennfeld zusätzlich als vierstufige Faktorachse verwendet. Faktoren: 1,2 / 1,0 / 0,9 / 0,8. Umschaltpunkte mit Hysterese liegen ungefähr bei 20,1/18,1 °C, 30/28 °C und 40/38 °C."
   },
   "2046": {
     "description": "tatsächlicher Testwert"
@@ -1961,7 +1960,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2048": {
-    "description": "tatsächlicher Testwert"
+    "description": "Wirksame Außentemperatur. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern."
   },
   "2049": {
     "description": "tatsächlicher Testwert"
@@ -1980,7 +1979,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2053": {
-    "description": "tatsächlicher Testwert"
+    "description": "Heißgas-/Verdichter-Austrittstemperatur. Wird zusätzlich als fünfstufige Achse der zustandsabhängigen 4×5-Auto-EEV-Regelmatrix verwendet. Die Schwellen hängen über A26 von der R32-/R290-Profilfamilie ab."
   },
   "2054": {
     "description": "Elektrische Leistung / Unit Power. Vermutung aus Livewert: signed /10 kW; Beispiel raw 5 = 0,5 kW = 500 W.",
@@ -2026,16 +2025,16 @@
     "description": "tatsächlicher Testwert"
   },
   "2065": {
-    "description": "Verdampfungstemperatur ASM. Vermutlich aus Niederdrucksensor und Kältemittel-Sättigungstabelle berechnet; hilfreich für Vereisungsneigung, Abtauverhalten und Effizienzdiagnose.",
-    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
+    "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2066": {
-    "description": "Exhaust Superheat ASM / Austrittsüberhitzung. Vermutlich modellierter Diagnosewert, weil die Anlage offenbar keinen Hochdrucksensor besitzt. Beobachtung: Heißgas ca. 51,2 °C, WP-Austritt ca. 39 °C -> Differenz ca. 12 K; Register zeigte ca. 11,3 K. Daher vermutlich Heißgas minus WP-Austritt/Kondensator-Referenztemperatur.",
-    "source": "Live-Beobachtung / Diagnose-Hypothese"
+    "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2067": {
-    "description": "Suction Superheat ASM / Saugüberhitzung. Wichtiger EEV-/Saugseitenwert; vermutlich Sauggastemperatur minus Verdampfungstemperatur. Niedrige Werte können auf geringe Überhitzung/Flüssigkeitsrisiko deuten, hohe Werte auf EEV/Kältemittel-/Verdampferproblem.",
-    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
+    "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2068": {
     "description": "0; ASM: 0814H -> Anzeige System2 current",
@@ -2054,10 +2053,10 @@
     "source": "ASM DEMONS.ASM"
   },
   "2071": {
-    "description": "Kompressor-Sollfrequenz; 2072 ist die tatsächliche Kompressor-Ist-/Betriebsfrequenz."
+    "description": "Sollfrequenz des Verdichters. Wird im Smart-EEV-Kennfeld als Frequenzachse verwendet. Zustandswechsel mit Hysterese erfolgen ungefähr bei 46/44 Hz, 61/59 Hz und 76/74 Hz."
   },
   "2072": {
-    "description": "tatsächlicher Testwert"
+    "description": "Tatsächliche Verdichterfrequenz. Im E07-Mindestöffnungspfad erfolgt bei 61 Hz die Umschaltung: unter 61 Hz gilt globales E07, ab 61 Hz die temperatursegmentierten E07-1…5-Werte."
   },
   "2073": {
     "description": "tatsächlicher Testwert"

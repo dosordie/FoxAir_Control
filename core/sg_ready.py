@@ -28,7 +28,7 @@ def sg_status_description(sg_mode: int, status: int) -> str:
             3: "High PV – SG05/SG06 Anhebung, SG07 Absenkung",
         }.get(int(status), "unbekannte dreistufige PV-Stufe")
     return {
-        0: "WP aus oder SG deaktiviert",
+        0: "WP Aus / SG Ready Aus",
         1: "SG Mode 1 / Schlafmodus",
         2: "SG Mode 2 / wenig PV",
         3: "SG Mode 3 / mittel PV",
