@@ -106,6 +106,20 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert "8801" not in main
 
 
+def test_confirmed_flow_and_multizone_mapping_metadata():
+    main, _display = _load_static_maps()
+
+    assert main["1022"]["type"] == "FLOW_M3H_X100"
+    assert main["1022"]["unit"] == "m³/h"
+    assert "Q_eff = Q_base" in main["1022"]["description"]
+    assert [main[str(reg)]["type"] for reg in (2160, 2161, 2162)] == ["TEMP1"] * 3
+    assert main["2163"]["type"] == "PERCENT"
+    assert "100 - RAW" in main["2163"]["description"]
+    for reg in (2140, 2141, 2142, 2143):
+        assert main[str(reg)]["type"] == "RAW"
+        assert "physikalische Bedeutung ist weiterhin offen" in main[str(reg)]["description"]
+
+
 def test_sg_ready_editor_handles_direct_only_8801():
     source = (ROOT / "dialogs" / "sg_ready_editor_dialog.py").read_text(encoding="utf-8")
     logic = (ROOT / "core" / "sg_ready.py").read_text(encoding="utf-8")

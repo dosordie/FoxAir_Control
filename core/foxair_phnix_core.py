@@ -321,8 +321,9 @@ def _decode_timer_bit_byte(byte_value: int) -> str:
 
 
 def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]]) -> str:
+    raw_value = int(raw_value) & 0xFFFF
     if not bit_map:
-        return str(s16(raw_value))
+        return f"{raw_value} / 0x{raw_value:04X} / {raw_value:016b}"
     hits = []
     for bit in sorted(bit_map):
         if 0 <= bit <= 15 and (raw_value & (1 << bit)):
@@ -387,7 +388,7 @@ def format_value_by_type(
     if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
         return f"V{signed / 10.0:.1f}"
     if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
-        return f"{signed / 100.0:.1f} m³/h"
+        return f"{signed / 100.0:.2f} m³/h"
     if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
         return f"{signed / 10.0:.1f} m³/h"
     if dtype in ("COP_X100", "COP100"):

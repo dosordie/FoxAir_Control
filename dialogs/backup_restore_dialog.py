@@ -36,11 +36,11 @@ from dialogs.backup_restore_policy import (
 
 
 class BackupRestoreDialog(QDialog):
-    """Parameter-Backup/Restore fuer bekannte Parameter-Paketbereiche.
+    """Parameter-Backup/Restore fuer bestaetigte Parameter-Paketbereiche.
 
-    Backup speichert nur aktuelle Werte aus den Parameterranges, keine BLOCK-Koepfe
-    und keine Live-/Statuswerte. Restore zeigt eine Diff-Vorschau und schreibt erst
-    nach deutlicher Sicherheitsabfrage.
+    Backup speichert bekannte Parameter und unbekannte RAW-Slots aus diesen Bereichen,
+    aber keine BLOCK-Koepfe oder explizit ausgeschlossenen Live-/Commandwerte. Restore
+    zeigt eine Diff-Vorschau und schreibt erst nach deutlicher Sicherheitsabfrage.
     """
     BACKUP_BLOCKS = BACKUP_BLOCKS
     EXCLUDED_WRITABLE_REGISTERS = EXCLUDED_WRITABLE_REGISTERS
@@ -75,7 +75,8 @@ class BackupRestoreDialog(QDialog):
         layout = QVBoxLayout(self)
 
         hint = QLabel(
-            "Backup/Restore liest und schreibt nur bekannte Parameterbereiche. "
+            "Backup/Restore liest und schreibt nur bestätigte Parameterbereiche; "
+            "unbekannte Slots werden darin bitgenau als RAW erhalten. "
             "BLOCK-Koepfe, interne HMI-Bloecke und Status-/Livewerte werden nicht geschrieben. "
             "Restore immer erst mit Diff pruefen."
         )
@@ -202,9 +203,9 @@ class BackupRestoreDialog(QDialog):
         for block in self._backup_blocks():
             optional = bool(block["optional"])
             for reg_no in range(int(block["start"]), int(block["end"]) + 1):
-                info = self.main_window.regmap.get(reg_no)
-                if not info:
+                if reg_no in self.EXCLUDED_WRITABLE_REGISTERS:
                     continue
+                info = self.main_window.regmap.get(reg_no)
                 dtype = str(getattr(info, "dtype", "RAW"))
                 name = str(getattr(info, "name", ""))
                 if dtype == "BLOCK" or name.lower().startswith("blockkopf"):
@@ -338,13 +339,13 @@ class BackupRestoreDialog(QDialog):
         self.progress_bar.setValue(100)
         latest = self.main_window.latest_regs
         for idx, block in enumerate(self._backup_blocks(), start=1):
-            known_regs = [
+            package_regs = [
                 reg_no for reg_no in range(block["start"], block["end"] + 1)
-                if self.main_window.regmap.get(reg_no) is not None
+                if reg_no not in self.EXCLUDED_WRITABLE_REGISTERS
             ]
-            read_count = sum(1 for reg_no in known_regs if reg_no in latest)
+            read_count = sum(1 for reg_no in package_regs if reg_no in latest)
             if read_count:
-                self.main_window._log(f"Backup: Paket {idx}/{len(self._backup_blocks())} {block['start']}/{block['qty']} gelesen ({read_count} bekannte Werte).")
+                self.main_window._log(f"Backup: Paket {idx}/{len(self._backup_blocks())} {block['start']}/{block['qty']} gelesen ({read_count} Werte).")
         for block in summary["optional_missing_blocks"]:
             self.main_window._log(f"Backup: {block['label']} {block['start']}/{block['qty']} nicht verfügbar, übersprungen.")
         if summary["required_missing"]:
@@ -357,7 +358,10 @@ class BackupRestoreDialog(QDialog):
     def _row_values_for_reg(self, reg_no: int, backup_raw: Optional[int] = None):
         info = self.main_window.regmap.get(reg_no)
         code = self.main_window._code_for_register(reg_no) if hasattr(self.main_window, "_code_for_register") else ""
-        name = self.main_window._name_for_register(reg_no, info.name if info else "") if hasattr(self.main_window, "_name_for_register") else (info.name if info else "")
+        mapped_name = str(getattr(info, "name", "")) if info else ""
+        name = self.main_window._name_for_register(reg_no, mapped_name) if hasattr(self.main_window, "_name_for_register") else mapped_name
+        if not name:
+            name = "Unbekannter Paket-Slot (legacy/reserve)"
         dtype = info.dtype if info else "RAW"
         raw = backup_raw
         if raw is None:
@@ -454,11 +458,13 @@ class BackupRestoreDialog(QDialog):
             if reg is None:
                 continue
             info = self.main_window.regmap.get(reg_no)
+            mapped_name = str(getattr(info, "name", "")) if info else ""
+            mapped_dtype = str(getattr(info, "dtype", "RAW")) if info else "RAW"
             regs.append({
                 "reg": int(reg_no),
                 "raw_value": int(reg.raw_value) & 0xFFFF,
-                "name": str(info.name if info else getattr(reg, "name", "")),
-                "dtype": str(info.dtype if info else getattr(reg, "dtype", "RAW")),
+                "name": mapped_name or "Unbekannter Paket-Slot (legacy/reserve)",
+                "dtype": mapped_dtype if mapped_name else "RAW",
                 "code": self.main_window._code_for_register(reg_no) if hasattr(self.main_window, "_code_for_register") else "",
             })
         return {
