@@ -329,8 +329,12 @@
   "1022": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Offset Durchfluss",
-    "type": "RAW"
+    "name": "Durchfluss-Offset Umwälzpumpe",
+    "type": "FLOW_M3H_X100",
+    "unit": "m³/h",
+    "description": "Signed 16-Bit-Durchfluss-Offset; signed RAW / 100 = m³/h. Firmwarebestätigter Rechenweg: Q_eff = Q_base + signed(MAIN:1022) / 100. Der korrigierte gemeinsame wirksame Runtime-Durchfluss wird unter anderem über MAIN:2077 / T39 ausgegeben und von nachgelagerten Regel-/Leistungsfunktionen verwendet; es handelt sich nicht nur um einen Anzeigeoffset.",
+    "note": "Binary bestätigt durch V3.3-Pumpen-/Durchfluss-Reverse-Engineering; signed Skalierung und Datenpfad zusätzlich durch Live-Tests bestätigt.",
+    "source": "FW3.3-PUMPEN-DURCHFLUSS-KALIBRIERUNG-UPM4L.md; Live-Tests"
   },
   "1023": {
     "app_label": "Dry Contact",
@@ -5675,29 +5679,37 @@
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler A – High Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2141 persistent gespeichertes High-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2141": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler A – Low Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2140 persistent gespeichertes Low-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2142": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler B – High Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2143 persistent gespeichertes High-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2143": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler B – Low Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2142 persistent gespeichertes Low-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2144": {
     "function": "03",
@@ -5748,6 +5760,44 @@
     "name": "Zone 1 Runtime-/Regelwert (gefiltert; Bedeutung offen)",
     "type": "RAW",
     "note": "V3.4-Analyse: Feld der Zone-1-Runtimestruktur; ein entsprechendes internes Feld existiert auch für Zone 2. Der Wert wird in Regelpfaden gefiltert/geglättet und ist daher kein einfaches 1/2-Enum. Live 2026-09-12 RAW 1/2 beobachtet; physikalische Bedeutung und Skalierung noch offen."
+  },
+  "2160": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Raumtemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock."
+  },
+  "2161": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Mischwassertemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock; Temperatur nach dem Mischventil."
+  },
+  "2162": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Raumtemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock."
+  },
+  "2163": {
+    "function": "03",
+    "mode": "read",
+    "name": "Mischventil Rohposition / Mischverhältnis",
+    "type": "PERCENT",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "description": "RAW 0…100. Das originale Display invertiert die Darstellung teilweise mit 100 - RAW. Die physikalische Stellrichtung darf daher nicht allein aus dem Rohwert abgeleitet werden.",
+    "note": "Reverse-Engineering-Erkenntnis; keine Festlegung auf physikalisch offen oder geschlossen."
   },
   "2164": {
     "function": "03",
