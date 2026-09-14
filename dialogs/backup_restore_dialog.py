@@ -27,6 +27,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.foxair_phnix_core import format_value_by_type
+from dialogs.backup_restore_policy import (
+    BACKUP_BLOCKS,
+    EXCLUDED_WRITABLE_REGISTERS,
+    READ_ONLY_BLOCK_HEADER_RANGES,
+)
+
 
 class BackupRestoreDialog(QDialog):
     """Parameter-Backup/Restore fuer bekannte Parameter-Paketbereiche.
@@ -35,15 +42,9 @@ class BackupRestoreDialog(QDialog):
     und keine Live-/Statuswerte. Restore zeigt eine Diff-Vorschau und schreibt erst
     nach deutlicher Sicherheitsabfrage.
     """
-    BACKUP_BLOCKS = [
-        ("Paket 1", 1018, 1090),
-        ("Paket 2", 1101, 1180),
-        ("Paket 3", 1191, 1270),
-        ("Paket 4", 1281, 1360),
-        ("Paket 5", 1371, 1450),
-        ("Paket 6 optional", 1461, 1540),
-        ("Paket 7 optional", 1551, 1630),
-    ]
+    BACKUP_BLOCKS = BACKUP_BLOCKS
+    EXCLUDED_WRITABLE_REGISTERS = EXCLUDED_WRITABLE_REGISTERS
+    READ_ONLY_BLOCK_HEADER_RANGES = READ_ONLY_BLOCK_HEADER_RANGES
 
     def __init__(
         self,
@@ -242,6 +243,10 @@ class BackupRestoreDialog(QDialog):
         regs.extend(groups.get(True, []))
         return sorted(set(regs))
 
+    def restore_registers(self) -> set[int]:
+        """Return the explicit allow-list of registers a backup may restore."""
+        return set(self.backup_registers()) - set(self.EXCLUDED_WRITABLE_REGISTERS)
+
     def _ensure_connected_for_transfer(self, action_label: str, resume: Optional[Any] = None) -> bool:
         if bool(getattr(self.main_window, "connected", False)):
             return True
@@ -358,8 +363,18 @@ class BackupRestoreDialog(QDialog):
         if raw is None:
             reg = self.main_window.latest_regs.get(reg_no)
             raw = int(reg.raw_value) if reg is not None else None
-        display = "--" if raw is None else self.main_window._format_cached_value(int(raw), dtype)
+        display = "--" if raw is None else self._format_register_value(reg_no, int(raw), info)
         return code, name, dtype, raw, display
+
+    def _format_register_value(self, reg_no: int, raw: int, info: Any = None) -> str:
+        """Format a register through the same central formatter as the main table."""
+        info = info if info is not None else self.main_window.regmap.get(reg_no)
+        dtype = getattr(info, "dtype", "RAW") if info else "RAW"
+        value_map = getattr(info, "value_map", None) if info else None
+        bit_map = getattr(info, "bit_map", None) if info else None
+        unit_fn = getattr(self.main_window, "_unit_for_register", None)
+        unit = unit_fn(reg_no) if callable(unit_fn) else getattr(info, "unit", None)
+        return format_value_by_type(raw, dtype, value_map, bit_map, unit=unit or None)
 
     def _make_table_item(self, text: str, align: Optional[Qt.AlignmentFlag] = None) -> QTableWidgetItem:
         it = QTableWidgetItem(str(text))
@@ -563,7 +578,7 @@ class BackupRestoreDialog(QDialog):
             table.setRowCount(len(rows))
             for row, (reg_no, current_raw, backup_raw, status) in enumerate(rows):
                 code, name, dtype, _raw, backup_display = self._row_values_for_reg(reg_no, backup_raw)
-                current_display = "--" if current_raw is None else self.main_window._format_cached_value(current_raw, dtype)
+                current_display = "--" if current_raw is None else self._format_register_value(reg_no, current_raw)
                 vals = [
                     reg_no,
                     code,
@@ -616,6 +631,8 @@ class BackupRestoreDialog(QDialog):
         out = []
         for reg_no in sorted(set(regs)):
             if reg_no not in by_reg:
+                continue
+            if reg_no not in self.restore_registers():
                 continue
             info = self.main_window.regmap.get(reg_no)
             name = info.name if info else ""
