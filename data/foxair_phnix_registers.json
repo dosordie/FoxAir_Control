@@ -5085,12 +5085,12 @@
   },
   "2081": {
     "bit_map": {
-      "0": "IPM Überhitzung",
-      "1": "Kompressor Startfehler",
+      "0": "F00 – IPM-Überstromfehler",
+      "1": "F01 – Kompressortreiberfehler",
       "2": "Kompressor Überstrom",
       "3": "Phasenverlust Eingangsspannung",
       "4": "IPM Stromabtastfehler",
-      "5": "Überhitzungsschutz Antriebsplatine",
+      "5": "F26 – IGBT-Überhitzungsfehler",
       "6": "Vorladefehler",
       "7": "DC-Sammelschienen-Überspannung",
       "8": "DC-Sammelschienen-Unterspannung",
@@ -5098,9 +5098,9 @@
       "10": "AC-Eingangs-Überstromabschaltung",
       "11": "Eingangsspannungs-Abtastfehler",
       "12": "DSP ↔ PFC Kommunikationsfehler",
-      "13": "Antriebsplatinen-Temperaturfehler",
-      "14": "DSP ↔ Kommunikationsplatine Fehler",
-      "15": "Hauptplatinen-Kommunikationsfehler"
+      "13": "F17 – Temperatursensorfehler Kompressortreiber",
+      "14": "F11 – Kommunikation DSP ↔ Kompressortreiber gestört",
+      "15": "F151 – Kommunikation Kompressortreiber ↔ Hauptplatine gestört"
     },
     "function": "16",
     "mode": "read",
@@ -5108,15 +5108,15 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR07",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2082": {
     "bit_map": {
       "0": "IPM Überhitzungsstopp",
-      "1": "Kompressor Standardphase",
+      "1": "F14 – Kompressor-Phasenausfall",
       "3": "Eingangsstrom-Abtastfehler",
       "6": "EEPROM-Fehler",
-      "7": "Eingangsspannung Überbegrenzungsschutz",
+      "7": "F10 – AC-Eingangsüberspannungsfehler",
       "15": "Kompressor-Übergeschwindigkeitsschutz"
     },
     "function": "16",
@@ -5125,15 +5125,20 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR08",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "legacy_bit_map": {
+      "2": "F032 – Lüftermotor 2 Fehler"
+    },
+    "legacy_note": "Legacy-Eintrag aus 108.ICO; in der untersuchten DWIN-Displayversion maskiert."
   },
   "2083": {
     "bit_map": {
-      "0": "Stromregelungsfrequenz-Alarm",
-      "1": "Kompressor Magnetschutz-Alarm",
+      "0": "F33 – Frequenzreduzierung wegen Kompressorstrom",
+      "1": "F16 – Kompressor-Schwachmagnetisierungsalarm",
       "2": "Leistungseinheit Überhitzung",
-      "4": "AC-Eingangsstrom Regelungsalarm",
-      "5": "EEPROM-Fehlerwarnung"
+      "4": "F22 – Frequenzreduzierung wegen AC-Eingangsstrom",
+      "5": "EEPROM-Fehlerwarnung",
+      "7": "F24 – EEPROM beschädigt / ungültige Fehlerdaten"
     },
     "function": "16",
     "mode": "read",
@@ -5141,27 +5146,42 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR09",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2084": {
     "function": "16",
     "mode": "read",
     "name": "Fehler 10 / Störmeldebits",
-    "description": "High-Byte von INV1:2133, zusätzlicher Inverter-/Driver-Fault-/Statuswert, Bitbelegung noch nicht vollständig decodiert",
-    "type": "BITFIELD"
+    "description": "Fehlerbits anhand der originalen DWIN Display-Icon-Library 108.ICO identifiziert.",
+    "type": "BITFIELD",
+    "bit_map": {
+      "8": "F120 – Lüftertreiber-Temperatursensorfehler",
+      "9": "F108 – Lüftertreiber-IPM Überhitzungsfehler",
+      "10": "F105 – Lüftertreiber externer Überstromfehler",
+      "11": "F101 – Lüftertreiber Phasenausfall Versorgung",
+      "12": "F112 – Lüftertreiber Strommess-/Abtastfehler",
+      "13": "F102 – Lüftertreiber Startfehler",
+      "14": "F113 – Lüftertreiber interner Überstromfehler",
+      "15": "F109 – Lüftertreiber Überdrehzahlschutz"
+    },
+    "block": "ERR",
+    "code": "ERR10"
   },
   "2085": {
     "bit_map": {
       "2": "Heizungsrücklauftemperatur-Sensorfehler",
       "3": "Heizungsauslasswassertemperatur-Sensorfehler",
       "4": "Hochdruckschutz",
+      "5": "TC – Kein Kühlbetrieb bei niedriger Außentemperatur / Schutz",
       "6": "Niederdruckschutz",
-      "8": "Wasserflussschutz",
-      "9": "Überlastschutz der Elektroheizung",
-      "10": "Winter-Frostschutz Stufe 1",
-      "11": "Winter-Frostschutz Stufe 2",
+      "7": "E030 – Unzureichender Wasserdurchfluss beim Abtauen",
+      "8": "E032 – Durchflussschalterfehler",
+      "9": "E04 – Elektroheizung Überhitzungsfehler",
+      "10": "E19 – Primärer Frostschutzfehler",
+      "11": "E29 – Sekundärer Frostschutzfehler",
       "12": "Frostschutz",
-      "14": "Raumtemperaturfehler"
+      "13": "E055 – Niedriger Wasserdurchfluss – Schutz",
+      "14": "P42 – Raumtemperatursensorfehler"
     },
     "function": "16",
     "mode": "read",
@@ -5169,17 +5189,24 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR01",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2086": {
     "bit_map": {
-      "3": "Lüfter 1 Überlastungs-Drehzahlbegrenzung",
-      "4": "Lüfter 2 Überlastungs-Drehzahlbegrenzung",
+      "0": "P182 – Zu hohe Heißgastemperatur",
+      "3": "E103 – Lüftermotor 1 Überlastfehler",
+      "4": "E203 – Lüftermotor 2 Überlastfehler",
       "5": "Temp.diff. Ein-/Auslasswasser zu groß",
-      "6": "Auslasswasser überhitzt",
+      "6": "E065 – Auslasswassertemperatur zu hoch",
       "7": "Mischwasser-Auslasswassertemperatur-Sensorfehler",
       "8": "Warmwasserrücklauftemperatur-Sensorfehler",
-      "9": "Warmwasserauslasswassertemperatur-Sensorfehler"
+      "9": "Warmwasserauslasswassertemperatur-Sensorfehler",
+      "10": "P105 – Zone 1 Raumtemperatursensorfehler",
+      "11": "P106 – Zone 2 Raumtemperatursensorfehler",
+      "12": "P107 – Zone 2 Mischtemperatursensorfehler",
+      "13": "E089 – Kommunikationsfehler Thermostat Zone 1",
+      "14": "E08A – Kommunikationsfehler Thermostat Zone 2",
+      "15": "E122 – Fehlerhafte Regelung des Mischventils"
     },
     "function": "16",
     "mode": "read",
@@ -5187,14 +5214,19 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR02",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "legacy_bit_map": {
+      "2": "E06 – Zu große Wasservorlauf-/Rücklauftemperaturdifferenz – Schutz"
+    },
+    "legacy_note": "Bits 2, 3 und 4 sind in der untersuchten DWIN-Displayversion maskiert; ihre Fehlertexte existieren in 108.ICO. Bits 3 und 4 bleiben für die allgemeine Modbus-Auswertung aktiv."
   },
   "2087": {
     "bit_map": {
       "4": "Hochdruckschutz (3x)",
       "6": "Niederdruckschutz (3x)",
-      "8": "Wasserflussschutz (3x)",
-      "9": "Elektroheizungsschutz (3x)",
+      "8": "E032 – Durchflussschalterfehler (3+)",
+      "9": "E04 – Elektroheizung Überhitzungsfehler (3+)",
+      "10": "E055 – Niedriger Wasserdurchfluss – Schutz (3+)",
       "12": "Frostschutz (3x)"
     },
     "function": "16",
@@ -5203,10 +5235,11 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR03",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2088": {
     "bit_map": {
+      "0": "P182 – Zu hohe Heißgastemperatur (3+)",
       "2": "Temp.diff. Ein-/Auslasswasser zu groß (3x)",
       "3": "Auslasswassertemperatur zu niedrig (3x)",
       "4": "Auslasswasser Übertemperaturschutz (3x)"
@@ -5217,7 +5250,12 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR04",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "legacy_bit_map": {
+      "12": "P03 – WW-Speicher-Temperatursensorfehler",
+      "15": "E071 – Auslasswassertemperatur zu niedrig – Schutz"
+    },
+    "legacy_note": "Legacy-Einträge aus 108.ICO; in der untersuchten DWIN-Displayversion maskiert."
   },
   "2089": {
     "bit_map": {
@@ -5227,10 +5265,12 @@
       "3": "Umgebungstemperaturfehler",
       "4": "Sauggastemperaturfehler",
       "5": "Frostschutztemperaturfehler",
-      "6": "Spulenauslasswassertemperatur-Sensorfehler",
+      "6": "P152 – Verteilerrohr-Temperatursensorfehler",
+      "7": "P03a – Pufferspeicher-Temperatursensorfehler",
       "9": "EVI Einlasstemperaturfehler",
       "10": "EVI Auslasstemperaturfehler",
       "11": "Abgastemperaturfehler",
+      "12": "PP12 – Hochdrucksensorfehler",
       "13": "System 1 Drucksensorfehler",
       "14": "Niedrige Umgebungstemperaturfehler",
       "15": "Auslasstemperatur zu niedriger Schutz"
@@ -5241,14 +5281,15 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR05",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2090": {
     "bit_map": {
-      "8": "Warmwassertemperaturfehler",
+      "8": "P03 – WW-Speicher-Temperatursensorfehler",
       "11": "Lüfter 1 Fehler",
       "12": "Lüfter 2 Fehler",
       "13": "Kommunikationsfehler Hauptplatine ↔ Lüfter 1",
+      "14": "E086 – Kommunikationsfehler Hydraulikmodul",
       "15": "Kommunikationsfehler Hauptplatine ↔ Lüfter 2"
     },
     "function": "16",
@@ -5257,7 +5298,7 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR06",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2091": {
     "function": "03",
