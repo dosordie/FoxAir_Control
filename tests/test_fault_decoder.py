@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.foxair_phnix_core import RegisterMap
+from core.foxair_phnix_core import RegisterMap, format_value_by_type
 
 
 REGISTER_MAP_PATH = ROOT / "data" / "foxair_phnix_registers.json"
@@ -26,6 +26,20 @@ def test_fault_register_definitions_include_reconstructed_dwin_texts():
     assert regmap.get(2089).bit_map[7] == "P03a – Pufferspeicher-Temperatursensorfehler"
     assert regmap.get(2090).bit_map[14] == "E08c – Kommunikationsfehler Hydraulikmodul"
     assert regmap.get(2019).bit_map[10] == "011 Alarm-Ausgang (0=AUS/1=EIN)"
+
+
+def test_protection_limit_status_register_uses_generic_bitfield_decoder():
+    info = RegisterMap(str(REGISTER_MAP_PATH)).get(2139)
+
+    assert info.dtype == "BITFIELD"
+    assert set(info.bit_map) == {1, 3, 4, 5, 6}
+    assert format_value_by_type(0x0020, info.dtype, bit_map=info.bit_map) == (
+        "0x0020: B5: AC-Eingangsstrom-Begrenzung / T35"
+    )
+    assert format_value_by_type(0x0012, info.dtype, bit_map=info.bit_map) == (
+        "0x0012: B1: A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß; "
+        "B4: A38 – Niederdruck-Frequenzbegrenzung"
+    )
 
 
 def test_fault_decoder_includes_error_10_and_preserves_unknown_bits():

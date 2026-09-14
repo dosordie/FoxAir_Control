@@ -5671,9 +5671,15 @@
   "2139": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Mehrzonen-/Zone-1 Runtimewert (Kandidat)",
-    "note": "V3.4-Analyse: Herkunft aus dem Mehrzonen-/Zone-1-Konfigurations-/Runtimebereich. Live 2026-09-12 zwischen 0 und 32 (0x20) beobachtet; Bit 5 ist dadurch auffällig, seine fachliche Bedeutung ist noch nicht geschlossen."
+    "name": "Schutz-/Frequenzbegrenzungs-Status",
+    "type": "BITFIELD",
+    "bit_map": {
+      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß",
+      "3": "A27 – Temperaturdifferenz-/Temperaturbegrenzung",
+      "4": "A38 – Niederdruck-Frequenzbegrenzung",
+      "5": "AC-Eingangsstrom-Begrenzung / T35",
+      "6": "T12 Heißgas-/Abgastemperatur-Frequenzbegrenzung"
+    }
   },
   "2140": {
     "function": "03",
