@@ -17,11 +17,14 @@ def test_fault_register_definitions_include_reconstructed_dwin_texts():
 
     assert regmap.get(2083).bit_map[7] == "F24 – EEPROM beschädigt / ungültige Fehlerdaten"
     assert regmap.get(2084).bit_map[15] == "F109 – Lüftertreiber Überdrehzahlschutz"
+    assert regmap.get(2085).bit_map[13] == "E035 – Niedriger Wasserdurchfluss – Schutz"
     assert regmap.get(2086).bit_map[3] == "E103 – Lüftermotor 1 Überlastfehler"
     assert regmap.get(2086).bit_map[4] == "E203 – Lüftermotor 2 Überlastfehler"
-    assert regmap.get(2087).bit_map[10] == "E055 – Niedriger Wasserdurchfluss – Schutz (3+)"
+    assert regmap.get(2086).bit_map[13] == "E08g – Kommunikationsfehler Thermostat Zone 1"
+    assert regmap.get(2086).bit_map[14] == "E08h – Kommunikationsfehler Thermostat Zone 2"
+    assert regmap.get(2087).bit_map[10] == "E035 – Niedriger Wasserdurchfluss – Schutz (3+)"
     assert regmap.get(2089).bit_map[7] == "P03a – Pufferspeicher-Temperatursensorfehler"
-    assert regmap.get(2090).bit_map[14] == "E086 – Kommunikationsfehler Hydraulikmodul"
+    assert regmap.get(2090).bit_map[14] == "E08c – Kommunikationsfehler Hydraulikmodul"
     assert regmap.get(2019).bit_map[10] == "011 Alarm-Ausgang (0=AUS/1=EIN)"
 
 

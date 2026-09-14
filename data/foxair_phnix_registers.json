@@ -5180,7 +5180,7 @@
       "10": "E19 – Primärer Frostschutzfehler",
       "11": "E29 – Sekundärer Frostschutzfehler",
       "12": "Frostschutz",
-      "13": "E055 – Niedriger Wasserdurchfluss – Schutz",
+      "13": "E035 – Niedriger Wasserdurchfluss – Schutz",
       "14": "P42 – Raumtemperatursensorfehler"
     },
     "function": "16",
@@ -5204,8 +5204,8 @@
       "10": "P105 – Zone 1 Raumtemperatursensorfehler",
       "11": "P106 – Zone 2 Raumtemperatursensorfehler",
       "12": "P107 – Zone 2 Mischtemperatursensorfehler",
-      "13": "E089 – Kommunikationsfehler Thermostat Zone 1",
-      "14": "E08A – Kommunikationsfehler Thermostat Zone 2",
+      "13": "E08g – Kommunikationsfehler Thermostat Zone 1",
+      "14": "E08h – Kommunikationsfehler Thermostat Zone 2",
       "15": "E122 – Fehlerhafte Regelung des Mischventils"
     },
     "function": "16",
@@ -5226,7 +5226,7 @@
       "6": "Niederdruckschutz (3x)",
       "8": "E032 – Durchflussschalterfehler (3+)",
       "9": "E04 – Elektroheizung Überhitzungsfehler (3+)",
-      "10": "E055 – Niedriger Wasserdurchfluss – Schutz (3+)",
+      "10": "E035 – Niedriger Wasserdurchfluss – Schutz (3+)",
       "12": "Frostschutz (3x)"
     },
     "function": "16",
@@ -5289,7 +5289,7 @@
       "11": "Lüfter 1 Fehler",
       "12": "Lüfter 2 Fehler",
       "13": "Kommunikationsfehler Hauptplatine ↔ Lüfter 1",
-      "14": "E086 – Kommunikationsfehler Hydraulikmodul",
+      "14": "E08c – Kommunikationsfehler Hydraulikmodul",
       "15": "Kommunikationsfehler Hauptplatine ↔ Lüfter 2"
     },
     "function": "16",
