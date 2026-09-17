@@ -4312,6 +4312,7 @@
   "1463": {
     "function": "03/16",
     "mode": "r/w",
+    "code": "H101",
     "name": "Externer Außentemperaturfühler / External outdoor temperature sensor",
     "name_en": "External outdoor temperature sensor",
     "type": "ENUM",
