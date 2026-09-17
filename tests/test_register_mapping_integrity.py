@@ -110,6 +110,7 @@ def test_fw34_external_outdoor_sensor_metadata_and_fallback():
     main, _display = _load_static_maps()
 
     selector = main["1463"]
+    assert selector["code"] == "H101"
     assert selector["value_map"]["0"].startswith("Normaler/interner AT-Fühler T04")
     assert selector["value_map"]["1"].startswith("Externer AT-Fühler aktiv")
     assert "fällt die Regelung auf T04 zurück" in selector["description"]
