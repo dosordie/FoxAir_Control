@@ -50,8 +50,8 @@ CONTACT_BIT_MAP_2034 = {
     3: ("S04 Überhitzungsschalter elektrischer Heizer", "0=ein / 1=aus", True),
     4: ("S05 Fern-AN/AUS", "0=ein / 1=aus", True),
     5: (
-        "Remote Heat/Cool / DIN2",
-        "0=ein / 1=aus; Reverse Engineering: bei 1463=1 offenbar analoger externer AT-Pfad, physische Klemme nicht bestätigt",
+        "S06 Fernheizung/Kühlung / Remote Heat-Cool",
+        "0=ein / 1=aus; Reverse-Engineering-Vermutung: möglicherweise DIN2 und bei 1463=1 gemeinsamer analoger externer AT-Pfad; nicht bestätigt",
         True,
     ),
     6: ("S07 Warmwasserschalter", "0=ein / 1=aus", True),

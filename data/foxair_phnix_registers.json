@@ -4692,7 +4692,7 @@
       "2": "S03 Wasserflussschalter",
       "3": "S04 Überhitzungsschalter elektrischer Heizer",
       "4": "S05 Fern-AN/AUS",
-      "5": "Remote Heat/Cool / DIN2",
+      "5": "S06 Fernheizung/Kühlung / Remote Heat-Cool",
       "6": "S07 Warmwasserschalter",
       "7": "S08 Reserviert / unbekannt",
       "8": "S09 Reserviert / unbekannt",
@@ -4704,8 +4704,8 @@
     "mode": "read-only",
     "name": "Schalterzustände / Kontakte / SG Ready",
     "type": "BITFIELD",
-    "description": "Bitfeld der Eingangskontakte. Bit 5 = Remote Heat/Cool / DIN2. Reverse Engineering, noch nicht abschließend bestätigt: Bei aktiviertem externem AT-Fühler (1463=1) wird derselbe Hardwarepfad offenbar analog als Temperaturfühler ausgewertet; eine physische Klemmenzuordnung ist nicht bestätigt. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10-Kontaktlogik bleibt active-low.",
-    "description_en": "Input-contact bit field. Bit 5 = Remote Heat/Cool / DIN2. Reverse engineering, not yet conclusively confirmed: when the external outdoor sensor is enabled (1463=1), the same hardware path apparently is evaluated as an analog temperature-sensor input; no physical terminal assignment has been confirmed. Bits 12/13 are the active-high SG contacts; the established S01–S10 contact logic remains active-low."
+    "description": "Bitfeld der Eingangskontakte. Bit 5 = S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen und bei aktiviertem externem AT-Fühler (1463=1) einen gemeinsam genutzten Hardwarepfad anzeigen, der dann offenbar analog als Temperaturfühler ausgewertet wird. Eine Zuordnung zu DIN2 oder zu einer physischen Klemme ist nicht bestätigt. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10-Kontaktlogik bleibt active-low.",
+    "description_en": "Input-contact bit field. Bit 5 = S06 Remote Heat-Cool. Reverse-engineering hypothesis, not yet conclusively confirmed: bit 5 might correspond to DIN2 and might indicate a hardware path shared with the external outdoor-temperature input when 1463=1, at which point it apparently is evaluated as an analog temperature-sensor input. Neither the DIN2 assignment nor a physical terminal assignment is confirmed. Bits 12/13 are the active-high SG contacts; the established S01–S10 contact logic remains active-low."
   },
   "2035": {
     "block": "T",
@@ -5272,8 +5272,8 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR04",
-    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert. Bit 7 (0x0080) wird bei 1463=1 und fehlendem/ungültigem externem AT-Fühler gesetzt. Live-Test mit offenem Eingang: 2033=409,1 °C, Fehlerbit gesetzt; die WP läuft normal weiter und verwendet T04 per Fallback.",
-    "description_en": "Fault texts reconstructed from the original DWIN display icon library and display firmware. Bit 7 (0x0080) is set when 1463=1 and the external outdoor sensor is missing or invalid. Live test with an open input: 2033=409.1 °C and the fault bit was set; the heat pump continued normally using T04 as fallback.",
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert. Bit 7 (0x0080) wird bei 1463=1 und fehlendem/ungültigem externem AT-Fühler gesetzt. Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Fehlerbit gesetzt; die WP läuft normal weiter und verwendet T04 per Fallback.",
+    "description_en": "Fault texts reconstructed from the original DWIN display icon library and display firmware. Bit 7 (0x0080) is set when 1463=1 and the external outdoor sensor is missing or invalid. Live test with an open input: register 2033 showed a measurement/display value of 409.1 with no confirmed unit and the fault bit was set; the heat pump continued normally using T04 as fallback.",
     "legacy_bit_map": {
       "12": "P03 – WW-Speicher-Temperatursensorfehler",
       "15": "E071 – Auslasswassertemperatur zu niedrig – Schutz"

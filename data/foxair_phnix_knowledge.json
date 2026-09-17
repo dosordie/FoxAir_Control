@@ -1914,8 +1914,8 @@
     "description": "0"
   },
   "2034": {
-    "description": "Read-only Status-/Eingangsbitfeld. Bit 5 ist Remote Heat/Cool / DIN2. Reverse Engineering, noch nicht abschließend bestätigt: Bei 1463=1 wird derselbe Hardwarepfad offenbar analog als externer AT-Fühler ausgewertet; die physische Klemmenzuordnung ist nicht bestätigt. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
-    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter, Remote Heat/Cool / DIN2 auf Bit 5 sowie SG Kontakt 1/2. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
+    "description": "Read-only Status-/Eingangsbitfeld. Bit 5 ist S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen; bei 1463=1 könnte ein gemeinsam mit dem externen AT-Eingang genutzter Hardwarepfad offenbar analog ausgewertet werden. Weder DIN2 noch eine physische Klemme sind bestätigt zugeordnet. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
+    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter, S06 Fernheizung/Kühlung / Remote Heat-Cool auf Bit 5 sowie SG Kontakt 1/2. Eine mögliche Zuordnung von Bit 5 zu DIN2 und zum externen AT-Hardwarepfad ist nur eine Reverse-Engineering-Vermutung. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
     "source": "DWIN 14.bin Seitenanalyse + Display/Statusanalyse + User-Hinweis"
   },
   "2035": {
@@ -2118,7 +2118,7 @@
     "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM, v21 zusammengeführt"
   },
   "2088": {
-    "description": "Bitfeld-Decoder. Bit 7 (0x0080) meldet bei 1463=1 einen fehlenden oder ungültigen externen Außentemperaturfühler. Beim Live-Test mit offenem Eingang: 2033=409,1 °C, Bit gesetzt; die WP lief normal mit T04-Fallback weiter.",
+    "description": "Bitfeld-Decoder. Bit 7 (0x0080) meldet bei 1463=1 einen fehlenden oder ungültigen externen Außentemperaturfühler. Beim Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Bit gesetzt; die WP lief normal mit T04-Fallback weiter.",
     "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM + Reverse Engineering GL9 Firmware V3.4 + Live-Test"
   },
   "2089": {
