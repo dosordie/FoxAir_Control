@@ -4309,6 +4309,20 @@
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
+  "1463": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Externer Außentemperaturfühler / External outdoor temperature sensor",
+    "name_en": "External outdoor temperature sensor",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Normaler/interner AT-Fühler T04 / Normal/internal T04 sensor",
+      "1": "Externer AT-Fühler aktiv / External outdoor sensor enabled"
+    },
+    "description": "FW 3.4: Wählt den Außentemperaturfühler. Bei 0 wird der normale/interne T04 verwendet. Bei 1 wird der neue externe AT-Eingang verwendet; ist sein Messwert ungültig oder der Fühler offen/fehlerhaft, fällt die Regelung auf T04 zurück.",
+    "description_en": "FW 3.4: Selects the outdoor temperature sensor. 0 uses the normal/internal T04 sensor. 1 selects the new external outdoor-temperature input; if its reading is invalid or the sensor is open/faulty, control falls back to T04.",
+    "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
+  },
   "1464": {
     "function": "03/16",
     "mode": "r/w",
@@ -4678,7 +4692,7 @@
       "2": "S03 Wasserflussschalter",
       "3": "S04 Überhitzungsschalter elektrischer Heizer",
       "4": "S05 Fern-AN/AUS",
-      "5": "S06 Fern Heizen/Kühlen",
+      "5": "S06 Fernheizung/Kühlung / Remote Heat-Cool",
       "6": "S07 Warmwasserschalter",
       "7": "S08 Reserviert / unbekannt",
       "8": "S09 Reserviert / unbekannt",
@@ -4690,7 +4704,8 @@
     "mode": "read-only",
     "name": "Schalterzustände / Kontakte / SG Ready",
     "type": "BITFIELD",
-    "description": "Bitfeld der Eingangskontakte. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10 Kontaktlogik bleibt active-low."
+    "description": "Bitfeld der Eingangskontakte. Bit 5 = S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen und bei aktiviertem externem AT-Fühler (1463=1) einen gemeinsam genutzten Hardwarepfad anzeigen, der dann offenbar analog als Temperaturfühler ausgewertet wird. Eine Zuordnung zu DIN2 oder zu einer physischen Klemme ist nicht bestätigt. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10-Kontaktlogik bleibt active-low.",
+    "description_en": "Input-contact bit field. Bit 5 = S06 Remote Heat-Cool. Reverse-engineering hypothesis, not yet conclusively confirmed: bit 5 might correspond to DIN2 and might indicate a hardware path shared with the external outdoor-temperature input when 1463=1, at which point it apparently is evaluated as an analog temperature-sensor input. Neither the DIN2 assignment nor a physical terminal assignment is confirmed. Bits 12/13 are the active-high SG contacts; the established S01–S10 contact logic remains active-low."
   },
   "2035": {
     "block": "T",
@@ -4801,9 +4816,11 @@
     "code": "T04",
     "function": "16",
     "mode": "read",
-    "name": "Umgebungstemperatur (AT)",
+    "name": "Verwendete Außentemperatur / Outdoor temperature in use",
+    "name_en": "Outdoor temperature in use",
     "type": "TEMP1",
-    "description": "Wirksame Außentemperatur. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern."
+    "description": "Von der Firmware tatsächlich verwendete Außentemperatur nach Auswahl zwischen normalem T04 und externem AT-Fühler einschließlich Fallback und Aufbereitung. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern.",
+    "description_en": "Outdoor temperature actually used by the firmware after selecting between normal T04 and the external outdoor sensor, including fallback and signal processing. It is also used for E03/E07 segment selection and the separate six-stage Smart EEV map axis."
   },
   "2049": {
     "block": "T",
@@ -5246,7 +5263,8 @@
       "0": "P182 – Zu hohe Heißgastemperatur (3+)",
       "2": "Temp.diff. Ein-/Auslasswasser zu groß (3x)",
       "3": "Auslasswassertemperatur zu niedrig (3x)",
-      "4": "Auslasswasser Übertemperaturschutz (3x)"
+      "4": "Auslasswasser Übertemperaturschutz (3x)",
+      "7": "Externer Außentemperaturfühler Fehler / External outdoor temperature sensor fault"
     },
     "function": "16",
     "mode": "read",
@@ -5254,7 +5272,8 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR04",
-    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert. Bit 7 (0x0080) wird bei 1463=1 und fehlendem/ungültigem externem AT-Fühler gesetzt. Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Fehlerbit gesetzt; die WP läuft normal weiter und verwendet T04 per Fallback.",
+    "description_en": "Fault texts reconstructed from the original DWIN display icon library and display firmware. Bit 7 (0x0080) is set when 1463=1 and the external outdoor sensor is missing or invalid. Live test with an open input: register 2033 showed a measurement/display value of 409.1 with no confirmed unit and the fault bit was set; the heat pump continued normally using T04 as fallback.",
     "legacy_bit_map": {
       "12": "P03 – WW-Speicher-Temperatursensorfehler",
       "15": "E071 – Auslasswassertemperatur zu niedrig – Schutz"

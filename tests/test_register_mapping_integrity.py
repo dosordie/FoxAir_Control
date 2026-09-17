@@ -106,6 +106,22 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert "8801" not in main
 
 
+def test_fw34_external_outdoor_sensor_metadata_and_fallback():
+    main, _display = _load_static_maps()
+
+    selector = main["1463"]
+    assert selector["value_map"]["0"].startswith("Normaler/interner AT-Fühler T04")
+    assert selector["value_map"]["1"].startswith("Externer AT-Fühler aktiv")
+    assert "fällt die Regelung auf T04 zurück" in selector["description"]
+    assert main["2033"]["name"] == "optionaler zweiter Außentemperaturfühler"
+    assert main["2034"]["bit_map"]["5"] == "S06 Fernheizung/Kühlung / Remote Heat-Cool"
+    assert "noch nicht abschließend bestätigt" in main["2034"]["description"]
+    assert "könnte DIN2 entsprechen" in main["2034"]["description"]
+    assert "2033=409,1 ohne bestätigte Einheit" in main["2088"]["description"]
+    assert main["2048"]["name"] == "Verwendete Außentemperatur / Outdoor temperature in use"
+    assert "including fallback" in main["2048"]["description_en"]
+
+
 def test_confirmed_flow_and_multizone_mapping_metadata():
     main, _display = _load_static_maps()
 

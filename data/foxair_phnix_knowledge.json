@@ -1741,6 +1741,10 @@
     "description": "Paketkopf-Wort zeigt auf den Anfang dieses Blockkopfs: 1451 / 0x05AB.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
+  "1463": {
+    "description": "FW 3.4 wählt mit 0 den normalen/internen Außentemperaturfühler T04 und mit 1 den externen Außentemperaturfühler. Bei ungültigem Messwert beziehungsweise offenem/fehlerhaftem externem Fühler fällt die Regelung auf T04 zurück.",
+    "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
+  },
   "1541": {
     "description": "Paketkennung: WF2403150123 (Wort 1-6), beobachtet in 90er-Paketblöcken. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
@@ -1910,8 +1914,8 @@
     "description": "0"
   },
   "2034": {
-    "description": "Read-only Status-/Eingangsbitfeld. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
-    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter sowie SG Kontakt 1/2. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
+    "description": "Read-only Status-/Eingangsbitfeld. Bit 5 ist S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen; bei 1463=1 könnte ein gemeinsam mit dem externen AT-Eingang genutzter Hardwarepfad offenbar analog ausgewertet werden. Weder DIN2 noch eine physische Klemme sind bestätigt zugeordnet. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
+    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter, S06 Fernheizung/Kühlung / Remote Heat-Cool auf Bit 5 sowie SG Kontakt 1/2. Eine mögliche Zuordnung von Bit 5 zu DIN2 und zum externen AT-Hardwarepfad ist nur eine Reverse-Engineering-Vermutung. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
     "source": "DWIN 14.bin Seitenanalyse + Display/Statusanalyse + User-Hinweis"
   },
   "2035": {
@@ -1960,7 +1964,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2048": {
-    "description": "Wirksame Außentemperatur. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern."
+    "description": "Von der Firmware tatsächlich verwendete Außentemperatur nach Auswahl zwischen normalem T04 und externem AT-Fühler einschließlich Fallback und Aufbereitung. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet."
   },
   "2049": {
     "description": "tatsächlicher Testwert"
@@ -2114,8 +2118,8 @@
     "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM, v21 zusammengeführt"
   },
   "2088": {
-    "description": "Bitfeld-Decoder: sichere Klartexte wo bekannt, sonst markierte Node-RED-Bitpositionen als Platzhalter bis vollständiger Function-Code vorliegt.",
-    "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM, v21 zusammengeführt"
+    "description": "Bitfeld-Decoder. Bit 7 (0x0080) meldet bei 1463=1 einen fehlenden oder ungültigen externen Außentemperaturfühler. Beim Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Bit gesetzt; die WP lief normal mit T04-Fallback weiter.",
+    "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM + Reverse Engineering GL9 Firmware V3.4 + Live-Test"
   },
   "2089": {
     "description": "Bitfeld-Decoder: sichere Klartexte wo bekannt, sonst markierte Node-RED-Bitpositionen als Platzhalter bis vollständiger Function-Code vorliegt.",

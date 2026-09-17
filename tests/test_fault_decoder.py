@@ -23,6 +23,9 @@ def test_fault_register_definitions_include_reconstructed_dwin_texts():
     assert regmap.get(2086).bit_map[13] == "E08g – Kommunikationsfehler Thermostat Zone 1"
     assert regmap.get(2086).bit_map[14] == "E08h – Kommunikationsfehler Thermostat Zone 2"
     assert regmap.get(2087).bit_map[10] == "E035 – Niedriger Wasserdurchfluss – Schutz (3+)"
+    assert regmap.get(2088).bit_map[7] == (
+        "Externer Außentemperaturfühler Fehler / External outdoor temperature sensor fault"
+    )
     assert regmap.get(2089).bit_map[7] == "P03a – Pufferspeicher-Temperatursensorfehler"
     assert regmap.get(2090).bit_map[14] == "E08c – Kommunikationsfehler Hydraulikmodul"
     assert regmap.get(2019).bit_map[10] == "011 Alarm-Ausgang (0=AUS/1=EIN)"
