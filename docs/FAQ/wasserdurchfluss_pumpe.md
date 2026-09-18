@@ -17,7 +17,7 @@ Der aktuelle Wasserdurchfluss kann am Display bzw. in FoxAir Control angezeigt w
 
 Wichtig ist dafür insbesondere **H31 – Pump Type**.
 
-Bei der GL9 mit der häufig verbauten APM-Pumpe muss dort der passende Pumpentyp ausgewählt werden.
+Bei der GL9 mit der häufig verbauten APM-Pumpe muss dort der APM25 9-130 Pumpentyp ausgewählt werden.
 
 Erst mit korrekt eingestelltem Pumpentyp kann die Regelung den Durchfluss sinnvoll erfassen und anzeigen.
 
