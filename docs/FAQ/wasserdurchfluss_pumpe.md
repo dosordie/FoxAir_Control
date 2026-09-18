@@ -91,6 +91,10 @@ Dieser Parameter betrifft die Warmwasserpumpenlogik und ist nicht mit P01 der Ha
 
 Bei älteren Firmwareständen bzw. manueller Regelung kann darüber direkt eine feste Pumpendrehzahl eingestellt werden.
 
+> **Achtung bei fester P10-Vorgabe:** Wird die Pumpe manuell auf einen festen Prozentwert eingestellt, bleibt diese Vorgabe auch beim **Abtauen** bestehen. Die Wärmepumpe erhöht die Pumpendrehzahl in diesem Modus nicht automatisch. Der eingestellte Durchfluss muss deshalb auch für den Abtaubetrieb ausreichend sein.
+
+Das wurde an der GL9 praktisch beobachtet. Bei zu niedrig gewählter fester Drehzahl kann während des Abtauens zu wenig Wasserenergie zur Verfügung stehen.
+
 Wenn die Pumpe trotz Änderung von P10 immer mit voller Drehzahl läuft, sollte die Verdrahtung geprüft werden.
 
 Bei vielen FoxAir GL9 liegt die PWM-Steuerleitung ab Werk auf GND und muss für eine echte Drehzahlregelung auf **P1-DO** umgeklemmt werden.
@@ -99,9 +103,11 @@ Bei vielen FoxAir GL9 liegt die PWM-Steuerleitung ab Werk auf GND und muss für 
 
 ## Automatische Pumpenregelung ab V3.3
 
-Ab Mainboard-Firmware **V3.3** steht eine automatische Regelung der Pumpendrehzahl zur Verfügung.
+Ab Mainboard-Firmware **V3.3** steht eine automatische Regelung der Pumpendrehzahl nach Temperaturdifferenz (ΔT / Spreizung) zur Verfügung.
 
 Dafür wird **P10 = 0 %** verwendet. Die Firmware übernimmt dann die Drehzahlregelung selbst.
+
+Der wichtige Unterschied zur festen Prozentvorgabe: **Im automatischen Modus wird die Pumpendrehzahl für den Abtaubetrieb selbstständig angehoben.** Eine zusätzliche externe Logik, die beim Abtauen manuell auf eine hohe Pumpendrehzahl schaltet, ist damit normalerweise nicht mehr nötig.
 
 Wichtige Parameter sind dabei unter anderem:
 
@@ -153,6 +159,29 @@ Parameter **D22** betrifft den Wasserdurchfluss beim Abtauen.
 
 Dieser Wert sollte nicht ohne konkreten Grund verändert werden. Ein zu geringer Durchfluss kann die Abtauung verschlechtern.
 
+## Bekannte Auffälligkeit der originalen Shimge-Pumpe
+
+In einigen GL9 ist eine **Shimge APM25-9-130 PWM1** verbaut.
+
+An der hier untersuchten Anlage ist es mehrfach vorgekommen, dass sich die originale Shimge-Pumpe im **PWM-Betrieb aufgehängt** hat:
+
+- an einem Tag zweimal, am folgenden Tag einmal
+- der Wasserdurchfluss fiel dadurch aus
+- nach **Pumpe Aus / Ein** lief sie wieder normal
+- bei dauerhaftem 100-%-Betrieb trat das Verhalten nicht auf
+
+Der damalige Erfahrungsbericht steht hier:
+
+[FoxAir-Forum – Beitrag zur hängenden Shimge-PWM-Pumpe](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=20)
+
+Ein ähnliches Verhalten wird auch bei anderen Wärmepumpen mit derselben **Shimge APM25-9-130 PWM1** beschrieben. Im HaustechnikDialog gibt es Berichte über sporadische **E8-/Wasserflussfehler** und Pumpen, die im PWM-Betrieb nicht mehr korrekt anlaufen:
+
+[HaustechnikDialog – Remeha Tensio C in DIY, Shimge-Pumpenproblem](https://www.haustechnikdialog.de/Forum/t/261411/Remea-Tensio-C-in-DIY?page=7)
+
+> **Einordnung:** Die ähnlichen Berichte zeigen, dass PWM-bezogene Probleme mit dieser Pumpenfamilie auch in anderen Geräten vorkommen. Damit ist aber nicht bewiesen, dass jeder Ausfall einer FoxAir-Shimge-Pumpe exakt dieselbe Ursache hat.
+
+Wenn ein Durchflussfehler sporadisch auftritt und hydraulisch nichts auffällig ist, deshalb auch prüfen, ob die **Pumpe selbst noch läuft**. Ein reines Reinigen des Durchflusssensors hilft nicht, wenn tatsächlich die Umwälzpumpe stehen geblieben ist.
+
 ## Wenn ein Durchflussfehler auftritt
 
 Prüfen:
@@ -161,7 +190,8 @@ Prüfen:
 - ist ausreichend Anlagendruck vorhanden?
 - Heizkreis / Wärmetauscher entlüftet?
 - Schmutzfänger frei?
-- läuft die Umwälzpumpe tatsächlich?
+- läuft die Umwälzpumpe tatsächlich oder hat sich die Shimge-Pumpe möglicherweise aufgehängt?
+- hilft testweise Pumpe bzw. Wärmepumpe Aus / Ein?
 - H31 passend zur eingebauten Pumpe?
 - PWM-Leitung korrekt angeschlossen?
 - Durchflusswert plausibel?
