@@ -47,6 +47,8 @@ Das kleine DWIN-Display wird **direkt über eine SD-Speicherkarte** aktualisiert
 
 ### Display-Firmware V1.7
 
+Mit der Display-Firmware **V1.7** wird die Sprache des Displays von der originalen **polnischen Oberfläche auf Englisch** umgestellt.
+
 Bekannte Version:
 
 - **Softwarecode:** 82400463
