@@ -33,7 +33,7 @@ Bei **H25 = Room Temp.** benötigt die Wärmepumpe einen passenden Raumtemperatu
 
 Ohne angeschlossenen Sensor kann die Regelung keine sinnvolle reale Raumtemperatur erfassen.
 
-Der Fühler wird am dafür vorgesehenen **RT/BT- bzw. Raum-/Puffersensor-Eingang** angeschlossen. Die genaue Klemmennummer kann je nach Mainboard-/Gerätevariante unterschiedlich sein – deshalb den Schaltplan bzw. die Beschriftung der eigenen Wärmepumpe verwenden.
+Der Fühler wird am dafür vorgesehenen **RT/BT- bzw. Raum-/Puffersensor-Eingang** angeschlossen.
 
 ## Regelung nach Puffertemperatur
 
@@ -41,7 +41,7 @@ Bei **H25 = Buffer Tank Temp.** wird ein Temperaturfühler im Pufferspeicher ben
 
 Diese Betriebsart ist sinnvoll, wenn die Wärmepumpe in erster Linie einen Pufferspeicher auf Temperatur halten soll.
 
-Auch hier gilt: Ohne passenden Fühler am vorgesehenen Eingang kennt die Wärmepumpe die reale Puffertemperatur nicht.
+Auch hier gilt: Ohne passenden Fühler am vorgesehenen Eingang kennt die Wärmepumpe die reale Puffertemperatur nicht. Soweit bekannt dann der mitgelieferte Sensor verwendet werden.
 
 ## Regelung nach Einlasswassertemperatur
 
