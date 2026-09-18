@@ -43,7 +43,7 @@ Eine ausführlichere technische Übersicht gibt es hier:
 
 Die Display-Firmware ist unabhängig von der Mainboard-Firmware.
 
-Das kleine DWIN-Display wird **direkt über eine microSD-/SD-Speicherkarte** aktualisiert. Dafür ist keine Verbindung zu FoxAir Control, Modbus oder zur Cloud notwendig.
+Das kleine DWIN-Display wird **direkt über eine SD-Speicherkarte** aktualisiert. Dafür ist keine Verbindung zu FoxAir Control, Modbus oder zur Cloud notwendig.
 
 ### Display-Firmware V1.7
 
@@ -64,10 +64,10 @@ Der Download wurde im FoxAir-Thread im Photovoltaikforum bereitgestellt:
 ### Update vorbereiten
 
 1. ZIP-Datei herunterladen und vollständig entpacken.
-2. Eine Speicherkarte mit **FAT32** formatieren.
-3. Den vollständigen Ordner **DWIN_SET** in das Hauptverzeichnis der Speicherkarte kopieren.
+2. Eine **SD-Speicherkarte** mit **FAT32** formatieren.
+3. Den vollständigen Ordner **DWIN_SET** in das Hauptverzeichnis der SD-Karte kopieren.
 
-Auf der Speicherkarte muss also direkt dieser Ordner liegen:
+Auf der SD-Karte muss also direkt dieser Ordner liegen:
 
 ```text
 DWIN_SET/
@@ -75,19 +75,29 @@ DWIN_SET/
 
 Nicht den ZIP-Ordner oder einen zusätzlichen übergeordneten Ordner auf die Karte kopieren.
 
+### SD-Kartenslot am Display erreichen
+
+Der SD-Kartenslot ist von außen nicht zugänglich.
+
+Das Display muss dafür geöffnet werden. Dazu werden – je nach Ausführung – **4 oder 6 kleine Schrauben** auf der Rückseite bzw. am Gehäuse gelöst.
+
+Anschließend kann das Display vorsichtig geöffnet werden, bis der SD-Kartenslot zugänglich ist.
+
+> **Hinweis:** Das Display nicht unter Spannung öffnen. Beim Öffnen darauf achten, Kabel und Steckverbinder nicht zu beschädigen.
+
 ### Update durchführen
 
 1. Wärmepumpe bzw. Display **ausschalten**.
-2. Speicherkarte in den Kartenslot des DWIN-Displays einsetzen.
+2. Display öffnen und SD-Speicherkarte in den Kartenslot des DWIN-Displays einsetzen.
 3. Display wieder einschalten.
 4. Das Display erkennt **DWIN_SET** automatisch und startet das Update.
 5. Während des Updates erscheinen typischerweise ein blauer Bildschirm sowie nacheinander die übertragenen Display-Dateien bzw. Oberflächenbilder.
 6. Warten, bis der Updatevorgang vollständig abgeschlossen ist.
 7. Display wieder ausschalten.
-8. Speicherkarte entfernen.
-9. Display normal einschalten.
+8. SD-Speicherkarte entfernen.
+9. Display wieder zusammenbauen und normal einschalten.
 
-> **Wichtig:** Während des Updates die Stromversorgung nicht unterbrechen und die Speicherkarte nicht entfernen.
+> **Wichtig:** Während des Updates die Stromversorgung nicht unterbrechen und die SD-Speicherkarte nicht entfernen.
 
 Nach dem Update kann die Versionsnummer des Displays kontrolliert werden.
 
@@ -95,9 +105,21 @@ Bekannte Display-Versionen für Softwarecode **82400463** sind unter anderem V1.
 
 ## Mainboard-Firmware aktualisieren
 
-Die Mainboard-Firmware wird **nicht** über die Speicherkarte des Displays aktualisiert.  
-Updates laufen über den PHNIX-/WarmLink-/OTA-Weg bzw. den jeweiligen Support.
+Die Mainboard-Firmware wird **nicht** über die SD-Speicherkarte des Displays aktualisiert.
 
-Vor einem Mainboard-Update empfiehlt es sich, die Einstellungen zu sichern:
+Für Mainboard-Updates gibt es den **FoxAir Updater**:
+
+[FoxAir Updater auf GitHub](https://github.com/dosordie/FoxAir_updater)
+
+Unter Windows ist die grafische Version der empfohlene Weg. Die vollständige Schritt-für-Schritt-Anleitung steht hier:
+
+[Mainboard-Firmwareupdate mit dem FoxAir Updater unter Windows](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/firmware_update_windows.md)
+
+Die benötigte Mainboard-Firmware wird **nicht öffentlich im Repository bereitgestellt**.  
+Die Firmware kann **bei mir per PN** angefragt werden.
+
+Vor einem Mainboard-Update empfiehlt es sich außerdem, die aktuellen Einstellungen zu sichern:
 
 [Einstellungen vor einem Firmwareupdate sichern](einstellungen_sichern.md)
+
+> **Wichtig:** Ein Mainboard-Firmwareupdate erfolgt auf eigenes Risiko. Wärmepumpe und LTE-Modem während des laufenden Updates nicht stromlos machen.
