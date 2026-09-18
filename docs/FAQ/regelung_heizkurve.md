@@ -76,19 +76,6 @@ Wenn die WP trotz vermeintlicher Heizanforderung nicht startet, zuerst prüfen:
 
 Gerade eine Kombination aus falscher H25-Auswahl und fehlendem Raum-/Pufferfühler kann zu schwer nachvollziehbarem Verhalten führen.
 
-## Remote On/Off ist keine Temperaturregelung
-
-Ein externes Raumthermostat kann die Wärmepumpe über **Remote On/Off** freigeben oder sperren.
-
-Das bedeutet aber nur:
-
-```text
-Heizanforderung EIN / AUS
-```
-
-Das externe Thermostat überträgt dadurch **keine Raumtemperatur** an die Wärmepumpe.
-
-Soll die FoxAir selbst nach Raumtemperatur regeln, benötigt sie einen eigenen angeschlossenen Raumfühler und die passende H25-Einstellung.
 
 ## Empfehlung bei der Fehlersuche
 
