@@ -3,6 +3,12 @@
 Diese FAQ richtet sich an Anwender der FoxAir-/PHNIX-Wärmepumpen.  
 Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründe sind – wenn vorhanden – separat verlinkt.
 
+## Betrieb und Regelung
+
+- [Heizungsregelung, H25 und Heizkurve](regelung_heizkurve.md)
+- [Warmwasser mit der FoxAir](warmwasser.md)
+- [Abtauen, Kondensat und Frostschutz](abtauen_frostschutz.md)
+
 ## Umwälzpumpe
 
 - [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
