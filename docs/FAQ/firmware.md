@@ -65,8 +65,15 @@ Der Download wurde im FoxAir-Thread im Photovoltaikforum bereitgestellt:
 
 ### Update vorbereiten
 
+Für das DWIN-Display empfiehlt sich eine **SD-Speicherkarte mit 1 bis 16 GB**.
+
+- **Dateisystem:** FAT32
+- **Clustergröße / Allocation Unit:** 4096 Byte
+- praktisch getestet wurden **1-GB- und 2-GB-SD-Karten**
+- Karten mit mehr als **16 GB** sind für diesen DWIN-Updateweg nicht vorgesehen und sollten vermieden werden
+
 1. ZIP-Datei herunterladen und vollständig entpacken.
-2. Eine **SD-Speicherkarte** mit **FAT32** formatieren.
+2. Eine **SD-Speicherkarte mit 1 bis 16 GB** mit **FAT32 / 4096 Byte Clustergröße** formatieren.
 3. Den vollständigen Ordner **DWIN_SET** in das Hauptverzeichnis der SD-Karte kopieren.
 
 Auf der SD-Karte muss also direkt dieser Ordner liegen:
