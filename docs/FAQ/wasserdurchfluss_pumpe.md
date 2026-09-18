@@ -37,43 +37,71 @@ Nicht einfach einen anderen Typ wählen, nur damit irgendein Durchflusswert ersc
 
 ## P01 – Betriebsmodus der Hauptumwälzpumpe
 
-Parameter **P01** bestimmt, wann die Hauptumwälzpumpe läuft.
+Parameter **P01** bestimmt, wie die Hauptumwälzpumpe außerhalb aktiver Heiz-, Warmwasser- und Schutzanforderungen betrieben wird.
+
+Die V3.4-Firmware unterscheidet drei Modi:
 
 | P01 | Funktion |
 | ---: | --- |
-| **0 – Always On** | Pumpe läuft dauerhaft |
-| **1 – Saving** | Pumpe läuft bedarfsabhängig |
-| **2 – Interval** | Pumpe wird regelmäßig kurz eingeschaltet |
+| **0 – Always On** | Pumpe wird im normalen Betrieb dauerhaft angefordert |
+| **1 – Saving** | Energiesparbetrieb mit festem internen Takt |
+| **2 – Interval** | frei einstellbarer Intervallbetrieb über P02/P03 |
 
-### Always On
+### 0 – Always On
 
-Die Pumpe läuft ständig.
+Die Hauptumwälzpumpe wird im normalen Betrieb dauerhaft betrieben.
 
-Das kann für Testzwecke hilfreich sein, verursacht aber auch unnötigen Stromverbrauch, wenn gerade keine Wärme benötigt wird.
+Übergeordnete Betriebs-, Schutz- oder Sonderzustände können die Pumpenansteuerung trotzdem beeinflussen.
 
-### Saving
+Dieser Modus ist zum Testen einfach nachvollziehbar, verursacht aber unnötigen Pumpenstrom, wenn gerade keine Wärme benötigt wird.
 
-Im Saving-Modus läuft die Pumpe im Wesentlichen dann, wenn sie für den aktuellen Betrieb benötigt wird.
+### 1 – Saving
 
-Für viele normal betriebene Anlagen ist das sinnvoller als ein dauerhafter Pumpenlauf.
+Der **Saving-Modus** verwendet einen eigenen, fest in der Firmware hinterlegten Takt.
 
-### Interval
+In den entsprechenden Ruhe-/Standbyphasen läuft die Pumpe ungefähr:
 
-Im Intervallbetrieb schaltet die Wärmepumpe die Pumpe regelmäßig kurz ein, um die aktuelle Wassertemperatur zu erfassen.
+```text
+ca. 2 Minuten EIN
+ca. 30 Minuten AUS
+danach beginnt der Zyklus erneut
+```
 
-Dafür gelten:
+**P02 und P03 werden für diesen Saving-Zyklus nicht verwendet.**
 
-- **P02** = Abstand zwischen den Intervallen
-- **P03** = Laufzeit der Pumpe pro Intervall
+Wichtig: Das bedeutet nicht, dass die Pumpe bei aktivem Heiz-, Warmwasser-, Frostschutz- oder anderem Sonderbetrieb immer 30 Minuten ausgeschaltet bleibt. Solche Anforderungen können die Pumpe unabhängig vom Saving-Takt einschalten.
+
+Der 2-/30-Minuten-Ablauf ist aus der Firmware bestätigt. Die genaue Herstellerbezeichnung des internen Freigabe-/Standbyzustands, in dem dieser Takt aktiv ist, ist noch nicht vollständig geklärt.
+
+### 2 – Interval
+
+Im **Interval-Modus** wird der Pumpentakt über **P02** und **P03** eingestellt:
+
+- **P02** = Pause / Pumpe AUS
+- **P03** = Laufzeit / Pumpe EIN
+
+Der Ablauf ist:
+
+```text
+P02 Minuten AUS
+P03 Minuten EIN
+danach beginnt der Zyklus erneut
+```
 
 Beispiel:
 
 ```text
 P02 = 30 min
 P03 = 3 min
+
+→ 30 min AUS
+→  3 min EIN
+→ danach wieder 30 min AUS
 ```
 
-Dann läuft die Pumpe ungefähr alle 30 Minuten für 3 Minuten.
+Der gesamte Zyklus dauert damit ungefähr **33 Minuten**.
+
+Die frühere vereinfachte Beschreibung „alle 30 Minuten für 3 Minuten“ ist daher nicht ganz korrekt.
 
 ## P05 – Warmwasserpumpe
 
