@@ -41,31 +41,61 @@ Eine ausführlichere technische Übersicht gibt es hier:
 
 ## Display-Firmware aktualisieren
 
-Die Display-Firmware ist unabhängig von der Mainboard-Firmware und wird beim kleinen DWIN-Display über eine Speicherkarte aktualisiert.
+Die Display-Firmware ist unabhängig von der Mainboard-Firmware.
 
-Kurzablauf:
+Das kleine DWIN-Display wird **direkt über eine microSD-/SD-Speicherkarte** aktualisiert. Dafür ist keine Verbindung zu FoxAir Control, Modbus oder zur Cloud notwendig.
 
-1. passendes Display-Firmwarepaket herunterladen und entpacken
-2. den vollständigen Ordner **DWIN_SET** auf die Speicherkarte kopieren
-3. Display bzw. Wärmepumpe ausschalten
-4. Speicherkarte in das Display einsetzen
-5. Display einschalten und den Updatevorgang vollständig durchlaufen lassen
-6. danach wieder ausschalten
-7. Speicherkarte entfernen und Display normal starten
+### Display-Firmware V1.7
 
-> Während des Updates die Stromversorgung nicht unterbrechen.
+Bekannte Version:
 
-### Download der Display-Firmware
+- **Softwarecode:** 82400463
+- **Version:** V1.7
+- **Build:** 202311131429
 
-**Forum-Link zur Display-Firmware:** _wird noch ergänzt_
+Download:
 
-<!-- TODO: Forum-Link zur Display-Firmware hier eintragen -->
+[Display-Firmware 82400463 V1.7 herunterladen](http://apolan.de/downloads/Waermepumpe/Foxair/updates/82400463%20202311131429%20V17.zip)
+
+Der Download wurde im FoxAir-Thread im Photovoltaikforum bereitgestellt:
+
+[FoxAir Wärmepumpen – Erfahrungen, Meinungen, Tipps](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=12)
+
+### Update vorbereiten
+
+1. ZIP-Datei herunterladen und vollständig entpacken.
+2. Eine Speicherkarte mit **FAT32** formatieren.
+3. Den vollständigen Ordner **DWIN_SET** in das Hauptverzeichnis der Speicherkarte kopieren.
+
+Auf der Speicherkarte muss also direkt dieser Ordner liegen:
+
+```text
+DWIN_SET/
+```
+
+Nicht den ZIP-Ordner oder einen zusätzlichen übergeordneten Ordner auf die Karte kopieren.
+
+### Update durchführen
+
+1. Wärmepumpe bzw. Display **ausschalten**.
+2. Speicherkarte in den Kartenslot des DWIN-Displays einsetzen.
+3. Display wieder einschalten.
+4. Das Display erkennt **DWIN_SET** automatisch und startet das Update.
+5. Während des Updates erscheinen typischerweise ein blauer Bildschirm sowie nacheinander die übertragenen Display-Dateien bzw. Oberflächenbilder.
+6. Warten, bis der Updatevorgang vollständig abgeschlossen ist.
+7. Display wieder ausschalten.
+8. Speicherkarte entfernen.
+9. Display normal einschalten.
+
+> **Wichtig:** Während des Updates die Stromversorgung nicht unterbrechen und die Speicherkarte nicht entfernen.
+
+Nach dem Update kann die Versionsnummer des Displays kontrolliert werden.
 
 Bekannte Display-Versionen für Softwarecode **82400463** sind unter anderem V1.3 und V1.7.
 
 ## Mainboard-Firmware aktualisieren
 
-Die Mainboard-Firmware wird nicht über die Speicherkarte des Displays aktualisiert.  
+Die Mainboard-Firmware wird **nicht** über die Speicherkarte des Displays aktualisiert.  
 Updates laufen über den PHNIX-/WarmLink-/OTA-Weg bzw. den jeweiligen Support.
 
 Vor einem Mainboard-Update empfiehlt es sich, die Einstellungen zu sichern:
