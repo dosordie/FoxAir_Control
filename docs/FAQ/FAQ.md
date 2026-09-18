@@ -15,10 +15,10 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Firmware
 
 - [Firmware-Versionen, Changelog und Display-Update](firmware.md)
-- [Einstellungen vor einem Firmwareupdate sichern](einstellungen_sichern.md)
 
 ## Steuerung
 
+- [Modbus-Anschluss am Klemmfeld](modbus.md)
 - [SG Ready und PV-Überschusssteuerung](sg_ready.md)
 - [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
