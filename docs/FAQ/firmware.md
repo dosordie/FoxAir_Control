@@ -118,8 +118,4 @@ Unter Windows ist die grafische Version der empfohlene Weg. Die vollständige Sc
 Die benötigte Mainboard-Firmware wird **nicht öffentlich im Repository bereitgestellt**.  
 Die Firmware kann **bei mir per PN** angefragt werden.
 
-Vor einem Mainboard-Update empfiehlt es sich außerdem, die aktuellen Einstellungen zu sichern:
-
-[Einstellungen vor einem Firmwareupdate sichern](einstellungen_sichern.md)
-
 > **Wichtig:** Ein Mainboard-Firmwareupdate erfolgt auf eigenes Risiko. Wärmepumpe und LTE-Modem während des laufenden Updates nicht stromlos machen.
