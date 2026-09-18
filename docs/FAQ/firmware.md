@@ -59,6 +59,8 @@ Download:
 
 [Display-Firmware 82400463 V1.7 herunterladen](http://apolan.de/downloads/Waermepumpe/Foxair/updates/82400463%20202311131429%20V17.zip)
 
+> **Achtung:** Das ZIP hinter diesem Link ist nach mehreren Berichten im Forum **fehlerhaft bzw. unzuverlässig**. Es wurden **CRC-Fehler und fehlende Dateien** beobachtet; bei unterschiedlichen Downloads fehlten teilweise unterschiedliche Dateien. Den Download daher **nicht ungeprüft verwenden**. Ein sauberer alternativer V1.7-Mirror ist derzeit nicht bekannt.
+
 Der Download wurde im FoxAir-Thread im Photovoltaikforum bereitgestellt:
 
 [FoxAir Wärmepumpen – Erfahrungen, Meinungen, Tipps](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=12)
