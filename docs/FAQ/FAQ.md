@@ -11,6 +11,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 
 ## Umwälzpumpe
 
+- [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md)
 - [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
 - [Umwälzpumpe am Mainboard umklemmen](up_umklemmen.md)
 
@@ -24,12 +25,14 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 
 ## Steuerung
 
+- [WarmLink-App, LTE-Modem und SIM-Karte](warmlink_lte.md)
 - [Modbus-Anschluss am Klemmfeld](modbus.md)
 - [SG Ready und PV-Überschusssteuerung](sg_ready.md)
 - [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
-## Fehlersuche
+## Bedienung und Fehlersuche
 
+- [Factory Settings – Codes 22 und 66](factory_settings.md)
 - [Fehler und Betriebszustände anzeigen](fehler_und_status.md)
 
 ---
