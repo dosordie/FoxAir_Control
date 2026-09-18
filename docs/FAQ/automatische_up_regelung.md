@@ -8,7 +8,7 @@ Ziel ist, die Pumpe nicht dauerhaft mit unnötig hoher Drehzahl laufen zu lassen
 
 - passende Mainboard-Firmware, mindestens V3.3
 - Umwälzpumpe muss am dafür vorgesehenen Mainboard-Ausgang angeschlossen sein
-- **H31 – Pump Type** muss zum eingebauten Pumpentyp passen
+- **H31 – Pump Type** muss zum eingebauten Pumpentyp passen (normal Shimge 9...)
 - **P10 – Speed of Circulation Pump** muss auf **0 %** stehen
 
 Ein fester Wert bei P10 deaktiviert die automatische Drehzahlregelung.
@@ -33,12 +33,13 @@ Beim Abtauen kann die Pumpe wieder mit hoher bzw. voller Leistung laufen.
 **P12 – Pump Speed Adjust Range for Each Period** beeinflusst, wie stark die Pumpendrehzahl pro Regelschritt verändert wird.
 
 Für die normale Inbetriebnahme sollte dieser Wert zunächst nicht unnötig verändert werden.
+Steht Original auf 2
 
 ## Wenn die Pumpe nicht regelt
 
 Als Erstes prüfen:
 
-1. Ist die Pumpe richtig am Mainboard angeschlossen?
+1. Ist die Pumpe richtig am Mainboard umgeklemmt?
 2. Ist H31 passend eingestellt?
 3. Steht P10 wirklich auf 0 %?
 4. Ist genügend Wasserdurchfluss vorhanden?
