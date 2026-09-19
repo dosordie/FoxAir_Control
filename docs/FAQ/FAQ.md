@@ -15,6 +15,10 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 - [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
 - [Umwälzpumpe am Mainboard umklemmen](up_umklemmen.md)
 
+## Mainboard und Anschlüsse
+
+- [Relaisausgänge RO01–RO15 am Mainboard](relais_ausgaenge.md)
+
 ## Sensoren
 
 - [Externen Außentemperaturfühler verwenden](externer_at_fuehler.md)
