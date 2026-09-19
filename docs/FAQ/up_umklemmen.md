@@ -43,7 +43,8 @@ Zusätzlich muss **H31** passend zum verwendeten Pumpentyp eingestellt sein.
 
 Mehr dazu:
 
-[Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
+- [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
+- [Relaisausgänge RO01–RO15 am Mainboard](relais_ausgaenge.md)
 
 ## Hintergrund
 
