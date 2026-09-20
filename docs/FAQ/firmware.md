@@ -35,6 +35,10 @@ Bekannte Änderungen gegenüber V3.3:
 - erweiterte SG-/PV-Steuerung
 - zusätzlicher externer Außentemperaturfühler
 
+### V3.5
+
+Wird bereits verteilt, aber Details noch unbekannt.  
+
 Eine ausführlichere technische Übersicht gibt es hier:
 
 [FoxAir / PHNIX Firmware-Übersicht](../firmware_overview.md)
