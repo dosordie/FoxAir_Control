@@ -735,7 +735,9 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Electric-Heater-On AT Grenzwert / Temperaturparameter (ASM)",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "E-Heizer-Einschaltschwelle. Verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback und nicht zwingend den lokalen T04 direkt.",
+    "temperature_source": "effective_at"
   },
   "1050": {
     "app_current_video_value": "60 min",
@@ -2146,7 +2148,9 @@
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1168": {
     "app_current_video_value": "-20.0 °C",
@@ -2158,7 +2162,9 @@
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1169": {
     "app_current_video_value": "62.0 °C",
@@ -2170,7 +2176,9 @@
     "mode": "r/w",
     "name": "Max. Auslasswassertemperaturbegrenzung bei niedriger AT",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Wassertemperaturgrenze im lokalen-T04-Regelpfad der AT-abhängigen Wassertemperaturbegrenzung. Die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird in diesem Pfad ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1170": {
     "app_current_video_value": "15.0 °C",
@@ -2182,7 +2190,9 @@
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1171": {
     "app_current_video_value": "43.0 °C",
@@ -2194,7 +2204,9 @@
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1172": {
     "app_current_video_value": "67.0 °C",
@@ -2206,7 +2218,9 @@
     "mode": "r/w",
     "name": "Max. Auslasswassertemperaturbegrenzung bei hoher AT",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Wassertemperaturgrenze im lokalen-T04-Regelpfad der AT-abhängigen Wassertemperaturbegrenzung. Die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird in diesem Pfad ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1173": {
     "app_current_video_value": "Not Available",
@@ -2846,7 +2860,9 @@
     "mode": "r/w",
     "name": "Max. Zielwassertemperaturbegrenzung bei niedriger AT im Heizbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Begrenzung der maximalen Heiz-Solltemperatur verwendet direkt den lokalen T04 und ignoriert den externen beziehungsweise effektiven AT-Selector.",
+    "temperature_source": "local_t04"
   },
   "1230": {
     "app_current_video_value": "65.0 °C",
@@ -2858,7 +2874,9 @@
     "mode": "r/w",
     "name": "Max. Zielwassertemperaturbegrenzung bei hoher AT im Heizbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Begrenzung der maximalen Heiz-Solltemperatur verwendet direkt den lokalen T04 und ignoriert den externen beziehungsweise effektiven AT-Selector.",
+    "temperature_source": "local_t04"
   },
   "1231": {
     "app_current_video_value": "-10.0 °C",
@@ -2870,7 +2888,10 @@
     "mode": "r/w",
     "name": "AT zum Starten des elektrischen Heizers ohne Verzögerung",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback. Die Rückschaltung besitzt eine zusätzliche Hysterese von ungefähr +2,0 K.",
+    "temperature_source": "effective_at",
+    "hysteresis": "ca. +2.0 K"
   },
   "1232": {
     "app_current_video_value": "5.0 °C",
@@ -2894,7 +2915,9 @@
     "mode": "r/w",
     "name": "AT zum Start der Frequenzbegrenzung im Kühlbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Kühl-Frequenzbegrenzung wertet direkt den lokalen T04 aus. Die ausgewählte externe beziehungsweise effektive AT wird nicht verwendet.",
+    "temperature_source": "local_t04"
   },
   "1234": {
     "function": "03/16",
@@ -3935,7 +3958,10 @@
     "notes": "H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist. Einheit °C.",
     "function": "03/16",
     "mode": "r/w",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Einschalt-Außentemperaturschwelle der Gehäuse-/Wannenheizung. H42 wird aus MAIN 1356 geladen und direkt mit dem lokalen T04 verglichen; die externe beziehungsweise effektive AT wird nicht verwendet. Die Abschaltung erfolgt mit ungefähr +2,0 K Hysterese.",
+    "temperature_source": "local_t04",
+    "hysteresis": "ca. +2.0 K"
   },
   "1357": {
     "app_label": "Diff. of No Pump On at Low Water Temp.",
@@ -4201,7 +4227,9 @@
     "notes": "Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
     "source": "User confirmed; used in live system",
     "type": "MINUTES",
-    "unit": "min"
+    "unit": "min",
+    "description": "Nachlaufzeit der Gehäuse-/Wannenheizung nach dem Abtauen. D30 gehört zum Nachlaufpfad des realen GPIO-Ausgangs PD8; die Außentemperaturfreigabe erfolgt über H42/1356 und direkt über den lokalen T04. Die vollständige Timer- und Zustandslogik bleibt zu erforschen.",
+    "temperature_source": "local_t04"
   },
   "1438": {
     "app_current_video_value": "1.0 bar",
@@ -4327,9 +4355,22 @@
   "1464": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "obere Schwelle des ausgewählten AT-Sensors für zeitqualifizierten Status / Erforschen",
-    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
-    "type": "RAW"
+    "name": "Effektive AT-Schwelle einer zeitqualifizierten Zustands-/Freigabelogik / Erforschen",
+    "notes": "MAIN:2146 Bit4; Funktion weiter erforschen. Die Rückschaltung erfolgt bei 1464 - 3,0 K.",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Temperatur-Schwellwert einer internen Zustands- beziehungsweise Freigabelogik. Verwendet die über Register 1463 ausgewählte effektive Außentemperatur.",
+    "temperature_source": "effective_at",
+    "hysteresis": "-3.0 K"
+  },
+  "1465": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Verweilzeit der AT-abhängigen Zustands-/Freigabelogik / Erforschen",
+    "notes": "Funktion weiter erforschen; die Einheit ist sehr wahrscheinlich Minuten.",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "Zeitparameter zu Register 1464. Beide Schaltrichtungen verwenden jeweils 1465 × 120 Scheduler-Ticks zur zeitlichen Qualifikation."
   },
   "1466": {
     "function": "03/16",
@@ -4404,6 +4445,22 @@
     "mode": "read",
     "name": "Blockkopf Paket 7 / erstes Blockkopf-Register",
     "type": "BLOCK"
+  },
+  "1561": {
+    "function": "16",
+    "mode": "read",
+    "name": "Verbleibende A34-Kurbelgehäuse-Vorheizzeit",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "In Firmware V3.4 neu exportierter Diagnosewert für die verbleibende A34-Kurbelgehäuse-Vorheizzeit. Berechnung: remaining = A34 - elapsed/120."
+  },
+  "1852": {
+    "function": "16",
+    "mode": "read",
+    "name": "Außenlüfter 1 Soll-/Regeldrehzahl",
+    "type": "RPM",
+    "unit": "rpm",
+    "description": "Vom Lüfter-Regelblock berechnete Soll- beziehungsweise Regeldrehzahl des Außenlüfters 1. Der Wert liegt im selben Drehzahl-Zahlenraum wie F25/F26."
   },
   "2001": {
     "function": "03",
@@ -4676,9 +4733,10 @@
     "function": "16",
     "mode": "read",
     "name": "optionaler zweiter Außentemperaturfühler",
-    "note": "Umschaltbar per Reg....",
+    "note": "Externer AT-Rohwert von Analogkanal 23, physisch Klemme 3/4. Ein offener Eingang ergibt 409,1; dieser Fehlerwert darf nicht als Temperatur interpretiert werden.",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Messwert des optionalen externen Außentemperaturfühlers auf Analogkanal 23, physisch Klemme 3/4. Bei angeschlossenem, gültigem Fühler ist die Skalierung °C korrekt. Ein offener Eingang ergibt 409,1; dieser Fehlerwert ist keine Temperaturangabe."
   },
   "2034": {
     "bit_map": {

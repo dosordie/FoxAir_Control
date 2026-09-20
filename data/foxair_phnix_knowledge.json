@@ -233,7 +233,8 @@
     "default": "-80",
     "description": "Quelle Forum - Stimmt mit WarmeLink überein; ASM: A31, Celsius-Grenzwert max. 60°C / Fahrenheit-Behandlung",
     "source": "ASM DEMONS.ASM",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "knowledge": "A31 verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback."
   },
   "1050": {
     "default": "60",
@@ -831,27 +832,27 @@
   },
   "1167": {
     "default": "-5",
-    "description": "R 30 bis4°C"
+    "description": "R 30 bis4°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1168": {
     "default": "-23",
-    "description": "-35 bis R 29°C"
+    "description": "-35 bis R 29°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1169": {
     "default": "40",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. Wassertemperaturgrenze im direkten lokalen-T04-Regelpfad."
   },
   "1170": {
     "default": "55",
-    "description": "10 bis R 33°C"
+    "description": "10 bis R 33°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1171": {
     "default": "55",
-    "description": "R 32 bis 60°C"
+    "description": "R 32 bis 60°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1172": {
     "default": "45",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. Wassertemperaturgrenze im direkten lokalen-T04-Regelpfad."
   },
   "1173": {
     "default": "0",
@@ -1110,15 +1111,15 @@
   },
   "1229": {
     "default": "50",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. R43 verwendet für die Begrenzung der maximalen Heiz-Solltemperatur direkt den lokalen T04."
   },
   "1230": {
     "default": "40",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. R44 verwendet für die Begrenzung der maximalen Heiz-Solltemperatur direkt den lokalen T04."
   },
   "1231": {
     "default": "-10",
-    "description": "-50 bis 20°C"
+    "description": "-50 bis 20°C. R45 verwendet die effektive/ausgewählte AT; Rückschaltung mit ungefähr +2,0 K Hysterese."
   },
   "1232": {
     "default": "5",
@@ -1126,7 +1127,7 @@
   },
   "1233": {
     "default": "25",
-    "description": "0 bis 60°C"
+    "description": "0 bis 60°C. R60 verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1234": {
     "description": "AT-Kompensation Slope / Steigung. Vermutete Formel aus App-Screenshot: Ziel = Offset - Slope × Außentemperatur, mit Mindestbegrenzung."
@@ -1571,7 +1572,8 @@
     "default": "4",
     "description": "H42 Einschalt-Außentemperatur Gehaeusewannenheizung. D30/1437 wirkt erst, wenn AT kleiner als H42/1356 ist. H42 Einheit °C.",
     "notes": "Text korrigiert: der Bezug ist D30/1437, nicht ein unklarer H..-Minutenwert.",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19 + Firmware-Reverse-Engineering",
+    "knowledge": "MAIN 1356 wird direkt mit dem lokalen T04 verglichen; Abschaltung mit ungefähr +2,0 K Hysterese."
   },
   "1357": {
     "default": "2.0°C",
@@ -1687,7 +1689,8 @@
   "1437": {
     "description": "D30 Gehaeusewannenheizung / Button Heater Delays OFF Time after Defrost. Einheit: Minuten.",
     "notes": "Sicher bestätigt: 1437 ist D30, nicht P15. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
-    "source": "User confirmed 2026-06-14; live system use"
+    "source": "User confirmed 2026-06-14; live system use + Firmware-Reverse-Engineering",
+    "knowledge": "D30 gehört zum Nachlaufpfad des realen GPIO-Ausgangs PD8. H42 erteilt die Freigabe anhand des lokalen T04. Die vollständige Timer-/Zustandslogik bleibt zu erforschen."
   },
   "1438": {
     "default": "1.0",
@@ -1745,6 +1748,12 @@
     "description": "FW 3.4 wählt mit 0 den normalen/internen Außentemperaturfühler T04 und mit 1 den externen Außentemperaturfühler. Bei ungültigem Messwert beziehungsweise offenem/fehlerhaftem externem Fühler fällt die Regelung auf T04 zurück.",
     "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
   },
+  "1464": {
+    "description": "Temperatur-Schwellwert einer internen Zustands-/Freigabelogik. Verwendet die effektive AT; Rückschaltung bei 1464 - 3,0 K. Die Funktion bleibt weiter zu erforschen."
+  },
+  "1465": {
+    "description": "Verweil-/Zeitparameter zu 1464. Beide Schaltrichtungen verwenden 1465 × 120 Scheduler-Ticks. Einheit sehr wahrscheinlich Minuten; Funktion weiter erforschen."
+  },
   "1541": {
     "description": "Paketkennung: WF2403150123 (Wort 1-6), beobachtet in 90er-Paketblöcken. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
@@ -1784,6 +1793,14 @@
   "1550": {
     "description": "Paketkopf-Wort zeigt auf den Anfang dieses Blockkopfs: 1541 / 0x0605. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
+  },
+  "1561": {
+    "description": "Verbleibende A34-Kurbelgehäuse-Vorheizzeit. Firmware V3.4 exportiert diesen Diagnosewert in Minuten; remaining = A34 - elapsed/120.",
+    "source": "Firmware-Reverse-Engineering V3.4"
+  },
+  "1852": {
+    "description": "Außenlüfter 1 Soll-/Regeldrehzahl aus dem Fan-Regelblock. Gleicher Drehzahl-Zahlenraum wie F25/F26; Einheit rpm.",
+    "source": "Firmware-Reverse-Engineering"
   },
   "200": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; vermutlich Kennung/String/Logo-/Seitenpuffer, Bedeutung noch nicht sicher. Nicht als WP-Parameter verwenden.",
@@ -1911,7 +1928,7 @@
     "description": "Registergruppe h (Stunden). Laufzeitwert in Stunden."
   },
   "2033": {
-    "description": "0"
+    "description": "Messwert des optionalen externen Außentemperaturfühlers auf Analogkanal 23, physisch Klemme 3/4. Die Skalierung gültiger Messwerte ist °C. Ein offener Eingang ergibt 409,1; dieser Fehlerwert ist keine Temperaturangabe."
   },
   "2034": {
     "description": "Read-only Status-/Eingangsbitfeld. Bit 5 ist S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen; bei 1463=1 könnte ein gemeinsam mit dem externen AT-Eingang genutzter Hardwarepfad offenbar analog ausgewertet werden. Weder DIN2 noch eine physische Klemme sind bestätigt zugeordnet. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
