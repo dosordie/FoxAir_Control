@@ -123,6 +123,35 @@ def test_fw34_external_outdoor_sensor_metadata_and_fallback():
     assert "including fallback" in main["2048"]["description_en"]
 
 
+def test_reverse_engineered_temperature_sources_and_diagnostics():
+    main, _display = _load_static_maps()
+
+    for register in (1049, 1231, 1464):
+        assert main[str(register)]["temperature_source"] == "effective_at"
+
+    for register in (*range(1167, 1173), 1229, 1230, 1233, 1356, 1437):
+        assert main[str(register)]["temperature_source"] == "local_t04"
+
+    assert "Erforschen" in main["1464"]["name"]
+    assert main["1464"]["hysteresis"] == "-3.0 K"
+    assert "Erforschen" in main["1465"]["name"]
+    assert "1465 × 120 Scheduler-Ticks" in main["1465"]["description"]
+
+    assert main["1561"]["mode"] == "read"
+    assert main["1561"]["type"] == "MINUTES"
+    assert "A34 - elapsed/120" in main["1561"]["description"]
+    assert main["1852"]["mode"] == "read"
+    assert main["1852"]["type"] == "RPM"
+    assert main["1852"]["unit"] == "rpm"
+
+    external_sensor = main["2033"]
+    assert external_sensor["type"] == "TEMP1"
+    assert external_sensor["unit"] == "°C"
+    assert "Analogkanal 23" in external_sensor["description"]
+    assert "Klemme 3/4" in external_sensor["description"]
+    assert "Fehlerwert ist keine Temperaturangabe" in external_sensor["description"]
+
+
 def test_confirmed_flow_and_multizone_mapping_metadata():
     main, _display = _load_static_maps()
 
