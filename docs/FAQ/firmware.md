@@ -94,7 +94,7 @@ Nicht den ZIP-Ordner oder einen zusätzlichen übergeordneten Ordner auf die Kar
 
 Der SD-Kartenslot ist von außen nicht zugänglich.
 
-Das Display muss dafür geöffnet werden. Dazu werden auf der Gehäuse rückseite & **6 kleine Schrauben** gelöst, darin ist das Display mit **4 kleinen Schrauben** befestigt.
+Das Display muss dafür geöffnet werden. Dazu werden auf der Gehäuse rückseite **6 kleine Schrauben** gelöst, darin ist das Display mit **4 kleinen Schrauben** befestigt.
 
 Anschließend kann das Display vorsichtig geöffnet werden, bis der SD-Kartenslot zugänglich ist.
 
