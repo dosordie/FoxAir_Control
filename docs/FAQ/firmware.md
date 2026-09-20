@@ -57,6 +57,10 @@ Bekannte Version:
 
 Download:
 
+[Display-Firmware 82400463 V1.7 herunterladen](https://drive.google.com/file/d/1uNjJeRfVrqpYvHlOIn6u2vSbIlBpba4t/view?usp=sharing)
+
+Alternativer Download:
+
 [Display-Firmware 82400463 V1.7 herunterladen](http://apolan.de/downloads/Waermepumpe/Foxair/updates/82400463%20202311131429%20V17.zip)
 
 > **Achtung:** Das ZIP hinter diesem Link ist nach mehreren Berichten im Forum **fehlerhaft bzw. unzuverlässig**. Es wurden **CRC-Fehler und fehlende Dateien** beobachtet; bei unterschiedlichen Downloads fehlten teilweise unterschiedliche Dateien. Den Download daher **nicht ungeprüft verwenden**. Ein sauberer alternativer V1.7-Mirror ist derzeit nicht bekannt.
