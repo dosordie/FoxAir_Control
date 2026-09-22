@@ -1,16 +1,16 @@
 # FoxAir / PHNIX Firmware-Übersicht
 
-Stand: 2026-08-30
+Stand: 2026-09-22
 
 Diese Seite soll die häufige Verwechslung zwischen **Mainboard-Firmware**, **Display-Firmware** und **LTE-/DTU-Firmware** vermeiden. Eine Versionsnummer wie `V1.7` oder `V3.4` ist **ohne den zugehörigen Software-/Gerätecode nicht eindeutig**.
 
-> Kurz gesagt: **Display V1.7 ist nicht Mainboard V1.7.** Bei vielen FoxAir-Geräten läuft z. B. Display V1.7 zusammen mit Mainboard V1.2, V1.3, V3.3 oder V3.4.
+> Kurz gesagt: **Display V1.7 ist nicht Mainboard V1.7.** Bei vielen FoxAir-Geräten läuft z. B. Display V1.7 zusammen mit Mainboard V1.2, V1.3, V3.3, V3.4 oder V3.5.
 
 ## Welche Firmware gehört wohin?
 
 | Komponente | Typischer Code | Updateweg | Beispiel |
 |---|---|---|---|
-| Mainboard / Hauptsteuerung | `82400644` | OTA über PHNIX/WarmLink/LTE-DTU | `V3.3`, `V3.4` |
+| Mainboard / Hauptsteuerung | `82400644` | OTA über PHNIX/WarmLink/LTE-DTU | `V3.3`, `V3.4`, `V3.5` |
 | kleines DWIN/LCD-Display | `82400463` | SD-Karte / `DWIN_SET` | `V1.3`, `V1.7` |
 | LTE-DTU / Kommunikationsmodul | `82400409` (beobachtet) | eigener DTU-OTA-Pfad | `V1.2` (beobachtet) |
 
@@ -32,6 +32,7 @@ Für FoxAir GL9/GL9-1 ist die Mainboard-Familie mit Softwarecode **`82400644`** 
 | `V2.6` | Mainboard-Nr. `644` beobachtet; vollständiger Code dort nicht sicher ausgelesen | PHNIX/WarmLink-Nutzer im Wärmepumpenforum | Zwischenstand derselben/nahen PHNIX-Plattform; nicht als FoxAir-GL9-Release gesichert |
 | `V3.3` | **`82400644`** | FoxAir GL9 praktisch und im Original-Binary bestätigt | automatische Heizkreispumpenregelung; erweiterte Wannenheizungslogik; deutlich mehr Modbus-Parameter; SG-Ready-Parameter verfügbar |
 | `V3.4` | **`82400644`** | Original-Binary analysiert; auch als Update im Forum gemeldet | AT-Kurve + Leistungstimer gleichzeitig; überarbeitete A34-Cold-Start-Vorheizung; neue dreiphasige Strombegrenzung; erweiterte SG/PV-Logik |
+| `V3.5` | **`82400644`** | Original-Binary statisch analysiert; Kennung `824006440035` | Weiterentwicklung von V3.4; zusätzliche Warmlink-Remote-/Adaptive-Regelpfade, spezialisierte 8021–8028-/8055-Verbraucher und MAIN-1540-Zusatzregelung |
 
 ### V3.3 – wichtigste bekannte Änderungen
 
@@ -57,7 +58,31 @@ Technische Details dazu liegen bewusst im Reverse-Engineering-Bereich:
 - [`reverse_engineering/firmware_v34.md`](reverse_engineering/firmware_v34.md)
 - [`reverse_engineering/firmware_v34_sg_ready_8801.md`](reverse_engineering/firmware_v34_sg_ready_8801.md)
 
-> **Wichtig:** Es ist derzeit **keine FoxAir/82400644-V3.5 öffentlich belastbar bestätigt**. Einzelne Erwartungen oder Ankündigungen ohne Firmwaredatei/Versionsnachweis werden hier nicht als bekannte Version geführt.
+### V3.5 – wichtigste bekannte Änderungen
+
+V3.5 ist statisch als nächste Revision derselben `82400644`-Firmwarelinie bestätigt:
+
+```text
+824006440035
+^^^^^^^^  ^^^^
+SW-Code   Version 0035 / V3.5
+```
+
+Der Vergleich mit V3.4 zeigt weiterhin dieselbe ARM-Cortex-M-/Thumb-2-Architektur und dieselbe Flash-Basis `0x08050000`. Das V3.5-Image ist gegenüber der untersuchten V3.4 um 3180 Byte größer.
+
+Besonders relevant sind die erweiterten Remote-/Optimierungspfade:
+
+- `8021` / `8022` / `8023`: Remote-Kompressorfrequenzobergrenzen für Kühlen / Heizen / Warmwasser
+- `8024` / `8025` / `8026`: Kühl-, Heiz- und Warmwasser-Sollwertkorrekturen
+- `8027` / `8028`: Zonen-Raumtemperatur-Offsets
+- `8055`: zusätzlicher skalierter Sollwert-Modulationskanal in bestimmten Multi-Zone-T-Modi
+- `MAIN:1540`: Enable eines zusätzlichen adaptiven Inverter-/Leistungsregelpfads mit zeitlich begrenzten Runtimewerten und 6-Hz-Frequenzstufung
+
+Wichtig für die Einordnung: Der grundlegende Remote-Energy-Control-/AI-Saving-Komplex ist **bereits in V3.4 funktional vorhanden**. V3.5 führt diese Funktion nicht erstmals ein, sondern erweitert sie um zusätzliche Stellgrößen und lokale Verbraucher.
+
+Die Firmwareanalyse belegt Cloud-/Remote-Eingänge und deren lokale Anwendung. Ob serverseitig tatsächlich Machine Learning bzw. „AI“ eingesetzt wird, ist damit nicht bewiesen.
+
+> **OTA-Status:** V3.5 ist statisch bestätigt, aber ein Firmwarewechsel **auf oder von V3.5** wurde mit dem FoxAir Updater noch nicht als realer OTA-Lauf validiert.
 
 ---
 
@@ -114,7 +139,7 @@ Diese Werte beschreiben **das LTE-/WarmLink-Modul**, nicht Mainboard oder Displa
 
 ### GL9 / GL9-1
 
-Für die FoxAir **GL9/GL9-1** ist `82400644` als Mainboard-/Softwarefamilie gut belegt. Die analysierten V3.3- und V3.4-Binaries gehören eindeutig zu dieser Familie.
+Für die FoxAir **GL9/GL9-1** ist `82400644` als Mainboard-/Softwarefamilie gut belegt. Die analysierten V3.3-, V3.4- und V3.5-Binaries gehören eindeutig zu dieser Familie.
 
 Da derselbe Mainboardcode `82400644` auch in PHNIX-OEM-/Rebrand-Unterlagen auftaucht, ist die wahrscheinlichste Einordnung:
 
