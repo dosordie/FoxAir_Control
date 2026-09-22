@@ -145,12 +145,13 @@ class WarmLinkCloudApi:
             return f"{service_root}/{ep}"
         return f"{self.base_url}/{ep}"
 
-    def debug_request(self, method: str, endpoint: str, body: Any = None, relogin: bool = True) -> WarmLinkDebugResponse:
+    def debug_request(self, method: str, endpoint: str, body: Any = None, relogin: bool = False) -> WarmLinkDebugResponse:
         """Send an authenticated request without interpreting the cloud payload.
 
-        This intentionally uses the same URL builder, token and login lifecycle as
-        the regular cloud calls.  Only relative paths are accepted so the token can
-        never accidentally be sent to a different host.
+        Only relative paths are accepted so the token can never accidentally be
+        sent to a different host.  Unlike regular cloud calls, debug requests do
+        not relogin by default: callers should be able to inspect the original
+        authentication response without invalidating the token under test.
         """
         verb = str(method or "").strip().upper()
         if verb not in {"GET", "POST", "PUT", "DELETE"}:

@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import time
+import urllib.parse
 from typing import Any, Optional
 
 from PySide6.QtCore import QThread, QTimer
@@ -281,6 +282,10 @@ class WarmLinkCloudDialog(QDialog):
         self.debug_path_edit.setPlaceholderText("cloudservice/api/device/ota/searchSoftwareCode")
         self.debug_body_edit = QTextEdit()
         self.debug_body_edit.setPlaceholderText('Optionaler JSON-Body, z. B. {"deviceCode": "..."}')
+        self.debug_device_btn = QPushButton("Aktuellen Gerätecode einfügen")
+        self.debug_template_btn = QPushButton("getDataByCode vorbereiten")
+        self.debug_relogin_cb = QCheckBox("Bei 401 automatisch neu anmelden")
+        self.debug_relogin_cb.setChecked(False)
         self.debug_send_btn = QPushButton("Senden")
         self.debug_result_edit = QTextEdit()
         self.debug_result_edit.setReadOnly(True)
@@ -291,11 +296,17 @@ class WarmLinkCloudDialog(QDialog):
         debug_layout.addWidget(self.debug_path_edit, 2, 1, 1, 2)
         debug_layout.addWidget(QLabel("JSON-Body:"), 3, 0)
         debug_layout.addWidget(self.debug_body_edit, 3, 1, 1, 2)
-        debug_layout.addWidget(self.debug_send_btn, 4, 0, 1, 3)
-        debug_layout.addWidget(QLabel("Antwort:"), 5, 0)
-        debug_layout.addWidget(self.debug_result_edit, 5, 1, 1, 2)
+        debug_buttons = QHBoxLayout()
+        debug_buttons.addWidget(self.debug_device_btn)
+        debug_buttons.addWidget(self.debug_template_btn)
+        debug_buttons.addStretch(1)
+        debug_layout.addLayout(debug_buttons, 4, 1, 1, 2)
+        debug_layout.addWidget(self.debug_relogin_cb, 5, 1, 1, 2)
+        debug_layout.addWidget(self.debug_send_btn, 6, 0, 1, 3)
+        debug_layout.addWidget(QLabel("Antwort:"), 7, 0)
+        debug_layout.addWidget(self.debug_result_edit, 7, 1, 1, 2)
         debug_layout.setRowStretch(3, 1)
-        debug_layout.setRowStretch(5, 2)
+        debug_layout.setRowStretch(7, 2)
         self.tabs.addTab(debug_tab, "API-Debugger")
 
         credit = QLabel(WARMLINK_CLOUD_CREDIT)
@@ -334,6 +345,8 @@ class WarmLinkCloudDialog(QDialog):
         self.write_btn.clicked.connect(self.run_write_test)
         self.finder_btn.clicked.connect(self.run_value_finder)
         self.debug_send_btn.clicked.connect(self.run_debug_request)
+        self.debug_device_btn.clicked.connect(self._insert_debug_device_code)
+        self.debug_template_btn.clicked.connect(self._prepare_debug_get_data)
         self.close_btn.clicked.connect(self.close)
         self._refresh_write_values()
 
@@ -865,6 +878,7 @@ class WarmLinkCloudDialog(QDialog):
             user, pw or "", method, path, body=body, initial_token=token,
             preferred_login_method=str(cfg.get("login_method") or "md5"),
             login_fallbacks=bool(cfg.get("login_fallbacks", False)),
+            relogin_on_401=self.debug_relogin_cb.isChecked(),
         )
         self.debug_worker.moveToThread(self.debug_thread)
         self.debug_thread.started.connect(self.debug_worker.run)
@@ -887,7 +901,28 @@ class WarmLinkCloudDialog(QDialog):
         self.debug_result_edit.setPlainText(
             f"{request_text}\n\nHTTP-STATUS\n{response.status}\n\nRESPONSE-HEADER\n{headers}\n\nRESPONSE-BODY\n{body}"
         )
-        self.main_window._log(f"Cloud API Debugger: {response.status} {response.url}")
+        request_path = urllib.parse.urlsplit(str(response.url or "")).path
+        method = self.debug_method_combo.currentText()
+        self.main_window._log(f"Cloud API Debugger: {response.status} {method} {request_path}")
+
+    def _insert_debug_device_code(self):
+        device_code = self._selected_device_code()
+        if not device_code:
+            QMessageBox.information(self, "Cloud API Debugger", "Kein Gerät ausgewählt.")
+            return
+        self.debug_body_edit.setPlainText(json.dumps({"deviceCode": device_code}, ensure_ascii=False, indent=2))
+
+    def _prepare_debug_get_data(self):
+        device_code = self._selected_device_code()
+        if not device_code:
+            QMessageBox.information(self, "Cloud API Debugger", "Kein Gerät ausgewählt.")
+            return
+        self.debug_method_combo.setCurrentText("POST")
+        self.debug_path_edit.setText("app/device/getDataByCode")
+        self.debug_body_edit.setPlainText(json.dumps({
+            "deviceCode": device_code,
+            "protocalCodes": ["T01"],
+        }, ensure_ascii=False, indent=2))
 
     def _on_debug_error(self, text: str):
         current = self.debug_result_edit.toPlainText().split("\n\nSende ...", 1)[0]

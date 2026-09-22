@@ -112,8 +112,30 @@ def test_debug_request_relogs_in_for_phnix_json_auth_errors(monkeypatch, expired
     monkeypatch.setattr(api, "_debug_http_request", fake_request)
     monkeypatch.setattr(api, "login", fake_login)
 
-    response = api.debug_request("POST", "app/device/example", {"value": 1})
+    response = api.debug_request("POST", "app/device/example", {"value": 1}, relogin=True)
 
     assert response.body == '{"success":true}'
     assert login_calls == [("md5", True)]
     assert [request[3] for request in requests] == ["expired-token", "renewed-token"]
+
+
+def test_debug_request_returns_401_without_relogin_or_discarding_token(monkeypatch):
+    api = WarmLinkCloudApi("user", "", initial_token="valid-token")
+    original = WarmLinkDebugResponse(
+        "https://cloud.example/api?deviceCode=secret",
+        401,
+        {"X-Trace": "auth-failure"},
+        '{"message":"endpoint denied"}',
+    )
+    login_calls = []
+    monkeypatch.setattr(api, "_debug_http_request", lambda *_args: original)
+    monkeypatch.setattr(api, "login", lambda *_args: login_calls.append(_args))
+
+    response = api.debug_request("GET", "app/device/example?deviceCode=secret")
+
+    assert response is original
+    assert response.status == 401
+    assert response.headers == {"X-Trace": "auth-failure"}
+    assert response.body == '{"message":"endpoint denied"}'
+    assert login_calls == []
+    assert api.token == "valid-token"
