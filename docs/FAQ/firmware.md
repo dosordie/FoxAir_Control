@@ -78,11 +78,16 @@ Display V1.3
 
 Die WarmLink-App zeigte dabei bereits neue Funktionen der V3.x-Mainboard-Firmware, während das ältere Display diese Funktionen nicht kannte.
 
-Besonders betroffen sind mindestens:
+Aus dem Display-Quellstand lässt sich nachvollziehen, welche Funktionen erst **nach dem V1.3-Build vom 21.07.2022** ergänzt wurden. Dazu gehören unter anderem:
 
-- **Leistungs-/Power-Timer**
-- **SG-Ready-/PV-Funktionen**
-- weitere Parameter und Funktionen, die erst mit der V3.x-Mainboard-Firmware hinzugekommen sind
+- **SG-Ready-/PV-Menüs und SG-Parameter** – die zugehörigen Displayfunktionen wurden erst nach dem V1.3-Stand ergänzt
+- **sechs Lastverschiebungs-/Leistungstimer** (`错峰用电`) – im Display-Changelog ab **29.11.2022**
+- **erweiterte Parameterübertragung** – zusätzlicher 4. Parameterblock ab **02.12.2022**, später ein 5. Block
+- **Zonen-/Multi-Zone-Regelung** – Erweiterungen ab **August 2022**
+- **zusätzliche Statuswerte T49–T55 und Fehleranzeigen** – ergänzt im **März 2023**
+- **zusätzliche manuelle Steuerfunktionen** – ebenfalls ab **März 2023**
+
+Damit ist klar: Ein Display mit V1.3 kann einen Teil der später hinzugekommenen Mainboard-Funktionen gar nicht vollständig darstellen oder bedienen, weil die dazugehörigen Seiten, Parameter und Kommunikationspfade im alten Displaystand noch nicht vorhanden sind.
 
 Daher als Empfehlung:
 
