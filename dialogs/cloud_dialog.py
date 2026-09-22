@@ -31,7 +31,9 @@ from dialogs.cloud_table_helpers import (
     device_table_value, filtered_cloud_rows, finder_cloud_row, finder_code_label,
     local_display_value, mask_cloud_value, try_float, value_finder_matches,
 )
-from workers.warmlink_cloud_worker import WarmLinkCloudWorker, WarmLinkCloudCommandWorker
+from workers.warmlink_cloud_worker import (
+    WarmLinkCloudWorker, WarmLinkCloudCommandWorker, WarmLinkCloudDebugWorker,
+)
 from core.settings_manager import ensure_warmlink_cloud_defaults
 
 class WarmLinkCloudDialog(QDialog):
@@ -62,6 +64,8 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker: Optional[WarmLinkCloudWorker] = None
         self.command_thread: Optional[QThread] = None
         self.command_worker: Optional[WarmLinkCloudCommandWorker] = None
+        self.debug_thread: Optional[QThread] = None
+        self.debug_worker: Optional[WarmLinkCloudDebugWorker] = None
         self.devices: list[dict[str, Any]] = []
         self.data_rows: list[dict[str, Any]] = []
         self._cloud_token: str | None = None
@@ -264,6 +268,36 @@ class WarmLinkCloudDialog(QDialog):
         codes_layout.addWidget(self.codes_edit, 1)
         self.tabs.addTab(codes_tab, "Codes / Mapping")
 
+        debug_tab = QWidget()
+        debug_layout = QGridLayout(debug_tab)
+        debug_hint = QLabel(
+            "Generischer API-Debugger. Nutzt Host, Anmeldung und Token der bestehenden Cloud-Anbindung; "
+            "es sind ausschließlich relative API-Pfade erlaubt."
+        )
+        debug_hint.setWordWrap(True)
+        self.debug_method_combo = QComboBox()
+        self.debug_method_combo.addItems(["GET", "POST", "PUT", "DELETE"])
+        self.debug_path_edit = QLineEdit()
+        self.debug_path_edit.setPlaceholderText("cloudservice/api/device/ota/searchSoftwareCode")
+        self.debug_body_edit = QTextEdit()
+        self.debug_body_edit.setPlaceholderText('Optionaler JSON-Body, z. B. {"deviceCode": "..."}')
+        self.debug_send_btn = QPushButton("Senden")
+        self.debug_result_edit = QTextEdit()
+        self.debug_result_edit.setReadOnly(True)
+        debug_layout.addWidget(debug_hint, 0, 0, 1, 3)
+        debug_layout.addWidget(QLabel("Methode:"), 1, 0)
+        debug_layout.addWidget(self.debug_method_combo, 1, 1)
+        debug_layout.addWidget(QLabel("Relativer API-Pfad:"), 2, 0)
+        debug_layout.addWidget(self.debug_path_edit, 2, 1, 1, 2)
+        debug_layout.addWidget(QLabel("JSON-Body:"), 3, 0)
+        debug_layout.addWidget(self.debug_body_edit, 3, 1, 1, 2)
+        debug_layout.addWidget(self.debug_send_btn, 4, 0, 1, 3)
+        debug_layout.addWidget(QLabel("Antwort:"), 5, 0)
+        debug_layout.addWidget(self.debug_result_edit, 5, 1, 1, 2)
+        debug_layout.setRowStretch(3, 1)
+        debug_layout.setRowStretch(5, 2)
+        self.tabs.addTab(debug_tab, "API-Debugger")
+
         credit = QLabel(WARMLINK_CLOUD_CREDIT)
         credit.setWordWrap(True)
         credit.setStyleSheet("color: #666666;")
@@ -299,8 +333,20 @@ class WarmLinkCloudDialog(QDialog):
         self.write_code_combo.currentIndexChanged.connect(lambda _=None: self._refresh_write_values())
         self.write_btn.clicked.connect(self.run_write_test)
         self.finder_btn.clicked.connect(self.run_value_finder)
+        self.debug_send_btn.clicked.connect(self.run_debug_request)
         self.close_btn.clicked.connect(self.close)
         self._refresh_write_values()
+
+    def _initial_token_for_user(self, user: str) -> str | None:
+        if not bool(self._cloud_settings().get("save_token", True)):
+            return None
+        if self._cloud_token_username == user and self._cloud_token:
+            return self._cloud_token
+        try:
+            return get_token(user)
+        except Exception as exc:
+            self.main_window._log("WarmLink Cloud: Token-Keyring nicht verfügbar: " + str(exc))
+            return None
 
     def _load_settings(self):
         cfg = self._cloud_settings()
@@ -787,6 +833,74 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker = None
         self._update_write_controls()
 
+    def run_debug_request(self):
+        if self.debug_thread is not None:
+            QMessageBox.information(self, "WarmLink Cloud", "API-Anfrage läuft bereits.")
+            return
+        user = self.username_edit.text().strip()
+        path = self.debug_path_edit.text().strip()
+        token = self._initial_token_for_user(user)
+        pw = self._password() if not token else (self.password_edit.text() or "")
+        if not user or (not token and not pw):
+            QMessageBox.warning(self, "WarmLink Cloud", "Benutzername sowie vorhandener Token oder Passwort fehlen.")
+            return
+        if not path:
+            QMessageBox.warning(self, "Cloud API Debugger", "Relativer API-Pfad fehlt.")
+            return
+        body_text = self.debug_body_edit.toPlainText().strip()
+        try:
+            body = json.loads(body_text) if body_text else None
+        except json.JSONDecodeError as exc:
+            QMessageBox.warning(self, "Cloud API Debugger", f"Ungültiger JSON-Body: {exc}")
+            return
+
+        method = self.debug_method_combo.currentText()
+        cfg = self._cloud_settings()
+        self.debug_result_edit.setPlainText(
+            f"REQUEST\n{method} {path}\n\nJSON-BODY\n{json.dumps(body, ensure_ascii=False, indent=2) if body is not None else '(leer)'}\n\nSende ..."
+        )
+        self.debug_send_btn.setEnabled(False)
+        self.debug_thread = QThread(self)
+        self.debug_worker = WarmLinkCloudDebugWorker(
+            user, pw or "", method, path, body=body, initial_token=token,
+            preferred_login_method=str(cfg.get("login_method") or "md5"),
+            login_fallbacks=bool(cfg.get("login_fallbacks", False)),
+        )
+        self.debug_worker.moveToThread(self.debug_thread)
+        self.debug_thread.started.connect(self.debug_worker.run)
+        self.debug_worker.result.connect(self._on_debug_result)
+        self.debug_worker.error.connect(self._on_debug_error)
+        self.debug_worker.token_updated.connect(self._on_token_updated)
+        self.debug_worker.finished.connect(self.debug_thread.quit)
+        self.debug_worker.finished.connect(self.debug_worker.deleteLater)
+        self.debug_thread.finished.connect(self._debug_finished)
+        self.debug_thread.start()
+
+    def _on_debug_result(self, response):
+        body = str(response.body or "")
+        try:
+            body = json.dumps(json.loads(body), ensure_ascii=False, indent=2)
+        except (json.JSONDecodeError, TypeError):
+            pass
+        headers = "\n".join(f"{key}: {value}" for key, value in sorted(response.headers.items())) or "(keine)"
+        request_text = self.debug_result_edit.toPlainText().split("\n\nSende ...", 1)[0]
+        self.debug_result_edit.setPlainText(
+            f"{request_text}\n\nHTTP-STATUS\n{response.status}\n\nRESPONSE-HEADER\n{headers}\n\nRESPONSE-BODY\n{body}"
+        )
+        self.main_window._log(f"Cloud API Debugger: {response.status} {response.url}")
+
+    def _on_debug_error(self, text: str):
+        current = self.debug_result_edit.toPlainText().split("\n\nSende ...", 1)[0]
+        self.debug_result_edit.setPlainText(f"{current}\n\nFEHLER\n{translate_cloud_error_message(str(text))}")
+        self.main_window._log("Cloud API Debugger Fehler: " + str(text))
+
+    def _debug_finished(self):
+        if self.debug_thread is not None:
+            self.debug_thread.deleteLater()
+        self.debug_thread = None
+        self.debug_worker = None
+        self.debug_send_btn.setEnabled(True)
+
     def export_csv(self):
         path, _ = QFileDialog.getSaveFileName(self, "WarmLink Cloud CSV exportieren", self.main_window.user_data_dir, "CSV (*.csv)")
         if not path:
@@ -1009,4 +1123,3 @@ class WarmLinkCloudDialog(QDialog):
             return
         self.stop_worker()
         super().closeEvent(event)
-

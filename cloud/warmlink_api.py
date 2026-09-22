@@ -15,6 +15,7 @@ import hashlib
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
@@ -100,6 +101,16 @@ class WarmLinkCloudResponse:
     message: str = ""
 
 
+@dataclass
+class WarmLinkDebugResponse:
+    """Unverarbeitete HTTP-Antwort fuer den generischen API-Debugger."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+    body: str
+
+
 class WarmLinkCloudApi:
 
     def __init__(
@@ -129,8 +140,71 @@ class WarmLinkCloudApi:
             return ep
         ep = ep.lstrip("/")
         if ep.startswith("cloudservice/api/") or ep.startswith("crmservice/api/"):
-            return f"{SERVICE_ROOT}/{ep}"
+            parsed = urllib.parse.urlsplit(self.base_url)
+            service_root = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
+            return f"{service_root}/{ep}"
         return f"{self.base_url}/{ep}"
+
+    def debug_request(self, method: str, endpoint: str, body: Any = None, relogin: bool = True) -> WarmLinkDebugResponse:
+        """Send an authenticated request without interpreting the cloud payload.
+
+        This intentionally uses the same URL builder, token and login lifecycle as
+        the regular cloud calls.  Only relative paths are accepted so the token can
+        never accidentally be sent to a different host.
+        """
+        verb = str(method or "").strip().upper()
+        if verb not in {"GET", "POST", "PUT", "DELETE"}:
+            raise ValueError(f"Nicht unterstützte HTTP-Methode: {verb}")
+        path = str(endpoint or "").strip()
+        if not path:
+            raise ValueError("API-Pfad fehlt")
+        if path.startswith(("http://", "https://", "//")):
+            raise ValueError("Nur relative API-Pfade sind erlaubt")
+
+        if self.token:
+            self.reused_initial_token = True
+        else:
+            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
+        response = self._debug_http_request(verb, path, body)
+        if relogin and response.status == 401:
+            self.token = None
+            self.last_login_at = 0.0
+            self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
+            response = self._debug_http_request(verb, path, body)
+        return response
+
+    def _debug_http_request(self, method: str, endpoint: str, body: Any) -> WarmLinkDebugResponse:
+        raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.2.60",
+        }
+        if raw_body is not None:
+            headers["Content-Type"] = "application/json;charset=utf-8"
+        if self.token:
+            headers["x-token"] = self.token
+        request = urllib.request.Request(self._url(endpoint), data=raw_body, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                text = response.read().decode("utf-8", errors="replace")
+                return WarmLinkDebugResponse(
+                    url=request.full_url,
+                    status=int(getattr(response, "status", 200) or 200),
+                    headers={str(key): str(value) for key, value in response.headers.items()},
+                    body=text,
+                )
+        except urllib.error.HTTPError as exc:
+            text = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+            return WarmLinkDebugResponse(
+                url=request.full_url,
+                status=int(exc.code),
+                headers={str(key): str(value) for key, value in exc.headers.items()} if exc.headers else {},
+                body=text,
+            )
+        except urllib.error.URLError as exc:
+            raise WarmLinkCloudError(translate_cloud_error_message(f"Netzwerkfehler: {exc}")) from exc
+        except TimeoutError as exc:
+            raise WarmLinkCloudError(translate_cloud_error_message(f"Timeout nach {self.timeout:.0f}s")) from exc
 
     def _request_json(self, endpoint: str, payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

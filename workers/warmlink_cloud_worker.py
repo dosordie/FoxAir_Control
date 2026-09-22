@@ -21,6 +21,48 @@ from cloud.warmlink_api import (
 )
 
 
+class WarmLinkCloudDebugWorker(QObject):
+    """Runs one generic authenticated cloud request outside the GUI thread."""
+
+    result = Signal(object)
+    error = Signal(str)
+    token_updated = Signal(str)
+    finished = Signal()
+
+    def __init__(self, username: str, password: str, method: str, endpoint: str,
+                 body: Any = None, timeout_s: float = 15.0,
+                 initial_token: str | None = None,
+                 preferred_login_method: str = "md5", login_fallbacks: bool = False) -> None:
+        super().__init__()
+        self.username = username
+        self.password = password
+        self.method = method
+        self.endpoint = endpoint
+        self.body = body
+        self.timeout_s = timeout_s
+        self.initial_token = initial_token
+        self.preferred_login_method = preferred_login_method
+        self.login_fallbacks = login_fallbacks
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            api = WarmLinkCloudApi(
+                self.username, self.password, timeout=self.timeout_s,
+                initial_token=self.initial_token,
+            )
+            api.preferred_login_method = self.preferred_login_method
+            api.use_login_fallbacks = self.login_fallbacks
+            response = api.debug_request(self.method, self.endpoint, self.body)
+            if api.token:
+                self.token_updated.emit(api.token)
+            self.result.emit(response)
+        except Exception as exc:
+            self.error.emit(translate_cloud_error_message(str(exc)))
+        finally:
+            self.finished.emit()
+
+
 class WarmLinkCloudWorker(QObject):
     log = Signal(str)
     status = Signal(str)
