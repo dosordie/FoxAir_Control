@@ -63,6 +63,37 @@ Die Display-Firmware ist unabhängig von der Mainboard-Firmware.
 
 Das kleine DWIN-Display wird **direkt über eine SD-Speicherkarte** aktualisiert. Dafür ist keine Verbindung zu FoxAir Control, Modbus oder zur Cloud notwendig.
 
+### Empfehlung bei Mainboard-Firmware V3.3 oder neuer
+
+Wer das Mainboard auf **V3.3, V3.4 oder V3.5** aktualisiert, sollte nach Möglichkeit auch das kleine DWIN-Display auf die aktuell bekannte **Display-Firmware V1.7** aktualisieren.
+
+Der Grund: Eine ältere Display-Firmware kennt neu hinzugekommene Mainboard-Funktionen nicht und kann diese deshalb weder sinnvoll anzeigen noch konfigurieren.
+
+Ein praktisches Beispiel aus dem Forum war die Kombination:
+
+```text
+Mainboard V3.5
+Display V1.3
+```
+
+Die WarmLink-App zeigte dabei bereits neue Funktionen der V3.x-Mainboard-Firmware, während das ältere Display diese Funktionen nicht kannte.
+
+Besonders betroffen sind mindestens:
+
+- **Leistungs-/Power-Timer**
+- **SG-Ready-/PV-Funktionen**
+- weitere Parameter und Funktionen, die erst mit der V3.x-Mainboard-Firmware hinzugekommen sind
+
+Daher als Empfehlung:
+
+> **Ab Mainboard-Firmware V3.3 sollte möglichst Display-Firmware V1.7 verwendet werden.**
+
+Das ist keine harte technische Mindestanforderung – die Wärmepumpe kann auch mit einer älteren Display-Firmware grundsätzlich weiterlaufen. Das Display bildet dann aber möglicherweise nur einen älteren Funktionsumfang ab, obwohl das Mainboard bereits mehr Funktionen unterstützt.
+
+Hintergrund aus dem Forum:
+
+[Erfahrungsbericht: Mainboard V3.5 mit Display V1.3](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?postID=4884291#post4884291)
+
 ### Display-Firmware V1.7
 
 Mit der Display-Firmware **V1.7** wird die Sprache des Displays von der originalen **polnischen Oberfläche auf Englisch** umgestellt.
