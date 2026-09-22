@@ -32,7 +32,8 @@ class WarmLinkCloudDebugWorker(QObject):
     def __init__(self, username: str, password: str, method: str, endpoint: str,
                  body: Any = None, timeout_s: float = 15.0,
                  initial_token: str | None = None,
-                 preferred_login_method: str = "md5", login_fallbacks: bool = False) -> None:
+                 preferred_login_method: str = "md5", login_fallbacks: bool = False,
+                 relogin_on_401: bool = False) -> None:
         super().__init__()
         self.username = username
         self.password = password
@@ -43,6 +44,7 @@ class WarmLinkCloudDebugWorker(QObject):
         self.initial_token = initial_token
         self.preferred_login_method = preferred_login_method
         self.login_fallbacks = login_fallbacks
+        self.relogin_on_401 = relogin_on_401
 
     @Slot()
     def run(self) -> None:
@@ -53,7 +55,9 @@ class WarmLinkCloudDebugWorker(QObject):
             )
             api.preferred_login_method = self.preferred_login_method
             api.use_login_fallbacks = self.login_fallbacks
-            response = api.debug_request(self.method, self.endpoint, self.body)
+            response = api.debug_request(
+                self.method, self.endpoint, self.body, relogin=self.relogin_on_401,
+            )
             if api.token:
                 self.token_updated.emit(api.token)
             self.result.emit(response)
