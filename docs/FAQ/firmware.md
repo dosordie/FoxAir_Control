@@ -90,9 +90,6 @@ Daher als Empfehlung:
 
 Das ist keine harte technische Mindestanforderung – die Wärmepumpe kann auch mit einer älteren Display-Firmware grundsätzlich weiterlaufen. Das Display bildet dann aber möglicherweise nur einen älteren Funktionsumfang ab, obwohl das Mainboard bereits mehr Funktionen unterstützt.
 
-Hintergrund aus dem Forum:
-
-[Erfahrungsbericht: Mainboard V3.5 mit Display V1.3](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?postID=4884291#post4884291)
 
 ### Display-Firmware V1.7
 
