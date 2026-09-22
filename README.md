@@ -14,7 +14,7 @@ Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmw
 
 - [FoxAir / PHNIX Firmware-Übersicht](docs/firmware_overview.md)
 
-Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3` oder `V3.4` gleichzeitig installiert sein.
+Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3`, `V3.4` oder `V3.5` gleichzeitig installiert sein.
 
 ## 💙 Unterstützung
 
