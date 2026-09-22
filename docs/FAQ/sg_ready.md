@@ -44,18 +44,37 @@ Die Kontakte sind als Steuereingänge gedacht. Keine Fremdspannung auf die Eing�
 
 ## SG-Ready-Quelle einstellen
 
-Register **1334** legt fest, wie die SG-Ready-Steuerung erfolgt:
+Register **1334** legt bei der klassischen SG-Ready-Funktion fest, wie die Steuerung erfolgt. Neuere Firmwarestände verwenden zusätzliche Werte außerdem für erweiterte SG-/PV- und Remote-Optimierungspfade:
 
 | Wert | Funktion |
 | ---: | --- |
 | **0** | SG Ready aus |
 | **1** | Steuerung über einen physischen Kontakt |
 | **2** | Steuerung über zwei physische SG-Kontakte |
-| **3** | virtuelle SG-Ready-Steuerung über Modbus |
+| **3** | klassische virtuelle SG-Ready-Steuerung über Modbus |
+| **4** | Remote-Energy-Control-/AI-Saving-Pfad; auf V3.4 real durch die App beobachtet |
+| **7** | neuerer virtueller 3-Stufen-SG/PV-Pfad mit 8801 = 1/2/3 |
 
 Für eine klassische Verdrahtung mit beiden SG-Kontakten wird daher **1334 = 2** verwendet.
 
-Für eine Gebäudeautomation oder PV-Steuerung per Modbus wird **1334 = 3** verwendet.
+Für eine Gebäudeautomation oder PV-Steuerung mit den klassischen vier SG-Ready-Zuständen wird **1334 = 3** verwendet.
+
+### Zusätzliche SG-/PV-Pfade bei V3.5
+
+V3.5 enthält daneben den bereits aus der neueren Firmwareanalyse bekannten Pfad:
+
+```text
+1334 = 7
+8801 = 1 -> Low PV
+8801 = 2 -> Neutral
+8801 = 3 -> High PV
+```
+
+Dieser 3-Stufen-Pfad ist **nicht identisch** mit dem klassischen `1334 = 3` / `8801 = 1..4`-SG-Ready-Eingang. Die bekannte 10-Minuten-Hold-State-Machine bleibt in V3.5 statisch erhalten.
+
+Ebenfalls wichtig: `1334 = 4` wird vom PHNIX-App-Pfad für **AI Saving / dynamischen Stromtarif** verwendet. Das ist kein normaler manueller SG-Ready-Modus. Der zugrunde liegende Remote-Regelkomplex existiert bereits in V3.4; V3.5 erweitert ihn um zusätzliche Warmlink-Stellgrößen.
+
+Bei V3.5 sitzt `1334 / SG01` außerdem vor einem Teil der neuen MAIN-1540-Remote-Korrekturen. Insbesondere der `1334 = 7`-Zweig verwendet für die thermischen Korrekturen seinen SG-/Legacy-Pfad, statt dort die Warmlink-Werte 8024–8028 zu verwenden.
 
 ## Steuerung über Modbus
 
