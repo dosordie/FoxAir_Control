@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from cloud.warmlink_api import WarmLinkCloudApi
+from cloud.warmlink_api import WarmLinkCloudApi, WarmLinkDebugResponse
 
 
 class FakeResponse:
@@ -79,3 +79,41 @@ def test_debug_request_rejects_absolute_paths_before_sending_token(path):
 
     with pytest.raises(ValueError, match="relative API-Pfade"):
         api.debug_request("DELETE", path)
+
+
+@pytest.mark.parametrize(
+    "expired_body",
+    [
+        '{"error_code":-100,"message":"token invalid"}',
+        '{"error_code":0,"message":"please login again"}',
+    ],
+)
+def test_debug_request_relogs_in_for_phnix_json_auth_errors(monkeypatch, expired_body):
+    api = WarmLinkCloudApi("user", "password", initial_token="expired-token")
+    requests = []
+    responses = iter(
+        [
+            WarmLinkDebugResponse("https://cloud.example/api", 200, {}, expired_body),
+            WarmLinkDebugResponse("https://cloud.example/api", 200, {}, '{"success":true}'),
+        ]
+    )
+
+    def fake_request(method, endpoint, body):
+        requests.append((method, endpoint, body, api.token))
+        return next(responses)
+
+    login_calls = []
+
+    def fake_login(preferred_method, use_fallbacks):
+        login_calls.append((preferred_method, use_fallbacks))
+        api.token = "renewed-token"
+        return True
+
+    monkeypatch.setattr(api, "_debug_http_request", fake_request)
+    monkeypatch.setattr(api, "login", fake_login)
+
+    response = api.debug_request("POST", "app/device/example", {"value": 1})
+
+    assert response.body == '{"success":true}'
+    assert login_calls == [("md5", True)]
+    assert [request[3] for request in requests] == ["expired-token", "renewed-token"]

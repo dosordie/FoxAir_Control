@@ -166,12 +166,22 @@ class WarmLinkCloudApi:
         else:
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
         response = self._debug_http_request(verb, path, body)
-        if relogin and response.status == 401:
+        if relogin and self._debug_token_expired(response):
             self.token = None
             self.last_login_at = 0.0
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
             response = self._debug_http_request(verb, path, body)
         return response
+
+    def _debug_token_expired(self, response: WarmLinkDebugResponse) -> bool:
+        """Recognize HTTP and PHNIX-in-JSON authentication failures."""
+        if response.status == 401:
+            return True
+        try:
+            data = json.loads(response.body) if response.body.strip() else {}
+        except (json.JSONDecodeError, TypeError):
+            return False
+        return isinstance(data, dict) and self._token_expired(data)
 
     def _debug_http_request(self, method: str, endpoint: str, body: Any) -> WarmLinkDebugResponse:
         raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
