@@ -1,8 +1,9 @@
 # SG Ready
 
-Diese Seite dokumentiert die bestätigte SG-Ready-Zuordnung der untersuchten FoxAir/PHNIX-Mainboard-Firmware V3.3 einschließlich des inzwischen **live bestätigten virtuellen SG-Ready-Eingangs über Modbus**.
+Diese Seite dokumentiert die bestätigte klassische SG-Ready-Zuordnung der untersuchten FoxAir/PHNIX-Mainboard-Firmware V3.3 einschließlich des **live bestätigten virtuellen SG-Ready-Eingangs über Modbus** und ergänzt sie um die inzwischen statisch aufgelösten erweiterten SG-/Remote-Pfade aus V3.4/V3.5.
 
-Stand der Live-Verifikation: 24. August 2026.
+Stand der klassischen Live-Verifikation: 24. August 2026.  
+Stand der V3.5-Analyse: 22. September 2026.
 
 ## Physische Klemmen und I/O-Zuordnung
 
@@ -31,6 +32,30 @@ Laut AirWende/PHNIX-naher Anleitung gilt damit:
 | 2034 | 0x07F2 | physische Schalter-/Kontaktzustände als Bitfeld |
 | 2133 | 0x0855 | tatsächlich aktiver SG-Ready-Modus |
 | **8801** | **0x2261** | **virtueller SG-Ready-Zustand, wirksam bei `1334 = 3`** |
+
+## Zusätzliche Werte von MAIN:1334 / SG01 in V3.4/V3.5
+
+Die ältere V3.3-Dokumentation beschreibt den klassischen Bereich `1334 = 0..3`. Neuere Firmwarestände verwenden `1334 / SG01` zusätzlich als Selektor für weitere SG-/Remote-Regelpfade.
+
+Besonders relevant:
+
+```text
+1334 = 4
+    -> separater Remote-Energy-Control-/AI-Saving-Korrekturpfad
+    -> auf realer V3.4 durch Aktivierung von „AI Saving / dynamischer Stromtarif“ beobachtet
+
+1334 = 7
+    -> virtueller 3-Stufen-SG/PV-Pfad
+    -> 8801 = 1 Low PV
+    -> 8801 = 2 Neutral
+    -> 8801 = 3 High PV
+```
+
+Der `1334 = 7`-Pfad ist nicht identisch mit dem klassischen V3.3-Pfad `1334 = 3` / `8801 = 1..4`. Die bekannte 1200-Tick-/10-Minuten-Hold-State-Machine ist in V3.5 weiterhin vorhanden.
+
+Für V3.5 ist außerdem bestätigt, dass `1334 / SG01` vor einem Teil der neuen MAIN-1540-Warmlink-Korrekturen selektiert. Bei `1334 = 7` wird im thermischen Korrekturblock der SG-/Legacy-Satz verwendet; die 1540-gesteuerten Warmlink-Korrekturen 8024–8028 werden in diesem Zweig nicht erreicht. Die separaten Frequenz-Caps 8021–8023 besitzen eigene Gates.
+
+Der Begriff „AI Saving“ beschreibt die App-Funktion. Aus der Firmware ist eine Cloud-/Remote-Regelung gut gestützt, aber kein konkreter Machine-Learning-Algorithmus bewiesen.
 
 ## Virtueller SG-Ready-Eingang über Register 8801
 
