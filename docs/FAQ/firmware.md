@@ -37,7 +37,7 @@ Bekannte Änderungen gegenüber V3.3:
 
 ### V3.5
 
-V3.5 ist inzwischen statisch als **`82400644 / 0035`** bestätigt und gehört klar zur selben GL9-/644-Firmwarelinie wie V3.4.
+V3.5 ist inzwischen als **`82400644 / 0035`** bestätigt. Die untersuchte Firmware stammt von einer **FoxAir BlueLine (BL)**, gehört aber zur selben `82400644`-Mainboard-Firmwarelinie wie die entsprechenden **GreenLine-/GL-Geräte**.
 
 Wichtige Erkenntnisse gegenüber V3.4:
 
@@ -49,7 +49,9 @@ Wichtige Erkenntnisse gegenüber V3.4:
 
 Die Bezeichnung **AI** sollte technisch mit Vorsicht verwendet werden: Eine Cloud-/Remote-Regelung ist durch die Kommunikationspfade gut gestützt, ein tatsächlicher Machine-Learning-/AI-Algorithmus ist aus der Mainboard-Firmware nicht bewiesen.
 
-> **Update-Hinweis:** Der FoxAir Updater hat reale Firmwarewechsel bis V3.4 erfolgreich durchgeführt. Ein Update **auf oder von V3.5** ist dort aktuell noch nicht als realer OTA-Lauf validiert.  
+> **BlueLine / GreenLine:** Die Bezeichnungen BL und GL bedeuten hier keine getrennten Firmwarezweige. Bei Geräten mit Mainboard-Softwarecode **`82400644`** wird dieselbe Mainboard-Firmwarelinie verwendet. Die vorliegende V3.5 aus einer BlueLine ist deshalb auch für entsprechende GreenLine-/GL-Geräte dieser `82400644`-Familie kompatibel – und umgekehrt. Bei einem unbekannten Modell sollte der Mainboard-Softwarecode vor einem Update trotzdem geprüft werden.
+>
+> **Update-Hinweis:** Der FoxAir Updater hat reale Firmwarewechsel bis V3.4 erfolgreich durchgeführt. Ein kompletter Updatevorgang **auf oder von V3.5** ist dort aktuell noch nicht real validiert.  
 
 Eine ausführlichere technische Übersicht gibt es hier:
 
