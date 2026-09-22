@@ -16,6 +16,8 @@ Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmw
 
 Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3`, `V3.4` oder `V3.5` gleichzeitig installiert sein.
 
+Die analysierte **Mainboard-V3.5 stammt von einer FoxAir BlueLine (BL)**. BlueLine und GreenLine (GL) mit Mainboard-Softwarecode **`82400644`** verwenden dieselbe Mainboard-Firmwarelinie; die V3.5 ist für entsprechende Geräte dieser Familie untereinander kompatibel.
+
 ## 💙 Unterstützung
 
 Ich bastle an diesem Tool in meiner Freizeit.  
