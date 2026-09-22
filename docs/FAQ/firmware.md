@@ -8,7 +8,7 @@ Das ist wichtig, weil zum Beispiel **Display V1.7 nicht Mainboard V1.7** bedeute
 
 | Komponente | Typischer Softwarecode | Beispiele |
 | --- | --- | --- |
-| Mainboard / Hauptsteuerung | 82400644 | V1.2, V1.3, V3.3, V3.4 |
+| Mainboard / Hauptsteuerung | 82400644 | V1.2, V1.3, V3.3, V3.4, V3.5 |
 | kleines DWIN-Display | 82400463 | V1.3, V1.7 |
 | LTE-/WarmLink-DTU | z. B. 82400409 | z. B. V1.2 |
 
@@ -37,7 +37,19 @@ Bekannte Änderungen gegenüber V3.3:
 
 ### V3.5
 
-Wird bereits verteilt, aber Details noch unbekannt.  
+V3.5 ist inzwischen statisch als **`82400644 / 0035`** bestätigt und gehört klar zur selben GL9-/644-Firmwarelinie wie V3.4.
+
+Wichtige Erkenntnisse gegenüber V3.4:
+
+- die bekannte Grundregelung, SG-/PV-State-Machine, externe-AT-Umschaltung und Pumpenregelung bleiben grundsätzlich erhalten
+- V3.5 ergänzt spezialisierte Warmlink-Remoteeingänge **8021–8028** für Kompressor-Frequenzgrenzen sowie Heiz-/Kühl-/Warmwasser- und Zonen-Sollwertkorrekturen
+- **8055** ist ein zusätzlicher skalierter Sollwert-Modulationskanal für bestimmte Multi-Zone-T-Betriebsarten
+- **MAIN 1540** aktiviert einen zusätzlichen adaptiven Inverter-/Leistungsregelpfad mit zeitlich gültigen Korrekturwerten und einem sichtbaren 6-Hz-Frequenzraster
+- die in der App angebotene Funktion **AI Saving / dynamischer Stromtarif ist nicht ausschließlich eine V3.5-Funktion**: der grundlegende Remote-Energy-Control-/8001-/8004-Regelkomplex ist bereits in V3.4 vorhanden; V3.5 erweitert ihn
+
+Die Bezeichnung **AI** sollte technisch mit Vorsicht verwendet werden: Eine Cloud-/Remote-Regelung ist durch die Kommunikationspfade gut gestützt, ein tatsächlicher Machine-Learning-/AI-Algorithmus ist aus der Mainboard-Firmware nicht bewiesen.
+
+> **Update-Hinweis:** Der FoxAir Updater hat reale Firmwarewechsel bis V3.4 erfolgreich durchgeführt. Ein Update **auf oder von V3.5** ist dort aktuell noch nicht als realer OTA-Lauf validiert.  
 
 Eine ausführlichere technische Übersicht gibt es hier:
 
