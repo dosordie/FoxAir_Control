@@ -32,7 +32,7 @@ Für FoxAir GL9/GL9-1 ist die Mainboard-Familie mit Softwarecode **`82400644`** 
 | `V2.6` | Mainboard-Nr. `644` beobachtet; vollständiger Code dort nicht sicher ausgelesen | PHNIX/WarmLink-Nutzer im Wärmepumpenforum | Zwischenstand derselben/nahen PHNIX-Plattform; nicht als FoxAir-GL9-Release gesichert |
 | `V3.3` | **`82400644`** | FoxAir GL9 praktisch und im Original-Binary bestätigt | automatische Heizkreispumpenregelung; erweiterte Wannenheizungslogik; deutlich mehr Modbus-Parameter; SG-Ready-Parameter verfügbar |
 | `V3.4` | **`82400644`** | Original-Binary analysiert; auch als Update im Forum gemeldet | AT-Kurve + Leistungstimer gleichzeitig; überarbeitete A34-Cold-Start-Vorheizung; neue dreiphasige Strombegrenzung; erweiterte SG/PV-Logik |
-| `V3.5` | **`82400644`** | Original-Binary statisch analysiert; Kennung `824006440035` | Weiterentwicklung von V3.4; zusätzliche Warmlink-Remote-/Adaptive-Regelpfade, spezialisierte 8021–8028-/8055-Verbraucher und MAIN-1540-Zusatzregelung |
+| `V3.5` | **`82400644`** | Original-Binary analysiert; Quelle: FoxAir **BlueLine (BL)**; Kennung `824006440035` | Dieselbe `82400644`-Firmwarelinie wie entsprechende GreenLine-/GL-Geräte; Weiterentwicklung von V3.4 mit zusätzlichen Remote-/Adaptive-Regelpfaden |
 
 ### V3.3 – wichtigste bekannte Änderungen
 
@@ -60,7 +60,7 @@ Technische Details dazu liegen bewusst im Reverse-Engineering-Bereich:
 
 ### V3.5 – wichtigste bekannte Änderungen
 
-V3.5 ist statisch als nächste Revision derselben `82400644`-Firmwarelinie bestätigt:
+V3.5 ist als nächste Revision derselben `82400644`-Firmwarelinie bestätigt. **Die analysierte V3.5 stammt von einer FoxAir BlueLine (BL).** Dieselbe Mainboard-Firmwarelinie wird bei entsprechenden FoxAir GreenLine-/GL-Geräten mit Softwarecode `82400644` verwendet:
 
 ```text
 824006440035
@@ -82,7 +82,9 @@ Wichtig für die Einordnung: Der grundlegende Remote-Energy-Control-/AI-Saving-K
 
 Die Firmwareanalyse belegt Cloud-/Remote-Eingänge und deren lokale Anwendung. Ob serverseitig tatsächlich Machine Learning bzw. „AI“ eingesetzt wird, ist damit nicht bewiesen.
 
-> **OTA-Status:** V3.5 ist statisch bestätigt, aber ein Firmwarewechsel **auf oder von V3.5** wurde mit dem FoxAir Updater noch nicht als realer OTA-Lauf validiert.
+> **BlueLine-/GreenLine-Kompatibilität:** Für Geräte mit Mainboard-Softwarecode `82400644` sind BlueLine und GreenLine keine getrennten Firmwarezweige. Die untersuchte V3.5 aus einer BlueLine ist firmwareseitig dieselbe V3.5-Linie wie bei entsprechenden GreenLine-/GL-Geräten und daher zwischen diesen Geräten kompatibel. Das gilt ausdrücklich für die gemeinsame `82400644`-Firmwarefamilie; bei anderen Softwarecodes ist daraus keine Kompatibilität abzuleiten.
+>
+> **OTA-Status:** V3.5 ist bestätigt, aber ein kompletter Firmwarewechsel **auf oder von V3.5** wurde mit dem FoxAir Updater noch nicht als realer Updatevorgang validiert.
 
 ---
 
@@ -139,7 +141,7 @@ Diese Werte beschreiben **das LTE-/WarmLink-Modul**, nicht Mainboard oder Displa
 
 ### GL9 / GL9-1
 
-Für die FoxAir **GL9/GL9-1** ist `82400644` als Mainboard-/Softwarefamilie gut belegt. Die analysierten V3.3-, V3.4- und V3.5-Binaries gehören eindeutig zu dieser Familie.
+Für die FoxAir **GL9/GL9-1** ist `82400644` als Mainboard-/Softwarefamilie gut belegt. Zusätzlich ist `82400644` auch bei BlueLine-Modellen wie **BL12-3** dokumentiert. Die analysierte V3.5 stammt aus einer BlueLine und gehört eindeutig zu derselben Firmwarefamilie wie die entsprechenden GreenLine-/GL-Geräte.
 
 Da derselbe Mainboardcode `82400644` auch in PHNIX-OEM-/Rebrand-Unterlagen auftaucht, ist die wahrscheinlichste Einordnung:
 
@@ -151,7 +153,7 @@ verschiedene OEM-/Rebrand-Geräte
 u. a. FoxAir GL9 / GL9-1
 ```
 
-**Nicht ausreichend belegt** ist derzeit, ob wirklich jede GL-Leistungsstufe und jede Hardwaregeneration (z. B. GL15/GL19 usw.) exakt dieselbe Firmwarefamilie verwendet. Für solche Geräte sollte daher immer der tatsächlich ausgelesene Mainboardcode dokumentiert werden.
+Entscheidend für die Firmwarezuordnung ist deshalb nicht allein die Bezeichnung **BlueLine** oder **GreenLine**, sondern der tatsächlich ausgelesene Mainboard-Softwarecode. Für die hier dokumentierte gemeinsame Familie **`82400644`** sind BL und GL firmwareseitig kompatibel. Für Geräte mit einem anderen Softwarecode darf diese Kompatibilität nicht automatisch angenommen werden.
 
 ### Warum die Version allein nicht reicht
 
