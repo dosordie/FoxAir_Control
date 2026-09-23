@@ -2937,7 +2937,7 @@
   },
   "1236": {
     "app_label": "Enable AT Compensation Curve Zone 1",
-    "app_mapping_mode": "app label retained; GL9 V3.5 technical enum confirmed independently",
+    "app_mapping_mode": "app label retained; GL9 V3.4/V3.5 technisch unabhängig bestätigt",
     "app_values": {
       "0": "OFF",
       "1": "LINEAR",
@@ -2947,7 +2947,7 @@
     "code": "H36",
     "default": "Aus",
     "function": "03/16",
-    "last_review": "GL9 V3.5 confirmed 2026-09-23",
+    "last_review": "GL9 V3.4/V3.5 bestätigt 2026-09-23",
     "mode": "r/w",
     "name": "Betriebsart AT-Kompensationskurve Zone 1",
     "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
@@ -3096,7 +3096,7 @@
     "name": "7P-Heiz-Sollwert bei -20 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
   },
   "1251": {
     "function": "03/16",
@@ -3104,7 +3104,7 @@
     "name": "7P-Heiz-Sollwert bei -10 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen -10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemminute“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemminute“."
   },
   "1252": {
     "function": "03/16",
@@ -3112,7 +3112,7 @@
     "name": "7P-Heiz-Sollwert bei -5 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen -5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemstunde“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemstunde“."
   },
   "1253": {
     "function": "03/16",
@@ -3120,7 +3120,7 @@
     "name": "7P-Heiz-Sollwert bei +5 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen +5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemtag“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemtag“."
   },
   "1254": {
     "function": "03/16",
@@ -3128,7 +3128,7 @@
     "name": "7P-Heiz-Sollwert bei +10 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen +10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemmonat“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemmonat“."
   },
   "1255": {
     "function": "03/16",
@@ -3136,7 +3136,7 @@
     "name": "7P-Heiz-Sollwert bei +20 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.5: Heiz-Solltemperatur am festen +20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelles Systemjahr“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelles Systemjahr“."
   },
   "1256": {
     "block": "KG",

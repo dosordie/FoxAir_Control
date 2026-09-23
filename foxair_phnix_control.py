@@ -45,7 +45,18 @@ from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
-from core.at_compensation import AT_SEVEN_POINT_REGISTERS, calculate_seven_point_target
+from core.at_compensation import (
+    AT_LIVE_REGISTERS,
+    AT_MODE_VALUES,
+    AT_READ_BLOCKS,
+    AT_SEVEN_POINT_REGISTERS,
+    FALLBACK_TARGET_LIMITS,
+    calculate_seven_point_target,
+    encode_temp1,
+    linear_write_plan,
+    seven_point_write_plan,
+    target_limits,
+)
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
@@ -3915,7 +3926,7 @@ class CurveCanvas(QWidget):
 class ATCompensationDialog(QDialog):
     """Editor for the GL9 H36 outdoor-temperature compensation modes."""
     LINEAR_PREVIEW_AT_POINTS = [-20, -10, -5, 0, 5, 10, 20]
-    LIVE_REGISTERS = {1234, 1235, 1236, 1250, 1251, 1252, 1253, 1254, 1255, 1164, 1165, 2014, 2048}
+    LIVE_REGISTERS = AT_LIVE_REGISTERS
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -3944,7 +3955,7 @@ class ATCompensationDialog(QDialog):
 
     @staticmethod
     def _temp_raw(value: float) -> int:
-        return int(round(float(value) * 10.0)) & 0xFFFF
+        return encode_temp1(value)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -3994,7 +4005,7 @@ class ATCompensationDialog(QDialog):
             at_item = QTableWidgetItem(f"{at:+g} °C  (Register {register})")
             at_item.setFlags(at_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.seven_table.setItem(row, 0, at_item)
-            spin = QDoubleSpinBox(); spin.setRange(-100.0, 100.0); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
+            spin = QDoubleSpinBox(); spin.setRange(*FALLBACK_TARGET_LIMITS); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             spin.valueChanged.connect(lambda _=None: self.update_curve_table())
             self.seven_table.setCellWidget(row, 1, spin)
         seven_layout.addWidget(self.seven_table)
@@ -4045,8 +4056,12 @@ class ATCompensationDialog(QDialog):
     def _limits(self) -> tuple[float, float]:
         minimum = self._temp(1164)
         maximum = self._temp(1165)
-        # Until both real values arrive, use a wide display-only range rather than an invented heating limit.
-        return (-100.0 if minimum is None else minimum, 100.0 if maximum is None else maximum)
+        return target_limits(minimum, maximum)
+
+    def _update_target_editor_limits(self) -> None:
+        minimum, maximum = self._limits()
+        for spin in self._seven_spins():
+            spin.setRange(minimum, maximum)
 
     def _mode_changed(self, _index=None):
         mode = int(self.mode_combo.currentData())
@@ -4071,7 +4086,7 @@ class ATCompensationDialog(QDialog):
 
     def refresh_from_live(self):
         mode = self._raw(1236)
-        if mode in (0, 1, 2):
+        if mode in AT_MODE_VALUES:
             index = self.mode_combo.findData(mode)
             self.mode_combo.setCurrentIndex(index)
         slope = self._raw(1234)
@@ -4080,6 +4095,7 @@ class ATCompensationDialog(QDialog):
         offset = self._raw(1235)
         if offset is not None:
             self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
+        self._update_target_editor_limits()
         for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
             value = self._temp(register)
             if value is not None:
@@ -4129,33 +4145,26 @@ class ATCompensationDialog(QDialog):
             self.status_label.setText("AT-Kompensationsmodus Schreiben gesendet.")
 
     def write_linear_params(self):
-        slope_raw = self._temp_raw(self.slope_spin.value())
-        offset_raw = self._temp_raw(self.offset_spin.value())
+        writes = linear_write_plan(self.slope_spin.value(), self.offset_spin.value())
+        slope_raw, offset_raw = writes[0][1], writes[1][1]
         text = f"Steigung 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
         if self._confirm_write("Lineare AT-Kurve schreiben", text):
-            self.main_window.send_register_write(1234, slope_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Steigung")
-            self.main_window.send_register_write(1235, offset_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Offset", delay_ms=350)
+            for index, (register, raw_value) in enumerate(writes):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation linear {register}", delay_ms=index * 350)
             self.status_label.setText("Lineare AT-Kurve Schreiben gesendet.")
 
     def write_seven_points(self):
         values = self._seven_targets()
         lines = [f"{at:+g} °C → {values[register]:.1f} °C (Register {register})" for at, register in AT_SEVEN_POINT_REGISTERS]
         if self._confirm_write("7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines)):
-            for index, (_at, register) in enumerate(AT_SEVEN_POINT_REGISTERS):
-                self.main_window.send_register_write(register, self._temp_raw(values[register]), DEFAULT_BUS_ADDR, label=f"AT-Kompensation 7-Punkt {register}", delay_ms=index * 350)
+            for index, (register, raw_value) in enumerate(seven_point_write_plan(values)):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation 7-Punkt {register}", delay_ms=index * 350)
             self.status_label.setText("7-Punkt-AT-Kurve Schreiben gesendet.")
 
     def read_from_wp(self):
         self.status_label.setText("Lese AT-Kompensation ...")
-        reads = [
-            (1234, 3, "AT-Kompensation 1234-1236"),
-            (1250, 6, "AT-Kompensation 7-Punkt 1250-1255"),
-            (1164, 2, "AT-Kompensation Grenzen R10/R11"),
-            (2014, 1, "AT-Kompensation aktuelle Solltemperatur 2014"),
-            (2048, 1, "AT-Kompensation Außentemperatur 2048"),
-        ]
-        for addr, qty, label in reads:
-            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        for addr, qty in AT_READ_BLOCKS:
+            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=f"AT-Kompensation {addr}", delay_ms=250)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
 

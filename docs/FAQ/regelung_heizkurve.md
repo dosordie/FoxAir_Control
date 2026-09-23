@@ -1,6 +1,6 @@
 # Außentemperaturkompensation / Heizkurve
 
-Die GL9-Regelung wählt mit **H36 (Register 1236)** einen von drei Modi für die
+Die in GL9 V3.4 und V3.5 bestätigte Regelung wählt mit **H36 (Register 1236)** einen von drei Modi für die
 Außentemperaturkompensation der Heizung:
 
 | H36 | Modus |
