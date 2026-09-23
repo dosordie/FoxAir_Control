@@ -2922,41 +2922,43 @@
   "1234": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "AT-Kompensation Slope / Steigung",
+    "name": "Steigung der linearen AT-Kurve",
     "type": "DIGI5",
     "unit": "",
-    "description": "Slope der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
+    "description": "Steigung der klassischen linearen AT-Kompensationskurve (H36=1). Für die 7-Punkt-Kennlinie (H36=2) nicht verwendet."
   },
   "1235": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "AT-Kompensation Offset / Versatz",
+    "name": "AT-Kurve Offset / 7-Punkt-Sollwert bei 0 °C",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "Offset der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
+    "description": "Doppelrolle: Offset/Mittelpunkt der linearen Kennlinie (H36=1) beziehungsweise Heiz-Solltemperatur am 0-°C-Stützpunkt der 7-Punkt-Kennlinie (H36=2)."
   },
   "1236": {
     "app_label": "Enable AT Compensation Curve Zone 1",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved; user-tested H36 register 1236",
+    "app_mapping_mode": "app label retained; GL9 V3.4/V3.5 technisch unabhängig bestätigt",
     "app_values": {
-      "0": "NO",
-      "1": "YES"
+      "0": "OFF",
+      "1": "LINEAR",
+      "2": "7-POINT"
     },
     "block": "H",
     "code": "H36",
-    "default": "NO",
+    "default": "Aus",
     "function": "03/16",
-    "last_review": "v0.2.32-user-fix-h36",
+    "last_review": "GL9 V3.4/V3.5 bestätigt 2026-09-23",
     "mode": "r/w",
-    "name": "AT-Kompensationskurve Zone 1 aktivieren",
+    "name": "Betriebsart AT-Kompensationskurve Zone 1",
     "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
     "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet",
     "type": "DIGI1",
     "value_map": {
-      "0": "Nein",
-      "1": "Ja"
+      "0": "Aus",
+      "1": "Lineare Kennlinie",
+      "2": "7-Punkt-Kennlinie"
     },
-    "description": "H36: AT-Kompensationskurve Zone 1 aktivieren. 0=Aus, 1=Ein. Selbst getestet: 1236 ist H36."
+    "description": "H36 wählt die Außentemperaturkompensation: 0=Aus, 1=lineare Kennlinie, 2=7-Punkt-Kennlinie."
   },
   "1237": {
     "app_current_video_value": "43.0 °C",
@@ -3091,42 +3093,50 @@
   "1250": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Systemzeit aktivieren",
-    "type": "DIGI1",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    }
+    "name": "7P-Heiz-Sollwert bei -20 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
   },
   "1251": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelle Systemminute",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei -10 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemminute“."
   },
   "1252": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelle Systemstunde",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei -5 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemstunde“."
   },
   "1253": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktueller Systemtag",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei +5 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemtag“."
   },
   "1254": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktueller Systemmonat",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei +10 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemmonat“."
   },
   "1255": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelles Systemjahr",
-    "type": "RAW"
+    "name": "7P-Heiz-Sollwert bei +20 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelles Systemjahr“."
   },
   "1256": {
     "block": "KG",

@@ -45,6 +45,18 @@ from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
+from core.at_compensation import (
+    AT_LIVE_REGISTERS,
+    AT_MODE_VALUES,
+    AT_READ_BLOCKS,
+    AT_SEVEN_POINT_REGISTERS,
+    FALLBACK_TARGET_LIMITS,
+    calculate_seven_point_target,
+    encode_temp1,
+    linear_write_plan,
+    seven_point_write_plan,
+    target_limits,
+)
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
@@ -3831,10 +3843,15 @@ class CurveCanvas(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.points: list[tuple[float, float, bool]] = []
+        self.runtime_point: Optional[tuple[float, float]] = None
         self.setMinimumHeight(260)
 
     def set_points(self, points: list[tuple[float, float, bool]]):
         self.points = points
+        self.update()
+
+    def set_runtime_point(self, point: Optional[tuple[float, float]]):
+        self.runtime_point = point
         self.update()
 
     def paintEvent(self, event):
@@ -3895,10 +3912,21 @@ class CurveCanvas(QWidget):
             painter.drawText(int(x) - 14, int(y) - 10, f"{target:.0f}")
             painter.drawText(int(x) - 18, rect.bottom() + 20, f"{at:.0f}")
 
+        if self.runtime_point is not None:
+            at, target = self.runtime_point
+            if min_x <= at <= max_x and min_y <= target <= max_y:
+                x, y = sx(at), sy(target)
+                painter.setPen(QPen(QColor(210, 40, 80), 2))
+                painter.setBrush(QColor(210, 40, 80))
+                painter.drawEllipse(int(x) - 6, int(y) - 6, 12, 12)
+                painter.drawText(int(x) + 8, int(y) - 8, "aktuell")
+
+
 
 class ATCompensationDialog(QDialog):
-    """AT-Kompensationskurve Zone 1: H36/1236, Slope 1234, Offset 1235."""
-    CURVE_AT_POINTS = [-30, -20, -10, 0, 10, 20]
+    """Editor for the GL9 H36 outdoor-temperature compensation modes."""
+    LINEAR_PREVIEW_AT_POINTS = [-20, -10, -5, 0, 5, 10, 20]
+    LIVE_REGISTERS = AT_LIVE_REGISTERS
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -3923,17 +3951,11 @@ class ATCompensationDialog(QDialog):
 
     def _temp(self, reg_no: int) -> Optional[float]:
         raw = self._raw(reg_no)
-        if raw is None:
-            return None
-        return numeric_value_by_type(raw, "TEMP1")
+        return None if raw is None else numeric_value_by_type(raw, "TEMP1")
 
-    def _slope(self) -> float:
-        raw = self._raw(1234)
-        return numeric_value_by_type(raw, "DIGI5") if raw is not None else float(self.slope_spin.value())
-
-    def _offset(self) -> float:
-        raw = self._raw(1235)
-        return numeric_value_by_type(raw, "TEMP1") if raw is not None else float(self.offset_spin.value())
+    @staticmethod
+    def _temp_raw(value: float) -> int:
+        return encode_temp1(value)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -3941,38 +3963,55 @@ class ATCompensationDialog(QDialog):
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #555; padding: 2px;")
         layout.addWidget(self.status_label)
-        self.enable_cb = QCheckBox("AT-Kompensationskurve Zone 1 aktivieren (H36 / Register 1236)")
-        layout.addWidget(self.enable_cb)
+
+        mode_row = QHBoxLayout()
+        mode_row.addWidget(QLabel("Modus (H36 / Register 1236):"))
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("Aus", 0)
+        self.mode_combo.addItem("Linear", 1)
+        self.mode_combo.addItem("7-Punkt", 2)
+        mode_row.addWidget(self.mode_combo)
+        mode_row.addStretch(1)
+        layout.addLayout(mode_row)
 
         status_box = QGroupBox("Aktueller Status")
         layout.addWidget(status_box)
         status = QGridLayout(status_box)
         self.current_at_label = QLabel("--")
         self.current_target_label = QLabel("--")
-        self.formula_label = QLabel("vermutlich: Ziel = Offset - Slope × AT, mit Mindestbegrenzung")
-        self.formula_label.setWordWrap(True)
+        self.limit_label = QLabel("R10/R11: --")
         status.addWidget(QLabel("Außentemperatur (2048):"), 0, 0)
         status.addWidget(self.current_at_label, 0, 1)
         status.addWidget(QLabel("aktuelle kompensierte Solltemp. (2014):"), 1, 0)
         status.addWidget(self.current_target_label, 1, 1)
-        status.addWidget(self.formula_label, 2, 0, 1, 2)
+        status.addWidget(self.limit_label, 2, 0, 1, 2)
 
-        edit_box = QGroupBox("Kurvenparameter")
-        layout.addWidget(edit_box)
-        edit = QGridLayout(edit_box)
-        self.slope_spin = QDoubleSpinBox(); self.slope_spin.setRange(0.0, 3.5); self.slope_spin.setDecimals(1); self.slope_spin.setSingleStep(0.1)
-        self.offset_spin = QDoubleSpinBox(); self.offset_spin.setRange(0.0, 85.0); self.offset_spin.setDecimals(1); self.offset_spin.setSingleStep(0.5)
-        self.min_target_spin = QDoubleSpinBox(); self.min_target_spin.setRange(0.0, 60.0); self.min_target_spin.setDecimals(1); self.min_target_spin.setSingleStep(0.5); self.min_target_spin.setValue(15.0)
-        edit.addWidget(QLabel("Slope 1234:"), 0, 0); edit.addWidget(self.slope_spin, 0, 1)
-        edit.addWidget(QLabel("Offset 1235:"), 0, 2); edit.addWidget(self.offset_spin, 0, 3)
-        edit.addWidget(QLabel("Mindestwert Anzeige:"), 1, 0); edit.addWidget(self.min_target_spin, 1, 1)
-        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-        self.min_target_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.linear_box = QGroupBox("Lineare Kennlinie")
+        layout.addWidget(self.linear_box)
+        linear = QGridLayout(self.linear_box)
+        self.slope_spin = QDoubleSpinBox(); self.slope_spin.setRange(-20.0, 20.0); self.slope_spin.setDecimals(1); self.slope_spin.setSingleStep(0.1)
+        self.offset_spin = QDoubleSpinBox(); self.offset_spin.setRange(-100.0, 100.0); self.offset_spin.setDecimals(1); self.offset_spin.setSingleStep(0.5)
+        linear.addWidget(QLabel("Steigung (1234):"), 0, 0); linear.addWidget(self.slope_spin, 0, 1)
+        linear.addWidget(QLabel("Offset / Mittelpunkt (1235):"), 0, 2); linear.addWidget(self.offset_spin, 0, 3)
+
+        self.seven_box = QGroupBox("7-Punkt-Kennlinie")
+        layout.addWidget(self.seven_box)
+        seven_layout = QVBoxLayout(self.seven_box)
+        self.seven_table = QTableWidget(len(AT_SEVEN_POINT_REGISTERS), 2)
+        self.seven_table.setHorizontalHeaderLabels(["feste AT", "Heiz-Solltemperatur"])
+        self.seven_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.seven_table.verticalHeader().setVisible(False)
+        for row, (at, register) in enumerate(AT_SEVEN_POINT_REGISTERS):
+            at_item = QTableWidgetItem(f"{at:+g} °C  (Register {register})")
+            at_item.setFlags(at_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.seven_table.setItem(row, 0, at_item)
+            spin = QDoubleSpinBox(); spin.setRange(*FALLBACK_TARGET_LIMITS); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
+            spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+            self.seven_table.setCellWidget(row, 1, spin)
+        seven_layout.addWidget(self.seven_table)
 
         self.curve_canvas = CurveCanvas(self)
         layout.addWidget(self.curve_canvas)
-
         self.curve_table = QTableWidget(0, 3)
         self.curve_table.setHorizontalHeaderLabels(["AT °C", "berechnete Zieltemp. °C", "Hinweis"])
         self.curve_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -3983,115 +4022,149 @@ class ATCompensationDialog(QDialog):
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("von WP lesen")
         self.apply_live_btn = QPushButton("aus Live-Werten laden")
-        self.write_enable_btn = QPushButton("H36 schreiben")
-        self.write_params_btn = QPushButton("Slope/Offset schreiben")
+        self.write_mode_btn = QPushButton("H36-Modus schreiben")
+        self.write_linear_btn = QPushButton("Linearparameter schreiben")
+        self.write_seven_btn = QPushButton("7-Punkt-Kurve schreiben")
         self.auto_refresh_cb = QCheckBox("Autorefresh")
-        self.auto_refresh_interval = QSpinBox()
-        self.auto_refresh_interval.setRange(2, 3600)
-        self.auto_refresh_interval.setValue(10)
-        self.auto_refresh_interval.setSuffix(" s")
+        self.auto_refresh_interval = QSpinBox(); self.auto_refresh_interval.setRange(2, 3600); self.auto_refresh_interval.setValue(10); self.auto_refresh_interval.setSuffix(" s")
         self.close_btn = QPushButton("Schließen")
-        for w in (self.read_btn, self.apply_live_btn, self.write_enable_btn, self.write_params_btn):
-            buttons.addWidget(w)
-        buttons.addSpacing(12)
-        buttons.addWidget(self.auto_refresh_cb)
-        buttons.addWidget(self.auto_refresh_interval)
+        for widget in (self.read_btn, self.apply_live_btn, self.write_mode_btn, self.write_linear_btn, self.write_seven_btn):
+            buttons.addWidget(widget)
+        buttons.addWidget(self.auto_refresh_cb); buttons.addWidget(self.auto_refresh_interval)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
 
+        self.mode_combo.currentIndexChanged.connect(self._mode_changed)
+        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
         self.read_btn.clicked.connect(self.read_from_wp)
         self.apply_live_btn.clicked.connect(self.refresh_from_live)
+        self.write_mode_btn.clicked.connect(self.write_mode)
+        self.write_linear_btn.clicked.connect(self.write_linear_params)
+        self.write_seven_btn.clicked.connect(self.write_seven_points)
         self.auto_refresh_cb.toggled.connect(self._toggle_auto_refresh)
         self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
-        self.write_enable_btn.clicked.connect(self.write_enable)
-        self.write_params_btn.clicked.connect(self.write_params)
         self.close_btn.clicked.connect(self.close)
+        self._mode_changed()
+
+    def _seven_spins(self):
+        return [self.seven_table.cellWidget(row, 1) for row in range(len(AT_SEVEN_POINT_REGISTERS))]
+
+    def _seven_targets(self) -> dict[int, float]:
+        return {register: float(spin.value()) for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins())}
+
+    def _limits(self) -> tuple[float, float]:
+        minimum = self._temp(1164)
+        maximum = self._temp(1165)
+        return target_limits(minimum, maximum)
+
+    def _update_target_editor_limits(self) -> None:
+        minimum, maximum = self._limits()
+        for spin in self._seven_spins():
+            spin.setRange(minimum, maximum)
+
+    def _mode_changed(self, _index=None):
+        mode = int(self.mode_combo.currentData())
+        self.linear_box.setEnabled(mode == 1)
+        self.seven_box.setEnabled(mode == 2)
+        self.write_linear_btn.setEnabled(mode == 1)
+        self.write_seven_btn.setEnabled(mode == 2)
+        self.update_curve_table()
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
 
     def show_read_success(self) -> None:
-        self.refresh_from_live()
-        self.status_label.setText("AT-Kompensation gelesen.")
+        self.refresh_from_live(); self.status_label.setText("AT-Kompensation gelesen.")
 
     def show_read_timeout(self) -> None:
         self.status_label.setText("AT-Kompensation Timeout / keine Antwort.")
 
     def update_from_live_register(self, reg):
-        if int(getattr(reg, "reg", -1)) in {1234, 1235, 1236, 2014, 2048}:
+        if int(getattr(reg, "reg", -1)) in self.LIVE_REGISTERS:
             self.refresh_from_live()
 
     def refresh_from_live(self):
-        enabled = self._raw(1236)
-        if enabled is not None:
-            self.enable_cb.setChecked(bool(enabled))
+        mode = self._raw(1236)
+        if mode in AT_MODE_VALUES:
+            index = self.mode_combo.findData(mode)
+            self.mode_combo.setCurrentIndex(index)
         slope = self._raw(1234)
         if slope is not None:
             self.slope_spin.setValue(numeric_value_by_type(slope, "DIGI5"))
         offset = self._raw(1235)
         if offset is not None:
             self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
-        at = self._temp(2048)
-        target = self._temp(2014)
-        self.current_at_label.setText("--" if at is None else f"{at:.1f} °C")
+        self._update_target_editor_limits()
+        for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
+            value = self._temp(register)
+            if value is not None:
+                spin.setValue(value)
+        current_at, target = self._temp(2048), self._temp(2014)
+        self.current_at_label.setText("--" if current_at is None else f"{current_at:.1f} °C")
         self.current_target_label.setText("--" if target is None else f"{target:.1f} °C")
+        minimum, maximum = self._temp(1164), self._temp(1165)
+        self.limit_label.setText("R10/R11: --" if minimum is None or maximum is None else f"R10/R11: {minimum:.1f} … {maximum:.1f} °C")
+        self.curve_canvas.set_runtime_point(None if current_at is None or target is None else (current_at, target))
         self.update_curve_table()
 
     def update_curve_table(self):
-        slope = float(self.slope_spin.value())
-        offset = float(self.offset_spin.value())
-        min_target = float(self.min_target_spin.value())
-        curve_points: list[tuple[float, float, bool]] = []
-        self.curve_table.setRowCount(len(self.CURVE_AT_POINTS))
-        for row, at in enumerate(self.CURVE_AT_POINTS):
-            raw_target = offset - slope * float(at)
-            target = max(min_target, raw_target)
-            was_clipped = target != raw_target
-            curve_points.append((float(at), float(target), was_clipped))
-            clipped = "Mindestwert" if was_clipped else ""
-            for col, text in enumerate((f"{at:.1f}", f"{target:.1f}", clipped)):
-                item = QTableWidgetItem(text)
-                self.curve_table.setItem(row, col, item)
-        if hasattr(self, "curve_canvas"):
-            self.curve_canvas.set_points(curve_points)
+        mode = int(self.mode_combo.currentData())
+        minimum, maximum = self._limits()
+        ats = [at for at, _register in AT_SEVEN_POINT_REGISTERS]
+        targets = self._seven_targets()
+        curve_points = []
+        self.curve_table.setRowCount(len(ats) if mode else 0)
+        for row, at in enumerate(ats if mode else []):
+            if mode == 2:
+                raw_target = targets[AT_SEVEN_POINT_REGISTERS[row][1]]
+                target = calculate_seven_point_target(at, targets, minimum, maximum)
+            else:
+                raw_target = float(self.offset_spin.value()) - float(self.slope_spin.value()) * at
+                target = max(minimum, min(maximum, raw_target))
+            clipped = target != raw_target
+            curve_points.append((at, target, clipped))
+            for col, value in enumerate((f"{at:.1f}", f"{target:.1f}", "R10/R11" if clipped else "")):
+                self.curve_table.setItem(row, col, QTableWidgetItem(value))
+        self.curve_canvas.set_points(curve_points)
 
     def _toggle_auto_refresh(self, enabled: bool):
         if enabled:
-            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000)
-            self.read_from_wp()
+            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000); self.read_from_wp()
         else:
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title: str, text: str) -> bool:
         return ask_yes_no(self, title, text, default_yes=False)
 
-    def write_enable(self):
-        value = 1 if self.enable_cb.isChecked() else 0
-        if self._confirm_write("AT-Kompensation schreiben", f"Register 1236 / H36 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
-            self.status_label.setText("Schreibe AT-Kompensation ...")
-            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36")
-            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
+    def write_mode(self):
+        value = int(self.mode_combo.currentData())
+        label = self.mode_combo.currentText()
+        if self._confirm_write("AT-Kompensation schreiben", f"Nur Register 1236 / H36 auf {value} ({label}) schreiben?"):
+            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36-Modus")
+            self.status_label.setText("AT-Kompensationsmodus Schreiben gesendet.")
 
-    def write_params(self):
-        slope_raw = int(round(float(self.slope_spin.value()) * 10.0)) & 0xFFFF
-        offset_raw = int(round(float(self.offset_spin.value()) * 10.0)) & 0xFFFF
-        text = f"Slope 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
-        if self._confirm_write("AT-Kurvenparameter schreiben", text):
-            self.status_label.setText("Schreibe AT-Kompensation ...")
-            self.main_window.send_register_write(1234, slope_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Slope")
-            self.main_window.send_register_write(1235, offset_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Offset", delay_ms=350)
-            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
+    def write_linear_params(self):
+        writes = linear_write_plan(self.slope_spin.value(), self.offset_spin.value())
+        slope_raw, offset_raw = writes[0][1], writes[1][1]
+        text = f"Steigung 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
+        if self._confirm_write("Lineare AT-Kurve schreiben", text):
+            for index, (register, raw_value) in enumerate(writes):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation linear {register}", delay_ms=index * 350)
+            self.status_label.setText("Lineare AT-Kurve Schreiben gesendet.")
+
+    def write_seven_points(self):
+        values = self._seven_targets()
+        lines = [f"{at:+g} °C → {values[register]:.1f} °C (Register {register})" for at, register in AT_SEVEN_POINT_REGISTERS]
+        if self._confirm_write("7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines)):
+            for index, (register, raw_value) in enumerate(seven_point_write_plan(values)):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation 7-Punkt {register}", delay_ms=index * 350)
+            self.status_label.setText("7-Punkt-AT-Kurve Schreiben gesendet.")
 
     def read_from_wp(self):
         self.status_label.setText("Lese AT-Kompensation ...")
-        for addr, qty, label in [(1234, 3, "AT-Kompensation 1234-1236"), (2014, 1, "AT-Kompensation aktuelle Solltemp. 2014"), (2048, 1, "AT-Kompensation Außentemperatur 2048")]:
-            if addr == 1234:
-                self.status_label.setText("Lese AT-Kompensation Parameter ...")
-            elif addr == 2014:
-                self.status_label.setText("Lese aktuelle Solltemperatur ...")
-            elif addr == 2048:
-                self.status_label.setText("Lese Außentemperatur ...")
-            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        for addr, qty in AT_READ_BLOCKS:
+            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=f"AT-Kompensation {addr}", delay_ms=250)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
 
