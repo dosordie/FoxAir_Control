@@ -3840,11 +3840,84 @@ class WPControlDialog(QDialog):
 class CurveCanvas(QWidget):
     """Kleine Canvas-Grafik fuer die AT-Kompensationskurve ohne externe Abhaengigkeiten."""
 
+    pointDragged = Signal(int, float)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.points: list[tuple[float, float, bool]] = []
         self.runtime_point: Optional[tuple[float, float]] = None
+        self.value_limits = FALLBACK_TARGET_LIMITS
+        self.editable = False
+        self._dragged_point: Optional[int] = None
         self.setMinimumHeight(260)
+
+    def set_editable(self, editable: bool):
+        self.editable = bool(editable)
+        self.setCursor(Qt.CursorShape.OpenHandCursor if self.editable else Qt.CursorShape.ArrowCursor)
+        self.setToolTip("Kurvenpunkte mit der Maus nach oben oder unten ziehen." if self.editable else "")
+
+    def set_value_limits(self, minimum: float, maximum: float):
+        self.value_limits = (float(minimum), float(maximum))
+        self.update()
+
+    def _plot_data(self):
+        rect = self.rect().adjusted(45, 15, -20, -35)
+        if not self.points or rect.width() <= 10 or rect.height() <= 10:
+            return None
+        xs = [point[0] for point in self.points]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = self.value_limits
+        if max_x == min_x or max_y <= min_y:
+            return None
+        return rect, min_x, max_x, min_y, max_y
+
+    def _screen_points(self):
+        data = self._plot_data()
+        if data is None:
+            return []
+        rect, min_x, max_x, min_y, max_y = data
+        return [
+            (
+                rect.left() + (x - min_x) / (max_x - min_x) * rect.width(),
+                rect.bottom() - (y - min_y) / (max_y - min_y) * rect.height(),
+            )
+            for x, y, _clipped in self.points
+        ]
+
+    def mousePressEvent(self, event):
+        if self.editable and event.button() == Qt.MouseButton.LeftButton:
+            pos = event.position()
+            candidates = [
+                ((pos.x() - x) ** 2 + (pos.y() - y) ** 2, index)
+                for index, (x, y) in enumerate(self._screen_points())
+            ]
+            if candidates:
+                distance, index = min(candidates)
+                if distance <= 14 ** 2:
+                    self._dragged_point = index
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                    event.accept()
+                    return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        data = self._plot_data()
+        if self._dragged_point is not None and data is not None:
+            rect, _min_x, _max_x, min_y, max_y = data
+            ratio = (rect.bottom() - event.position().y()) / rect.height()
+            value = min_y + max(0.0, min(1.0, ratio)) * (max_y - min_y)
+            self.pointDragged.emit(self._dragged_point, value)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._dragged_point is not None:
+            self._dragged_point = None
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def set_points(self, points: list[tuple[float, float, bool]]):
         self.points = points
@@ -3886,13 +3959,10 @@ class CurveCanvas(QWidget):
             painter.drawText(rect.center(), "Keine Kurvendaten")
             return
 
-        xs = [p[0] for p in self.points]
-        ys = [p[1] for p in self.points]
-        min_x, max_x = min(xs), max(xs)
-        min_y = min(ys + [10.0])
-        max_y = max(ys + [55.0])
-        if max_y - min_y < 1:
-            max_y = min_y + 1
+        data = self._plot_data()
+        if data is None:
+            return
+        rect, min_x, max_x, min_y, max_y = data
 
         def sx(x):
             return rect.left() + (float(x) - min_x) / (max_x - min_x) * rect.width()
@@ -4009,8 +4079,12 @@ class ATCompensationDialog(QDialog):
             spin.valueChanged.connect(lambda _=None: self.update_curve_table())
             self.seven_table.setCellWidget(row, 1, spin)
         seven_layout.addWidget(self.seven_table)
+        drag_hint = QLabel("Tipp: Die sieben Punkte können auch direkt in der Kurve mit der Maus verschoben werden.")
+        drag_hint.setWordWrap(True)
+        seven_layout.addWidget(drag_hint)
 
         self.curve_canvas = CurveCanvas(self)
+        self.curve_canvas.pointDragged.connect(self._curve_point_dragged)
         layout.addWidget(self.curve_canvas)
         self.curve_table = QTableWidget(0, 3)
         self.curve_table.setHorizontalHeaderLabels(["AT °C", "berechnete Zieltemp. °C", "Hinweis"])
@@ -4065,11 +4139,17 @@ class ATCompensationDialog(QDialog):
 
     def _mode_changed(self, _index=None):
         mode = int(self.mode_combo.currentData())
-        self.linear_box.setEnabled(mode == 1)
-        self.seven_box.setEnabled(mode == 2)
+        self.linear_box.setVisible(mode == 1)
+        self.seven_box.setVisible(mode == 2)
         self.write_linear_btn.setEnabled(mode == 1)
         self.write_seven_btn.setEnabled(mode == 2)
+        self.curve_canvas.set_editable(mode == 2)
         self.update_curve_table()
+
+    def _curve_point_dragged(self, index: int, value: float) -> None:
+        spins = self._seven_spins()
+        if int(self.mode_combo.currentData()) == 2 and 0 <= index < len(spins):
+            spins[index].setValue(value)
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
@@ -4111,6 +4191,7 @@ class ATCompensationDialog(QDialog):
     def update_curve_table(self):
         mode = int(self.mode_combo.currentData())
         minimum, maximum = self._limits()
+        self.curve_canvas.set_value_limits(minimum, maximum)
         ats = [at for at, _register in AT_SEVEN_POINT_REGISTERS]
         targets = self._seven_targets()
         curve_points = []
