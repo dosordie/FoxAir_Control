@@ -1,6 +1,6 @@
 # SG Ready
 
-Diese Seite dokumentiert die bestätigte SG-Ready-Zuordnung einschließlich des virtuellen SG-Ready-Eingangs und des dreistufigen PV-Pfads neuerer Firmware.
+Diese Seite dokumentiert die SG01-Auswahlfamilien, den virtuellen SG-Ready-Eingang und den erweiterten SG/PV-Pfad der V3.4-Firmware.
 
 Stand der Live-Verifikation: 13. September 2026.
 
@@ -20,29 +20,41 @@ Laut AirWende/PHNIX-naher Anleitung gilt damit:
 
 | Register dez | Register hex | Bedeutung |
 | ---: | ---: | --- |
-| 1334 | 0x0536 | SG-Ready-Quelle: `0` = Aus, `1` = 1 Kontakt, `2` = 2 physische Kontakte, `3` = klassischer virtueller SG-Eingang, **`7` = dreistufiger PV-Pfad neuer Firmware** |
-| 1335 | 0x0537 | SG Mode 1 Schlafmodus-Zeit in Minuten |
-| 1336 | 0x0538 | SG Mode 2 Leistung / wenig PV in kW, Skalierung `RAW / 10` |
-| 1337 | 0x0539 | SG Mode 3 Leistung / mittel PV in kW, Skalierung `RAW / 10` |
-| 1338 | 0x053A | SG Mode 4 Temperatur-Offset / Sollwertanhebung 1 |
-| 1339 | 0x053B | SG Mode 4 Temperatur-Offset / Sollwertanhebung 2 |
-| 1340 | 0x053C | SG Mode 4 Temperatur-Offset / Sollwertanhebung 3; im Kühlbetrieb kann ein positiver Wert den Kühl-Sollwert effektiv senken, weil der Offset vom Kühl-Sollwert abgezogen wird |
-| 1341 | 0x053D | SG Mode 4 E-Heizer / Zusatzfunktion |
+| 1334 | 0x0536 | SG01: `0` Aus; klassisch `1` ein Kontakt, `2` zwei Kontakte, `3` Modbus 8801 / vier Zustände; `4` AI Saving / Remote Energy Control; erweitert `5` ein Kontakt (Neutral/High), `6` zwei Kontakte (Low/Neutral/High), `7` Modbus 8801 (Low/Neutral/High) |
+| 1335 | 0x0537 | SG02 – Schlaf-/Sperrzeit klassischer Mode 1 in Minuten |
+| 1336 | 0x0538 | SG03 – Low-PV- beziehungsweise klassische Mode-2-Leistungsgrenze, `RAW / 10` kW |
+| 1337 | 0x0539 | SG04 – klassische Mode-3-/Medium-PV-Leistung, `RAW / 10` kW; keine eigene Stufe der Familie 5/6/7 |
+| 1338 | 0x053A | SG05 – High-PV-Warmwasser-Sollwertanhebung |
+| 1339 | 0x053B | SG06 – High-PV-Heiz-Sollwertanhebung |
+| 1340 | 0x053C | SG07 – High-PV-Kühl-Sollwertänderung; ein positiver Offset wird vom Kühl-Sollwert abgezogen |
+| 1341 | 0x053D | SG08 – High-PV-E-Heizer / Zusatzfunktion |
 | 2034 | 0x07F2 | physische Schalter-/Kontaktzustände als Bitfeld |
-| 2133 | 0x0855 | tatsächlich aktiver SG-Ready-Modus |
-| **8801** | **0x2261** | **virtueller SG-Ready-Zustand, wirksam bei `1334 = 3` oder als PV-Stufe bei `1334 = 7`** |
+| 2133 | 0x0855 | tatsächlich aktiver SG-Ready-/SG-PV-Status |
+| **8801** | **0x2261** | **virtueller Eingang, ausschließlich bei `1334 = 3` oder `1334 = 7` verwendet** |
 
-## Dreistufiger PV-Pfad neuer Firmware (`1334 = 7`)
+## Drei SG01-Familien
 
-Live-Tests bestätigen für neuere Firmware eine von der klassischen Kontaktanzeige unabhängige Stufensteuerung. Bei `1334 = 7` wählt Register `8801` genau eine der folgenden Stufen; Register `2133` meldet dieselbe wirksame Stufe zurück:
+SG01 unterscheidet drei Regelpfade:
 
-| 8801 / 2133 | Stufe | Wirkung |
-| ---: | --- | --- |
-| 1 | Low PV | Leistungsbegrenzung über `1336 / SG03` |
-| 2 | Neutral / Normalbetrieb | keine SG-bedingte Anhebung oder Absenkung |
-| 3 | High PV | Warmwasser-Anhebung über `1338 / SG05`, Heizungs-Anhebung über `1339 / SG06`, Kühlungs-Absenkung über `1340 / SG07` |
+- `1/2/3`: klassische SG-Ready-Familie mit einem Kontakt, zwei Kontakten oder dem virtuellen Vier-Zustands-Eingang 8801.
+- `4`: **AI Saving / Remote Energy Control**. Dieser Wert wurde an realer V3.4 beim Aktivieren von AI Saving beziehungsweise des dynamischen Stromtarifs in der PHNIX-App beobachtet. Er ist ein separater Remote-Regelpfad und kein klassischer SG-Ready-Zustand. Der Regelkomplex besteht bereits in V3.4; V3.5 ergänzt weitere Warmlink-Stellgrößen. „AI“ ist die App-Bezeichnung und kein Firmwarebeleg für Machine Learning.
+- `5/6/7`: zweite, funktional als **erweiterte SG/PV-Familie** bezeichnete Firmwarefamilie. Diese Formulierung ist kein bekannter offizieller PHNIX-Name.
 
-Die PHNIX-App kann High PV dabei irreführend über das klassische SG-Kontakt-Bitfeld darstellen. Für die technische Auswertung sind `1334`, `8801` und die Rückmeldung in `2133` maßgeblich, nicht diese App-Darstellung.
+### Erweiterte SG/PV-Familie (`1334 = 5/6/7`)
+
+Die V3.4-Firmware paart `1 ↔ 5` (ein Kontakt), `2 ↔ 6` (zwei Kontakte) und `3 ↔ 7` (Modbus). Funktional arbeitet die erweiterte Familie mit **Low PV / Neutral / High PV**:
+
+| SG01 | Eingang und erreichbare Stufen |
+| ---: | --- |
+| 5 | ein physischer Kontakt: Kontakt `0` = Neutral, Kontakt `1` = High PV |
+| 6 | zwei physische Kontakte: Kontakt 1=`1` = Low PV; beide `0` = Neutral; Kontakt 1=`0`, Kontakt 2=`1` = High PV |
+| 7 | virtuell über 8801: `1` = Low PV, `2` = Neutral, `3` = High PV; Wert `4` ist hier nicht gültig |
+
+Für die nicht eindeutig dokumentierte Kontaktkombination `1/1` bei SG01=6 wird keine zusätzliche Bedeutung angenommen. Low PV begrenzt die Leistung über `1336 / SG03` und verwendet keine WW-/Heiz-/Kühl-Offsets. Neutral bedeutet Normalbetrieb ohne SG-bedingte Leistungs- oder Temperaturanpassung. High PV verwendet den High-PV-/Mode-4-Pfad: WW-Sollwert `+ SG05/1338`, Heiz-Sollwert `+ SG06/1339`, Kühl-Sollwert `- SG07/1340`.
+
+„Low / Neutral / High“ ist die funktionale Interpretation der Firmware. Die Werte 5 und 6 sind statisch in V3.4 bestätigt, jedoch noch nicht am realen Gerät live verifiziert. Wert 7 und der virtuelle Dreistufenpfad sind zusätzlich praktisch wesentlich besser bestätigt. AI Saving (`4`) ist ausdrücklich **nicht** Teil dieses dreistufigen Modells.
+
+Bei `1334 = 7` meldet Register `2133` die wirksame Stufe `1/2/3` mit derselben Bedeutung zurück. Für `1334 = 5/6` ist die Detailsemantik von 2133 noch nicht ausreichend geklärt und darf nicht aus dem Kontaktmodell abgeleitet werden.
 
 ## Virtueller SG-Ready-Eingang über Register 8801
 
@@ -170,7 +182,7 @@ Bei `1334 = 3` müssen Bit 12/13 **nicht** der virtuellen Vorgabe aus `8801` fol
 
 ## Aktiver SG-Modus in Register 2133 / 0x0855
 
-Register `2133` zeigt den tatsächlich aktiven SG-Ready-Modus.
+Register `2133` zeigt den tatsächlich aktiven SG-Ready-/SG-PV-Status. Die folgende Tabelle gilt für den klassischen Pfad; bei SG01=7 gelten stattdessen 1=Low PV, 2=Neutral und 3=High PV. Für SG01=5/6 bleibt die genaue Statussemantik offen.
 
 | Wert | Bedeutung |
 | ---: | --- |
@@ -224,7 +236,7 @@ Aktueller belastbarer Stand:
 
 ## Empfehlung für externe Steuerungen
 
-Für eine dauerhafte Modbus-Steuerung:
+Für eine dauerhafte klassische Modbus-Steuerung:
 
 ```text
 1. 1334 = 3 konfigurieren
@@ -233,6 +245,8 @@ Für eine dauerhafte Modbus-Steuerung:
 4. 2133 als tatsächlich aktiven SG-Modus überwachen
 5. den festen 10-Minuten-Hold bei Sollwertwechseln berücksichtigen
 ```
+
+Für den erweiterten virtuellen Pfad wird stattdessen `1334 = 7` mit `8801 = 1..3` verwendet. Bei allen anderen SG01-Werten ist 8801 kein SG-Stufeneingang.
 
 Nach Mainboard-Neustarts sollte ein externer Controller den gewünschten Zustand erneut prüfen. Für `8801` sollte keine ungetestete Persistenzannahme über einen vollständigen Neustart getroffen werden.
 

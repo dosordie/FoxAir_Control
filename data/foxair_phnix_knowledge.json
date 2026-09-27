@@ -1475,8 +1475,8 @@
     "source": "Display-FW ReturnPumpTimer / 0x0535"
   },
   "1334": {
-    "knowledge": "Legt fest, ob SG Ready deaktiviert ist, mit 1 bzw. 2 Kontakten arbeitet oder bei Wert 3 den virtuellen SG-Eingang 8801 verwendet. 8801 ist ausschließlich am direkten User-/Mainboard-Modbus bestätigt und kein normales Warmlink-/LTE-Register.",
-    "source": "Display-FW ASM SG01-SG08"
+    "knowledge": "SG01 unterscheidet 0=Aus, die klassische Familie 1/2/3 (ein Kontakt, zwei Kontakte, virtueller 4-Zustands-Pfad über 8801), 4=AI Saving / Remote Energy Control und die erweiterte Firmwarefamilie 5/6/7. Wert 4 wurde an realer V3.4 beim Aktivieren der PHNIX-App-Funktion AI Saving/dynamischer Stromtarif beobachtet; er gehört zum separaten Remote-Energy-Control-Regelpfad und nicht zum normalen klassischen SG Ready. Der Remote-Regelkomplex besteht in V3.4, V3.5 ergänzt weitere Warmlink-Stellgrößen. „AI“ ist die App-Bezeichnung; ein Machine-Learning-Algorithmus ist nicht belegt. Für 5/6/7 ist „SG/PV erweitert“ nur eine funktionale Arbeitsbezeichnung, da der Hersteller-Klartextname unbekannt ist: 5=ein physischer Kontakt (Neutral/High), 6=zwei physische Kontakte (Low/Neutral/High), 7=virtuell über 8801 (1=Low, 2=Neutral, 3=High). Anders als 7 nutzt 3 über 8801 vier klassische Zustände 1..4. Werte 5 und 6 sind statisch in V3.4 bestätigt, aber noch nicht live verifiziert; Wert 7 und sein virtueller Dreistufenpfad sind zusätzlich praktisch deutlich besser bestätigt. 8801 ist nur am direkten User-/Mainboard-Modbus bestätigt.",
+    "source": "V3.4-Firmwareanalyse; reale V3.4/App-Beobachtung für Wert 4; Live-Tests für Wert 7/8801"
   },
   "1335": {
     "source": "Display-FW ASM SG01-SG08"

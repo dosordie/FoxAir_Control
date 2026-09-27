@@ -85,7 +85,11 @@ def test_backend_register_map_separation_uses_actual_loaded_maps():
 def test_fw33_confirmed_register_metadata_and_interface_boundary():
     main, _display = _load_static_maps()
 
-    assert main["1334"]["value_map"]["3"] == "Modbus über 8801 (4 Modes)"
+    sg01_values = main["1334"]["value_map"]
+    assert set(sg01_values) == {str(value) for value in range(8)}
+    assert sg01_values["3"] == "Klassisch: Modbus 8801 / 4 Zustände"
+    assert sg01_values["4"] == "AI Saving / Remote Energy Control"
+    assert all(str(value) in sg01_values for value in (5, 6, 7))
     assert "tatsächlich laufend" in main["2019"]["bit_map"]["0"]
     assert "Lüfter tatsächlich aktiv" in main["2019"]["bit_map"]["2"]
     assert main["2057"]["name"] == "T35 / AC Input Current"
@@ -220,17 +224,16 @@ def test_sg_ready_editor_handles_direct_only_8801():
     docs = (ROOT / "docs" / "sg_ready.md").read_text(encoding="utf-8")
 
     assert "READ_LABEL_VIRTUAL = \"SG virtueller Eingang 8801\"" in source
-    assert 'current_backend_key() == "standard_modbus"' in source
+    assert "SG_MODE_OPTIONS" in source
+    assert "uses_virtual_sg_input" in source
     assert "Virtueller SG-Modus (8801, nur direkt)" in source
-    assert 'addItem("Modbus über 8801 (3 Modes /V3.4)", 7)' in source
-    assert "int(self.sg_mode_combo.currentData()) in (3, 7)" in source
+    assert 'int(sg_mode) in (3, 7)' in logic
+    assert 'str(backend_key) == "standard_modbus"' in logic
     assert "Low PV – Begrenzung über SG03 (1336)" in logic
     assert "Neutral / Normalbetrieb – keine SG-Anpassung" in logic
     assert "High PV – SG05/SG06 Anhebung, SG07 Absenkung" in logic
-    assert "SG07 Kühl-Sollwertänderung (Modus 7: Absenkung)" in source
-    assert "`1334 = 7`" in docs
-    assert "| 1 | Low PV |" in docs
-    assert "| 2 | Neutral / Normalbetrieb |" in docs
-    assert "| 3 | High PV |" in docs
+    assert "`5/6/7`" in docs
+    assert "AI Saving / Remote Energy Control" in docs
+    assert "Low PV / Neutral / High PV" in docs
     assert "10-minütige Umschaltsperre" in docs
     assert "zunächst auf `0` und anschließend wieder auf `3`" in docs
