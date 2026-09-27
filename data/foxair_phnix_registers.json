@@ -6277,5 +6277,52 @@
       "4": "+0x1C Bit2",
       "5": "+0x1A Bit10"
     }
+  },
+  "1430": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Warmlink-8055-Heizboost Freigabe (Engineering)",
+    "type": "RAW",
+    "ui_visibility": "engineering",
+    "firmware": "V3.5+",
+    "description": "Engineering-Fund: Ein Wert ungleich 0 ist eine notwendige Freigabe fuer den Warmlink-8055-Heizboost. Herstellername und allgemeine Funktion sind noch nicht vollstaendig aufgeloest; kein Standard-Benutzerparameter.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1492": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Remote-Korrekturskalierung und Eingangsauswahl (Engineering)",
+    "type": "RAW",
+    "ui_visibility": "engineering",
+    "firmware": "V3.5+",
+    "description": "Engineering-Parameter aus zwei Bytes: High-Byte skaliert eine Korrektur als correction * high / 10. Low-Byte 0 nutzt die Legacy-Eingangspruefung PE12 | PE13 | PD14, ein Wert ungleich 0 waehlt alternativ PC4. Zulaessige Range, Hersteller-Default, Herstellerfunktion und physische Klemmenbezeichnung sind offen.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1540": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Remote-Regelwertkorrektur V3.5",
+    "type": "ENUM",
+    "block": "REMOTE",
+    "code": "REMOTE1540",
+    "app_label": "V3.5+ Remote-/Warmlink-Regelung",
+    "default": "0",
+    "firmware": "V3.5+",
+    "value_map": {
+      "0": "Aus",
+      "1": "Ein"
+    },
+    "description": "Aktiviert zusaetzliche, extern ueber den Warmlink-Servicebereich eingespeiste zeitbegrenzte Frequenz- und Sollwertkorrekturen. Die Firmware prueft technisch auf != 0; die Benutzeroberflaeche bietet bewusst nur 0/1 an. Kein offizieller PHNIX-Name.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1557": {
+    "function": "03",
+    "mode": "read",
+    "name": "Effektiver Heiz-Wassersollwert",
+    "type": "TEMP1",
+    "unit": "°C",
+    "firmware": "V3.5+",
+    "description": "Effektiver intern berechneter Heiz-Wassersollwert (RAW / 10 °C) nach interner Sollwertlogik einschliesslich Betriebszustaenden, Wetter-/Timerpfaden und V3.5-Korrekturen; danach greifen die normalen Heiz-Min-/Max-Grenzen.",
+    "source": "Reverse Engineering V3.5"
   }
 }

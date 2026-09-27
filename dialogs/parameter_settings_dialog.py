@@ -228,6 +228,10 @@ class ParameterSettingsDialog(QDialog):
                 continue
             if not isinstance(data, dict):
                 continue
+            if str(data.get("ui_visibility", "")).lower() == "engineering":
+                # Unsichere Engineering-Schalter bleiben in der technischen
+                # Registeransicht auffindbar, aber nicht im normalen Editor.
+                continue
             block, code, clean_name = register_meta_parts(data)
             app_label = str(data.get("app_label", ""))
             if not code:

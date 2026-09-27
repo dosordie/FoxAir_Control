@@ -1,5 +1,10 @@
 ## Unreleased
 
+### V3.5 Remote-Regelwertkorrektur
+- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt; die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
+- Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschliesslich TTL, begrenzender Frequenz-Caps und noch offener Zustands-/Vorzeichensemantik.
+- MAIN:1492, MAIN:1430 und Warmlink 8055 als nicht fuer die normale Benutzeroberflaeche freigegebene Engineering-Funktionen aufgenommen.
+
 ### SG Ready / SG01
 - SG01/MAIN:1334 um AI Saving / Remote Energy Control (`4`) und die erweiterte SG/PV-Familie `5/6/7` ergänzt.
 - SG-Ready-Editor unterstützt alle bekannten SG01-Modi und unterscheidet klassischen Vier-Zustands-Pfad, AI Saving sowie Low/Neutral/High-Pfad.
