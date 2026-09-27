@@ -90,7 +90,8 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert "Lüfter tatsächlich aktiv" in main["2019"]["bit_map"]["2"]
     assert main["2057"]["name"] == "T35 / AC Input Current"
     assert main["2071"]["name"] == "Kompressor-Sollfrequenz"
-    assert main["2109"]["name"] == "Interner V3.3-Statuswert"
+    assert main["2109"]["name"] == "Internes Ereignis-/Statusbitfeld"
+    assert main["2109"]["type"] == "BITFIELD"
     assert main["2136"]["type"] == "TEMP1"
     assert main["2137"]["type"] == main["2138"]["type"] == "POWER_KW_X10"
     assert main["2125"]["name"].endswith("High Word")
@@ -101,9 +102,9 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert main["2179"]["type"] == "DIGI5"
     assert main["2179"]["unit"] == "% rF"
 
-    # The shared map is also used by Warmlink. 8801 must therefore remain out
-    # until maps can be selected per interface without implying FC03 support.
-    assert "8801" not in main
+    # The newer mapping documents the direct-only virtual SG input explicitly;
+    # backend gating is handled by the SG editor rather than by hiding metadata.
+    assert main["8801"]["name"] == "Virtueller SG-Ready Eingang"
 
 
 def test_fw34_external_outdoor_sensor_metadata_and_fallback():
@@ -132,9 +133,9 @@ def test_reverse_engineered_temperature_sources_and_diagnostics():
     for register in (*range(1167, 1173), 1229, 1230, 1233, 1356, 1437):
         assert main[str(register)]["temperature_source"] == "local_t04"
 
-    assert "Erforschen" in main["1464"]["name"]
+    assert main["1464"]["name"] == "AT-Grenzwert Heiz-/Sommerabschaltung"
     assert main["1464"]["hysteresis"] == "-3.0 K"
-    assert "Erforschen" in main["1465"]["name"]
+    assert main["1465"]["name"] == "Verzögerungszeit Heiz-/Sommerabschaltung"
     assert "1465 × 120 Scheduler-Ticks" in main["1465"]["description"]
 
     assert main["1561"]["mode"] == "read"
@@ -164,6 +165,53 @@ def test_confirmed_flow_and_multizone_mapping_metadata():
     for reg in (2140, 2141, 2142, 2143):
         assert main[str(reg)]["type"] == "RAW"
         assert "physikalische Bedeutung ist weiterhin offen" in main[str(reg)]["description"]
+
+
+def test_issue_register_mappings_and_diag_bitmaps():
+    main, _display = _load_static_maps()
+
+    assert main["2109"]["type"] == "BITFIELD"
+    assert main["2146"]["type"] == "BITFIELD"
+    assert main["2146"]["baseline"] == "0x002C"
+    assert "Heiz-/Sommerabschaltung aktiv" in main["2146"]["bit_map"]["4"]
+    assert main["2146"]["bit_map"]["6"] == "Variabel, Bedeutung offen"
+    assert main["1349"]["write_min"] == 1
+    assert main["1464"]["temperature_source"] == "effective_at"
+    assert "Heiz-/Sommerabschaltung" in main["1464"]["name"]
+    assert set(str(reg) for reg in range(6073, 6081)).issubset(main)
+    assert all(main[str(reg)]["type"] == "BITFIELD" for reg in range(6073, 6081))
+    assert main["6073"]["bit_map"]["2"] == "internes Raw-I/O-Bit6"
+    assert main["6074"]["bit_map"]["5"] == "fest 0"
+    assert main["6080"]["bit_map"]["5"] == "+0x1A Bit10"
+
+    keys = list(main)
+    assert keys.index("2149") < keys.index("2151") < keys.index("2152")
+    assert keys.index("2152") < keys.index("2155") < keys.index("2160")
+
+
+def test_c14_write_minimum_is_loaded_and_validated():
+    from core.foxair_phnix_core import RegisterMap, validate_register_write_value
+
+    info = RegisterMap(str(MAIN_MAP_PATH)).get(1349)
+    assert info.write_min == 1
+    assert validate_register_write_value(1, info) == 1
+    with pytest.raises(ValueError, match="mindestens 1"):
+        validate_register_write_value(0, info)
+
+
+def test_every_normal_register_write_uses_central_validation():
+    source = (ROOT / "foxair_phnix_control.py").read_text(encoding="utf-8")
+    after_send_write = source.split("    def send_register_write(", 1)[1]
+    send_write = after_send_write.split("\n    def ", 1)[0]
+    direct_write = after_send_write.split("    def send_write_frame(", 1)[1].split("\n    def ", 1)[0]
+    timer_write = source.split("    def send_timer_values(", 1)[1].split("\n    def ", 1)[0]
+
+    validation = "validate_register_write_value(int(value), self.regmap.get(addr))"
+    assert validation in send_write
+    assert send_write.index(validation) < send_write.index("_queue_display_param_user_write_from_normal")
+    assert "self.send_register_write(addr, value" in direct_write
+    assert ".enqueue_write(" not in direct_write
+    assert "validate_register_write_value(int(value), self.regmap.get(int(addr)))" in timer_write
 
 
 def test_sg_ready_editor_handles_direct_only_8801():

@@ -1504,8 +1504,8 @@
     "source": "User confirmed 2026-06-19 + Display-FW ASM SG01-SG08"
   },
   "1342": {
-    "description": "App: Low Pressure of Limiting Frequency; Anzeige in bar, vermutlich raw/10",
-    "source": "ASM DEMONS.ASM",
+    "description": "A38: raw / 10 = bar, Default 0. A38_raw < 2 deaktiviert die Funktion. Nach ca. 15 s Verdichterlauf und weiterer Qualifikation verhindert A38-0,2 <= P_low < A38 weitere Frequenzsteigerung (State 1); P_low < A38-0,2 reduziert den Sollwert in 2-Hz-Schritten bis mindestens C02/MAIN:1219 (State 2). MAIN:2139 Bit4 meldet den aktiven Limiter; MAIN:2115 wird dabei auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+    "source": "ASM DEMONS.ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140",
     "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
   },
   "1343": {
@@ -1537,16 +1537,16 @@
     "source": "Warmlink-App Video + ASM DEMONS.ASM + user live test 2026-06-14"
   },
   "1348": {
-    "description": "C13: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "P = C13 * error. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1349": {
-    "description": "C14: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "I_acc += error / C14. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1350": {
-    "description": "C15: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "D = C15 * (error - previous_error). Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1351": {
     "description": "Proportionaler Fehler-/Gainfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Die proportionale Korrektur arbeitet mit mehreren Fehlerzonen und wird auf ungefähr ±60 Schritte begrenzt. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt.",
@@ -1749,10 +1749,12 @@
     "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
   },
   "1464": {
-    "description": "Temperatur-Schwellwert einer internen Zustands-/Freigabelogik. Verwendet die effektive AT; Rückschaltung bei 1464 - 3,0 K. Die Funktion bleibt weiter zu erforschen."
+    "description": "Verwendet die effektive Außentemperatur: bei MAIN:1463=1 den externen AT solange gültig, sonst Fallback auf lokalen T04. Effektiver AT >= Grenzwert für 1465 × 120 Scheduler-Ticks aktiviert die Heiz-/Sommerabschaltung; effektiver AT <= Grenzwert - 3,0 K für dieselbe Zeit gibt sie wieder frei.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1465": {
-    "description": "Verweil-/Zeitparameter zu 1464. Beide Schaltrichtungen verwenden 1465 × 120 Scheduler-Ticks. Einheit sehr wahrscheinlich Minuten; Funktion weiter erforschen."
+    "description": "Zeitparameter der Heiz-/Sommerabschaltung; Einheit sehr wahrscheinlich Minuten. Intern 1465 × 120 Scheduler-Ticks. Wert 0 setzt/deaktiviert den internen Abschaltzustand.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1541": {
     "description": "Paketkennung: WF2403150123 (Wort 1-6), beobachtet in 90er-Paketblöcken. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
@@ -2223,9 +2225,9 @@
     "source": "ASM DEMONS.ASM"
   },
   "2109": {
-    "default": "63",
-    "description": "Interner V3.3-Statuswert. Wird von V3.3 aktiv beschrieben; genaue fachliche Bedeutung noch offen.",
-    "source": "FW3.3 Reverse Engineering"
+    "description": "Internes Ereignis-/Statusbitfeld. Der vollständige RAW-Wert bleibt als Dezimal-, Hex- und Binärdarstellung sichtbar; Einzelbitsemantik offen.",
+    "source": "FW3.3 Reverse Engineering; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140",
+    "default": "63"
   },
   "211": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; aktuell leer/Reserve. Nicht als WP-Parameter verwenden.",
@@ -2265,20 +2267,20 @@
   "2123": {},
   "2124": {},
   "2125": {
-    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2126": {
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2127": {
-    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2128": {
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2129": {},
   "213": {
@@ -2344,5 +2346,109 @@
   "2180": {
     "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt.",
     "source": "Registererkenntnisse Issue #116"
+  },
+  "2144": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2145": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2148": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2149": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2151": {
+    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2155": {
+    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2147": {
+    "description": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2166": {
+    "description": "Interner Zone-2-Regel-/Control-State; kein physikalischer Messwert bestätigt. Konkrete Semantik weiterhin offen. Live 2026-09-12 RAW 1 beobachtet.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2146": {
+    "description": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2139": {
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6011": {
+    "description": "Raw I/O-/Switch-Diagnosewort; Einzelbitsemantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6012": {
+    "description": "Bekannte Codes 0, 1, 2, 3, 4 und 16; Klartextbedeutungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6013": {
+    "description": "Weiteres Raw-I/O-Diagnosewort; Einzelbitsemantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6014": {
+    "description": "Boolean aus internem Statusbit 7; Bedeutung offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6015": {
+    "description": "Config-/Gerätevarianten-Diagnosewert; Bedeutung offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6018": {
+    "description": "Gleiche Quelle wie MAIN:2047; raw / 10 °C. 0x7FFF bedeutet ungültig / nicht verfügbar.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6020": {
+    "description": "Gleiche Quelle und bestätigte /100-m³/h-Skalierung wie MAIN:2077. 0x7FFF bedeutet nicht verfügbar / Sensor nicht vorhanden.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6048": {
+    "description": "Gleicher RAW-Wert wie MAIN:2032; keine davon abweichende Zeiteinheit angenommen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6073": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6074": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6075": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6076": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6077": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6078": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6079": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6080": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   }
 }

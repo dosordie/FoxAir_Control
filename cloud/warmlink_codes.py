@@ -663,7 +663,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
          'confidence': 'confirmed',
          'local_code': 'A38',
          'modbus_register': 1342,
-         'name': 'Main Loop Flow Small / Hauptkreis Mindestdurchfluss klein',
+         'name': 'Low Pressure of Limiting Frequency / Niederdruck-Grenzwert für Frequenzbegrenzung',
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '20.0',
          'rangeStart': '0.0',
