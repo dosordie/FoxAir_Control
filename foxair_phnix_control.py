@@ -151,11 +151,12 @@ from core.foxair_phnix_core import (
     numeric_value_by_type,
     format_value_by_type,
     s16,
+    validate_register_write_value,
 )
 
 
-APP_VERSION = "0.2.61"
-BUILD_DATE = "2026-08-27"
+APP_VERSION = "0.2.62"
+BUILD_DATE = "2026-09-27"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -5764,22 +5765,23 @@ class MainWindow(QMainWindow):
         1,5 °C -> raw 15). Explizite Raw-Schreibpfade rufen diese Methode mit
         raw=True auf oder verwenden weiterhin _parse_int_text().
         """
-        if raw:
-            return self._parse_int_text(text)
         info = self.regmap.get(int(reg_no))
+        if raw:
+            return validate_register_write_value(self._parse_int_text(text), info)
         dtype = info.dtype if info else "RAW"
         scale = self._write_scale_for_dtype(dtype)
         if scale is None:
             try:
-                return self._parse_int_text(text)
+                raw_value = self._parse_int_text(text)
             except ValueError as exc:
                 original = str(text).strip()
                 if "," in original or "." in original:
                     raise ValueError(f"Ungültiger Zahlenwert: {original}") from exc
                 raise
-        dec = self._parse_decimal_text(text)
-        raw_dec = (dec * scale).to_integral_value(rounding=ROUND_HALF_UP)
-        return int(raw_dec)
+        else:
+            dec = self._parse_decimal_text(text)
+            raw_value = int((dec * scale).to_integral_value(rounding=ROUND_HALF_UP))
+        return validate_register_write_value(raw_value, info)
 
     def _display_write_input_for_register(self, reg_no: int, raw_value: int) -> str:
         info = self.regmap.get(int(reg_no))

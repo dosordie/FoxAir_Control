@@ -216,6 +216,16 @@ class RegisterInfo:
     dtype: str = "RAW"
     value_map: Optional[Dict[int, str]] = None
     bit_map: Optional[Dict[int, str]] = None
+    write_min: Optional[int] = None
+
+
+def validate_register_write_value(value: int, info: RegisterInfo) -> int:
+    """Validate a raw write value against safety limits from the mapping."""
+    raw_value = int(value)
+    signed_value = s16(raw_value & 0xFFFF)
+    if info.write_min is not None and signed_value < int(info.write_min):
+        raise ValueError(f"Schreibwert muss mindestens {info.write_min} sein")
+    return raw_value
 
 
 @dataclass
@@ -294,7 +304,14 @@ class RegisterMap:
                             bit_map[mi] = str(mv)
                         except Exception:
                             pass
-                self.items[reg] = RegisterInfo(str(value.get("name", "")), str(value.get("type", "RAW")), value_map, bit_map)
+                write_min = value.get("write_min")
+                self.items[reg] = RegisterInfo(
+                    str(value.get("name", "")),
+                    str(value.get("type", "RAW")),
+                    value_map,
+                    bit_map,
+                    int(write_min) if write_min is not None else None,
+                )
             else:
                 self.items[reg] = RegisterInfo(str(value), "RAW")
 
