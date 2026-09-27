@@ -3741,7 +3741,7 @@
     "code": "SG02",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG02 – Schlaf-/Sperrzeit klassischer Mode 1",
+    "name": "SG02 Schlaf-/Sperrzeit klassischer Mode 1",
     "type": "RAW",
     "unit": "min",
     "description": "Zeitdauer der Schlaf-/Sperrlogik im klassischen SG Mode 1."
@@ -3751,7 +3751,7 @@
     "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG03 – Low-PV / klassische Mode-2-Leistungsgrenze",
+    "name": "SG03 Low-PV / klassische Mode-2-Leistungsgrenze",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
@@ -3762,7 +3762,7 @@
     "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG04 – klassische Mode-3-/Medium-PV-Leistung",
+    "name": "SG04 klassische Mode-3-/Medium-PV-Leistung",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
@@ -3773,7 +3773,7 @@
     "code": "SG05",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG05 – High-PV WW-Sollwertanhebung",
+    "name": "SG05 High-PV WW-Sollwertanhebung",
     "type": "TEMP1",
     "description": "Warmwasser-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
@@ -3782,7 +3782,7 @@
     "code": "SG06",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG06 – High-PV Heiz-Sollwertanhebung",
+    "name": "SG06 High-PV Heiz-Sollwertanhebung",
     "type": "TEMP1",
     "description": "Heiz-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
@@ -3791,7 +3791,7 @@
     "code": "SG07",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG07 – High-PV Kühl-Sollwertänderung",
+    "name": "SG07 High-PV Kühl-Sollwertänderung",
     "notes": "Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.",
     "type": "TEMP1",
     "description": "Kühl-Sollwertänderung bei High PV beziehungsweise im klassischen SG Mode 4. Ein positiver Wert senkt den Kühl-Sollwert, da der Offset abgezogen wird."
@@ -3801,7 +3801,7 @@
     "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG08 – High-PV E-Heizer / Zusatzfunktion",
+    "name": "SG08 High-PV E-Heizer / Zusatzfunktion",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
