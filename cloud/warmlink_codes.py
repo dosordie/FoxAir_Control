@@ -427,6 +427,33 @@ WARMLINK_PRODUCT_IDS: list[str] = [
     "1552190345066967040", "1534450342119510016", "1480699335514533888",
 ]
 
+# Engineering-Register des Modbus-Service-Slaves 0x63. Diese Runtimewerte
+# sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
+WARMLINK_SERVICE_SLAVE = 0x63
+WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
+    8021: {"name": "Remote Frequency Cap 1", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
+    8022: {"name": "Remote Frequency Cap 2", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
+    8023: {"name": "Remote Frequency Cap 3", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
+    8024: {"name": "Kuehl-Wassersollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "cooling_target = R03 - value"},
+    8025: {"name": "Heiz-Wassersollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "heating_target = R02 + value"},
+    8026: {"name": "Warmwasser-Sollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "dhw_target = R01 + value"},
+    8027: {"name": "Remote-Offset Zone-1-Raumtemperatur-Sollwert", "mode": "service-write", "ttl_minutes": 120, "sign_state": "0x20016FB2 (fachliche Bedeutung offen)"},
+    8028: {"name": "Remote-Offset Zone-2-Raumtemperatur-Sollwert", "mode": "service-write", "ttl_minutes": 120, "sign_state": "0x20016FB2 (fachliche Bedeutung offen)"},
+    8055: {"name": "Positiver Remote-Heiz-Wassersollwertboost", "mode": "engineering", "write_allowed": False, "effect": "base_heating_target + value * MAIN1492.high / 10", "gates": "Z01 in {4,5,6}; MAIN:1430 != 0; value >= 1"},
+}
+
+WARMLINK_SERVICE_KNOWLEDGE = (
+    "FC10-Schreibwerte am Service-Slave 0x63; nicht Teil der normalen MAIN-User-Modbus-Liste. "
+    "Writes setzen den jeweiligen TTL-Zaehler zurueck. 8021-8023 laufen nach 2400 * 0,5 s "
+    "(20 Minuten kontinuierlicher Verdichterlauf) ab; ein Verdichterstopp setzt den Laufzeitzaehler "
+    "zurueck. 8024-8028 laufen nach 14400 * 0,5 s (120 Minuten) ab. Nach Ablauf wird der "
+    "Runtimewert geloescht; ein externer Warmlink/LTE-Dienst muss temporaere Kommandos erneuern. "
+    "Die Zustandszuordnung der drei Caps ist offen. Bei 8027/8028 ist nur die Offsetfunktion "
+    "bestaetigt; Richtung/Vorzeichen haengt vom noch nicht fachlich benannten Zustand 0x20016FB2 ab. "
+    "8055 ist experimentelles Engineering: normale User-UI-Writes sind nicht freigegeben, und die "
+    "normalen Heiz-Sollwert-Min-/Max-Grenzen gelten nach dem Boost weiterhin."
+)
+
 WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '1208': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '2014': {'allow_code_mismatch': True,

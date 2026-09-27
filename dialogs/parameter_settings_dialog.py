@@ -171,6 +171,7 @@ class ParameterSettingsDialog(QDialog):
         "G": "Legionellen",
         "P": "Pumpe",
         "SG": "SG Ready",
+        "ENG": "Advanced/Engineering",
     }
 
     def __init__(self, main_window: "MainWindow"):
@@ -264,6 +265,7 @@ class ParameterSettingsDialog(QDialog):
                 "value_map": data.get("value_map") or data.get("values") or {},
                 "app_values": data.get("app_values") or {},
                 "source_app_video": str(data.get("source_app_video", "")),
+                "ui_visibility": str(data.get("ui_visibility", "")),
             })
         def sort_key(item: dict[str, Any]):
             code_text = str(item["code"] or "")
@@ -296,6 +298,12 @@ class ParameterSettingsDialog(QDialog):
         self.app_only_cb.setToolTip("Zeigt nur Parameter, fuer die bereits ein Original-App-Label aus der Bildschirmaufnahme bekannt ist.")
         self.app_name_cb = QCheckBox("App-Name anzeigen")
         self.app_name_cb.setToolTip("Aus: erkannter deutscher/technischer Name. An: Name wie in der Original-App, falls bekannt.")
+        self.engineering_cb = QCheckBox("Engineering anzeigen")
+        self.engineering_cb.setChecked(bool(self.main_window.settings.get("parameter_show_engineering", False)))
+        self.engineering_cb.setToolTip(
+            "Zeigt experimentelle Advanced-/Engineering-Parameter. "
+            "Herstellerfunktion, Wertebereich oder sichere Standardwerte koennen noch offen sein."
+        )
         self.live_update_cb = QCheckBox("live aktualisieren")
         self.live_update_cb.setChecked(True)
         self.auto_read_block_cb = QCheckBox("Block automatisch lesen")
@@ -311,6 +319,7 @@ class ParameterSettingsDialog(QDialog):
         self.tab_poll_interval_spin.setMaximumWidth(90)
         top.addWidget(self.app_only_cb)
         top.addWidget(self.app_name_cb)
+        top.addWidget(self.engineering_cb)
         top.addWidget(self.live_update_cb)
         top.addWidget(self.auto_read_block_cb)
         top.addWidget(self.tab_auto_poll_cb)
@@ -374,6 +383,7 @@ class ParameterSettingsDialog(QDialog):
 
         self.app_only_cb.stateChanged.connect(lambda _=None: self.refresh_table())
         self.app_name_cb.stateChanged.connect(lambda _=None: self.refresh_table())
+        self.engineering_cb.stateChanged.connect(self._engineering_visibility_changed)
         self.refresh_btn.clicked.connect(self.refresh_table)
         self.read_visible_btn.clicked.connect(self.read_visible_registers)
         self.write_selected_btn.clicked.connect(self.write_selected_register)
@@ -384,7 +394,7 @@ class ParameterSettingsDialog(QDialog):
         self.close_btn.clicked.connect(self.close)
 
     def refresh_blocks(self):
-        blocks = sorted({item["block"] for item in self._items})
+        blocks = sorted({item["block"] for item in self._items if self._item_is_visible_by_level(item)})
         # Reihenfolge wie in der Warmlink-App: H A F D E R P G C Z.
         # T/Temperatur bleibt bewusst ganz am Schluss.
         preferred = ["H", "A", "F", "D", "E", "R", "P", "G", "C", "Z", "SG", "KG", "T"]
@@ -428,6 +438,15 @@ class ParameterSettingsDialog(QDialog):
             self.block_bar.addWidget(box)
         self.block_bar.addStretch(1)
 
+    def _item_is_visible_by_level(self, item: dict[str, Any]) -> bool:
+        return str(item.get("ui_visibility", "")).lower() != "engineering" or self.engineering_cb.isChecked()
+
+    def _engineering_visibility_changed(self, _state=None) -> None:
+        self.main_window.settings["parameter_show_engineering"] = bool(self.engineering_cb.isChecked())
+        self.main_window._save_settings(sync_main_fields=False)
+        self.refresh_blocks()
+        self.refresh_table()
+
     def _select_block(self, block: str):
         self.current_block = block
         for b, btn in self.block_buttons.items():
@@ -443,6 +462,8 @@ class ParameterSettingsDialog(QDialog):
         app_only = self.app_only_cb.isChecked()
         items = []
         for item in self._items:
+            if not self._item_is_visible_by_level(item):
+                continue
             if block and item["block"] != block:
                 continue
             if app_only and not item.get("app_label"):

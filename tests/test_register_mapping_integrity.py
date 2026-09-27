@@ -203,6 +203,60 @@ def test_c14_write_minimum_is_loaded_and_validated():
         validate_register_write_value(0, info)
 
 
+def test_v35_remote_main_register_metadata():
+    main, _display = _load_static_maps()
+
+    gate = main["1540"]
+    assert gate["mode"] == "r/w"
+    assert gate["firmware"] == "V3.5+"
+    assert gate["default"] == "0"
+    assert gate["value_map"] == {"0": "Aus", "1": "Ein"}
+    assert "Warmlink" in gate["app_label"]
+
+    effective_target = main["1557"]
+    assert effective_target["mode"] == "read"
+    assert effective_target["type"] == "TEMP1"
+    assert effective_target["firmware"] == "V3.5+"
+
+    scaling = main["1492"]
+    assert scaling["ui_visibility"] == "engineering"
+    assert scaling["block"] == "ENG"
+    assert "rangeStart" not in scaling and "rangeEnd" not in scaling
+    assert main["1430"]["ui_visibility"] == "engineering"
+    assert main["1430"]["block"] == "ENG"
+
+
+def test_v35_warmlink_service_registers_stay_separate_from_main_map():
+    from cloud.warmlink_codes import (
+        WARMLINK_SERVICE_REGISTERS,
+        WARMLINK_SERVICE_SLAVE,
+    )
+
+    main, _display = _load_static_maps()
+    assert WARMLINK_SERVICE_SLAVE == 0x63
+    assert set(range(8021, 8029)).issubset(WARMLINK_SERVICE_REGISTERS)
+    assert set(range(8021, 8029)).isdisjoint(_numeric_keys(main))
+
+    for register in range(8021, 8024):
+        item = WARMLINK_SERVICE_REGISTERS[register]
+        assert "Cap" in item["name"]
+        assert item["ttl_minutes"] == 20
+        assert item["state_assignment"] == "open"
+        assert item["effect"].startswith("min(")
+
+    assert "R03 - value" in WARMLINK_SERVICE_REGISTERS[8024]["effect"]
+    assert "R02 + value" in WARMLINK_SERVICE_REGISTERS[8025]["effect"]
+    assert "R01 + value" in WARMLINK_SERVICE_REGISTERS[8026]["effect"]
+    for register in range(8024, 8029):
+        assert WARMLINK_SERVICE_REGISTERS[register]["ttl_minutes"] == 120
+    for register in (8027, 8028):
+        assert "offen" in WARMLINK_SERVICE_REGISTERS[register]["sign_state"]
+
+    boost = WARMLINK_SERVICE_REGISTERS[8055]
+    assert boost["mode"] == "engineering"
+    assert boost["write_allowed"] is False
+
+
 def test_every_normal_register_write_uses_central_validation():
     source = (ROOT / "foxair_phnix_control.py").read_text(encoding="utf-8")
     after_send_write = source.split("    def send_register_write(", 1)[1]

@@ -2450,5 +2450,21 @@
   "6080": {
     "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "1430": {
+    "knowledge": "Engineering-Fund V3.5: MAIN:1430 != 0 ist eine notwendige Bedingung fuer den positiven Warmlink-8055-Heizboost. Der Pfad verlangt ausserdem Multi-Zone/Z01 in {4,5,6} und 8055 >= 1. Herstellername und allgemeine Funktion bleiben offen; daher nicht als normaler Benutzerparameter freigegeben.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1492": {
+    "knowledge": "Engineering/Advanced: High-Byte ist der Faktor fuer scaled_correction = correction * MAIN1492.high / 10. Low-Byte 0 prueft PE12 | PE13 | PD14, != 0 waehlt PC4. Wertebereich, Default, physische Klemme und Herstellerfunktion sind nicht abschliessend geklaert; daraus darf keine Range abgeleitet werden.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1540": {
+    "knowledge": "V3.5-Gate fuer externe Warmlink-Remote-Korrekturen; die Werte werden nicht vom Mainboard gelernt. Historischer RE-Arbeitsname war „Adaptive Inverter Control“, nicht Herstellername und kein Beleg fuer AI oder selbstlernende Regelung. MAIN:1540 ist nicht SG01/MAIN:1334=4 (PHNIX-App-Pfad AI Saving / Remote Energy Control / dynamischer Stromtarif), auch wenn beide zusammenwirken koennen. Thermischer Pfad: SG01 in {1,2,3,5,6,7} nutzt SG-/Legacy-Korrekturen; SG01=4 nutzt seinen separaten Remote-/AI-Saving-Satz; bei anderen Werten waehlt MAIN:1540 != 0 die Warmlink-Werte 8024–8028, andernfalls Legacy. Bei SG01=7 werden 8024–8028 in diesem Pfad umgangen. Die Frequenz-Caps 8021–8023 haben eigene Gates. Im Frequenzpfad ist intern ein 6-Hz-Raster 30, 36, 42, 48, 54, 60, … sichtbar; dies ist keine Benutzerfreigabe zur freien Frequenzwahl.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1557": {
+    "knowledge": "Read-only V3.5-Diagnoseexport des effektiven intern berechneten Heiz-Wassersollwerts. Er umfasst Betriebszustands-, Wetter-/Timer- und V3.5-Korrekturpfade; anschliessend begrenzen die normalen Heiz-Min-/Max-Werte das Ergebnis.",
+    "source": "Reverse Engineering V3.5"
   }
 }
