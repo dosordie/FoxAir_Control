@@ -2363,10 +2363,6 @@
     "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
-  "2147": {
-    "description": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
-  },
   "2151": {
     "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
@@ -2375,12 +2371,16 @@
     "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
+  "2147": {
+    "description": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
   "2166": {
     "description": "Interner Zone-2-Regel-/Control-State; kein physikalischer Messwert bestätigt. Konkrete Semantik weiterhin offen. Live 2026-09-12 RAW 1 beobachtet.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2146": {
-    "description": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Andere Bits bleiben offen.",
+    "description": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2139": {

@@ -2,7 +2,7 @@
 
 ### Register-Mapping und Schreibschutz
 - Offene Erkenntnisse aus #117, #138, #139 und #140 ergänzt: DIAG-Register, Statusbitfelder, Heiz-/Sommerabschaltung, A38-Niederdruckbegrenzer und C13–C15-PID-Regler.
-- C14/MAIN:1349 wird beim Schreiben auf mindestens 1 validiert, damit kein ungeschützter Divisor 0 an die Firmware übertragen wird.
+- C14/MAIN:1349 wird zentral unmittelbar vor jedem normalen Register-Write auf mindestens 1 validiert, damit auch manuelles Schreiben und Backup-Restore keinen ungeschützten Divisor 0 an die Firmware übertragen können.
 - Unsichere Zählerzuordnungen, Reservepfade und weiterhin offene Bit-/Statussemantik sind ausdrücklich als wahrscheinlich beziehungsweise offen gekennzeichnet.
 
 ### Geräte-Info und Registerdaten

@@ -174,6 +174,7 @@ def test_issue_register_mappings_and_diag_bitmaps():
     assert main["2146"]["type"] == "BITFIELD"
     assert main["2146"]["baseline"] == "0x002C"
     assert "Heiz-/Sommerabschaltung aktiv" in main["2146"]["bit_map"]["4"]
+    assert main["2146"]["bit_map"]["6"] == "Variabel, Bedeutung offen"
     assert main["1349"]["write_min"] == 1
     assert main["1464"]["temperature_source"] == "effective_at"
     assert "Heiz-/Sommerabschaltung" in main["1464"]["name"]
@@ -182,6 +183,10 @@ def test_issue_register_mappings_and_diag_bitmaps():
     assert main["6073"]["bit_map"]["2"] == "internes Raw-I/O-Bit6"
     assert main["6074"]["bit_map"]["5"] == "fest 0"
     assert main["6080"]["bit_map"]["5"] == "+0x1A Bit10"
+
+    keys = list(main)
+    assert keys.index("2149") < keys.index("2151") < keys.index("2152")
+    assert keys.index("2152") < keys.index("2155") < keys.index("2160")
 
 
 def test_c14_write_minimum_is_loaded_and_validated():
@@ -192,6 +197,21 @@ def test_c14_write_minimum_is_loaded_and_validated():
     assert validate_register_write_value(1, info) == 1
     with pytest.raises(ValueError, match="mindestens 1"):
         validate_register_write_value(0, info)
+
+
+def test_every_normal_register_write_uses_central_validation():
+    source = (ROOT / "foxair_phnix_control.py").read_text(encoding="utf-8")
+    after_send_write = source.split("    def send_register_write(", 1)[1]
+    send_write = after_send_write.split("\n    def ", 1)[0]
+    direct_write = after_send_write.split("    def send_write_frame(", 1)[1].split("\n    def ", 1)[0]
+    timer_write = source.split("    def send_timer_values(", 1)[1].split("\n    def ", 1)[0]
+
+    validation = "validate_register_write_value(int(value), self.regmap.get(addr))"
+    assert validation in send_write
+    assert send_write.index(validation) < send_write.index("_queue_display_param_user_write_from_normal")
+    assert "self.send_register_write(addr, value" in direct_write
+    assert ".enqueue_write(" not in direct_write
+    assert "validate_register_write_value(int(value), self.regmap.get(int(addr)))" in timer_write
 
 
 def test_sg_ready_editor_handles_direct_only_8801():

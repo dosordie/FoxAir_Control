@@ -5836,13 +5836,14 @@
     "mode": "read",
     "type": "BITFIELD",
     "name": "Capability-/Statusbitfeld",
-    "note": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Andere Bits bleiben offen.",
+    "note": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
     "bit_map": {
       "1": "Zugehörige zentrale Strukturquelle (Semantik offen)",
       "2": "Baseline, fest gesetzt",
       "3": "Baseline, fest gesetzt",
       "4": "Heiz-/Sommerabschaltung aktiv",
-      "5": "Baseline, fest gesetzt"
+      "5": "Baseline, fest gesetzt",
+      "6": "Variabel, Bedeutung offen"
     },
     "baseline": "0x002C"
   },
@@ -5868,12 +5869,33 @@
     "name": "Reserve / anderer Firmwarepfad",
     "note": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt."
   },
+  "2151": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner Controller-/Regelmodus",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Interner Modus 0 (Klartextbedeutung offen)",
+      "1": "Interner Modus 1 (Klartextbedeutung offen)",
+      "2": "Interner Modus 2 (Klartextbedeutung offen)",
+      "3": "Interner Modus 3 (Klartextbedeutung offen)",
+      "4": "Interner Modus 4 (Klartextbedeutung offen)"
+    },
+    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt."
+  },
   "2152": {
     "function": "03",
     "mode": "read",
     "name": "Zone 1 Runtime-/Regelwert (gefiltert; Bedeutung offen)",
     "type": "RAW",
     "note": "V3.4-Analyse: Feld der Zone-1-Runtimestruktur; ein entsprechendes internes Feld existiert auch für Zone 2. Der Wert wird in Regelpfaden gefiltert/geglättet und ist daher kein einfaches 1/2-Enum. Live 2026-09-12 RAW 1/2 beobachtet; physikalische Bedeutung und Skalierung noch offen."
+  },
+  "2155": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner Timer/Zähler",
+    "type": "RAW",
+    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert."
   },
   "2160": {
     "function": "03",
@@ -6084,27 +6106,6 @@
     "name": "Interne Softwareversion ASCII Wort 2/2",
     "type": "ASCII",
     "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
-  },
-  "2151": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner Controller-/Regelmodus",
-    "type": "ENUM",
-    "value_map": {
-      "0": "Interner Modus 0 (Klartextbedeutung offen)",
-      "1": "Interner Modus 1 (Klartextbedeutung offen)",
-      "2": "Interner Modus 2 (Klartextbedeutung offen)",
-      "3": "Interner Modus 3 (Klartextbedeutung offen)",
-      "4": "Interner Modus 4 (Klartextbedeutung offen)"
-    },
-    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt."
-  },
-  "2155": {
-    "function": "03",
-    "mode": "read",
-    "name": "Interner Timer/Zähler",
-    "type": "RAW",
-    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert."
   },
   "6011": {
     "function": "03",

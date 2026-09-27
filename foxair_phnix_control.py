@@ -9971,6 +9971,11 @@ class MainWindow(QMainWindow):
         self._display_user_value_complete_current(False)
 
     def send_register_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        # Zentrale letzte Sicherheitsgrenze fuer alle normalen Register-Writes.
+        # Aufrufer wie Restore und das manuelle Popup liefern bewusst RAW-Werte
+        # und umgehen deshalb teilweise parse_register_write_value().
+        addr = int(addr)
+        value = validate_register_write_value(int(value), self.regmap.get(addr)) & 0xFFFF
         # fix9: Im Display-Backend werden bekannte Parameterpaket-Nutzwerte wie echte
         # Display-Bedienung geschrieben: Reg 1012 -> 23F4, ACK-gesteuert, ohne Extra-Dialog.
         if self._queue_display_param_user_write_from_normal(addr, value, slave_addr, label=label, delay_ms=delay_ms):
@@ -10046,16 +10051,7 @@ class MainWindow(QMainWindow):
                 self._log("WRITE abgebrochen: nicht gesendet.")
                 return
 
-            self._log(
-                f"WRITE wird GESENDET [{self.current_backend_label()} / {fc_text}]: bus=0x{wire_slave:02X}, "
-                f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
-                f"value={value}/0x{value:04X}, TX={hexdump(frame, -1)}"
-            )
-            io_worker = self._active_io_worker()
-            if io_worker is None:
-                self._log("WRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
-                return
-            io_worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, write_single=self._write_single_for_backend())
+            self.send_register_write(addr, value, slave_addr=slave_addr, label="Direktfeld")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Eingabe", str(exc))
 
@@ -10525,6 +10521,10 @@ class MainWindow(QMainWindow):
             self._log("TIMER nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
 
+        values = [
+            (int(addr), validate_register_write_value(int(value), self.regmap.get(int(addr))) & 0xFFFF, label)
+            for addr, value, label in values
+        ]
         display_plan = self._display_timer_batch_plan(values, slave_addr)
         if display_plan is not None and not display_plan:
             self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): Write nicht gesendet (Init/Snapshot gestartet oder keine geänderten Werte übrig).")
@@ -10542,9 +10542,8 @@ class MainWindow(QMainWindow):
             self._send_display_timer_batch(display_plan, delay_ms, title)
             return
 
-        for addr, value, _label in values:
-            _frame, wire_addr, wire_slave, _note, _fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
-            self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
+        for addr, value, label in values:
+            self.send_register_write(addr, value, slave_addr=slave_addr, label=label, delay_ms=delay_ms)
         self._notify_timer_sg_write_status(title, f"{title}: Schreiben gesendet.")
         QTimer.singleShot(6500, lambda t=title: self._notify_timer_sg_write_status(t, "Bereit."))
 
