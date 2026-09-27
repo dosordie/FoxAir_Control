@@ -43,15 +43,12 @@ Wichtige Erkenntnisse gegenüber V3.4:
 
 - die bekannte Grundregelung, SG-/PV-State-Machine, externe-AT-Umschaltung und Pumpenregelung bleiben grundsätzlich erhalten
 - V3.5 ergänzt spezialisierte Warmlink-Remoteeingänge **8021–8028** für Kompressor-Frequenzgrenzen sowie Heiz-/Kühl-/Warmwasser- und Zonen-Sollwertkorrekturen
-- **8055** ist ein zusätzlicher skalierter Sollwert-Modulationskanal für bestimmte Multi-Zone-T-Betriebsarten
-- **MAIN 1540** aktiviert einen zusätzlichen adaptiven Inverter-/Leistungsregelpfad mit zeitlich gültigen Korrekturwerten und einem sichtbaren 6-Hz-Frequenzraster
 - die in der App angebotene Funktion **AI Saving / dynamischer Stromtarif ist nicht ausschließlich eine V3.5-Funktion**: der grundlegende Remote-Energy-Control-/8001-/8004-Regelkomplex ist bereits in V3.4 vorhanden; V3.5 erweitert ihn
 
 Die Bezeichnung **AI** sollte technisch mit Vorsicht verwendet werden: Eine Cloud-/Remote-Regelung ist durch die Kommunikationspfade gut gestützt, ein tatsächlicher Machine-Learning-/AI-Algorithmus ist aus der Mainboard-Firmware nicht bewiesen.
 
 > **BlueLine / GreenLine:** Die Bezeichnungen BL und GL bedeuten hier keine getrennten Firmwarezweige. Bei Geräten mit Mainboard-Softwarecode **`82400644`** wird dieselbe Mainboard-Firmwarelinie verwendet. Die vorliegende V3.5 aus einer BlueLine ist deshalb auch für entsprechende GreenLine-/GL-Geräte dieser `82400644`-Familie kompatibel – und umgekehrt. Bei einem unbekannten Modell sollte der Mainboard-Softwarecode vor einem Update trotzdem geprüft werden.
 >
-> **Update-Hinweis:** Der FoxAir Updater hat reale Firmwarewechsel bis V3.4 erfolgreich durchgeführt. Ein kompletter Updatevorgang **auf oder von V3.5** ist dort aktuell noch nicht real validiert.  
 
 Eine ausführlichere technische Übersicht gibt es hier:
 
