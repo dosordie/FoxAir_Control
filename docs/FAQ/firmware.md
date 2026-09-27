@@ -106,7 +106,10 @@ Bekannte Version:
 - **Version:** V1.7
 - **Build:** 202311131429
 
-Download:
+Es gibt eine V1.7 DE, diese wurde von mir mit KI übersetzt. Das Design trifft es an ein paar stellen noch nicht zu 100% (untescheide in Schriftgröße ect.) Aber die Funktion sollte soweit ich testen konnte passen
+Downloadlink per PN im PV Forum oder Nachricht über github.
+
+Download der V1.7 EN:
 
 [Display-Firmware 82400463 V1.7 herunterladen](https://drive.google.com/file/d/1uNjJeRfVrqpYvHlOIn6u2vSbIlBpba4t/view?usp=sharing)
 
@@ -145,7 +148,7 @@ Nicht den ZIP-Ordner oder einen zusätzlichen übergeordneten Ordner auf die Kar
 
 Der SD-Kartenslot ist von außen nicht zugänglich.
 
-Das Display muss dafür geöffnet werden. Dazu werden auf der Gehäuse rückseite **6 kleine Schrauben** gelöst, darin ist das Display mit **4 kleinen Schrauben** befestigt.
+Das Display muss dafür geöffnet werden. Dazu werden auf der Gehäuse Rückseite **6 kleine Schrauben** gelöst, darin ist das Display mit **4 kleinen Schrauben** befestigt.
 
 Anschließend kann das Display vorsichtig geöffnet werden, bis der SD-Kartenslot zugänglich ist.
 
@@ -164,8 +167,6 @@ Anschließend kann das Display vorsichtig geöffnet werden, bis der SD-Kartenslo
 9. Display wieder zusammenbauen und normal einschalten.
 
 > **Wichtig:** Während des Updates die Stromversorgung nicht unterbrechen und die SD-Speicherkarte nicht entfernen.
-
-Nach dem Update kann die Versionsnummer des Displays kontrolliert werden.
 
 Bekannte Display-Versionen für Softwarecode **82400463** sind unter anderem V1.3 und V1.7.
 
