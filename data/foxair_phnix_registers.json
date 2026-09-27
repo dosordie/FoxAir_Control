@@ -3726,81 +3726,82 @@
     "type": "SG_MODE",
     "value_map": {
       "0": "Aus",
-      "1": "Einfach / 1 Kontakt",
-      "2": "2 Kontakte",
-      "3": "Modbus über 8801 (4 Modes)",
-      "5": "V3.4: Vereinfachtes SG / 1 Kontakt",
-      "6": "V3.4: Vereinfachtes SG / 2 Kontakte",
-      "7": "Modbus über 8801 (3 Modes /V3.4)"
+      "1": "Klassisch: 1 Kontakt",
+      "2": "Klassisch: 2 Kontakte",
+      "3": "Klassisch: Modbus 8801 / 4 Zustände",
+      "4": "AI Saving / Remote Energy Control",
+      "5": "SG/PV erweitert: 1 Kontakt (Neutral / High)",
+      "6": "SG/PV erweitert: 2 Kontakte (Low / Neutral / High)",
+      "7": "SG/PV erweitert: Modbus 8801 (Low / Neutral / High)"
     },
-    "description": "Klassische SG-Ready-Auswahl: 0=Aus, 1=1 Kontakt, 2=2 Kontakte, 3=virtueller SG-Eingang über Register 8801. Ab V3.4 zusätzlich vereinfachte SG-/PV-Familie: 5=1 Kontakt, 6=2 Kontakte, 7=virtuell über Register 8801 (Werte 1..3)."
+    "description": "SG01-Auswahl mit drei getrennten Familien: 0=Aus; klassisch 1=ein Kontakt, 2=zwei Kontakte, 3=virtueller 4-Zustands-Pfad über 8801; 4=AI Saving / Remote Energy Control (separater App-/Regelpfad); erweitert 5=ein Kontakt mit Neutral/High, 6=zwei Kontakte mit Low/Neutral/High, 7=virtueller Low/Neutral/High-Pfad über 8801. „SG/PV erweitert“ ist eine funktionale Bezeichnung; der Hersteller-Klartextname ist unbekannt."
   },
   "1335": {
     "block": "SG",
     "code": "SG02",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 1 Schlafmodus Zeit",
+    "name": "SG02 – Schlaf-/Sperrzeit klassischer Mode 1",
     "type": "RAW",
     "unit": "min",
-    "description": "Zeitdauer Schlafmodus bei SG Mode 1"
+    "description": "Zeitdauer der Schlaf-/Sperrlogik im klassischen SG Mode 1."
   },
   "1336": {
     "block": "SG",
     "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 2 Leistung / wenig PV",
+    "name": "SG03 – Low-PV / klassische Mode-2-Leistungsgrenze",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
-    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 2 / wenig PV"
+    "description": "Leistungsgrenze bei Low PV der erweiterten Familie beziehungsweise im klassischen SG Mode 2."
   },
   "1337": {
     "block": "SG",
     "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 3 Leistung / mittel PV",
+    "name": "SG04 – klassische Mode-3-/Medium-PV-Leistung",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
-    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 3 / mittel PV"
+    "description": "Leistung für klassischen SG Mode 3 / Medium PV; die reduzierte Familie 5/6/7 besitzt keine eigene Medium-PV-Stufe."
   },
   "1338": {
     "block": "SG",
     "code": "SG05",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 WW-Zieltemperatur-Anhebung",
+    "name": "SG05 – High-PV WW-Sollwertanhebung",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
+    "description": "Warmwasser-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1339": {
     "block": "SG",
     "code": "SG06",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung",
+    "name": "SG06 – High-PV Heiz-Sollwertanhebung",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
+    "description": "Heiz-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1340": {
     "block": "SG",
     "code": "SG07",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung",
+    "name": "SG07 – High-PV Kühl-Sollwertänderung",
     "notes": "Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV. Im Kühlbetrieb kann ein positiver Wert den Kühl-Sollwert effektiv senken, weil der Offset vom Kühl-Sollwert abgezogen wird."
+    "description": "Kühl-Sollwertänderung bei High PV beziehungsweise im klassischen SG Mode 4. Ein positiver Wert senkt den Kühl-Sollwert, da der Offset abgezogen wird."
   },
   "1341": {
     "block": "SG",
     "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 E-Heizer / Zusatzfunktion",
+    "name": "SG08 – High-PV E-Heizer / Zusatzfunktion",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
@@ -3812,7 +3813,7 @@
     },
     "app_label": "Electric Heater On in SG Mode4",
     "last_review": "v0.2.41 fix8 user confirmed",
-    "description": "Zusatzfunktion/E-Heizer-Freigabe für SG Mode 4"
+    "description": "E-Heizer-/Zusatzfunktion bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1342": {
     "app_current_video_value": "0.0 bar",
@@ -5717,13 +5718,13 @@
     "type": "RAW",
     "value_map": {
       "0": "WP Aus / SG Ready Aus",
-      "1": "Klassisch: Mode 1 / Schlafmodus | V3.4 vereinfacht: wenig PV / Leistungsbegrenzung",
-      "2": "Klassisch: Mode 2 / wenig PV | V3.4 vereinfacht: Neutralbetrieb",
-      "3": "Klassisch: Mode 3 / mittel PV | V3.4 vereinfacht: High PV / Temperatur-Offsets",
+      "1": "Klassisch: Mode 1 / Schlafmodus | SG01=7: Low PV / Leistungsbegrenzung",
+      "2": "Klassisch: Mode 2 / wenig PV | SG01=7: Neutralbetrieb",
+      "3": "Klassisch: Mode 3 / mittel PV | SG01=7: High PV / Temperatur-Offsets",
       "4": "Klassisch: Mode 4 / High PV",
       "5": "Klassisch: Normalbetrieb"
     },
-    "description": "Aktiver SG-Ready-/Betriebsstatus. Bedeutung von 1..3 hängt von SG01/1334 ab: bei 1..3 klassische SG-Modi, bei 5..7 (V3.4) vereinfachte PV-Zustände. V3.4 bildet interne Zustände 6/7/8 auf 2133 = 1/2/3 ab. Reagiert zeitverzögert; der Klemmstatus ist sofort in Register 2034 sichtbar."
+    "description": "Aktiver SG-Ready-/Betriebsstatus. Bedeutung von 1..3 hängt von SG01/1334 ab: im klassischen Pfad klassische SG-Modi, bei SG01=7 Low PV/Neutral/High PV. Die Detailsemantik für die physischen erweiterten Modi 5/6 ist noch nicht vollständig aufgelöst. V3.4 bildet interne Zustände 6/7/8 für SG01=7 auf 2133 = 1/2/3 ab. Reagiert zeitverzögert; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
   "2134": {
     "function": "03",

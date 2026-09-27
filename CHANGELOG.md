@@ -1,5 +1,11 @@
 ## Unreleased
 
+### SG Ready / SG01
+- SG01/MAIN:1334 um AI Saving / Remote Energy Control (`4`) und die erweiterte SG/PV-Familie `5/6/7` ergänzt.
+- SG-Ready-Editor unterstützt alle bekannten SG01-Modi und unterscheidet klassischen Vier-Zustands-Pfad, AI Saving sowie Low/Neutral/High-Pfad.
+- Register 8801 wird im Editor nur bei SG01 `3` oder `7` am direkten User-/Mainboard-Modbus angeboten und geschrieben.
+- Statische Bestätigung, Live-Verifikation und offene Herstellerbezeichnung der erweiterten Familie sind getrennt dokumentiert.
+
 ### Register-Mapping und Schreibschutz
 - Offene Erkenntnisse aus #117, #138, #139 und #140 ergänzt: DIAG-Register, Statusbitfelder, Heiz-/Sommerabschaltung, A38-Niederdruckbegrenzer und C13–C15-PID-Regler.
 - C14/MAIN:1349 wird zentral unmittelbar vor jedem normalen Register-Write auf mindestens 1 validiert, damit auch manuelles Schreiben und Backup-Restore keinen ungeschützten Divisor 0 an die Firmware übertragen können.

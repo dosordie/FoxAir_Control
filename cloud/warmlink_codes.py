@@ -2248,7 +2248,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
                'local_code': 'SGstatus',
                'modbus_register': 2133,
                'name': 'SG Status',
-               'note': 'Manuell bestätigt: Register 2133 = SG Status; Werte 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.',
+               'note': 'Register 2133 = SG Status. Im klassischen Pfad gelten die Modi 0..4; bei SG01=7 sind 1..3 als Low PV, Neutral und High PV bestätigt. Die Semantik bei SG01=5/6 bleibt offen.',
                'rangeEnd': '4',
                'rangeStart': '0',
                'write_allowed': False},
@@ -2257,8 +2257,9 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
           'local_code': 'SG01',
           'modbus_register': 1334,
           'name': 'SG Ready Mode / SG-Funktion',
-          'note': 'SG Ready: 0=Aus, 1=Einfach, 2=Erweitert; confirmed local mapping, cloud write not yet proven; '
-                  'Confirmed by static cleanup: cloud_code == local register code',
+          'note': 'Beobachtete Cloud-Metadaten nennen weiterhin 0..2. MAIN:1334 unterstützt lokal laut Firmwareanalyse '
+                  '0..7; Cloud-Schreibbarkeit der erweiterten Werte ist nicht bestätigt. Confirmed by static '
+                  'cleanup: cloud_code == local register code',
           'rangeEnd': '2',
           'rangeStart': '0',
           'write_allowed': False},
