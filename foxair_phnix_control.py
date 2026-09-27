@@ -466,7 +466,7 @@ def register_block_and_clean_name(name: str) -> tuple[str, str, str]:
     text = str(name or "").strip()
     m = re.match(r"^\s*([A-Z]{1,3})(\d{1,3}(?:-\d+)?)\s*/\s*(.*)$", text)
     if not m:
-        m = re.match(r"^\s*([A-Z]{1,3})(\d{1,3}(?:-\d+)?)\b\s*(?:/|-|:)?\s*(.*)$", text)
+        m = re.match(r"^\s*([A-Z]{1,3})(\d{1,3}(?:-\d+)?)\b\s*(?:/|-|–|—|:)?\s*(.*)$", text)
     if not m:
         return "", "", text
     block = m.group(1).upper()

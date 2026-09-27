@@ -24,6 +24,23 @@ def _load_static_maps() -> tuple[dict, dict]:
     return main, display
 
 
+def test_sg_register_names_keep_codes_without_leading_separator_in_display_name():
+    main, _display = _load_static_maps()
+    for register, expected_code in zip(range(1334, 1342), (f"SG{index:02d}" for index in range(1, 9))):
+        definition = main[str(register)]
+        assert definition["code"] == expected_code
+        if register > 1334:
+            assert definition["name"].startswith(f"{expected_code} – ")
+
+    for relative_path in (
+        "foxair_phnix_control.py",
+        "dialogs/dialog_helpers.py",
+        "dialogs/parameter_settings_dialog.py",
+    ):
+        source = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert "(?:/|-|–|—|:)?" in source
+
+
 def test_main_and_display_register_maps_do_not_overlap():
     main, display = _load_static_maps()
 
