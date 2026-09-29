@@ -5080,6 +5080,9 @@ class MainWindow(QMainWindow):
             "device_model": self.current_device_model(),
             "autoconnect_on_start": self.autoconnect_cb.isChecked(),
             "show_public_warning": bool(self.settings.get("show_public_warning", True)),
+            "show_engineering_parameters": bool(
+                self.settings.get("show_engineering_parameters", False)
+            ),
             "theme": str(self.settings.get("theme", "system")),
             "update_asset_mode": str(self.settings.get("update_asset_mode", "auto")),
             "auto_read_init_on_startup": bool(self.settings.get("auto_read_init_on_startup", False)),
