@@ -431,28 +431,47 @@ WARMLINK_PRODUCT_IDS: list[str] = [
 # sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
 WARMLINK_SERVICE_SLAVE = 0x63
 WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
-    8021: {"name": "Remote Frequency Cap 1", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
-    8022: {"name": "Remote Frequency Cap 2", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
-    8023: {"name": "Remote Frequency Cap 3", "mode": "service-write", "ttl_minutes": 20, "effect": "min(normal_frequency_reference, remote_cap)", "state_assignment": "open"},
-    8024: {"name": "Kuehl-Wassersollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "cooling_target = R03 - value"},
-    8025: {"name": "Heiz-Wassersollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "heating_target = R02 + value"},
-    8026: {"name": "Warmwasser-Sollwertkorrektur", "mode": "service-write", "ttl_minutes": 120, "effect": "dhw_target = R01 + value"},
-    8027: {"name": "Remote-Offset Zone-1-Raumtemperatur-Sollwert", "mode": "service-write", "ttl_minutes": 120, "sign_state": "0x20016FB2 (fachliche Bedeutung offen)"},
-    8028: {"name": "Remote-Offset Zone-2-Raumtemperatur-Sollwert", "mode": "service-write", "ttl_minutes": 120, "sign_state": "0x20016FB2 (fachliche Bedeutung offen)"},
-    8055: {"name": "Positiver Remote-Heiz-Wassersollwertboost", "mode": "engineering", "write_allowed": False, "effect": "base_heating_target + value * MAIN1492.high / 10", "gates": "Z01 in {4,5,6}; MAIN:1430 != 0; value >= 1"},
+    8021: {"name": "Cooling Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Cooling", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8022: {"name": "Heating Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Heating", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8023: {"name": "DHW Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "DHW", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8024: {"name": "Kuehl-Wassersollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "cooling_target = R03 - value"},
+    8025: {"name": "Heiz-Wassersollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "heating_target = R02 + value"},
+    8026: {"name": "WW-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "dhw_target = R01 + value"},
+    8027: {"name": "Zone-1-Raumtemperatur-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "Heating: target += offset; Cooling: target -= offset"},
+    8028: {"name": "Zone-2-Raumtemperatur-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "Heating: target += offset; Cooling: target -= offset"},
+    8055: {"name": "Positiver Multi-Zone-Heiz-Wassersollwertboost", "type": "signed int16", "mode": "engineering/experimental", "write_allowed": False, "persistence": "RAM-only; Boot-Default 0; kein eigener Mainboard-TTL", "effect": "effective_heating_target_raw = clamp(base_heating_target_raw + int16(value) * uint8(MAIN1492.high) / 10, local_min_raw, local_max_raw)", "gates": "MAIN:1492.high != 0; Z01 in {4,5,6}; MAIN:1430 != 0; int16(value) >= 1"},
 }
 
 WARMLINK_SERVICE_KNOWLEDGE = (
-    "FC10-Schreibwerte am Service-Slave 0x63; nicht Teil der normalen MAIN-User-Modbus-Liste. "
-    "Writes setzen den jeweiligen TTL-Zaehler zurueck. 8021-8023 laufen nach 2400 * 0,5 s "
-    "(20 Minuten kontinuierlicher Verdichterlauf) ab; ein Verdichterstopp setzt den Laufzeitzaehler "
-    "zurueck. 8024-8028 laufen nach 14400 * 0,5 s (120 Minuten) ab. Nach Ablauf wird der "
-    "Runtimewert geloescht; ein externer Warmlink/LTE-Dienst muss temporaere Kommandos erneuern. "
-    "Die Zustandszuordnung der drei Caps ist offen. Bei 8027/8028 ist nur die Offsetfunktion "
-    "bestaetigt; Richtung/Vorzeichen haengt vom noch nicht fachlich benannten Zustand 0x20016FB2 ab. "
-    "8055 ist experimentelles Engineering: normale User-UI-Writes sind nicht freigegeben, und die "
-    "normalen Heiz-Sollwert-Min-/Max-Grenzen gelten nach dem Boost weiterhin."
+    "Warmlink-/LTE-Service-Modbus, Slave 0x63, FC10; getrennt von Standard- und Display-Modbus. "
+    "8021-8023 begrenzen Cooling/Heating/DHW auf min(normale Referenz, Remote-Cap). Ihr gemeinsamer "
+    "Logik-/Timerkomplex laeuft nach 20 Minuten kontinuierlichem Verdichterlauf ab; Verdichterstopp "
+    "setzt den Laufzeitzaehler zurueck. 8024-8028 gehoeren zu einer gruppenbezogenen 120-Minuten-"
+    "TTL-/Resetlogik. 8027/8028 addieren im Heizen und subtrahieren im Kuehlen. 8055 gehoert nicht "
+    "zu dieser TTL: RAM-only, Boot-Default 0, ohne gefundenen eigenen Mainboard-TTL; aktiv bis extern "
+    "ueberschrieben oder Mainboard-Neustart. 8055 bleibt experimentell und fuer Writes gesperrt."
 )
+
+
+def warmlink_service_rows(values: dict[int, int] | None = None) -> list[dict[str, str]]:
+    """Build read-only presentation rows without adding a service write path."""
+    values = values or {}
+    rows = []
+    for register, meta in sorted(WARMLINK_SERVICE_REGISTERS.items()):
+        lifetime = (
+            f"TTL {meta['ttl_minutes']} min ({meta.get('ttl_group', 'Gruppe')})"
+            if "ttl_minutes" in meta else str(meta.get("persistence", "--"))
+        )
+        experimental = "experimental" in str(meta.get("mode", ""))
+        rows.append({
+            "register": str(register), "name": str(meta["name"]),
+            "raw": "--" if register not in values else str(values[register]),
+            "meaning": str(meta.get("effect", "--")), "type": str(meta.get("type", "RAW")),
+            "lifetime": lifetime,
+            "transport": f"Warmlink Service / Slave 0x{WARMLINK_SERVICE_SLAVE:02X} / FC10",
+            "write_status": "experimentell; nicht freigegeben" if experimental else "nicht freigegeben",
+        })
+    return rows
 
 WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '1208': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},

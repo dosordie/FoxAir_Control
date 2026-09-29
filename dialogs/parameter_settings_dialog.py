@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.foxair_phnix_core import DEFAULT_BUS_ADDR, format_value_by_type, s16
+from core.settings_manager import engineering_parameter_is_visible
 
 DEFAULT_DEVICE_MODEL = "foxair_green_gl9_1"
 DEVICE_MODEL_LABELS = {
@@ -228,9 +229,7 @@ class ParameterSettingsDialog(QDialog):
                 continue
             if not isinstance(data, dict):
                 continue
-            if str(data.get("ui_visibility", "")).lower() == "engineering":
-                # Unsichere Engineering-Schalter bleiben in der technischen
-                # Registeransicht auffindbar, aber nicht im normalen Editor.
+            if not engineering_parameter_is_visible(data, getattr(self.main_window, "settings", {})):
                 continue
             block, code, clean_name = register_meta_parts(data)
             app_label = str(data.get("app_label", ""))
@@ -252,11 +251,12 @@ class ParameterSettingsDialog(QDialog):
             # T-Diag-Werte sind Diagnosewerte, sollen aber als eigener Anhang im T-Block sichtbar sein.
             if "w" not in mode.lower() and not app_label and not is_t_diag:
                 continue
+            is_engineering = str(data.get("ui_visibility", "")).lower() == "engineering"
             items.append({
                 "reg": reg_no,
                 "code": code,
                 "block": block,
-                "name": clean_name,
+                "name": f"[Engineering] {clean_name}" if is_engineering else clean_name,
                 "app_label": app_label,
                 "dtype": str(data.get("type", "RAW")),
                 "description": str(data.get("description", "")),

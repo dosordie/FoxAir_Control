@@ -251,3 +251,7 @@ Für den erweiterten virtuellen Pfad wird stattdessen `1334 = 7` mit `8801 = 1..
 Nach Mainboard-Neustarts sollte ein externer Controller den gewünschten Zustand erneut prüfen. Für `8801` sollte keine ungetestete Persistenzannahme über einen vollständigen Neustart getroffen werden.
 
 Die detaillierte Firmwareanalyse steht im Reverse-Engineering-Repository unter `FW3.3-SG-READY-MODBUS-8801.md`.
+
+## Abgrenzung zu MAIN:1540 (V3.5)
+
+AI Saving (`SG01`/MAIN:1334 = 4) aktiviert den bereits in V3.4 vorhandenen Remote-Komplex um 8001/8004/8006, 0x20016A54 und MAIN1691/1692. V3.5 ergänzt separat MAIN:1540 für 8021–8028. In der Mainboard-Firmware ist kein Setter `SG01=4 -> MAIN1540=1` bestätigt; beide Gates sind daher nicht gleichzusetzen.

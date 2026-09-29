@@ -222,6 +222,7 @@ def test_v35_remote_main_register_metadata():
     assert scaling["ui_visibility"] == "engineering"
     assert "rangeStart" not in scaling and "rangeEnd" not in scaling
     assert main["1430"]["ui_visibility"] == "engineering"
+    assert "firmware" not in main["1430"]
 
 
 def test_v35_warmlink_service_registers_stay_separate_from_main_map():
@@ -239,8 +240,11 @@ def test_v35_warmlink_service_registers_stay_separate_from_main_map():
         item = WARMLINK_SERVICE_REGISTERS[register]
         assert "Cap" in item["name"]
         assert item["ttl_minutes"] == 20
-        assert item["state_assignment"] == "open"
-        assert item["effect"].startswith("min(")
+        assert item["effect"].startswith("effective_reference = min(")
+
+    assert WARMLINK_SERVICE_REGISTERS[8021]["operating_mode"] == "Cooling"
+    assert WARMLINK_SERVICE_REGISTERS[8022]["operating_mode"] == "Heating"
+    assert WARMLINK_SERVICE_REGISTERS[8023]["operating_mode"] == "DHW"
 
     assert "R03 - value" in WARMLINK_SERVICE_REGISTERS[8024]["effect"]
     assert "R02 + value" in WARMLINK_SERVICE_REGISTERS[8025]["effect"]
@@ -248,11 +252,14 @@ def test_v35_warmlink_service_registers_stay_separate_from_main_map():
     for register in range(8024, 8029):
         assert WARMLINK_SERVICE_REGISTERS[register]["ttl_minutes"] == 120
     for register in (8027, 8028):
-        assert "offen" in WARMLINK_SERVICE_REGISTERS[register]["sign_state"]
+        assert "Heating: target += offset" in WARMLINK_SERVICE_REGISTERS[register]["effect"]
+        assert "Cooling: target -= offset" in WARMLINK_SERVICE_REGISTERS[register]["effect"]
 
     boost = WARMLINK_SERVICE_REGISTERS[8055]
-    assert boost["mode"] == "engineering"
+    assert "engineering" in boost["mode"]
     assert boost["write_allowed"] is False
+    assert "ttl_minutes" not in boost
+    assert "RAM-only" in boost["persistence"]
 
 
 def test_every_normal_register_write_uses_central_validation():
