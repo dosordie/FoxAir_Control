@@ -255,3 +255,5 @@ Die detaillierte Firmwareanalyse steht im Reverse-Engineering-Repository unter `
 ## Abgrenzung zu MAIN:1540 (V3.5)
 
 AI Saving (`SG01`/MAIN:1334 = 4) aktiviert den bereits in V3.4 vorhandenen Remote-Komplex um 8001/8004/8006, 0x20016A54 und MAIN1691/1692. V3.5 ergänzt separat MAIN:1540 für 8021–8028. In der Mainboard-Firmware ist kein Setter `SG01=4 -> MAIN1540=1` bestätigt; beide Gates sind daher nicht gleichzusetzen.
+
+Zusätzlich sitzt **SG01 / MAIN:1334** in V3.5 vor einem Teil der neuen MAIN-1540-Korrekturen. Beim Zweig **1334 = 7** verwendet der thermische Korrekturblock den SG-/Legacy-Satz; die MAIN-1540-gesteuerten Warmlink-Korrekturen **8024–8028** werden in diesem Zweig nicht erreicht. Die separaten Frequenz-Caps **8021–8023** besitzen eigene Gates und sind davon getrennt zu betrachten.

@@ -8,6 +8,23 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
 
+## Firmware-Übersicht
+
+Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmwarestände**, Softwarecodes und Gerätezuordnungen gibt es hier:
+
+- [FoxAir / PHNIX Firmware-Übersicht](docs/firmware_overview.md)
+
+Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3`, `V3.4` oder `V3.5` gleichzeitig installiert sein.
+
+Die analysierte **Mainboard-V3.5 stammt von einer FoxAir BlueLine (BL)**. BlueLine und GreenLine (GL) mit Mainboard-Softwarecode **`82400644`** verwenden dieselbe Mainboard-Firmwarelinie; die V3.5 ist für entsprechende Geräte dieser Familie untereinander kompatibel.
+
+## 💙 Unterstützung
+
+Ich bastle an diesem Tool in meiner Freizeit.  
+Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
+
+[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
+
 ### Warmlink RAW / Firmware-Logging
 
 Ab Version `0.5.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
@@ -101,14 +118,6 @@ Beispielausgabe:
 ```json
 {"event":"register_change","ts":"...","backend":"display_modbus","reg":2106,"old_raw":0,"raw":1,"hex":"0x0001","name":"Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)"}
 ```
-
-## 💙 Unterstützung
-
-Ich bastle an diesem Tool in meiner Freizeit.  
-Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
-
-[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
-
 
 ## Lizenz
 [GPLv3](LICENSE)
