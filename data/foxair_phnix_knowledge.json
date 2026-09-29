@@ -2452,19 +2452,19 @@
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1430": {
-    "knowledge": "Engineering-Fund V3.5: MAIN:1430 != 0 ist eine notwendige Bedingung fuer den positiven Warmlink-8055-Heizboost. Der Pfad verlangt ausserdem Multi-Zone/Z01 in {4,5,6} und 8055 >= 1. Herstellername und allgemeine Funktion bleiben offen; daher nicht als normaler Benutzerparameter freigegeben.",
+    "knowledge": "MAIN:1430 existiert bereits vor V3.5. Effektiv uint8, persistent im 32-Byte-Record 0x218, Default 0: 0 = Gate nicht aktiv, != 0 = Gate aktiv. Fuer V3.5 ist die zusaetzliche Verwendung als notwendiges Gate des positiven 8055-Heizboosts bestaetigt (zusammen mit MAIN:1492.high != 0, Z01 in {4,5,6}, int16(8055) > 0). Ausserdem ist 1430 ein alternativer Aktivierungsweg des dokumentierten 30-Minuten-Qualifier-Pfads. Offizieller PHNIX-Name bleibt offen.",
     "source": "Reverse Engineering V3.5"
   },
   "1492": {
-    "knowledge": "Engineering/Advanced: High-Byte ist der Faktor fuer scaled_correction = correction * MAIN1492.high / 10. Low-Byte 0 prueft PE12 | PE13 | PD14, != 0 waehlt PC4. Wertebereich, Default, physische Klemme und Herstellerfunktion sind nicht abschliessend geklaert; daraus darf keine Range abgeleitet werden.",
+    "knowledge": "Engineering: gepacktes uint16, persistent im 32-Byte-Record 0x218, Default 0x0000. High Byte liegt bei 0x20016A34 +0x12, ist uint8 (0..255) und bildet factor = high / 10 sowie scaled_boost_raw = int16(8055) * high / 10; high=0 sperrt den 8055-Pfad. Low Byte liegt bei +0x14, ist uint8: 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische PHNIX-/FoxAir-Klemmenbezeichnungen bleiben offen.",
     "source": "Reverse Engineering V3.5"
   },
   "1540": {
-    "knowledge": "V3.5-Gate fuer externe Warmlink-Remote-Korrekturen; die Werte werden nicht vom Mainboard gelernt. Historischer RE-Arbeitsname war „Adaptive Inverter Control“, nicht Herstellername und kein Beleg fuer AI oder selbstlernende Regelung. MAIN:1540 ist nicht SG01/MAIN:1334=4 (PHNIX-App-Pfad AI Saving / Remote Energy Control / dynamischer Stromtarif), auch wenn beide zusammenwirken koennen. Thermischer Pfad: SG01 in {1,2,3,5,6,7} nutzt SG-/Legacy-Korrekturen; SG01=4 nutzt seinen separaten Remote-/AI-Saving-Satz; bei anderen Werten waehlt MAIN:1540 != 0 die Warmlink-Werte 8024–8028, andernfalls Legacy. Bei SG01=7 werden 8024–8028 in diesem Pfad umgangen. Die Frequenz-Caps 8021–8023 haben eigene Gates. Im Frequenzpfad ist intern ein 6-Hz-Raster 30, 36, 42, 48, 54, 60, … sichtbar; dies ist keine Benutzerfreigabe zur freien Frequenzwahl.",
+    "knowledge": "V3.5-Gate (effektiv uint8) fuer externe Warmlink-Remote-Korrekturen; persistent im 32-Byte-Record 0x218, ueberlebt normalen Power-Cycle, Factory-/Fallback-Default 0. Verbraucher pruefen 0/!=0; die UI bietet 0/1. Es gibt keinen bestaetigten Setter SG01=4 -> MAIN1540=1: AI Saving (SG01/MAIN1334=4; aelterer Komplex 8001/8004/8006, 0x20016A54, MAIN1691/1692) ist nicht MAIN1540. Die Frequenz wird nicht hart auf 30/36/42/48 Hz quantisiert: liegt der bisherige Befehl ausreichend ueber der Remote-/Adaptivreferenz, wird er um hoechstens 6 Hz abgesenkt, ohne die Referenz zu unterschreiten (47 Hz darf 47 Hz bleiben). Erst danach entsteht ein Bin-Index: f<30 => 0, sonst (f-30)/6. C02, C03 und dynamische Grenzen bleiben wirksam.",
     "source": "Reverse Engineering V3.5"
   },
   "1557": {
-    "knowledge": "Read-only V3.5-Diagnoseexport des effektiven intern berechneten Heiz-Wassersollwerts. Er umfasst Betriebszustands-, Wetter-/Timer- und V3.5-Korrekturpfade; anschliessend begrenzen die normalen Heiz-Min-/Max-Werte das Ergebnis.",
+    "knowledge": "Read-only V3.5-Export des effektiven intern berechneten Heiz-Wassersollwerts als signed int16 RAW / 10 °C. RAW bleibt verfuegbar; die normalen Heiz-Min-/Max-Grenzen gelten.",
     "source": "Reverse Engineering V3.5"
   }
 }

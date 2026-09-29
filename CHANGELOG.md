@@ -1,9 +1,17 @@
 ## Unreleased
 
+## 0.2.65
+
+- V3.5-Warmlink-Serviceparameter auf den aktuellen Reverse-Engineering-Stand gebracht; 8021–8023 als Cooling-/Heating-/DHW-Frequenzcaps und 8027/8028 mit Heiz-/Kühlvorzeichen dokumentiert.
+- 8055 als RAM-only ohne eigenen TTL sowie MAIN:1430/1492 inklusive Persistenz, Byteaufteilung und Gates präzisiert; irreführende harte 6-Hz-Quantisierung entfernt.
+- Engineering-Parameter lassen sich optional in den Programmeinstellungen einblenden; neue read-only Service-/Engineering-Diagnose für 8021–8028 und 8055.
+- Rollen des internen FoxAir-Boardbusses und des getrennten Warmlink/LTE-Busses im Busadressdialog aktualisiert.
+
+
 ### V3.5 Remote-Regelwertkorrektur
 - MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt; die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
-- Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschliesslich TTL, begrenzender Frequenz-Caps und noch offener Zustands-/Vorzeichensemantik.
-- MAIN:1492, MAIN:1430 und Warmlink 8055 als nicht fuer die normale Benutzeroberflaeche freigegebene Engineering-Funktionen aufgenommen.
+- Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschließlich gruppenbezogener TTL, Cooling-/Heating-/DHW-Caps und bestätigter Heiz-/Kühlvorzeichen.
+- MAIN:1492 und MAIN:1430 als optional sichtbare Engineeringparameter aufgenommen; Warmlink 8055 bleibt in der read-only Diagnose sichtbar und für Schreibzugriffe gesperrt.
 
 ### SG Ready / SG01
 - SG01/MAIN:1334 um AI Saving / Remote Energy Control (`4`) und die erweiterte SG/PV-Familie `5/6/7` ergänzt.

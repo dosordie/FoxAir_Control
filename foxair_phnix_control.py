@@ -38,6 +38,7 @@ from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
+from dialogs.warmlink_service_dialog import WarmlinkServiceDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
 from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
@@ -155,8 +156,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.64"
-BUILD_DATE = "2026-09-27"
+APP_VERSION = "0.2.65"
+BUILD_DATE = "2026-09-29"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -3165,6 +3166,22 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
         general_form.addRow("Update-Download:", self.update_asset_combo)
 
+        self.engineering_cb = QCheckBox("Engineering-Parameter anzeigen")
+        self.engineering_cb.setChecked(bool(main_window.settings.get("show_engineering_parameters", False)))
+        self.engineering_cb.setToolTip(
+            "Zeigt zusätzlich Reverse-Engineering-/Experimentalparameter im Parameterfenster an.\n\n"
+            "Diese Werte sind teilweise nicht vom Hersteller dokumentiert. Änderungen können das Regelverhalten beeinflussen."
+        )
+        self.warmlink_service_btn = QPushButton("Warmlink Service / Engineering ...")
+        self.warmlink_service_btn.setToolTip("Read-only Diagnoseansicht der Service-Register 8021–8028 und 8055.")
+        self.warmlink_service_btn.clicked.connect(self._open_warmlink_service)
+        engineering_row = QWidget()
+        engineering_layout = QHBoxLayout(engineering_row)
+        engineering_layout.setContentsMargins(0, 0, 0, 0)
+        engineering_layout.addWidget(self.engineering_cb)
+        engineering_layout.addWidget(self.warmlink_service_btn)
+        general_form.addRow("Engineering:", engineering_row)
+
         self.connection_actions_row = QWidget()
         connection_actions_layout = QHBoxLayout(self.connection_actions_row)
         connection_actions_layout.setContentsMargins(0, 0, 0, 0)
@@ -3258,6 +3275,9 @@ class CommunicationSettingsDialog(QDialog):
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
+
+    def _open_warmlink_service(self):
+        WarmlinkServiceDialog(self.main_window).exec()
 
     def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
         widgets = (
@@ -3420,6 +3440,7 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
         self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
+        self.main_window.settings["show_engineering_parameters"] = bool(self.engineering_cb.isChecked())
         self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
         self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
@@ -3454,6 +3475,9 @@ class CommunicationSettingsDialog(QDialog):
         self.main_window._apply_live_poll_timer_state()
         self.main_window._update_dual_logger_button_visibility()
         self.main_window._refresh_search_highlights()
+        if getattr(self.main_window, "parameter_dialog", None) is not None:
+            self.main_window.parameter_dialog.close()
+            self.main_window.parameter_dialog = None
         self.main_window._save_settings(sync_main_fields=False)
         super().accept()
 

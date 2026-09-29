@@ -6284,9 +6284,14 @@
     "name": "Warmlink-8055-Heizboost Freigabe (Engineering)",
     "type": "RAW",
     "ui_visibility": "engineering",
-    "firmware": "V3.5+",
-    "description": "Engineering-Fund: Ein Wert ungleich 0 ist eine notwendige Freigabe fuer den Warmlink-8055-Heizboost. Herstellername und allgemeine Funktion sind noch nicht vollstaendig aufgeloest; kein Standard-Benutzerparameter.",
-    "source": "Reverse Engineering V3.5"
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen.",
+    "source": "Reverse Engineering V3.5",
+    "effective_type": "uint8",
+    "default": "0",
+    "persistence": "persistent; 32-byte record 0x218",
+    "block": "ENG",
+    "code": "MAIN1430",
+    "app_label": "Warmlink-8055-Heizboost Freigabe (Engineering)"
   },
   "1492": {
     "function": "03/16",
@@ -6295,8 +6300,18 @@
     "type": "RAW",
     "ui_visibility": "engineering",
     "firmware": "V3.5+",
-    "description": "Engineering-Parameter aus zwei Bytes: High-Byte skaliert eine Korrektur als correction * high / 10. Low-Byte 0 nutzt die Legacy-Eingangspruefung PE12 | PE13 | PD14, ein Wert ungleich 0 waehlt alternativ PC4. Zulaessige Range, Hersteller-Default, Herstellerfunktion und physische Klemmenbezeichnung sind offen.",
-    "source": "Reverse Engineering V3.5"
+    "description": "[Engineering] Gepacktes 16-Bit-Register. High Byte: Korrekturfaktor (uint8 0..255), scaled_boost_raw = int16(8055) * high / 10; 0 sperrt den Pfad. Low Byte: Hardware-Eingangsselector (uint8): 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische Klemmenbezeichnungen sind offen.",
+    "source": "Reverse Engineering V3.5",
+    "default": "0x0000",
+    "effective_type": "packed uint16 (2 x uint8)",
+    "persistence": "persistent; 32-byte record 0x218",
+    "byte_layout": {
+      "high": "0x20016A34 +0x12; Korrekturfaktor 0..255, factor = high / 10",
+      "low": "0x20016A34 +0x14; 0 = PE12 | PE13 | PD14, 1..255 = PC4"
+    },
+    "block": "ENG",
+    "code": "MAIN1492",
+    "app_label": "Remote-Korrekturskalierung und Eingangsauswahl (Engineering)"
   },
   "1540": {
     "function": "03/16",
@@ -6313,7 +6328,10 @@
       "1": "Ein"
     },
     "description": "Aktiviert zusaetzliche, extern ueber den Warmlink-Servicebereich eingespeiste zeitbegrenzte Frequenz- und Sollwertkorrekturen. Die Firmware prueft technisch auf != 0; die Benutzeroberflaeche bietet bewusst nur 0/1 an. Kein offizieller PHNIX-Name.",
-    "source": "Reverse Engineering V3.5"
+    "source": "Reverse Engineering V3.5",
+    "effective_type": "uint8",
+    "persistence": "persistent; 32-byte record 0x218; ueberlebt normalen Mainboard-Power-Cycle",
+    "factory_default": "0"
   },
   "1557": {
     "function": "03",
@@ -6323,6 +6341,8 @@
     "unit": "°C",
     "firmware": "V3.5+",
     "description": "Effektiver intern berechneter Heiz-Wassersollwert (RAW / 10 °C) nach interner Sollwertlogik einschliesslich Betriebszustaenden, Wetter-/Timerpfaden und V3.5-Korrekturen; danach greifen die normalen Heiz-Min-/Max-Grenzen.",
-    "source": "Reverse Engineering V3.5"
+    "source": "Reverse Engineering V3.5",
+    "signed": true,
+    "raw_format": "int16 / 10 °C"
   }
 }

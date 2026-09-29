@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
-from core.foxair_phnix_core import DEFAULT_BUS_ADDR
+from core.bus_address_info import display_bus_address_info
 from ui.paths import resource_path
 from ui.theme import APP_ICON_FILE
 
@@ -15,53 +15,6 @@ from ui.theme import APP_ICON_FILE
 def app_icon() -> QIcon:
     return QIcon(resource_path(APP_ICON_FILE, __file__))
 
-
-def display_bus_address_info(addr: int) -> tuple[str, str, str]:
-    """Lesbare Displaybus-Rollen fuer das Popup 'Gesehene Bus-Adressen'."""
-    addr = int(addr)
-    if addr == 0x00:
-        return (
-            "Broadcast / WP-Livewerte",
-            "FC16 2001/90 und 2091/90",
-            "wird als echter WP-Livebereich übernommen",
-        )
-    if addr == 0x01:
-        return (
-            "WP-/Kopf-/Power-Modul-Rohstatus",
-            "FC16 1999/16, FC03 2099/51",
-            "2099/51 virtuell 91099-91149; 91105~2062 AC-Spannung, 91108~2043 DC-Bus",
-        )
-    if addr == 0x02:
-        return (
-            "DWIN/HMI-Pfad unklar",
-            "FC03 3001/21 Requests gesehen",
-            "bisher Diagnose, keine stabile Übernahme",
-        )
-    if addr == 0x03:
-        return (
-            "Display / DWIN-Speicher",
-            "FC03 3001/21, Parameterpakete 1001ff, Writes 23xx",
-            "3001-3021 sichtbar; Bedienwerte laufen über 23xx",
-        )
-    if addr == 0x04:
-        return (
-            "interner Teilnehmer/Ziel",
-            "FC03 1011/14 Requests",
-            "nicht übernehmen, solange Bereich mit 10xx kollidiert",
-        )
-    if addr == 0x05:
-        return (
-            "interner Teilnehmer",
-            "FC03 2000/90, FC16 1001/90 Nullblock",
-            "Null-/Fremdblock gesperrt, überschreibt keine WP-Werte",
-        )
-    if addr == DEFAULT_BUS_ADDR:
-        return (
-            "Warmlink/WP",
-            "normaler Warmlink-Modbus",
-            "Standard-WP-Adresse außerhalb Displaybus",
-        )
-    return ("unbekannt", "noch keine feste Zuordnung", "nur beobachten")
 
 
 class BusAddressDialog(QDialog):
@@ -75,8 +28,11 @@ class BusAddressDialog(QDialog):
         self.resize(1040, 380)
         layout = QVBoxLayout(self)
         hint = QLabel(
-            "Hinweis: In Modbus-RTU-Requests ist die Adresse die Zieladresse. "
-            "Die Rollen unten beschreiben die bisher beobachteten Frames/Erkenntnisse."
+            "Interner FoxAir-Boardbus: USART3 / RS485 / 4800 Baud / 8N1. "
+            "Das Mainboard arbeitet als Master; Requests adressieren den internen Teilnehmer, "
+            "0x00 wird für Broadcasts verwendet.\n\n"
+            "Der Warmlink/LTE-Bus ist davon getrennt: USART1 / RS485 / 9600 Baud. "
+            "Dort arbeitet das Mainboard als Slave 0x63."
         )
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -129,4 +85,3 @@ class BusAddressDialog(QDialog):
                 else:
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.table.setSortingEnabled(True)
-
