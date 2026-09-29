@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Register 1388 und 1389 als Taupunkt-Sicherheitsabstand beziehungsweise Raum-/T04-ΔT-Schaltschwelle korrekt benannt und als Kelvin-Differenzen formatiert.
+- Register 1402 als Mindest-Abtauzeit in Minuten dokumentiert und mit der ausdrücklich projektinternen, fiktiven Kennung D100 versehen.
+- Beschreibungen und Wissensdatenbank um die bestätigten V3.5-Regelpfade, Defaults, Hysteresen und Abtau-Ausnahmen ergänzt.
+
 ## 0.2.67
 
 - Warmlink-/Service-Register im 8xxx-Bereich werden bei Empfang oder explizitem Lesen direkt in der normalen Hauptregistertabelle angezeigt.

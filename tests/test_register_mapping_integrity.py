@@ -157,6 +157,26 @@ def test_reverse_engineered_temperature_sources_and_diagnostics():
     assert "Fehlerwert ist keine Temperaturangabe" in external_sensor["description"]
 
 
+def test_confirmed_humidity_and_defrost_parameter_metadata():
+    main, _display = _load_static_maps()
+
+    assert main["1388"]["name"] == "Kühl-Mindesttemperatur über Taupunkt"
+    assert main["1388"]["type"] == "TEMP1"
+    assert main["1388"]["unit"] == "K"
+    assert main["1388"]["default"] == "2.0 K"
+
+    assert main["1389"]["name"] == "Raum-/T04-ΔT-Schaltschwelle"
+    assert main["1389"]["type"] == "TEMP1"
+    assert main["1389"]["temperature_source"] == "local_t04"
+    assert "1,0-K-Hysterese" in main["1389"]["description"]
+
+    assert main["1402"]["block"] == "D"
+    assert main["1402"]["code"] == "D100"
+    assert main["1402"]["type"] == "MINUTES"
+    assert main["1402"]["unit"] == "min"
+    assert "fiktive" in main["1402"]["notes"]
+
+
 def test_confirmed_flow_and_multizone_mapping_metadata():
     main, _display = _load_static_maps()
 
