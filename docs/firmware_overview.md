@@ -78,6 +78,16 @@ Besonders relevant sind die erweiterten Remote-/Optimierungspfade:
 - `8055`: zusätzlicher skalierter Sollwert-Modulationskanal in bestimmten Multi-Zone-T-Modi
 - `MAIN:1540`: Enable eines zusätzlichen adaptiven Inverter-/Leistungsregelpfads mit zeitlich begrenzten Runtimewerten und 6-Hz-Frequenzstufung
 
+#### Details der neuen V3.5-Regelpfade
+
+`MAIN:1540` ist ein persistentes **uint8-Gate** für die zusätzlichen Warmlink-Werte **8021–8028**. Die Kompressorfrequenz wird dabei **nicht** einfach auf feste Werte wie 30/36/42/48 Hz quantisiert. Stattdessen nähert die Logik einen bisherigen Frequenzbefehl bei Bedarf in Schritten von höchstens **6 Hz** an die Remote-/Adaptivreferenz an, ohne diese zu unterschreiten. Erst anschließend wird intern ein 6-Hz-Bin-Index berechnet. **C02, C03 sowie die dynamischen Min-/Max-Grenzen bleiben wirksam.**
+
+`MAIN:1557` exportiert den effektiven Heiz-Wassersollwert **read-only als signed int16, RAW/10 °C**.
+
+`MAIN:1492` enthält im **High Byte** den Korrekturfaktor des 8055-Pfads und im **Low Byte** den Hardware-Eingangsselector. Beide Bytes sind persistente Engineeringparameter. `MAIN:1430` existierte bereits vor V3.5; in V3.5 ist zusätzlich seine Verwendung als Gate des **8055-Pfads** bestätigt.
+
+Der App-Modus **AI Saving** über `SG01 / MAIN:1334 = 4` gehört zum älteren Remote-Komplex um **8001/8004/8006**, **0x20016A54** und **MAIN1691/1692**, der bereits in V3.4 existiert. Ein interner Setter `SG01=4 -> MAIN1540=1` ist nicht bestätigt: **SG01=4 ist nicht MAIN1540=1**.
+
 Wichtig für die Einordnung: Der grundlegende Remote-Energy-Control-/AI-Saving-Komplex ist **bereits in V3.4 funktional vorhanden**. V3.5 führt diese Funktion nicht erstmals ein, sondern erweitert sie um zusätzliche Stellgrößen und lokale Verbraucher.
 
 Die Firmwareanalyse belegt Cloud-/Remote-Eingänge und deren lokale Anwendung. Ob serverseitig tatsächlich Machine Learning bzw. „AI“ eingesetzt wird, ist damit nicht bewiesen.

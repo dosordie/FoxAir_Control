@@ -279,7 +279,7 @@ class LoadOutputDecoderDialog(QDialog):
 class FaultDecoderDialog(QDialog):
     """Klartextanzeige fuer Fehlerbits und Sammelstoerung."""
 
-    FAULT_REGS = [2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083]
+    FAULT_REGS = [2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083, 2084]
     FAULT_TITLES = {
         2085: "Fehler 1",
         2086: "Fehler 2",
@@ -290,6 +290,7 @@ class FaultDecoderDialog(QDialog):
         2081: "Fehler 7",
         2082: "Fehler 8",
         2083: "Fehler 9",
+        2084: "Fehler 10",
     }
 
     def __init__(self, parent: "MainWindow"):

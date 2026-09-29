@@ -329,8 +329,12 @@
   "1022": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Durchfluss-Offset Umwälzpumpe",
+    "type": "FLOW_M3H_X100",
+    "unit": "m³/h",
+    "description": "Signed 16-Bit-Durchfluss-Offset; signed RAW / 100 = m³/h. Firmwarebestätigter Rechenweg: Q_eff = Q_base + signed(MAIN:1022) / 100. Der korrigierte gemeinsame wirksame Runtime-Durchfluss wird unter anderem über MAIN:2077 / T39 ausgegeben und von nachgelagerten Regel-/Leistungsfunktionen verwendet; es handelt sich nicht nur um einen Anzeigeoffset.",
+    "note": "Binary bestätigt durch V3.3-Pumpen-/Durchfluss-Reverse-Engineering; signed Skalierung und Datenpfad zusätzlich durch Live-Tests bestätigt.",
+    "source": "FW3.3-PUMPEN-DURCHFLUSS-KALIBRIERUNG-UPM4L.md; Live-Tests"
   },
   "1023": {
     "app_label": "Dry Contact",
@@ -731,7 +735,9 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Electric-Heater-On AT Grenzwert / Temperaturparameter (ASM)",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "E-Heizer-Einschaltschwelle. Verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback und nicht zwingend den lokalen T04 direkt.",
+    "temperature_source": "effective_at"
   },
   "1050": {
     "app_current_video_value": "60 min",
@@ -810,7 +816,8 @@
       "5": "R290-2",
       "6": "R32-3",
       "7": "R290-3"
-    }
+    },
+    "description": "Wählt den Kältemittel-/Kennfeldsatz. Für die Haupt-EEV-Auto-Regelung verwenden gerade A26-Werte die R32-Schwellenfamilie und ungerade A26-Werte die R290-Schwellenfamilie. A26 wird außerdem bei der Berechnung der aus Niederdruck abgeleiteten Verdampfungstemperatur berücksichtigt."
   },
   "1055": {
     "app_current_video_value": "-4.5 °C",
@@ -933,7 +940,7 @@
   "1065": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1066": {
@@ -949,7 +956,7 @@
   "1067": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1068": {
@@ -1695,7 +1702,7 @@
       "2": "Smart"
     },
     "block": "E",
-    "code": "E17",
+    "code": "E01",
     "function": "03/16",
     "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
@@ -1705,7 +1712,8 @@
       "0": "Manual",
       "1": "Auto",
       "2": "Smart"
-    }
+    },
+    "description": "Regelmodus des Haupt-Expansionsventils: 0=Manuell, 1=Auto, 2=Smart. Auto arbeitet als geschlossene Überhitzungs-Feedbackregelung. Smart verwendet dieselbe Auto-Regelung weiter und begrenzt deren Ergebnis zusätzlich durch ein kennfeldabhängiges Smart-Fenster gemäß E19."
   },
   "1132": {
     "app_current_video_value": "3.0 °C",
@@ -1716,9 +1724,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Ziel-Überhitzung Heizen",
+    "name": "EEV Ziel-Regelüberhitzung Heizen",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Heizbetrieb. Der Feedbackregler vergleicht E02 direkt mit MAIN 2067, der Rückgas-/Saugüberhitzung. E02 bleibt auch im Smart-Modus aktiv."
   },
   "1133": {
     "app_current_video_value": "0 N",
@@ -1729,9 +1738,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen",
+    "name": "EEV Heiz-Basis-/Startöffnung global",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Globaler Heiz-Basis-/Startwert des Haupt-EEV. Wenn E03 ungleich 0 ist, kann dieser Wert im Heiz-Basispfad die temperatursegmentierten E03-1…5-Werte übersteuern. Bei E03=0 wird abhängig von T04/Außentemperatur der passende E03-x-Wert verwendet."
   },
   "1134": {
     "app_label": "Steps of Mixing Valve in Cooling",
@@ -1777,9 +1787,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV minimale Anfangsschritte",
+    "name": "EEV Mindestöffnung <61 Hz",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Softwareseitige Mindestöffnung des Haupt-EEV im aktiven E07-Schutz-/Normalbetriebspfad bei Kompressor-Istfrequenz MAIN 2072 unter 61 Hz. Ab 61 Hz wird stattdessen die temperaturabhängige Mindestöffnung E07-1…5 verwendet. Keine mechanische Mindestposition und keine reine Startöffnung."
   },
   "1138": {
     "app_current_video_value": "350 N",
@@ -1843,9 +1854,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen 2",
+    "name": "EEV Heiz-Basisöffnung T04 +0,1…+7,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für eine wirksame Außentemperatur T04 von +0,1 bis +7,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1143": {
     "app_current_video_value": "3.0 °C",
@@ -1897,9 +1909,10 @@
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
     "my_value": "460",
-    "name": "Abtau-EEV Schritte",
+    "name": "EEV Abtau-Zielöffnung",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Zielposition des Haupt-EEV während eines bestätigten Abtau-Regelzustands. E17 wird in diesem Defrost-State direkt als EEV-Zielposition verwendet."
   },
   "1148": {
     "app_current_video_value": "3.0 °C",
@@ -1909,9 +1922,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "Ziel-Überhitzung Kühlen",
+    "name": "EEV Ziel-Regelüberhitzung Kühlen",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Kühlbetrieb. Wird vom selben Feedbackregler wie E02 gegen MAIN 2067 geregelt."
   },
   "1149": {
     "app_current_video_value": "20 %",
@@ -1921,21 +1935,21 @@
     "function": "03/16",
     "last_review": "v0.2.32 video2 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anpassungsbereich im Smart-Modus",
-    "notes": "Vermutung, noch nicht verifiziert: E19 begrenzt vermutlich, wie stark der Smart-Algorithmus vom normalen/Auto-EEV-Wert abweichen darf. Bei Default 20 % dürfte Smart den berechneten EEV-Wert vermutlich um bis zu ca. 20 % korrigieren.",
+    "name": "Smart-EEV Korrekturfenster ± %",
     "type": "PERCENT",
-    "unit": "%"
+    "unit": "%",
+    "description": "Prozentuales Begrenzungsfenster des Smart-Modus um den berechneten SmartCenter. Die Firmware verwendet exakt:\nlower = SmartCenter × (1 - E19/100)\nupper = SmartCenter × (1 + E19/100)\nDas normale Auto-Regelergebnis wird im Smart-Modus auf dieses Fenster begrenzt. E19=20 bedeutet somit ±20 %, nicht ±10 %."
   },
   "1150": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1151": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
+    "name": "Reserviert / Funktionslos in V3.3",
     "type": "RAW"
   },
   "1152": {
@@ -2134,7 +2148,9 @@
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1168": {
     "app_current_video_value": "-20.0 °C",
@@ -2146,7 +2162,9 @@
     "mode": "r/w",
     "name": "Niedrige AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1169": {
     "app_current_video_value": "62.0 °C",
@@ -2158,7 +2176,9 @@
     "mode": "r/w",
     "name": "Max. Auslasswassertemperaturbegrenzung bei niedriger AT",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Wassertemperaturgrenze im lokalen-T04-Regelpfad der AT-abhängigen Wassertemperaturbegrenzung. Die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird in diesem Pfad ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1170": {
     "app_current_video_value": "15.0 °C",
@@ -2170,7 +2190,9 @@
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung EIN",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1171": {
     "app_current_video_value": "43.0 °C",
@@ -2182,7 +2204,9 @@
     "mode": "r/w",
     "name": "Hohe AT für Wassertemperaturbegrenzung AUS",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Teil der AT-abhängigen Wassertemperaturbegrenzung. Dieser Regelpfad verwendet direkt den lokalen T04; die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1172": {
     "app_current_video_value": "67.0 °C",
@@ -2194,7 +2218,9 @@
     "mode": "r/w",
     "name": "Max. Auslasswassertemperaturbegrenzung bei hoher AT",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Wassertemperaturgrenze im lokalen-T04-Regelpfad der AT-abhängigen Wassertemperaturbegrenzung. Die über Register 1463 ausgewählte externe beziehungsweise effektive AT wird in diesem Pfad ignoriert.",
+    "temperature_source": "local_t04"
   },
   "1173": {
     "app_current_video_value": "Not Available",
@@ -2482,9 +2508,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen 1",
+    "name": "EEV Heiz-Basisöffnung T04 ≥ +7,1 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 ab +7,1 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1201": {
     "app_current_video_value": "Interval",
@@ -2562,13 +2589,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen 3",
+    "name": "EEV Heiz-Basisöffnung T04 −4,9…0,0 °C",
     "type": "STEPS_N",
     "unit": "N",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    }
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −4,9 bis 0,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1207": {
     "app_current_video_value": "125 N",
@@ -2578,9 +2602,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen 4",
+    "name": "EEV Heiz-Basisöffnung T04 −9,9…−5,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −9,9 bis −5,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1208": {
     "app_current_video_value": "110 N",
@@ -2590,13 +2615,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Anfangsschritte Heizen 5",
+    "name": "EEV Heiz-Basisöffnung T04 ≤ −10,0 °C",
     "type": "STEPS_N",
     "unit": "N",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    }
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 bis einschließlich −10,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1209": {
     "app_current_video_value": "130 N",
@@ -2606,9 +2628,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Min. Schritte 1",
+    "name": "EEV Mindestöffnung ≥61 Hz, T04 ≥ +7,1 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 ab +7,1 °C. Keine mechanische Mindestposition."
   },
   "1210": {
     "app_current_video_value": "130 N",
@@ -2618,9 +2641,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Min. Schritte 2",
+    "name": "EEV Mindestöffnung ≥61 Hz, T04 +0,1…+7,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von +0,1 bis +7,0 °C."
   },
   "1211": {
     "app_current_video_value": "110 N",
@@ -2630,9 +2654,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Min. Schritte 3",
+    "name": "EEV Mindestöffnung ≥61 Hz, T04 −4,9…0,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −4,9 bis 0,0 °C."
   },
   "1212": {
     "function": "03/16",
@@ -2666,9 +2691,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Min. Schritte 4",
+    "name": "EEV Mindestöffnung ≥61 Hz, T04 −9,9…−5,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −9,9 bis −5,0 °C."
   },
   "1216": {
     "app_current_video_value": "85 N",
@@ -2678,9 +2704,10 @@
     "function": "03/16",
     "last_review": "v0.2.32 video 2026-06-14",
     "mode": "r/w",
-    "name": "EEV Min. Schritte 5",
+    "name": "EEV Mindestöffnung ≥61 Hz, T04 ≤ −10,0 °C",
     "type": "STEPS_N",
-    "unit": "N"
+    "unit": "N",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 bis einschließlich −10,0 °C."
   },
   "1217": {
     "app_current_video_value": "72 Hz",
@@ -2758,7 +2785,7 @@
     "block": "C",
     "code": "C06",
     "function": "03/16",
-    "last_review": "XLS / nicht im Video sichtbar",
+    "last_review": "XLS ",
     "mode": "r/w",
     "name": "Frequenzregelungsmodus",
     "type": "DIGI1"
@@ -2805,7 +2832,7 @@
     "block": "C",
     "code": "C10",
     "function": "03/16",
-    "last_review": "v0.2.32 video2 2026-06-14",
+    "last_review": "v0.2.32",
     "mode": "r/w",
     "name": "Min. Kompressorfrequenz im Heizbetrieb bei niedriger Umgebungstemperatur",
     "type": "HZ",
@@ -2829,11 +2856,13 @@
     "block": "R",
     "code": "R43",
     "function": "03/16",
-    "last_review": "v0.2.32 video 2026-06-14",
+    "last_review": "v0.2.32",
     "mode": "r/w",
     "name": "Max. Zielwassertemperaturbegrenzung bei niedriger AT im Heizbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Begrenzung der maximalen Heiz-Solltemperatur verwendet direkt den lokalen T04 und ignoriert den externen beziehungsweise effektiven AT-Selector.",
+    "temperature_source": "local_t04"
   },
   "1230": {
     "app_current_video_value": "65.0 °C",
@@ -2845,7 +2874,9 @@
     "mode": "r/w",
     "name": "Max. Zielwassertemperaturbegrenzung bei hoher AT im Heizbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Begrenzung der maximalen Heiz-Solltemperatur verwendet direkt den lokalen T04 und ignoriert den externen beziehungsweise effektiven AT-Selector.",
+    "temperature_source": "local_t04"
   },
   "1231": {
     "app_current_video_value": "-10.0 °C",
@@ -2857,7 +2888,10 @@
     "mode": "r/w",
     "name": "AT zum Starten des elektrischen Heizers ohne Verzögerung",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback. Die Rückschaltung besitzt eine zusätzliche Hysterese von ungefähr +2,0 K.",
+    "temperature_source": "effective_at",
+    "hysteresis": "ca. +2.0 K"
   },
   "1232": {
     "app_current_video_value": "5.0 °C",
@@ -2881,46 +2915,50 @@
     "mode": "r/w",
     "name": "AT zum Start der Frequenzbegrenzung im Kühlbetrieb",
     "type": "TEMP1",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Die Kühl-Frequenzbegrenzung wertet direkt den lokalen T04 aus. Die ausgewählte externe beziehungsweise effektive AT wird nicht verwendet.",
+    "temperature_source": "local_t04"
   },
   "1234": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "AT-Kompensation Slope / Steigung",
+    "name": "Steigung der linearen AT-Kurve",
     "type": "DIGI5",
     "unit": "",
-    "description": "Slope der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
+    "description": "Steigung der klassischen linearen AT-Kompensationskurve (H36=1). Für die 7-Punkt-Kennlinie (H36=2) nicht verwendet."
   },
   "1235": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "AT-Kompensation Offset / Versatz",
+    "name": "AT-Kurve Offset / 7-Punkt-Sollwert bei 0 °C",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "Offset der AT-Kompensationskurve Zone 1. Vermutete Formel: Ziel = Offset - Slope × AT."
+    "description": "Doppelrolle: Offset/Mittelpunkt der linearen Kennlinie (H36=1) beziehungsweise Heiz-Solltemperatur am 0-°C-Stützpunkt der 7-Punkt-Kennlinie (H36=2)."
   },
   "1236": {
     "app_label": "Enable AT Compensation Curve Zone 1",
-    "app_mapping_mode": "app_label_only; technical name/value_map preserved; user-tested H36 register 1236",
+    "app_mapping_mode": "app label retained; GL9 V3.4/V3.5 technisch unabhängig bestätigt",
     "app_values": {
-      "0": "NO",
-      "1": "YES"
+      "0": "OFF",
+      "1": "LINEAR",
+      "2": "7-POINT"
     },
     "block": "H",
     "code": "H36",
-    "default": "NO",
+    "default": "Aus",
     "function": "03/16",
-    "last_review": "v0.2.32-user-fix-h36",
+    "last_review": "GL9 V3.4/V3.5 bestätigt 2026-09-23",
     "mode": "r/w",
-    "name": "AT-Kompensationskurve Zone 1 aktivieren",
+    "name": "Betriebsart AT-Kompensationskurve Zone 1",
     "source_app_video": "ScreenRecording_06-14-2026 18-17-00",
-    "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet; nicht Z16",
+    "source_user_test": "2026-06-14: H36 = Register 1236 selbst getestet",
     "type": "DIGI1",
     "value_map": {
-      "0": "Nein",
-      "1": "Ja"
+      "0": "Aus",
+      "1": "Lineare Kennlinie",
+      "2": "7-Punkt-Kennlinie"
     },
-    "description": "H36: AT-Kompensationskurve Zone 1 aktivieren. 0=Aus, 1=Ein. Selbst getestet: 1236 ist H36."
+    "description": "H36 wählt die Außentemperaturkompensation: 0=Aus, 1=lineare Kennlinie, 2=7-Punkt-Kennlinie."
   },
   "1237": {
     "app_current_video_value": "43.0 °C",
@@ -3055,42 +3093,50 @@
   "1250": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Systemzeit aktivieren",
-    "type": "DIGI1",
-    "value_map": {
-      "0": "Nein",
-      "1": "Ja"
-    }
+    "name": "7P-Heiz-Sollwert bei -20 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
   },
   "1251": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelle Systemminute",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei -10 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemminute“."
   },
   "1252": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelle Systemstunde",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei -5 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelle Systemstunde“."
   },
   "1253": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktueller Systemtag",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei +5 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +5-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemtag“."
   },
   "1254": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktueller Systemmonat",
-    "type": "DIGI1"
+    "name": "7P-Heiz-Sollwert bei +10 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +10-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktueller Systemmonat“."
   },
   "1255": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Aktuelles Systemjahr",
-    "type": "RAW"
+    "name": "7P-Heiz-Sollwert bei +20 °C Außentemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen +20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Aktuelles Systemjahr“."
   },
   "1256": {
     "block": "KG",
@@ -3680,78 +3726,82 @@
     "type": "SG_MODE",
     "value_map": {
       "0": "Aus",
-      "1": "Einfach / 1 Kontakt",
-      "2": "2 Kontakte",
-      "3": "Modbus / virtueller SG-Eingang"
+      "1": "Klassisch: 1 Kontakt",
+      "2": "Klassisch: 2 Kontakte",
+      "3": "Klassisch: Modbus 8801 / 4 Zustände",
+      "4": "AI Saving / Remote Energy Control",
+      "5": "SG/PV erweitert: 1 Kontakt (Neutral / High)",
+      "6": "SG/PV erweitert: 2 Kontakte (Low / Neutral / High)",
+      "7": "SG/PV erweitert: Modbus 8801 (Low / Neutral / High)"
     },
-    "description": "Aktivierung/Auswahl SG Ready: Aus / 1 Kontakt / 2 Kontakte / virtueller SG-Eingang über direktes User-/Mainboard-Modbus-Register 8801"
+    "description": "SG01-Auswahl mit drei getrennten Familien: 0=Aus; klassisch 1=ein Kontakt, 2=zwei Kontakte, 3=virtueller 4-Zustands-Pfad über 8801; 4=AI Saving / Remote Energy Control (separater App-/Regelpfad); erweitert 5=ein Kontakt mit Neutral/High, 6=zwei Kontakte mit Low/Neutral/High, 7=virtueller Low/Neutral/High-Pfad über 8801. „SG/PV erweitert“ ist eine funktionale Bezeichnung; der Hersteller-Klartextname ist unbekannt."
   },
   "1335": {
     "block": "SG",
     "code": "SG02",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 1 Schlafmodus Zeit",
+    "name": "SG02 Schlaf-/Sperrzeit klassischer Mode 1",
     "type": "RAW",
     "unit": "min",
-    "description": "Zeitdauer Schlafmodus bei SG Mode 1"
+    "description": "Zeitdauer der Schlaf-/Sperrlogik im klassischen SG Mode 1."
   },
   "1336": {
     "block": "SG",
     "code": "SG03",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 2 Leistung / wenig PV",
+    "name": "SG03 Low-PV / klassische Mode-2-Leistungsgrenze",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
-    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 2 / wenig PV"
+    "description": "Leistungsgrenze bei Low PV der erweiterten Familie beziehungsweise im klassischen SG Mode 2."
   },
   "1337": {
     "block": "SG",
     "code": "SG04",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 3 Leistung / mittel PV",
+    "name": "SG04 klassische Mode-3-/Medium-PV-Leistung",
     "type": "POWER_KW_X10",
     "unit": "kW",
     "scale": "RAW / 10",
-    "description": "Leistungsgrenze bzw. Leistungsvorgabe bei SG Mode 3 / mittel PV"
+    "description": "Leistung für klassischen SG Mode 3 / Medium PV; die reduzierte Familie 5/6/7 besitzt keine eigene Medium-PV-Stufe."
   },
   "1338": {
     "block": "SG",
     "code": "SG05",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 WW-Zieltemperatur-Anhebung",
+    "name": "SG05 High-PV WW-Sollwertanhebung",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
+    "description": "Warmwasser-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1339": {
     "block": "SG",
     "code": "SG06",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 HZ-Zieltemperatur-Anhebung",
+    "name": "SG06 High-PV Heiz-Sollwertanhebung",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV"
+    "description": "Heiz-Sollwertanhebung bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1340": {
     "block": "SG",
     "code": "SG07",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 Kühlen-Zieltemperatur-Anhebung",
+    "name": "SG07 High-PV Kühl-Sollwertänderung",
     "notes": "Wirkungsweise: Positiver Wert = kleinere Kühl-Solltemperatur. Der Wert wird bei aktivem SG Ready vom Kühl-Sollwert abgezogen.",
     "type": "TEMP1",
-    "description": "Temperatur-Offset/Sollwertanhebung bei SG Mode 4 / High PV. Im Kühlbetrieb kann ein positiver Wert den Kühl-Sollwert effektiv senken, weil der Offset vom Kühl-Sollwert abgezogen wird."
+    "description": "Kühl-Sollwertänderung bei High PV beziehungsweise im klassischen SG Mode 4. Ein positiver Wert senkt den Kühl-Sollwert, da der Offset abgezogen wird."
   },
   "1341": {
     "block": "SG",
     "code": "SG08",
     "function": "03/16",
     "mode": "r/w",
-    "name": "SG Mode 4 E-Heizer / Zusatzfunktion",
+    "name": "SG08 High-PV E-Heizer / Zusatzfunktion",
     "type": "DIGI1",
     "value_map": {
       "0": "Nein",
@@ -3763,7 +3813,7 @@
     },
     "app_label": "Electric Heater On in SG Mode4",
     "last_review": "v0.2.41 fix8 user confirmed",
-    "description": "Zusatzfunktion/E-Heizer-Freigabe für SG Mode 4"
+    "description": "E-Heizer-/Zusatzfunktion bei High PV beziehungsweise im klassischen SG Mode 4."
   },
   "1342": {
     "app_current_video_value": "0.0 bar",
@@ -3774,7 +3824,8 @@
     "mode": "r/w",
     "name": "Niederdruck-Grenzwert für Frequenzbegrenzung",
     "type": "BAR_X10",
-    "unit": "bar"
+    "unit": "bar",
+    "description": "A38: raw / 10 = bar, Default 0. A38_raw < 2 deaktiviert die Funktion. Nach ca. 15 s Verdichterlauf und weiterer Qualifikation verhindert A38-0,2 <= P_low < A38 weitere Frequenzsteigerung (State 1); P_low < A38-0,2 reduziert den Sollwert in 2-Hz-Schritten bis mindestens C02/MAIN:1219 (State 2)."
   },
   "1343": {
     "app_current_video_value": "0.0 A",
@@ -3843,68 +3894,83 @@
     "code": "C13",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter C13",
+    "name": "PID P-Anteil Kompressorfrequenzregelung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "In App nicht sichtbar."
+    "notes": "In App nicht sichtbar.",
+    "default": 3,
+    "internal_type": "signed byte",
+    "description": "P = C13 * error. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02."
   },
   "1349": {
     "block": "C",
     "code": "C14",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter C14",
+    "name": "PID I-Divisor Kompressorfrequenzregelung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "In App nicht sichtbar."
+    "notes": "In App nicht sichtbar.",
+    "default": 2,
+    "internal_type": "signed byte",
+    "description": "I_acc += error / C14. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "write_min": 1
   },
   "1350": {
     "block": "C",
     "code": "C15",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter C15",
+    "name": "PID D-Anteil Kompressorfrequenzregelung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "In App nicht sichtbar."
+    "notes": "In App nicht sichtbar.",
+    "default": 6,
+    "internal_type": "signed byte",
+    "description": "D = C15 * (error - previous_error). Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02."
   },
   "1351": {
     "block": "E",
     "code": "E20",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter E20",
+    "name": "EEV P-/Fehlerverstärkung",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "In App nicht sichtbar."
+    "notes": "In App nicht sichtbar.",
+    "description": "Proportionaler Fehler-/Gainfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Die proportionale Korrektur arbeitet mit mehreren Fehlerzonen und wird auf ungefähr ±60 Schritte begrenzt. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt."
   },
   "1352": {
     "block": "E",
     "code": "E21",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Display-Firmware Parameter E21",
+    "name": "EEV I-/Zeitfaktor (Divisor)",
     "type": "RAW",
     "last_review": "v0.2.41 fix8",
-    "notes": "In App nicht sichtbar."
+    "notes": "In App nicht sichtbar.",
+    "description": "Zeit-/Integralskalierungsfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Der zeitabhängige Anteil enthält den Faktor 1/E21. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt; insbesondere E21=0 darf nicht als sicherer Einstellwert dokumentiert werden."
   },
   "1353": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset Zone-1-Raumtemperatur,",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1354": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset Zone-2-Raumtemperatur",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1355": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Offset lokaler T04-Außentemperaturfühler",
+    "type": "Temp1",
+    "unit": "°C"
   },
   "1356": {
     "block": "H",
@@ -3914,7 +3980,10 @@
     "notes": "H42 ist die Außentemperatur-Schwelle. D30/1437 (Gehaeusewannenheizung Nachlauf nach Abtauen) wirkt erst, wenn AT kleiner als H42/1356 ist. Einheit °C.",
     "function": "03/16",
     "mode": "r/w",
-    "unit": "°C"
+    "unit": "°C",
+    "description": "Einschalt-Außentemperaturschwelle der Gehäuse-/Wannenheizung. H42 wird aus MAIN 1356 geladen und direkt mit dem lokalen T04 verglichen; die externe beziehungsweise effektive AT wird nicht verwendet. Die Abschaltung erfolgt mit ungefähr +2,0 K Hysterese.",
+    "temperature_source": "local_t04",
+    "hysteresis": "ca. +2.0 K"
   },
   "1357": {
     "app_label": "Diff. of No Pump On at Low Water Temp.",
@@ -4087,6 +4156,51 @@
     "name": "Automatischer Werkstest Wasserpumpe Drehzahl (ASM)",
     "type": "RAW"
   },
+  "1388": {
+    "default": "2.0 K",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Kühl-Mindesttemperatur über Taupunkt",
+    "type": "TEMP1",
+    "unit": "K",
+    "description": "Taupunkt-Sicherheitsabstand für den Kühl-Sollwert. Bei aktivem Raumtemperatur-/Feuchtesensor-Modus 1387=2 begrenzt die Firmware den Kühl-Sollwert auf mindestens berechneter Taupunkt plus 1388. RAW / 10 = K; Default RAW 20 = 2,0 K."
+  },
+  "1389": {
+    "default": "4.0 K",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Raum-/T04-ΔT-Schaltschwelle",
+    "type": "TEMP1",
+    "unit": "K",
+    "description": "Schaltschwelle zwischen der Raumtemperatur des Temperatur-/Feuchtesensors und dem lokalen Außentemperaturfühler T04. EIN bei T_Raum − T04 ≥ 1389, AUS mit fester 1,0-K-Hysterese. RAW / 10 = K; Default RAW 40 = 4,0 K. Der offizielle Herstellername ist nicht bekannt.",
+    "temperature_source": "local_t04"
+  },
+  "1402": {
+    "block": "D",
+    "code": "D100",
+    "default": "2 min",
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Mindest-Abtauzeit",
+    "notes": "D100 ist eine fiktive, projektinterne Bezeichnung abseits der bestätigten Hersteller-Codes und kein bestätigter PHNIX-Menüname.",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "Mindestlaufzeit des eigentlichen Abtauens, bevor die reguläre temperaturabhängige Abtaubeendigung zulässig ist. Default 2 min. Eine separate hohe Temperaturgrenze von etwa 33,0 °C kann die Mindestzeit übersteuern; D19 bleibt die maximale Abtaudauer."
+  },
+  "1422": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Verdichter-Frequenz-Derating in %, Default 70 % / Erforschen!",
+    "notes": "Interessant, genau anschauen!.",
+    "type": "RAW"
+  },
+  "1427": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "signed Schwellwert/Hysterese für State-Machine um MAIN:2154",
+    "notes": "Interessant, genau anschauen!, Funktion bestätigt, Messgröße 2154 noch offen",
+    "type": "RAW"
+  },
   "1432": {
     "app_current_video_value": "4.4 °C",
     "app_label": "Target Temp. Diff. for Pump Speed Control",
@@ -4147,7 +4261,9 @@
     "notes": "Achtung: nicht P15. 1437 ist sicher D30. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
     "source": "User confirmed; used in live system",
     "type": "MINUTES",
-    "unit": "min"
+    "unit": "min",
+    "description": "Nachlaufzeit der Gehäuse-/Wannenheizung nach dem Abtauen. D30 gehört zum Nachlaufpfad des realen GPIO-Ausgangs PD8; die Außentemperaturfreigabe erfolgt über H42/1356 und direkt über den lokalen T04. Die vollständige Timer- und Zustandslogik bleibt zu erforschen.",
+    "temperature_source": "local_t04"
   },
   "1438": {
     "app_current_video_value": "1.0 bar",
@@ -4255,26 +4371,54 @@
     "name": "Blockkopf Paket 6 / erstes Blockkopf-Register",
     "type": "BLOCK"
   },
+  "1463": {
+    "function": "03/16",
+    "mode": "r/w",
+    "code": "H101",
+    "name": "Externer Außentemperaturfühler / External outdoor temperature sensor",
+    "name_en": "External outdoor temperature sensor",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Normaler/interner AT-Fühler T04 / Normal/internal T04 sensor",
+      "1": "Externer AT-Fühler aktiv / External outdoor sensor enabled"
+    },
+    "description": "FW 3.4: Wählt den Außentemperaturfühler. Bei 0 wird der normale/interne T04 verwendet. Bei 1 wird der neue externe AT-Eingang verwendet; ist sein Messwert ungültig oder der Fühler offen/fehlerhaft, fällt die Regelung auf T04 zurück.",
+    "description_en": "FW 3.4: Selects the outdoor temperature sensor. 0 uses the normal/internal T04 sensor. 1 selects the new external outdoor-temperature input; if its reading is invalid or the sensor is open/faulty, control falls back to T04.",
+    "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
+  },
   "1464": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "AT-Grenzwert Heiz-/Sommerabschaltung",
+    "notes": "MAIN:2146 Bit4; Funktion weiter erforschen. Die Rückschaltung erfolgt bei 1464 - 3,0 K.",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Verwendet die effektive Außentemperatur: bei MAIN:1463=1 den externen AT solange gültig, sonst Fallback auf lokalen T04. Effektiver AT >= Grenzwert für 1465 × 120 Scheduler-Ticks aktiviert die Heiz-/Sommerabschaltung; effektiver AT <= Grenzwert - 3,0 K für dieselbe Zeit gibt sie wieder frei.",
+    "temperature_source": "effective_at",
+    "hysteresis": "-3.0 K"
+  },
+  "1465": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Verzögerungszeit Heiz-/Sommerabschaltung",
+    "notes": "Die Einheit ist sehr wahrscheinlich Minuten.",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "Zeitparameter der Heiz-/Sommerabschaltung; Einheit sehr wahrscheinlich Minuten. Intern 1465 × 120 Scheduler-Ticks. Wert 0 setzt/deaktiviert den internen Abschaltzustand."
   },
   "1466": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
+    "notes": "Interessant, genau anschauen!",
+    "type": "RAW"
   },
   "1476": {
-    "function": "03",
-    "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
+    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
+    "type": "RAW"
   },
   "1541": {
     "function": "03",
@@ -4335,6 +4479,22 @@
     "mode": "read",
     "name": "Blockkopf Paket 7 / erstes Blockkopf-Register",
     "type": "BLOCK"
+  },
+  "1561": {
+    "function": "16",
+    "mode": "read",
+    "name": "Verbleibende A34-Kurbelgehäuse-Vorheizzeit",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "In Firmware V3.4 neu exportierter Diagnosewert für die verbleibende A34-Kurbelgehäuse-Vorheizzeit. Berechnung: remaining = A34 - elapsed/120."
+  },
+  "1852": {
+    "function": "16",
+    "mode": "read",
+    "name": "Außenlüfter 1 Soll-/Regeldrehzahl",
+    "type": "RPM",
+    "unit": "rpm",
+    "description": "Vom Lüfter-Regelblock berechnete Soll- beziehungsweise Regeldrehzahl des Außenlüfters 1. Der Wert liegt im selben Drehzahl-Zahlenraum wie F25/F26."
   },
   "2001": {
     "function": "03",
@@ -4471,7 +4631,7 @@
   "2017": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Reserviert / In V3.3 unbenutzt",
     "type": "RAW"
   },
   "2018": {
@@ -4511,13 +4671,14 @@
   "2020": {
     "function": "16",
     "mode": "read",
-    "name": "015 / EEV-Schritte",
-    "type": "DIGI1"
+    "name": "EEV Istposition / Schritte",
+    "type": "DIGI1",
+    "description": "Intern nachgeführte tatsächliche Stepperposition des Haupt-Expansionsventils in Schritten. Nicht nur ein abstrakter Regler-Sollwert."
   },
   "2021": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Reserviert / In V3.3 unbenutzt",
     "type": "RAW"
   },
   "2022": {
@@ -4548,19 +4709,19 @@
   "2026": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "INV1-Datenwort High-Byte (Semantik noch offen)",
     "type": "RAW"
   },
   "2027": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "INV1-Datenwort Low-Byte (Semantik noch offen)",
     "type": "RAW"
   },
   "2028": {
     "function": "16",
     "mode": "read",
-    "name": "9",
+    "name": "INV1-Datenwert 16 Bit (Semantik noch offen)",
     "type": "RAW"
   },
   "2029": {
@@ -4605,8 +4766,11 @@
   "2033": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "optionaler zweiter Außentemperaturfühler",
+    "note": "Externer AT-Rohwert von Analogkanal 23, physisch Klemme 3/4. Ein offener Eingang ergibt 409,1; dieser Fehlerwert darf nicht als Temperatur interpretiert werden.",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Messwert des optionalen externen Außentemperaturfühlers auf Analogkanal 23, physisch Klemme 3/4. Bei angeschlossenem, gültigem Fühler ist die Skalierung °C korrekt. Ein offener Eingang ergibt 409,1; dieser Fehlerwert ist keine Temperaturangabe."
   },
   "2034": {
     "bit_map": {
@@ -4621,7 +4785,7 @@
       "2": "S03 Wasserflussschalter",
       "3": "S04 Überhitzungsschalter elektrischer Heizer",
       "4": "S05 Fern-AN/AUS",
-      "5": "S06 Fern Heizen/Kühlen",
+      "5": "S06 Fernheizung/Kühlung / Remote Heat-Cool",
       "6": "S07 Warmwasserschalter",
       "7": "S08 Reserviert / unbekannt",
       "8": "S09 Reserviert / unbekannt",
@@ -4633,7 +4797,8 @@
     "mode": "read-only",
     "name": "Schalterzustände / Kontakte / SG Ready",
     "type": "BITFIELD",
-    "description": "Bitfeld der Eingangskontakte. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10 Kontaktlogik bleibt active-low."
+    "description": "Bitfeld der Eingangskontakte. Bit 5 = S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen und bei aktiviertem externem AT-Fühler (1463=1) einen gemeinsam genutzten Hardwarepfad anzeigen, der dann offenbar analog als Temperaturfühler ausgewertet wird. Eine Zuordnung zu DIN2 oder zu einer physischen Klemme ist nicht bestätigt. Bit 12 = SG Kontakt 1 / AI-DI16 / Fernschalter / Klemme 1–2. Bit 13 = SG Kontakt 2 / DIN_1 / Heat/Cool On/Off / PV-Kontakt / Klemme 7–8. Bit 12/13 sind active-high: Rohbit 0 = Aus, Rohbit 1 = Ein. Bestehende S01–S10-Kontaktlogik bleibt active-low.",
+    "description_en": "Input-contact bit field. Bit 5 = S06 Remote Heat-Cool. Reverse-engineering hypothesis, not yet conclusively confirmed: bit 5 might correspond to DIN2 and might indicate a hardware path shared with the external outdoor-temperature input when 1463=1, at which point it apparently is evaluated as an analog temperature-sensor input. Neither the DIN2 assignment nor a physical terminal assignment is confirmed. Bits 12/13 are the active-high SG contacts; the established S01–S10 contact logic remains active-low."
   },
   "2035": {
     "block": "T",
@@ -4678,13 +4843,13 @@
   "2040": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Hydraulikmodul-Status HYD:2047; bei H30=3 das Gültigkeits-/Presence-Gate des externen Durchflusses ",
     "type": "RAW"
   },
   "2041": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
+    "name": "Hydraulikmodul-Datenwert - Spiegel von HYD:2051",
     "type": "RAW"
   },
   "2042": {
@@ -4720,7 +4885,8 @@
     "function": "16",
     "mode": "read",
     "name": "Einlasswassertemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "Einlasswassertemperatur. Wird im Smart-EEV-Kennfeld zusätzlich als vierstufige Faktorachse verwendet. Faktoren: 1,2 / 1,0 / 0,9 / 0,8. Umschaltpunkte mit Hysterese liegen ungefähr bei 20,1/18,1 °C, 30/28 °C und 40/38 °C."
   },
   "2046": {
     "block": "T",
@@ -4743,8 +4909,11 @@
     "code": "T04",
     "function": "16",
     "mode": "read",
-    "name": "Umgebungstemperatur (AT)",
-    "type": "TEMP1"
+    "name": "Verwendete Außentemperatur / Outdoor temperature in use",
+    "name_en": "Outdoor temperature in use",
+    "type": "TEMP1",
+    "description": "Von der Firmware tatsächlich verwendete Außentemperatur nach Auswahl zwischen normalem T04 und externem AT-Fühler einschließlich Fallback und Aufbereitung. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern.",
+    "description_en": "Outdoor temperature actually used by the firmware after selecting between normal T04 and the external outdoor sensor, including fallback and signal processing. It is also used for E03/E07 segment selection and the separate six-stage Smart EEV map axis."
   },
   "2049": {
     "block": "T",
@@ -4783,8 +4952,9 @@
     "code": "T12",
     "function": "16",
     "mode": "read",
-    "name": "Abgastemperatur",
-    "type": "TEMP1"
+    "name": "Verdichter-Austritts-/Heißgastemperatur",
+    "type": "TEMP1",
+    "description": "Heißgas-/Verdichter-Austrittstemperatur. Wird zusätzlich als fünfstufige Achse der zustandsabhängigen 4×5-Auto-EEV-Regelmatrix verwendet. Die Schwellen hängen über A26 von der R32-/R290-Profilfamilie ab."
   },
   "2054": {
     "function": "16",
@@ -4815,10 +4985,12 @@
     "function": "16",
     "mode": "read",
     "name": "T35 / AC Input Current",
-    "type": "RAW",
+    "type": "AMP_X10",
     "unit": "A",
-    "notes": "Firmware V3.3: T35 / AC-Eingangsstrom. T34 / AC-Spannung ist Register 2062.",
-    "last_review": "FW3.3 Reverse Engineering"
+    "notes": "Firmware V3.3/V3.4: T35 / AC-Eingangsstrom. Skalierung RAW / 10 = A; Beispiel RAW 30 = 3,0 A. T34 / AC-Spannung ist Register 2062.",
+    "last_review": "FW3.3/V3.4 Reverse Engineering + Live-Test 2026-09-12",
+    "block": "T",
+    "code": "T35"
   },
   "2058": {
     "block": "T",
@@ -4889,34 +5061,34 @@
   "2065": {
     "function": "16",
     "mode": "read",
-    "name": "Verdampfungstemperatur / Evaporating Temp (ASM)",
+    "name": "Verdampfungstemperatur",
     "type": "TEMP1",
     "block": "T",
     "code": "T-Diag1",
     "unit": "°C",
-    "description": "ASM-Diagnosewert. Vermutlich aus Niederdruck und Kältemittel-Sättigungstabelle berechnete Verdampfungstemperatur.",
+    "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
     "app_label": "Evaporating Temp (ASM)"
   },
   "2066": {
     "function": "16",
     "mode": "read",
-    "name": "Abgas-Überhitzung / Exhaust Superheat (ASM)",
+    "name": "Abgasüberhitzung",
     "type": "TEMP1",
     "block": "T",
     "code": "T-Diag2",
     "unit": "K",
-    "description": "ASM-Diagnosewert. Vermutlich modellierter Wert, da kein Hochdrucksensor vorhanden; Beobachtung: etwa Heißgas minus WP-Austritt/Kondensator-Referenz.",
+    "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
     "app_label": "Exhaust Superheat (ASM)"
   },
   "2067": {
     "function": "16",
     "mode": "read",
-    "name": "Rückgas-/Saug-Überhitzung / Suction Superheat (ASM)",
+    "name": "Rückgas-/Saugüberhitzung",
     "type": "TEMP1",
     "block": "T",
     "code": "T-Diag3",
     "unit": "K",
-    "description": "Wichtiger EEV-/Saugseiten-Diagnosewert. Vermutlich Sauggastemperatur minus Verdampfungstemperatur.",
+    "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
     "app_label": "Suction Superheat (ASM)"
   },
   "2068": {
@@ -4946,7 +5118,8 @@
     "function": "16",
     "mode": "read",
     "name": "Kompressor-Sollfrequenz",
-    "type": "DIGI1"
+    "type": "DIGI1",
+    "description": "Sollfrequenz des Verdichters. Wird im Smart-EEV-Kennfeld als Frequenzachse verwendet. Zustandswechsel mit Hysterese erfolgen ungefähr bei 46/44 Hz, 61/59 Hz und 76/74 Hz."
   },
   "2072": {
     "block": "T",
@@ -4954,7 +5127,8 @@
     "function": "16",
     "mode": "read",
     "name": "Betriebsfrequenz des Kompressors",
-    "type": "DIGI1"
+    "type": "DIGI1",
+    "description": "Tatsächliche Verdichterfrequenz. Im E07-Mindestöffnungspfad erfolgt bei 61 Hz die Umschaltung: unter 61 Hz gilt globales E07, ab 61 Hz die temperatursegmentierten E07-1…5-Werte."
   },
   "2073": {
     "block": "T",
@@ -5018,19 +5192,19 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Status-/Datenwort (wie Displaybus 91099)",
-    "type": "RAW",
+    "name": "Interner Betriebs-/Anforderungsstatus (Displaybus 91099)",
+    "type": "BITFIELD",
     "unit": "raw",
-    "notes": "Live-Ergänzung 2026-07-17: bisher als reserviert geführt. Beobachtet 8 Änderungen, Rohwertbereich 0 bis 531. Verläuft identisch zur virtuellen Displaybus-ID 91099; möglicherweise Bitfeld oder zusammengesetzter Status."
+    "notes": "V3.4-Firmware: internes 16-Bit-Statuswort, an mehreren Stellen bitweise gesetzt/gelöscht. Live identisch zur virtuellen Displaybus-ID 91099. Einzelne Bits sind noch nicht sicher fachlich zugeordnet."
   },
   "2081": {
     "bit_map": {
-      "0": "IPM Überhitzung",
-      "1": "Kompressor Startfehler",
+      "0": "F00 – IPM-Überstromfehler",
+      "1": "F01 – Kompressortreiberfehler",
       "2": "Kompressor Überstrom",
       "3": "Phasenverlust Eingangsspannung",
       "4": "IPM Stromabtastfehler",
-      "5": "Überhitzungsschutz Antriebsplatine",
+      "5": "F26 – IGBT-Überhitzungsfehler",
       "6": "Vorladefehler",
       "7": "DC-Sammelschienen-Überspannung",
       "8": "DC-Sammelschienen-Unterspannung",
@@ -5038,9 +5212,9 @@
       "10": "AC-Eingangs-Überstromabschaltung",
       "11": "Eingangsspannungs-Abtastfehler",
       "12": "DSP ↔ PFC Kommunikationsfehler",
-      "13": "Antriebsplatinen-Temperaturfehler",
-      "14": "DSP ↔ Kommunikationsplatine Fehler",
-      "15": "Hauptplatinen-Kommunikationsfehler"
+      "13": "F17 – Temperatursensorfehler Kompressortreiber",
+      "14": "F11 – Kommunikation DSP ↔ Kompressortreiber gestört",
+      "15": "F151 – Kommunikation Kompressortreiber ↔ Hauptplatine gestört"
     },
     "function": "16",
     "mode": "read",
@@ -5048,15 +5222,15 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR07",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2082": {
     "bit_map": {
       "0": "IPM Überhitzungsstopp",
-      "1": "Kompressor Standardphase",
+      "1": "F14 – Kompressor-Phasenausfall",
       "3": "Eingangsstrom-Abtastfehler",
       "6": "EEPROM-Fehler",
-      "7": "Eingangsspannung Überbegrenzungsschutz",
+      "7": "F10 – AC-Eingangsüberspannungsfehler",
       "15": "Kompressor-Übergeschwindigkeitsschutz"
     },
     "function": "16",
@@ -5065,15 +5239,20 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR08",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "legacy_bit_map": {
+      "2": "F032 – Lüftermotor 2 Fehler"
+    },
+    "legacy_note": "Legacy-Eintrag aus 108.ICO; in der untersuchten DWIN-Displayversion maskiert."
   },
   "2083": {
     "bit_map": {
-      "0": "Stromregelungsfrequenz-Alarm",
-      "1": "Kompressor Magnetschutz-Alarm",
+      "0": "F33 – Frequenzreduzierung wegen Kompressorstrom",
+      "1": "F16 – Kompressor-Schwachmagnetisierungsalarm",
       "2": "Leistungseinheit Überhitzung",
-      "4": "AC-Eingangsstrom Regelungsalarm",
-      "5": "EEPROM-Fehlerwarnung"
+      "4": "F22 – Frequenzreduzierung wegen AC-Eingangsstrom",
+      "5": "EEPROM-Fehlerwarnung",
+      "7": "F24 – EEPROM beschädigt / ungültige Fehlerdaten"
     },
     "function": "16",
     "mode": "read",
@@ -5081,26 +5260,42 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR09",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2084": {
     "function": "16",
     "mode": "read",
-    "name": "9",
-    "type": "RAW"
+    "name": "Fehler 10 / Störmeldebits",
+    "description": "Fehlerbits anhand der originalen DWIN Display-Icon-Library 108.ICO identifiziert.",
+    "type": "BITFIELD",
+    "bit_map": {
+      "8": "F120 – Lüftertreiber-Temperatursensorfehler",
+      "9": "F108 – Lüftertreiber-IPM Überhitzungsfehler",
+      "10": "F105 – Lüftertreiber externer Überstromfehler",
+      "11": "F101 – Lüftertreiber Phasenausfall Versorgung",
+      "12": "F112 – Lüftertreiber Strommess-/Abtastfehler",
+      "13": "F102 – Lüftertreiber Startfehler",
+      "14": "F113 – Lüftertreiber interner Überstromfehler",
+      "15": "F109 – Lüftertreiber Überdrehzahlschutz"
+    },
+    "block": "ERR",
+    "code": "ERR10"
   },
   "2085": {
     "bit_map": {
       "2": "Heizungsrücklauftemperatur-Sensorfehler",
       "3": "Heizungsauslasswassertemperatur-Sensorfehler",
       "4": "Hochdruckschutz",
+      "5": "TC – Kein Kühlbetrieb bei niedriger Außentemperatur / Schutz",
       "6": "Niederdruckschutz",
-      "8": "Wasserflussschutz",
-      "9": "Überlastschutz der Elektroheizung",
-      "10": "Winter-Frostschutz Stufe 1",
-      "11": "Winter-Frostschutz Stufe 2",
+      "7": "E030 – Unzureichender Wasserdurchfluss beim Abtauen",
+      "8": "E032 – Durchflussschalterfehler",
+      "9": "E04 – Elektroheizung Überhitzungsfehler",
+      "10": "E19 – Primärer Frostschutzfehler",
+      "11": "E29 – Sekundärer Frostschutzfehler",
       "12": "Frostschutz",
-      "14": "Raumtemperaturfehler"
+      "13": "E035 – Niedriger Wasserdurchfluss – Schutz",
+      "14": "P42 – Raumtemperatursensorfehler"
     },
     "function": "16",
     "mode": "read",
@@ -5108,17 +5303,24 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR01",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2086": {
     "bit_map": {
-      "3": "Lüfter 1 Überlastungs-Drehzahlbegrenzung",
-      "4": "Lüfter 2 Überlastungs-Drehzahlbegrenzung",
+      "0": "P182 – Zu hohe Heißgastemperatur",
+      "3": "E103 – Lüftermotor 1 Überlastfehler",
+      "4": "E203 – Lüftermotor 2 Überlastfehler",
       "5": "Temp.diff. Ein-/Auslasswasser zu groß",
-      "6": "Auslasswasser überhitzt",
+      "6": "E065 – Auslasswassertemperatur zu hoch",
       "7": "Mischwasser-Auslasswassertemperatur-Sensorfehler",
       "8": "Warmwasserrücklauftemperatur-Sensorfehler",
-      "9": "Warmwasserauslasswassertemperatur-Sensorfehler"
+      "9": "Warmwasserauslasswassertemperatur-Sensorfehler",
+      "10": "P105 – Zone 1 Raumtemperatursensorfehler",
+      "11": "P106 – Zone 2 Raumtemperatursensorfehler",
+      "12": "P107 – Zone 2 Mischtemperatursensorfehler",
+      "13": "E08g – Kommunikationsfehler Thermostat Zone 1",
+      "14": "E08h – Kommunikationsfehler Thermostat Zone 2",
+      "15": "E122 – Fehlerhafte Regelung des Mischventils"
     },
     "function": "16",
     "mode": "read",
@@ -5126,14 +5328,19 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR02",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert.",
+    "legacy_bit_map": {
+      "2": "E06 – Zu große Wasservorlauf-/Rücklauftemperaturdifferenz – Schutz"
+    },
+    "legacy_note": "Bits 2, 3 und 4 sind in der untersuchten DWIN-Displayversion maskiert; ihre Fehlertexte existieren in 108.ICO. Bits 3 und 4 bleiben für die allgemeine Modbus-Auswertung aktiv."
   },
   "2087": {
     "bit_map": {
       "4": "Hochdruckschutz (3x)",
       "6": "Niederdruckschutz (3x)",
-      "8": "Wasserflussschutz (3x)",
-      "9": "Elektroheizungsschutz (3x)",
+      "8": "E032 – Durchflussschalterfehler (3+)",
+      "9": "E04 – Elektroheizung Überhitzungsfehler (3+)",
+      "10": "E035 – Niedriger Wasserdurchfluss – Schutz (3+)",
       "12": "Frostschutz (3x)"
     },
     "function": "16",
@@ -5142,13 +5349,15 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR03",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2088": {
     "bit_map": {
+      "0": "P182 – Zu hohe Heißgastemperatur (3+)",
       "2": "Temp.diff. Ein-/Auslasswasser zu groß (3x)",
       "3": "Auslasswassertemperatur zu niedrig (3x)",
-      "4": "Auslasswasser Übertemperaturschutz (3x)"
+      "4": "Auslasswasser Übertemperaturschutz (3x)",
+      "7": "Externer Außentemperaturfühler Fehler / External outdoor temperature sensor fault"
     },
     "function": "16",
     "mode": "read",
@@ -5156,7 +5365,13 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR04",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert. Bit 7 (0x0080) wird bei 1463=1 und fehlendem/ungültigem externem AT-Fühler gesetzt. Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Fehlerbit gesetzt; die WP läuft normal weiter und verwendet T04 per Fallback.",
+    "description_en": "Fault texts reconstructed from the original DWIN display icon library and display firmware. Bit 7 (0x0080) is set when 1463=1 and the external outdoor sensor is missing or invalid. Live test with an open input: register 2033 showed a measurement/display value of 409.1 with no confirmed unit and the fault bit was set; the heat pump continued normally using T04 as fallback.",
+    "legacy_bit_map": {
+      "12": "P03 – WW-Speicher-Temperatursensorfehler",
+      "15": "E071 – Auslasswassertemperatur zu niedrig – Schutz"
+    },
+    "legacy_note": "Legacy-Einträge aus 108.ICO; in der untersuchten DWIN-Displayversion maskiert."
   },
   "2089": {
     "bit_map": {
@@ -5166,10 +5381,12 @@
       "3": "Umgebungstemperaturfehler",
       "4": "Sauggastemperaturfehler",
       "5": "Frostschutztemperaturfehler",
-      "6": "Spulenauslasswassertemperatur-Sensorfehler",
+      "6": "P152 – Verteilerrohr-Temperatursensorfehler",
+      "7": "P03a – Pufferspeicher-Temperatursensorfehler",
       "9": "EVI Einlasstemperaturfehler",
       "10": "EVI Auslasstemperaturfehler",
       "11": "Abgastemperaturfehler",
+      "12": "PP12 – Hochdrucksensorfehler",
       "13": "System 1 Drucksensorfehler",
       "14": "Niedrige Umgebungstemperaturfehler",
       "15": "Auslasstemperatur zu niedriger Schutz"
@@ -5180,14 +5397,15 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR05",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2090": {
     "bit_map": {
-      "8": "Warmwassertemperaturfehler",
+      "8": "P03 – WW-Speicher-Temperatursensorfehler",
       "11": "Lüfter 1 Fehler",
       "12": "Lüfter 2 Fehler",
       "13": "Kommunikationsfehler Hauptplatine ↔ Lüfter 1",
+      "14": "E08c – Kommunikationsfehler Hydraulikmodul",
       "15": "Kommunikationsfehler Hauptplatine ↔ Lüfter 2"
     },
     "function": "16",
@@ -5196,7 +5414,7 @@
     "type": "BITFIELD",
     "block": "ERR",
     "code": "ERR06",
-    "description": "Störmelde-/Fehlerregister. Klartexte aus Node-RED/Forumsliste übernommen."
+    "description": "Fehlertexte anhand der originalen DWIN Display-Icon-Library 108.ICO sowie der Display-Firmware rekonstruiert."
   },
   "2091": {
     "function": "03",
@@ -5309,9 +5527,12 @@
   "2106": {
     "function": "16",
     "mode": "read",
-    "name": "Pumpenregel-/PWM-Regelzyklus Flag (Kandidat)",
-    "type": "RAW",
-    "note": "Live-Beobachtung 2026-07-15 im Kühlbetrieb: Register pulste zyklisch ungefähr alle 5 Minuten von 0 auf 1 und nach etwa 9–11 Sekunden zurück auf 0. Beobachtete Pulse u. a. um 13:30, 13:35, 13:40, 13:45, 13:50, 13:55, 14:00 und 14:05 Uhr. Währenddessen blieb Register 2115 stabil bei 50 % Pumpen-PWM. Starker Kandidat für zyklisches Pumpenregel-/PWM-Regelfenster bzw. einen P12-Regelentscheid. Bedeutung noch unbestätigt."
+    "name": "Zeit-/Impulsstatus M_PULS",
+    "type": "BITFIELD",
+    "note": "Display-ASM: M_PULS = 0x083A = Register 2106. Bit 0 wird auf steigende Flanke ausgewertet und löst die 5-Minuten-Datenspeicherung aus. Damit ist die frühere Pumpenregel-/PWM-Hypothese widerlegt. Weitere Bits/Funktionen sind noch offen.",
+    "bit_map": {
+      "0": "5-Minuten-Puls für Display-Historienaufzeichnung"
+    }
   },
   "2107": {
     "function": "16",
@@ -5329,9 +5550,9 @@
   "2109": {
     "function": "16",
     "mode": "read",
-    "name": "Interner V3.3-Statuswert",
-    "type": "RAW",
-    "description": "Wird von V3.3 aktiv beschrieben; genaue fachliche Bedeutung noch offen."
+    "name": "Internes Ereignis-/Statusbitfeld",
+    "type": "BITFIELD",
+    "description": "Internes Ereignis-/Statusbitfeld; Darstellung als RAW, Hex und Binär. Die Semantik der Einzelbits ist weiterhin offen."
   },
   "2110": {
     "function": "16",
@@ -5375,94 +5596,100 @@
   "2116": {
     "function": "16",
     "mode": "read",
-    "name": "PWM-Rückmeldung der Pumpe",
+    "name": "PWM-Rückmeldung (Durchfluss) der UP",
     "type": "PERCENT",
     "unit": "%",
-    "notes": "Live-Ergänzung 2026-07-17: vermutlich PWM-Rückmeldung der Umwälzpumpe in Prozent."
+    "notes": "selbst getestet."
   },
   "2117": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Heizen - High",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
+    "unit": "kWh"
   },
   "2118": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Heizen",
+    "name": "Energiezähler elektrisch Heizen - Low",
     "type": "KWH",
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
     "unit": "kWh"
   },
   "2119": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler Wärmemenge Heizen - High",
+    "type": "KWH",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
+    "unit": "kWh"
   },
   "2120": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler Wärmemenge Heizen",
+    "name": "Energiezähler Wärmemenge Heizen - Low",
     "type": "KWH",
-    "note": "Quelle: Forum / Endif; Status: selbst ungetestet.",
+    "note": "Quelle: Forum / Endif; Status: selbst getestet.",
     "unit": "kWh"
   },
   "2121": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler elektrisch Kühlen - High",
+    "type": "KWH",
+    "note": "Quelle: selbst getestet; ",
+    "unit": "kWh"
   },
   "2122": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Kühlen",
+    "name": "Energiezähler elektrisch Kühlen - Low",
     "type": "KWH",
-    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "note": "Quelle: selbst getestet; ",
     "unit": "kWh"
   },
   "2123": {
     "function": "16",
     "mode": "read",
-    "name": "Reserviert",
-    "type": "RAW"
+    "name": "Energiezähler Wärmemenge Kühlen - High",
+    "type": "KWH"
   },
   "2124": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler Wärmemenge Kühlen",
+    "name": "Energiezähler Wärmemenge Kühlen - Low",
     "type": "KWH",
-    "note": "Quelle: selbst getestet; Status: sehr wahrscheinlich richtig. Reiner gelesener Energiezähler, nicht manuell schreibbar.",
+    "note": "Quelle: selbst getestet",
     "unit": "kWh"
   },
   "2125": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Warmwasser – High Word",
+    "name": "Kumulativer 32-Bit-Zähler (wahrscheinlich elektrische Warmwasserenergie) – High Word",
     "type": "RAW",
-    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen."
   },
   "2126": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler elektrisch Warmwasser – Low Word",
+    "name": "Kumulativer 32-Bit-Zähler (wahrscheinlich elektrische Warmwasserenergie) – Low Word",
     "type": "RAW",
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126."
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen."
   },
   "2127": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler thermisch Warmwasser – High Word",
+    "name": "Kumulativer 32-Bit-Zähler (wahrscheinlich thermische Warmwasserenergie) – High Word",
     "type": "RAW",
-    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen."
   },
   "2128": {
     "function": "16",
     "mode": "read",
-    "name": "Energiezähler thermisch Warmwasser – Low Word",
+    "name": "Kumulativer 32-Bit-Zähler (wahrscheinlich thermische Warmwasserenergie) – Low Word",
     "type": "RAW",
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128."
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen."
   },
   "2129": {
     "function": "16",
@@ -5502,14 +5729,14 @@
     "name": "SG Ready aktiver Modus",
     "type": "RAW",
     "value_map": {
-      "0": "WP Aus oder SG deaktiviert",
-      "1": "SG Mode 1 / Schlafmodus",
-      "2": "SG Mode 2 / wenig PV",
-      "3": "SG Mode 3 / mittel PV",
-      "4": "SG Mode 4 / High PV",
-      "5": "Normalbetrieb"
+      "0": "WP Aus / SG Ready Aus",
+      "1": "Klassisch: Mode 1 / Schlafmodus | SG01=7: Low PV / Leistungsbegrenzung",
+      "2": "Klassisch: Mode 2 / wenig PV | SG01=7: Neutralbetrieb",
+      "3": "Klassisch: Mode 3 / mittel PV | SG01=7: High PV / Temperatur-Offsets",
+      "4": "Klassisch: Mode 4 / High PV",
+      "5": "Klassisch: Normalbetrieb"
     },
-    "description": "Zeigt den aktiven SG-Ready-/Betriebsstatus. Reagiert zeitverzögert nach Kontaktänderung; der Klemmstatus ist sofort in Register 2034 sichtbar."
+    "description": "Aktiver SG-Ready-/Betriebsstatus. Bedeutung von 1..3 hängt von SG01/1334 ab: im klassischen Pfad klassische SG-Modi, bei SG01=7 Low PV/Neutral/High PV. Die Detailsemantik für die physischen erweiterten Modi 5/6 ist noch nicht vollständig aufgelöst. V3.4 bildet interne Zustände 6/7/8 für SG01=7 auf 2133 = 1/2/3 ab. Reagiert zeitverzögert; der Klemmstatus ist sofort in Register 2034 sichtbar."
   },
   "2134": {
     "function": "03",
@@ -5534,8 +5761,8 @@
     "mode": "read",
     "type": "TEMP1",
     "unit": "°C",
-    "name": "T04 Außentemperatur – zweiter Veröffentlichungsweg",
-    "note": "Firmware V3.3: zweiter Veröffentlichungsweg der T04-Außentemperatur; TEMP1-Skalierung 0,1 °C."
+    "name": "Außentemperatur – Rohwert ungedämpft",
+    "note": "Firmware V3.3: Außentemperatur ungedämpft, Rohwert ; TEMP1-Skalierung 0,1 °C."
   },
   "2137": {
     "function": "03",
@@ -5556,79 +5783,230 @@
   "2139": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Schutz-/Frequenzbegrenzungs-Status",
+    "type": "BITFIELD",
+    "bit_map": {
+      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß",
+      "3": "A27 – Temperaturdifferenz-/Temperaturbegrenzung",
+      "4": "A38 – Niederdruck-Frequenzbegrenzung",
+      "5": "AC-Eingangsstrom-Begrenzung / T35",
+      "6": "T12 Heißgas-/Abgastemperatur-Frequenzbegrenzung"
+    },
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt."
   },
   "2140": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler A – High Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2141 persistent gespeichertes High-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2141": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler A – Low Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2140 persistent gespeichertes Low-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2142": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler B – High Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2143 persistent gespeichertes High-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2143": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Persistenter 32-Bit-Zähler B – Low Word",
+    "note": "Reverse-Engineering bestätigt die persistente 32-Bit-Paarbildung, jedoch weder Energieart, Laufzeit noch eine andere fachliche Semantik.",
+    "description": "V3.3-Firmwareanalyse: Zusammen mit MAIN:2142 persistent gespeichertes Low-Wort eines 32-Bit-Akkumulators. Der 32-Bit-Wert wird aus beiden Registern gebildet; die konkrete physikalische Bedeutung ist weiterhin offen.",
+    "source": "V3.3-Firmware-Reverse-Engineering"
   },
   "2144": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Reserve / anderer Firmwarepfad",
+    "note": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt."
   },
   "2145": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Reserve / anderer Firmwarepfad",
+    "note": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt."
   },
   "2146": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "type": "BITFIELD",
+    "name": "Capability-/Statusbitfeld",
+    "note": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
+    "bit_map": {
+      "1": "Zugehörige zentrale Strukturquelle (Semantik offen)",
+      "2": "Baseline, fest gesetzt",
+      "3": "Baseline, fest gesetzt",
+      "4": "Heiz-/Sommerabschaltung aktiv",
+      "5": "Baseline, fest gesetzt",
+      "6": "Variabel, Bedeutung offen"
+    },
+    "baseline": "0x002C"
   },
   "2147": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Interner Strukturwert zu MAIN:2146 Bit1 (Semantik offen)",
+    "note": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
+    "signed": true
   },
   "2148": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Reserve / anderer Firmwarepfad",
+    "note": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt."
   },
   "2149": {
     "function": "03",
     "mode": "read",
     "type": "RAW",
-    "name": "Funktion unbekannt",
-    "note": "Funktion unbekannt; keine spekulative Bezeichnung vergeben."
+    "name": "Reserve / anderer Firmwarepfad",
+    "note": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt."
+  },
+  "2151": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner Controller-/Regelmodus",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Interner Modus 0 (Klartextbedeutung offen)",
+      "1": "Interner Modus 1 (Klartextbedeutung offen)",
+      "2": "Interner Modus 2 (Klartextbedeutung offen)",
+      "3": "Interner Modus 3 (Klartextbedeutung offen)",
+      "4": "Interner Modus 4 (Klartextbedeutung offen)"
+    },
+    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt."
+  },
+  "2152": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Runtime-/Regelwert (gefiltert; Bedeutung offen)",
+    "type": "RAW",
+    "note": "V3.4-Analyse: Feld der Zone-1-Runtimestruktur; ein entsprechendes internes Feld existiert auch für Zone 2. Der Wert wird in Regelpfaden gefiltert/geglättet und ist daher kein einfaches 1/2-Enum. Live 2026-09-12 RAW 1/2 beobachtet; physikalische Bedeutung und Skalierung noch offen."
+  },
+  "2155": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner Timer/Zähler",
+    "type": "RAW",
+    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert."
+  },
+  "2160": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Raumtemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock."
+  },
+  "2161": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Mischwassertemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock; Temperatur nach dem Mischventil."
+  },
+  "2162": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Raumtemperatur",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C.",
+    "note": "Reverse-Engineering-Erkenntnis zum Mehrzonen-Liveblock."
+  },
+  "2163": {
+    "function": "03",
+    "mode": "read",
+    "name": "Mischventil Rohposition / Mischverhältnis",
+    "type": "PERCENT",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "description": "RAW 0…100. Das originale Display invertiert die Darstellung teilweise mit 100 - RAW. Die physikalische Stellrichtung darf daher nicht allein aus dem Rohwert abgeleitet werden.",
+    "note": "Reverse-Engineering-Erkenntnis; keine Festlegung auf physikalisch offen oder geschlossen."
+  },
+  "2164": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 1 Auslasswassertemperatur nach Außentemperaturkompensation",
+    "type": "TEMP1",
+    "unit": "°C",
+    "note": "Display-ASM: Adresse 0x0874. Direkt als Wasseraustrittstemperatur nach Umgebung-/Außentemperaturkompensation in Zone 1 bezeichnet. RAW / 10 = °C; Beispiel RAW 450 = 45,0 °C."
+  },
+  "2165": {
+    "function": "03",
+    "mode": "read",
+    "name": "Zone 2 Auslasswassertemperatur nach Außentemperaturkompensation",
+    "type": "TEMP1",
+    "unit": "°C",
+    "note": "Display-ASM: Adresse 0x0875. Direkt als Wasseraustrittstemperatur nach Umgebung-/Außentemperaturkompensation in Zone 2 bezeichnet. RAW / 10 = °C; Beispiel RAW 350 = 35,0 °C."
+  },
+  "2166": {
+    "function": "03",
+    "mode": "read",
+    "name": "Interner Zone-2-Regel-/Control-State",
+    "type": "RAW",
+    "note": "Interner Zone-2-Regel-/Control-State; kein physikalischer Messwert bestätigt. Konkrete Semantik weiterhin offen. Live 2026-09-12 RAW 1 beobachtet."
+  },
+  "2178": {
+    "function": "03",
+    "mode": "read",
+    "name": "Temperatur des Temperatur-/Feuchtesensors",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
+  },
+  "2179": {
+    "function": "03",
+    "mode": "read",
+    "name": "Relative Luftfeuchtigkeit",
+    "type": "DIGI5",
+    "unit": "% rF",
+    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
+  },
+  "2180": {
+    "function": "03",
+    "mode": "read",
+    "name": "Berechneter Taupunkt",
+    "type": "TEMP1",
+    "unit": "°C",
+    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
+  },
+  "8801": {
+    "block": "SG",
+    "mode": "r/w",
+    "name": "Virtueller SG-Ready Eingang",
+    "type": "RAW",
+    "value_map": {
+      "1": "Klassisch (SG01=3): Mode 1 / Schlafmodus | V3.4 vereinfacht (SG01=7): wenig PV / Leistungsbegrenzung",
+      "2": "Klassisch (SG01=3): Mode 2 / wenig PV | V3.4 vereinfacht (SG01=7): Neutralbetrieb",
+      "3": "Klassisch (SG01=3): Mode 3 / mittel PV | V3.4 vereinfacht (SG01=7): High PV / Temperatur-Offsets",
+      "4": "Klassisch (SG01=3): Mode 4 / High PV | bei SG01=7 nicht verwenden"
+    },
+    "description": "Direkter virtueller SG-Ready-/PV-Eingang. Klassisch bei SG01/1334=3: Werte 1..4. Ab V3.4 bei SG01/1334=7: Werte 1..3 = wenig PV/Leistungsbegrenzung, Neutralbetrieb, High PV/Temperatur-Offsets; Wert 4 dort nicht verwenden."
   },
   "50043": {
     "function": "10",
@@ -5742,28 +6120,242 @@
     "type": "ASCII",
     "info": "C544 Mainboard → LTE-DTU Geräte-/Versionsinformation; regulär per FC03 ab Register 50500 (13 Register) lesbar."
   },
-  "2178": {
+  "6011": {
     "function": "03",
     "mode": "read",
-    "name": "Temperatur des Temperatur-/Feuchtesensors",
+    "block": "DIAG",
+    "name": "Raw I/O-/Switch-Diagnosewort",
+    "type": "BITFIELD",
+    "description": "Raw I/O-/Switch-Diagnosewort; Einzelbitsemantik offen."
+  },
+  "6012": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Interner Betriebs-/Steuerzustand / Reason-Code",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Code 0 (Bedeutung offen)",
+      "1": "Code 1 (Bedeutung offen)",
+      "2": "Code 2 (Bedeutung offen)",
+      "3": "Code 3 (Bedeutung offen)",
+      "4": "Code 4 (Bedeutung offen)",
+      "16": "Code 16 (Bedeutung offen)"
+    },
+    "description": "Bekannte Codes 0, 1, 2, 3, 4 und 16; Klartextbedeutungen offen."
+  },
+  "6013": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Weiteres Raw-I/O-Diagnosewort",
+    "type": "BITFIELD",
+    "description": "Weiteres Raw-I/O-Diagnosewort; Einzelbitsemantik offen."
+  },
+  "6014": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Internes Statusbit 7 (Bedeutung offen)",
+    "type": "ENUM",
+    "value_map": {
+      "0": "Bit 7 nicht gesetzt (Bedeutung offen)",
+      "1": "Bit 7 gesetzt (Bedeutung offen)"
+    },
+    "description": "Boolean aus internem Statusbit 7; Bedeutung offen."
+  },
+  "6015": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Config-/Gerätevarianten-Diagnosewert",
+    "type": "RAW",
+    "description": "Config-/Gerätevarianten-Diagnosewert; Bedeutung offen."
+  },
+  "6018": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "WW-Tanktemperatur Diagnose",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "Signed 16-Bit-Wert; RAW / 10 = °C."
+    "invalid_raw": "0x7FFF",
+    "description": "Gleiche Quelle wie MAIN:2047; raw / 10 °C. 0x7FFF bedeutet ungültig / nicht verfügbar."
   },
-  "2179": {
+  "6020": {
     "function": "03",
     "mode": "read",
-    "name": "Relative Luftfeuchtigkeit",
-    "type": "DIGI5",
-    "unit": "% rF",
-    "description": "RAW / 10 = % relative Feuchte; Beispiel: 550 = 55,0 % rF."
+    "block": "DIAG",
+    "name": "Wasserdurchfluss Diagnose",
+    "type": "FLOW_M3H_X100",
+    "unit": "m³/h",
+    "invalid_raw": "0x7FFF",
+    "description": "Gleiche Quelle und bestätigte /100-m³/h-Skalierung wie MAIN:2077. 0x7FFF bedeutet nicht verfügbar / Sensor nicht vorhanden."
   },
-  "2180": {
+  "6048": {
     "function": "03",
     "mode": "read",
-    "name": "Berechneter Taupunkt",
+    "block": "DIAG",
+    "name": "Kompressor-Laufzeit Diagnose",
+    "type": "RAW",
+    "unit": "h",
+    "description": "Gleicher RAW-Wert wie MAIN:2032; keine davon abweichende Zeiteinheit angenommen."
+  },
+  "6073": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6073",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "bit_map": {
+      "2": "internes Raw-I/O-Bit6",
+      "7": "internes Raw-I/O-Bit10"
+    }
+  },
+  "6074": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6074",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "bit_map": {
+      "0": "Source +0x1E Bit0",
+      "1": "Source +0x1E Bit1",
+      "2": "Source +0x20 Bit8 / Diagnosezustand",
+      "3": "Source +0x1E Bit3",
+      "4": "Source +0x1E Bit4",
+      "5": "fest 0",
+      "8": "Source +0x1E Bit11",
+      "9": "fest 0",
+      "12": "Source +0x1E Bit9",
+      "13": "fest 0",
+      "14": "fest 0"
+    }
+  },
+  "6075": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6075",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen."
+  },
+  "6076": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6076",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen."
+  },
+  "6077": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6077",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen."
+  },
+  "6078": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6078",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen."
+  },
+  "6079": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6079",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen."
+  },
+  "6080": {
+    "function": "03",
+    "mode": "read",
+    "block": "DIAG",
+    "name": "Engineering/DIAG digital I/O/status bitmap 6080",
+    "type": "BITFIELD",
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "bit_map": {
+      "0": "+0x1C Bit4",
+      "1": "+0x1C Bit3",
+      "2": "+0x1A Bit9",
+      "3": "+0x1A Bit8",
+      "4": "+0x1C Bit2",
+      "5": "+0x1A Bit10"
+    }
+  },
+  "1430": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Warmlink-8055-Heizboost Freigabe (Engineering)",
+    "type": "RAW",
+    "ui_visibility": "engineering",
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen.",
+    "source": "Reverse Engineering V3.5",
+    "effective_type": "uint8",
+    "default": "0",
+    "persistence": "persistent; 32-byte record 0x218",
+    "block": "ENG",
+    "code": "MAIN1430",
+    "app_label": "Warmlink-8055-Heizboost Freigabe (Engineering)"
+  },
+  "1492": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Remote-Korrekturskalierung und Eingangsauswahl (Engineering)",
+    "type": "RAW",
+    "ui_visibility": "engineering",
+    "firmware": "V3.5+",
+    "description": "[Engineering] Gepacktes 16-Bit-Register. High Byte: Korrekturfaktor (uint8 0..255), scaled_boost_raw = int16(8055) * high / 10; 0 sperrt den Pfad. Low Byte: Hardware-Eingangsselector (uint8): 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische Klemmenbezeichnungen sind offen.",
+    "source": "Reverse Engineering V3.5",
+    "default": "0x0000",
+    "effective_type": "packed uint16 (2 x uint8)",
+    "persistence": "persistent; 32-byte record 0x218",
+    "byte_layout": {
+      "high": "0x20016A34 +0x12; Korrekturfaktor 0..255, factor = high / 10",
+      "low": "0x20016A34 +0x14; 0 = PE12 | PE13 | PD14, 1..255 = PC4"
+    },
+    "block": "ENG",
+    "code": "MAIN1492",
+    "app_label": "Remote-Korrekturskalierung und Eingangsauswahl (Engineering)"
+  },
+  "1540": {
+    "function": "03/16",
+    "mode": "r/w",
+    "name": "Remote-Regelwertkorrektur V3.5",
+    "type": "ENUM",
+    "ui_visibility": "engineering",
+    "block": "REMOTE",
+    "code": "REMOTE1540",
+    "app_label": "V3.5+ Remote-/Warmlink-Regelung",
+    "default": "0",
+    "firmware": "V3.5+",
+    "value_map": {
+      "0": "Aus",
+      "1": "Ein"
+    },
+    "description": "Aktiviert zusaetzliche, extern ueber den Warmlink-Servicebereich eingespeiste zeitbegrenzte Frequenz- und Sollwertkorrekturen. Die Firmware prueft technisch auf != 0; die Benutzeroberflaeche bietet bewusst nur 0/1 an. Kein offizieller PHNIX-Name.",
+    "source": "Reverse Engineering V3.5",
+    "effective_type": "uint8",
+    "persistence": "persistent; 32-byte record 0x218; ueberlebt normalen Mainboard-Power-Cycle",
+    "factory_default": "0"
+  },
+  "1557": {
+    "function": "03",
+    "mode": "read",
+    "name": "Effektiver Heiz-Wassersollwert",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt."
+    "firmware": "V3.5+",
+    "description": "Effektiver intern berechneter Heiz-Wassersollwert (RAW / 10 °C) nach interner Sollwertlogik einschliesslich Betriebszustaenden, Wetter-/Timerpfaden und V3.5-Korrekturen; danach greifen die normalen Heiz-Min-/Max-Grenzen.",
+    "source": "Reverse Engineering V3.5",
+    "signed": true,
+    "raw_format": "int16 / 10 °C"
   }
 }

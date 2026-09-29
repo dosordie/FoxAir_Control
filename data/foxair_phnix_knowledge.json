@@ -233,7 +233,8 @@
     "default": "-80",
     "description": "Quelle Forum - Stimmt mit WarmeLink überein; ASM: A31, Celsius-Grenzwert max. 60°C / Fahrenheit-Behandlung",
     "source": "ASM DEMONS.ASM",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "knowledge": "A31 verwendet die über Register 1463 ausgewählte effektive Außentemperatur einschließlich T04-Fallback."
   },
   "1050": {
     "default": "60",
@@ -258,7 +259,7 @@
   },
   "1054": {
     "default": "1",
-    "description": "0-R32/1-R290",
+    "description": "Wählt den Kältemittel-/Kennfeldsatz. Für die Haupt-EEV-Auto-Regelung verwenden gerade A26-Werte die R32-Schwellenfamilie und ungerade A26-Werte die R290-Schwellenfamilie. A26 wird außerdem bei der Berechnung der aus Niederdruck abgeleiteten Verdampfungstemperatur berücksichtigt.",
     "source": "v36 Beschreibung/App-Review",
     "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
   },
@@ -664,19 +665,18 @@
   },
   "1131": {
     "default": "1",
-    "description": "0-Manual/1-Auto/2-Smart",
-    "knowledge": "Vermutung, noch nicht verifiziert: Smart wirkt vermutlich wie eine erweiterte Auto-Regelung. Während Auto klassisch auf Ziel-Überhitzung regelt, berücksichtigt Smart wahrscheinlich zusätzlich Betriebszustände wie Kompressorfrequenz, Startphase, Heiz-/Kühl-/WW-Modus sowie Temperatur-/Druckverhältnisse.",
-    "source": "Projektdeutung + Warmlink-App",
+    "description": "Regelmodus des Haupt-Expansionsventils: 0=Manuell, 1=Auto, 2=Smart. Auto arbeitet als geschlossene Überhitzungs-Feedbackregelung. Smart verwendet dieselbe Auto-Regelung weiter und begrenzt deren Ergebnis zusätzlich durch ein kennfeldabhängiges Smart-Fenster gemäß E19.",
+    "source": "Reverse Engineering GL9 Firmware V3.4",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1132": {
     "default": "5",
-    "description": "-20 bis 20 °C",
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Heizbetrieb. Der Feedbackregler vergleicht E02 direkt mit MAIN 2067, der Rückgas-/Saugüberhitzung. E02 bleibt auch im Smart-Modus aktiv.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1133": {
     "default": "350",
-    "description": "0 bis 500N",
+    "description": "Globaler Heiz-Basis-/Startwert des Haupt-EEV. Wenn E03 ungleich 0 ist, kann dieser Wert im Heiz-Basispfad die temperatursegmentierten E03-1…5-Werte übersteuern. Bei E03=0 wird abhängig von T04/Außentemperatur der passende E03-x-Wert verwendet.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1134": {
@@ -696,7 +696,7 @@
   },
   "1137": {
     "default": "100",
-    "description": "0 bis 500N",
+    "description": "Softwareseitige Mindestöffnung des Haupt-EEV im aktiven E07-Schutz-/Normalbetriebspfad bei Kompressor-Istfrequenz MAIN 2072 unter 61 Hz. Ab 61 Hz wird stattdessen die temperaturabhängige Mindestöffnung E07-1…5 verwendet. Keine mechanische Mindestposition und keine reine Startöffnung.",
     "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
   },
   "1138": {
@@ -722,7 +722,7 @@
   },
   "1142": {
     "default": "185",
-    "description": "selbst getestet / Quelle ASM; vorher: Reserviert e03-2",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für eine wirksame Außentemperatur T04 von +0,1 bis +7,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "ASM DEMONS.ASM"
   },
   "1143": {
@@ -746,16 +746,16 @@
   },
   "1147": {
     "default": "480",
-    "description": "10 bis 500N | war 430, Frost zu niedrig, jetzt 460"
+    "description": "Zielposition des Haupt-EEV während eines bestätigten Abtau-Regelzustands. E17 wird in diesem Defrost-State direkt als EEV-Zielposition verwendet."
   },
   "1148": {
     "default": "3",
-    "description": "-10 bis 10°C"
+    "description": "Sollwert der Haupt-EEV-Regelüberhitzung im Kühlbetrieb. Wird vom selben Feedbackregler wie E02 gegen MAIN 2067 geregelt."
   },
   "1149": {
     "default": "20%",
-    "description": "0 bis 300%",
-    "knowledge": "Vermutung, noch nicht verifiziert: E19 begrenzt vermutlich, wie stark der Smart-Algorithmus vom normalen/Auto-EEV-Wert abweichen darf. Bei Default 20 % dürfte Smart den berechneten EEV-Wert vermutlich um bis zu ca. 20 % korrigieren."
+    "description": "Prozentuales Begrenzungsfenster des Smart-Modus um den berechneten SmartCenter. Die Firmware verwendet exakt:\nlower = SmartCenter × (1 - E19/100)\nupper = SmartCenter × (1 + E19/100)\nDas normale Auto-Regelergebnis wird im Smart-Modus auf dieses Fenster begrenzt. E19=20 bedeutet somit ±20 %, nicht ±10 %.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "1150": {
     "default": "0",
@@ -832,27 +832,27 @@
   },
   "1167": {
     "default": "-5",
-    "description": "R 30 bis4°C"
+    "description": "R 30 bis4°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1168": {
     "default": "-23",
-    "description": "-35 bis R 29°C"
+    "description": "-35 bis R 29°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1169": {
     "default": "40",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. Wassertemperaturgrenze im direkten lokalen-T04-Regelpfad."
   },
   "1170": {
     "default": "55",
-    "description": "10 bis R 33°C"
+    "description": "10 bis R 33°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1171": {
     "default": "55",
-    "description": "R 32 bis 60°C"
+    "description": "R 32 bis 60°C. Die AT-abhängige Wassertemperaturbegrenzung verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1172": {
     "default": "45",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. Wassertemperaturgrenze im direkten lokalen-T04-Regelpfad."
   },
   "1173": {
     "default": "0",
@@ -975,7 +975,7 @@
   },
   "1200": {
     "default": "250",
-    "description": "Aus Display Firmware; ASM: E03-1; EVV/EEV Initial Steps Heating1",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 ab +7,1 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "ASM DEMONS.ASM"
   },
   "1201": {
@@ -1008,29 +1008,29 @@
   },
   "1206": {
     "default": "10",
-    "description": "0-NEIN/1-JA",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −4,9 bis 0,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "v36 Beschreibung/App-Review"
   },
   "1207": {
     "default": "0",
-    "description": "00 bis 23"
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 von −9,9 bis −5,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese."
   },
   "1208": {
     "default": "0",
-    "description": "0-NEIN/1-JA",
+    "description": "Temperatursegmentierte Heiz-Basis-/Startöffnung des Haupt-EEV für T04 bis einschließlich −10,0 °C. Die direkte E03-Segmentauswahl besitzt keine Hysterese.",
     "source": "v36 Beschreibung/App-Review"
   },
   "1209": {
     "default": "10",
-    "description": "00 bis 23"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 ab +7,1 °C. Keine mechanische Mindestposition."
   },
   "1210": {
     "default": "10",
-    "description": "00 bis 59"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von +0,1 bis +7,0 °C."
   },
   "1211": {
     "default": "10",
-    "description": "00 bis 59"
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −4,9 bis 0,0 °C."
   },
   "1212": {
     "default": "0",
@@ -1046,12 +1046,12 @@
   },
   "1215": {
     "default": "90",
-    "description": "Aus Display Firmware  - Stimmt mit WarmeLink überein; ASM: E07-4; EVV/EEV min Steps4",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 von −9,9 bis −5,0 °C.",
     "source": "ASM DEMONS.ASM"
   },
   "1216": {
     "default": "85",
-    "description": "Aus Display Firmware - Stimmt mit WarmeLink überein; ASM: E07-5; EVV/EEV min Steps5",
+    "description": "Temperatursegmentierte softwareseitige Mindestöffnung des Haupt-EEV bei Kompressor-Istfrequenz MAIN 2072 ab 61 Hz und T04 bis einschließlich −10,0 °C.",
     "source": "ASM DEMONS.ASM"
   },
   "1217": {
@@ -1111,15 +1111,15 @@
   },
   "1229": {
     "default": "50",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. R43 verwendet für die Begrenzung der maximalen Heiz-Solltemperatur direkt den lokalen T04."
   },
   "1230": {
     "default": "40",
-    "description": "20 bis 60°C"
+    "description": "20 bis 60°C. R44 verwendet für die Begrenzung der maximalen Heiz-Solltemperatur direkt den lokalen T04."
   },
   "1231": {
     "default": "-10",
-    "description": "-50 bis 20°C"
+    "description": "-50 bis 20°C. R45 verwendet die effektive/ausgewählte AT; Rückschaltung mit ungefähr +2,0 K Hysterese."
   },
   "1232": {
     "default": "5",
@@ -1127,7 +1127,7 @@
   },
   "1233": {
     "default": "25",
-    "description": "0 bis 60°C"
+    "description": "0 bis 60°C. R60 verwendet direkt den lokalen T04; die effektive/externe AT wird ignoriert."
   },
   "1234": {
     "description": "AT-Kompensation Slope / Steigung. Vermutete Formel aus App-Screenshot: Ziel = Offset - Slope × Außentemperatur, mit Mindestbegrenzung."
@@ -1475,8 +1475,8 @@
     "source": "Display-FW ReturnPumpTimer / 0x0535"
   },
   "1334": {
-    "knowledge": "Legt fest, ob SG Ready deaktiviert ist, mit 1 bzw. 2 Kontakten arbeitet oder bei Wert 3 den virtuellen SG-Eingang 8801 verwendet. 8801 ist ausschließlich am direkten User-/Mainboard-Modbus bestätigt und kein normales Warmlink-/LTE-Register.",
-    "source": "Display-FW ASM SG01-SG08"
+    "knowledge": "SG01 unterscheidet 0=Aus, die klassische Familie 1/2/3 (ein Kontakt, zwei Kontakte, virtueller 4-Zustands-Pfad über 8801), 4=AI Saving / Remote Energy Control und die erweiterte Firmwarefamilie 5/6/7. Wert 4 wurde an realer V3.4 beim Aktivieren der PHNIX-App-Funktion AI Saving/dynamischer Stromtarif beobachtet; er gehört zum separaten Remote-Energy-Control-Regelpfad und nicht zum normalen klassischen SG Ready. Der Remote-Regelkomplex besteht in V3.4, V3.5 ergänzt weitere Warmlink-Stellgrößen. „AI“ ist die App-Bezeichnung; ein Machine-Learning-Algorithmus ist nicht belegt. Für 5/6/7 ist „SG/PV erweitert“ nur eine funktionale Arbeitsbezeichnung, da der Hersteller-Klartextname unbekannt ist: 5=ein physischer Kontakt (Neutral/High), 6=zwei physische Kontakte (Low/Neutral/High), 7=virtuell über 8801 (1=Low, 2=Neutral, 3=High). Anders als 7 nutzt 3 über 8801 vier klassische Zustände 1..4. Werte 5 und 6 sind statisch in V3.4 bestätigt, aber noch nicht live verifiziert; Wert 7 und sein virtueller Dreistufenpfad sind zusätzlich praktisch deutlich besser bestätigt. 8801 ist nur am direkten User-/Mainboard-Modbus bestätigt.",
+    "source": "V3.4-Firmwareanalyse; reale V3.4/App-Beobachtung für Wert 4; Live-Tests für Wert 7/8801"
   },
   "1335": {
     "source": "Display-FW ASM SG01-SG08"
@@ -1504,8 +1504,8 @@
     "source": "User confirmed 2026-06-19 + Display-FW ASM SG01-SG08"
   },
   "1342": {
-    "description": "App: Low Pressure of Limiting Frequency; Anzeige in bar, vermutlich raw/10",
-    "source": "ASM DEMONS.ASM",
+    "description": "A38: raw / 10 = bar, Default 0. A38_raw < 2 deaktiviert die Funktion. Nach ca. 15 s Verdichterlauf und weiterer Qualifikation verhindert A38-0,2 <= P_low < A38 weitere Frequenzsteigerung (State 1); P_low < A38-0,2 reduziert den Sollwert in 2-Hz-Schritten bis mindestens C02/MAIN:1219 (State 2). MAIN:2139 Bit4 meldet den aktiven Limiter; MAIN:2115 wird dabei auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+    "source": "ASM DEMONS.ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140",
     "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
   },
   "1343": {
@@ -1537,23 +1537,23 @@
     "source": "Warmlink-App Video + ASM DEMONS.ASM + user live test 2026-06-14"
   },
   "1348": {
-    "description": "C13: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "P = C13 * error. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1349": {
-    "description": "C14: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "I_acc += error / C14. Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1350": {
-    "description": "C15: Display-Firmware Parameter. In App nicht sichtbar.",
-    "source": "User correction 2026-06-19 + ASM"
+    "description": "D = C15 * (error - previous_error). Reglerkern: P=C13*error; I_acc+=error/C14 (C14 ist ein Divisor, kein direktes Ki); D=C15*(error-previous_error); controller=P+I_acc+D. Ausführung alle 500 ms (50 × 10-ms-Scheduler-Slots, 2 Hz), Ausgang Kompressorfrequenz-Sollwert in Hz. Untergrenze dynamisch ausgehend von C02/MAIN:1219; Obergrenze min(C03/MAIN:1220, dynamische Frequenzobergrenze). Re-Sync setzt den Integrator auf die aktuelle Frequenzreferenz, nicht 0. Bei negativem normiertem Fehler zusätzlich I_acc-=2 Hz je Tick und keine Erhöhung über laufende Frequenz; ca. 0…+0,5 K hält, darüber Hochregelung. H25/MAIN:1035: 0=T02, 1=Raumtemperatur, 2=Puffertank, 3=T01. Bei H25=1 wirkt Raumtemperatur vorgelagert auf den Wasser-Sollwert; der innere PID arbeitet weiter über T02.",
+    "source": "User correction 2026-06-19 + ASM; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "1351": {
-    "description": "E20: Display-Firmware Parameter. In App nicht sichtbar.",
+    "description": "Proportionaler Fehler-/Gainfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Die proportionale Korrektur arbeitet mit mehreren Fehlerzonen und wird auf ungefähr ±60 Schritte begrenzt. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt.",
     "source": "User correction 2026-06-19 + ASM"
   },
   "1352": {
-    "description": "E21: Display-Firmware Parameter. In App nicht sichtbar.",
+    "description": "Zeit-/Integralskalierungsfaktor des PI-artigen Haupt-EEV-Feedbackreglers. Intern als signed 8-bit verwendet; Defaultwert 1. Der zeitabhängige Anteil enthält den Faktor 1/E21. Der tatsächlich vom HMI erlaubte Einstellbereich ist noch nicht abschließend bestätigt; insbesondere E21=0 darf nicht als sicherer Einstellwert dokumentiert werden.",
     "source": "User correction 2026-06-19 + ASM"
   },
   "1353": {
@@ -1572,7 +1572,8 @@
     "default": "4",
     "description": "H42 Einschalt-Außentemperatur Gehaeusewannenheizung. D30/1437 wirkt erst, wenn AT kleiner als H42/1356 ist. H42 Einheit °C.",
     "notes": "Text korrigiert: der Bezug ist D30/1437, nicht ein unklarer H..-Minutenwert.",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19 + Firmware-Reverse-Engineering",
+    "knowledge": "MAIN 1356 wird direkt mit dem lokalen T04 verglichen; Abschaltung mit ungefähr +2,0 K Hysterese."
   },
   "1357": {
     "default": "2.0°C",
@@ -1664,6 +1665,27 @@
     "description": "ASM: 自动商检水泵转速",
     "source": "ASM DEMONS.ASM"
   },
+  "1388": {
+    "default": "2.0 K",
+    "description": "Taupunkt-Sicherheitsabstand für den Kühl-Sollwert; RAW / 10 = K.",
+    "knowledge": "Bei MAIN:1387=2 berechnet die Firmware aus Raumtemperatur und relativer Feuchte den Taupunkt. Der finale Kühl-Sollwert wird auf max(normaler Kühl-Sollwert, Taupunkt + MAIN:1388 / 10) begrenzt. Damit ist 1388 eine Kondensationsschutzfunktion für die Kühlung.",
+    "notes": "Default RAW 20 = 2,0 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
+  "1389": {
+    "default": "4.0 K",
+    "description": "ΔT-Schaltschwelle zwischen der Raumtemperatur des Temperatur-/Feuchtesensors und dem lokalen T04; RAW / 10 = K.",
+    "knowledge": "Bei MAIN:1387=2 wird der interne Status EIN, sobald T_Raum − T04 ≥ MAIN:1389 ist. Er wird bei T_Raum − T04 ≤ MAIN:1389 − 1,0 K zurückgesetzt. Beim Default gelten damit 4,0 K EIN und 3,0 K AUS. Der Status fließt in die Freigabe-/Sperrlogik ein. 1389 verwendet T04 direkt und nicht die über 1463 ausgewählte effektive Außentemperatur.",
+    "notes": "Die Firmwarewirkung ist bestätigt. Kühl-Sperr-/Free-Cooling-Kriterium ist eine funktionale Interpretation; der offizielle PHNIX-Name ist offen.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
+  "1402": {
+    "default": "2 min",
+    "description": "Mindest-Abtauzeit, bevor die reguläre temperaturabhängige Abtaubeendigung zulässig ist. Einheit: Minuten.",
+    "knowledge": "Im Abtau-State 2 wird ein alle 30 Sekunden erhöhter Laufzeitzähler mit 2 × MAIN:1402 verglichen. Damit entspricht der Parameterwert Minuten. Erst nach Ablauf dieser Mindestzeit darf die normale Abtau-Endtemperatur den Übergang in State 3 auslösen.",
+    "notes": "D100 ist eine fiktive projektinterne Kennung, kein bestätigter Hersteller-Code. Eine separate hohe Temperaturgrenze von etwa 33,0 °C kann die Mindestzeit übersteuern; D19 bleibt die maximale Abtaudauer.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
   "1432": {
     "default": "4.4",
     "description": "0,0 bis 10,0 °C",
@@ -1688,7 +1710,8 @@
   "1437": {
     "description": "D30 Gehaeusewannenheizung / Button Heater Delays OFF Time after Defrost. Einheit: Minuten.",
     "notes": "Sicher bestätigt: 1437 ist D30, nicht P15. Einheit sicher: Minuten. Erst wirksam, wenn AT kleiner H42/1356 ist.",
-    "source": "User confirmed 2026-06-14; live system use"
+    "source": "User confirmed 2026-06-14; live system use + Firmware-Reverse-Engineering",
+    "knowledge": "D30 gehört zum Nachlaufpfad des realen GPIO-Ausgangs PD8. H42 erteilt die Freigabe anhand des lokalen T04. Die vollständige Timer-/Zustandslogik bleibt zu erforschen."
   },
   "1438": {
     "default": "1.0",
@@ -1742,6 +1765,18 @@
     "description": "Paketkopf-Wort zeigt auf den Anfang dieses Blockkopfs: 1451 / 0x05AB.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
   },
+  "1463": {
+    "description": "FW 3.4 wählt mit 0 den normalen/internen Außentemperaturfühler T04 und mit 1 den externen Außentemperaturfühler. Bei ungültigem Messwert beziehungsweise offenem/fehlerhaftem externem Fühler fällt die Regelung auf T04 zurück.",
+    "source": "Reverse Engineering GL9 Firmware V3.4 + Live-Test"
+  },
+  "1464": {
+    "description": "Verwendet die effektive Außentemperatur: bei MAIN:1463=1 den externen AT solange gültig, sonst Fallback auf lokalen T04. Effektiver AT >= Grenzwert für 1465 × 120 Scheduler-Ticks aktiviert die Heiz-/Sommerabschaltung; effektiver AT <= Grenzwert - 3,0 K für dieselbe Zeit gibt sie wieder frei.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "1465": {
+    "description": "Zeitparameter der Heiz-/Sommerabschaltung; Einheit sehr wahrscheinlich Minuten. Intern 1465 × 120 Scheduler-Ticks. Wert 0 setzt/deaktiviert den internen Abschaltzustand.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
   "1541": {
     "description": "Paketkennung: WF2403150123 (Wort 1-6), beobachtet in 90er-Paketblöcken. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
@@ -1781,6 +1816,14 @@
   "1550": {
     "description": "Paketkopf-Wort zeigt auf den Anfang dieses Blockkopfs: 1541 / 0x0605. Optionaler Extra-Block; nicht auf jeder Anlage vollständig vorhanden.",
     "source": "Live beobachtet + Display-Firmware Paketlogik"
+  },
+  "1561": {
+    "description": "Verbleibende A34-Kurbelgehäuse-Vorheizzeit. Firmware V3.4 exportiert diesen Diagnosewert in Minuten; remaining = A34 - elapsed/120.",
+    "source": "Firmware-Reverse-Engineering V3.4"
+  },
+  "1852": {
+    "description": "Außenlüfter 1 Soll-/Regeldrehzahl aus dem Fan-Regelblock. Gleicher Drehzahl-Zahlenraum wie F25/F26; Einheit rpm.",
+    "source": "Firmware-Reverse-Engineering"
   },
   "200": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; vermutlich Kennung/String/Logo-/Seitenpuffer, Bedeutung noch nicht sicher. Nicht als WP-Parameter verwenden.",
@@ -1865,7 +1908,7 @@
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2020": {
-    "description": "0 bis 500N"
+    "description": "Intern nachgeführte tatsächliche Stepperposition des Haupt-Expansionsventils in Schritten. Nicht nur ein abstrakter Regler-Sollwert."
   },
   "2021": {},
   "2022": {
@@ -1908,11 +1951,11 @@
     "description": "Registergruppe h (Stunden). Laufzeitwert in Stunden."
   },
   "2033": {
-    "description": "0"
+    "description": "Messwert des optionalen externen Außentemperaturfühlers auf Analogkanal 23, physisch Klemme 3/4. Die Skalierung gültiger Messwerte ist °C. Ein offener Eingang ergibt 409,1; dieser Fehlerwert ist keine Temperaturangabe."
   },
   "2034": {
-    "description": "Read-only Status-/Eingangsbitfeld. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
-    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter sowie SG Kontakt 1/2. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
+    "description": "Read-only Status-/Eingangsbitfeld. Bit 5 ist S06 Fernheizung/Kühlung / Remote Heat-Cool. Reverse-Engineering-Vermutung, noch nicht abschließend bestätigt: Bit 5 könnte DIN2 entsprechen; bei 1463=1 könnte ein gemeinsam mit dem externen AT-Eingang genutzter Hardwarepfad offenbar analog ausgewertet werden. Weder DIN2 noch eine physische Klemme sind bestätigt zugeordnet. DWIN-Seiten 237/238 zeigen SG-Kontaktstatus direkt aus 07F2H: Maske 0x1000 und 0x2000. 0/1 je Bit als LOW/HIGH bzw. AUS/EIN interpretieren; Polarität real prüfen.",
+    "knowledge": "Schalter- und Kontakt-Bitfeld. Enthält u. a. Wasserflussschalter, S06 Fernheizung/Kühlung / Remote Heat-Cool auf Bit 5 sowie SG Kontakt 1/2. Eine mögliche Zuordnung von Bit 5 zu DIN2 und zum externen AT-Hardwarepfad ist nur eine Reverse-Engineering-Vermutung. SG Kontakt 1 liegt auf Bit 12, SG Kontakt 2 auf Bit 13.",
     "source": "DWIN 14.bin Seitenanalyse + Display/Statusanalyse + User-Hinweis"
   },
   "2035": {
@@ -1952,7 +1995,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2045": {
-    "description": "tatsächlicher Testwert"
+    "description": "Einlasswassertemperatur. Wird im Smart-EEV-Kennfeld zusätzlich als vierstufige Faktorachse verwendet. Faktoren: 1,2 / 1,0 / 0,9 / 0,8. Umschaltpunkte mit Hysterese liegen ungefähr bei 20,1/18,1 °C, 30/28 °C und 40/38 °C."
   },
   "2046": {
     "description": "tatsächlicher Testwert"
@@ -1961,7 +2004,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2048": {
-    "description": "tatsächlicher Testwert"
+    "description": "Von der Firmware tatsächlich verwendete Außentemperatur nach Auswahl zwischen normalem T04 und externem AT-Fühler einschließlich Fallback und Aufbereitung. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet."
   },
   "2049": {
     "description": "tatsächlicher Testwert"
@@ -1980,7 +2023,7 @@
     "description": "tatsächlicher Testwert"
   },
   "2053": {
-    "description": "tatsächlicher Testwert"
+    "description": "Heißgas-/Verdichter-Austrittstemperatur. Wird zusätzlich als fünfstufige Achse der zustandsabhängigen 4×5-Auto-EEV-Regelmatrix verwendet. Die Schwellen hängen über A26 von der R32-/R290-Profilfamilie ab."
   },
   "2054": {
     "description": "Elektrische Leistung / Unit Power. Vermutung aus Livewert: signed /10 kW; Beispiel raw 5 = 0,5 kW = 500 W.",
@@ -2026,16 +2069,16 @@
     "description": "tatsächlicher Testwert"
   },
   "2065": {
-    "description": "Verdampfungstemperatur ASM. Vermutlich aus Niederdrucksensor und Kältemittel-Sättigungstabelle berechnet; hilfreich für Vereisungsneigung, Abtauverhalten und Effizienzdiagnose.",
-    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
+    "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2066": {
-    "description": "Exhaust Superheat ASM / Austrittsüberhitzung. Vermutlich modellierter Diagnosewert, weil die Anlage offenbar keinen Hochdrucksensor besitzt. Beobachtung: Heißgas ca. 51,2 °C, WP-Austritt ca. 39 °C -> Differenz ca. 12 K; Register zeigte ca. 11,3 K. Daher vermutlich Heißgas minus WP-Austritt/Kondensator-Referenztemperatur.",
-    "source": "Live-Beobachtung / Diagnose-Hypothese"
+    "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2067": {
-    "description": "Suction Superheat ASM / Saugüberhitzung. Wichtiger EEV-/Saugseitenwert; vermutlich Sauggastemperatur minus Verdampfungstemperatur. Niedrige Werte können auf geringe Überhitzung/Flüssigkeitsrisiko deuten, hohe Werte auf EEV/Kältemittel-/Verdampferproblem.",
-    "source": "ASM DEMONS.ASM / Diagnose-Hypothese"
+    "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.4"
   },
   "2068": {
     "description": "0; ASM: 0814H -> Anzeige System2 current",
@@ -2054,10 +2097,10 @@
     "source": "ASM DEMONS.ASM"
   },
   "2071": {
-    "description": "Kompressor-Sollfrequenz; 2072 ist die tatsächliche Kompressor-Ist-/Betriebsfrequenz."
+    "description": "Sollfrequenz des Verdichters. Wird im Smart-EEV-Kennfeld als Frequenzachse verwendet. Zustandswechsel mit Hysterese erfolgen ungefähr bei 46/44 Hz, 61/59 Hz und 76/74 Hz."
   },
   "2072": {
-    "description": "tatsächlicher Testwert"
+    "description": "Tatsächliche Verdichterfrequenz. Im E07-Mindestöffnungspfad erfolgt bei 61 Hz die Umschaltung: unter 61 Hz gilt globales E07, ab 61 Hz die temperatursegmentierten E07-1…5-Werte."
   },
   "2073": {
     "description": "tatsächlicher Testwert"
@@ -2115,8 +2158,8 @@
     "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM, v21 zusammengeführt"
   },
   "2088": {
-    "description": "Bitfeld-Decoder: sichere Klartexte wo bekannt, sonst markierte Node-RED-Bitpositionen als Platzhalter bis vollständiger Function-Code vorliegt.",
-    "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM, v21 zusammengeführt"
+    "description": "Bitfeld-Decoder. Bit 7 (0x0080) meldet bei 1463=1 einen fehlenden oder ungültigen externen Außentemperaturfühler. Beim Live-Test mit offenem Eingang: Mess-/Anzeigewert 2033=409,1 ohne bestätigte Einheit, Bit gesetzt; die WP lief normal mit T04-Fallback weiter.",
+    "source": "Node-RED Projektkontext + ASM DEMONS_V1.3.ASM + Reverse Engineering GL9 Firmware V3.4 + Live-Test"
   },
   "2089": {
     "description": "Bitfeld-Decoder: sichere Klartexte wo bekannt, sonst markierte Node-RED-Bitpositionen als Platzhalter bis vollständiger Function-Code vorliegt.",
@@ -2203,9 +2246,9 @@
     "source": "ASM DEMONS.ASM"
   },
   "2109": {
-    "default": "63",
-    "description": "Interner V3.3-Statuswert. Wird von V3.3 aktiv beschrieben; genaue fachliche Bedeutung noch offen.",
-    "source": "FW3.3 Reverse Engineering"
+    "description": "Internes Ereignis-/Statusbitfeld. Der vollständige RAW-Wert bleibt als Dezimal-, Hex- und Binärdarstellung sichtbar; Einzelbitsemantik offen.",
+    "source": "FW3.3 Reverse Engineering; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140",
+    "default": "63"
   },
   "211": {
     "description": "Zyklisch beobachteter interner Display/HMI-Kommunikationsblock; aktuell leer/Reserve. Nicht als WP-Parameter verwenden.",
@@ -2245,20 +2288,20 @@
   "2123": {},
   "2124": {},
   "2125": {
-    "description": "High Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2126": {
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers elektrisch Warmwasser. Zusammensetzung: (Register 2125 << 16) | Register 2126.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2125 << 16) | Register 2126. Die Zuordnung zu elektrische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2127": {
-    "description": "High Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "High Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2128": {
-    "description": "Low Word des kumulativen 32-Bit-Energiezählers thermisch Warmwasser. Zusammensetzung: (Register 2127 << 16) | Register 2128.",
-    "source": "Registererkenntnisse Issue #116"
+    "description": "Low Word eines bestätigten kumulativen 32-Bit-Zählers. Zusammensetzung: (Register 2127 << 16) | Register 2128. Die Zuordnung zu thermische Warmwasserenergie ist sehr wahrscheinlich, aber noch nicht vollständig bewiesen.",
+    "source": "Registererkenntnisse Issue #116; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2129": {},
   "213": {
@@ -2324,5 +2367,125 @@
   "2180": {
     "description": "Signed 16-Bit-Wert; RAW / 10 = °C. Von der Firmware aus Temperatur und relativer Feuchte berechnet. Bei deaktiviertem Sensor-/Feature-Enable werden die zugehörigen Werte auf 0 gesetzt.",
     "source": "Registererkenntnisse Issue #116"
+  },
+  "2144": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2145": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2148": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2149": {
+    "description": "Reserve / anderer Firmwarepfad / derzeit kein normaler aktiver Writer bestätigt. Keine aktive fachliche Semantik bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2151": {
+    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2155": {
+    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2147": {
+    "description": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2166": {
+    "description": "Interner Zone-2-Regel-/Control-State; kein physikalischer Messwert bestätigt. Konkrete Semantik weiterhin offen. Live 2026-09-12 RAW 1 beobachtet.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2146": {
+    "description": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "2139": {
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6011": {
+    "description": "Raw I/O-/Switch-Diagnosewort; Einzelbitsemantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6012": {
+    "description": "Bekannte Codes 0, 1, 2, 3, 4 und 16; Klartextbedeutungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6013": {
+    "description": "Weiteres Raw-I/O-Diagnosewort; Einzelbitsemantik offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6014": {
+    "description": "Boolean aus internem Statusbit 7; Bedeutung offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6015": {
+    "description": "Config-/Gerätevarianten-Diagnosewert; Bedeutung offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6018": {
+    "description": "Gleiche Quelle wie MAIN:2047; raw / 10 °C. 0x7FFF bedeutet ungültig / nicht verfügbar.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6020": {
+    "description": "Gleiche Quelle und bestätigte /100-m³/h-Skalierung wie MAIN:2077. 0x7FFF bedeutet nicht verfügbar / Sensor nicht vorhanden.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6048": {
+    "description": "Gleicher RAW-Wert wie MAIN:2032; keine davon abweichende Zeiteinheit angenommen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6073": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6074": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6075": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6076": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6077": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6078": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6079": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Quellbit- und Signalzuordnungen offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "6080": {
+    "description": "Engineering/DIAG digital I/O/status bitmap. Bekannte Quellbit-Zuordnungen sind im Bit-Mapping dokumentiert; übrige Bits offen.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+  },
+  "1430": {
+    "knowledge": "MAIN:1430 existiert bereits vor V3.5. Effektiv uint8, persistent im 32-Byte-Record 0x218, Default 0: 0 = Gate nicht aktiv, != 0 = Gate aktiv. Fuer V3.5 ist die zusaetzliche Verwendung als notwendiges Gate des positiven 8055-Heizboosts bestaetigt (zusammen mit MAIN:1492.high != 0, Z01 in {4,5,6}, int16(8055) > 0). Ausserdem ist 1430 ein alternativer Aktivierungsweg des dokumentierten 30-Minuten-Qualifier-Pfads. Offizieller PHNIX-Name bleibt offen.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1492": {
+    "knowledge": "Engineering: gepacktes uint16, persistent im 32-Byte-Record 0x218, Default 0x0000. High Byte liegt bei 0x20016A34 +0x12, ist uint8 (0..255) und bildet factor = high / 10 sowie scaled_boost_raw = int16(8055) * high / 10; high=0 sperrt den 8055-Pfad. Low Byte liegt bei +0x14, ist uint8: 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische PHNIX-/FoxAir-Klemmenbezeichnungen bleiben offen.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1540": {
+    "knowledge": "V3.5-Gate (effektiv uint8) fuer externe Warmlink-Remote-Korrekturen; persistent im 32-Byte-Record 0x218, ueberlebt normalen Power-Cycle, Factory-/Fallback-Default 0. Verbraucher pruefen 0/!=0; die UI bietet 0/1. Es gibt keinen bestaetigten Setter SG01=4 -> MAIN1540=1: AI Saving (SG01/MAIN1334=4; aelterer Komplex 8001/8004/8006, 0x20016A54, MAIN1691/1692) ist nicht MAIN1540. Die Frequenz wird nicht hart auf 30/36/42/48 Hz quantisiert: liegt der bisherige Befehl ausreichend ueber der Remote-/Adaptivreferenz, wird er um hoechstens 6 Hz abgesenkt, ohne die Referenz zu unterschreiten (47 Hz darf 47 Hz bleiben). Erst danach entsteht ein Bin-Index: f<30 => 0, sonst (f-30)/6. C02, C03 und dynamische Grenzen bleiben wirksam.",
+    "source": "Reverse Engineering V3.5"
+  },
+  "1557": {
+    "knowledge": "Read-only V3.5-Export des effektiven intern berechneten Heiz-Wassersollwerts als signed int16 RAW / 10 °C. RAW bleibt verfuegbar; die normalen Heiz-Min-/Max-Grenzen gelten.",
+    "source": "Reverse Engineering V3.5"
   }
 }

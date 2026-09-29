@@ -49,32 +49,49 @@ Register **1334** legt bei der klassischen SG-Ready-Funktion fest, wie die Steue
 | Wert | Funktion |
 | ---: | --- |
 | **0** | SG Ready aus |
-| **1** | Steuerung über einen physischen Kontakt |
-| **2** | Steuerung über zwei physische SG-Kontakte |
-| **3** | klassische virtuelle SG-Ready-Steuerung über Modbus |
+| **1** | klassische Steuerung über einen physischen Kontakt |
+| **2** | klassische Steuerung über zwei physische SG-Kontakte |
+| **3** | klassische virtuelle SG-Ready-Steuerung über Modbus, 8801 = 1..4 |
 | **4** | Remote-Energy-Control-/AI-Saving-Pfad; auf V3.4 real durch die App beobachtet |
-| **7** | neuerer virtueller 3-Stufen-SG/PV-Pfad mit 8801 = 1/2/3 |
+| **5** | erweiterte SG/PV-Familie, ein physischer Kontakt: Neutral / High PV |
+| **6** | erweiterte SG/PV-Familie, zwei physische Kontakte: Low PV / Neutral / High PV |
+| **7** | erweiterte virtuelle SG/PV-Familie über Modbus, 8801 = 1/2/3 |
 
 Für eine klassische Verdrahtung mit beiden SG-Kontakten wird daher **1334 = 2** verwendet.
 
 Für eine Gebäudeautomation oder PV-Steuerung mit den klassischen vier SG-Ready-Zuständen wird **1334 = 3** verwendet.
 
-### Zusätzliche SG-/PV-Pfade bei V3.5
+### Zusätzliche SG-/PV-Pfade bei V3.4/V3.5
 
-V3.5 enthält daneben den bereits aus der neueren Firmwareanalyse bekannten Pfad:
+Neben der klassischen Familie **1/2/3** gibt es in V3.4/V3.5 eine zweite, funktional als **erweiterte SG/PV-Familie** bezeichnete Auswahl **5/6/7**. Ein offizieller PHNIX-Name für diese Familie ist bisher nicht bekannt.
+
+Die Firmware paart dabei die Eingangsarten:
 
 ```text
-1334 = 7
-8801 = 1 -> Low PV
-8801 = 2 -> Neutral
-8801 = 3 -> High PV
+1 ↔ 5   ein physischer Kontakt
+2 ↔ 6   zwei physische Kontakte
+3 ↔ 7   virtueller Eingang über Modbus
 ```
 
-Dieser 3-Stufen-Pfad ist **nicht identisch** mit dem klassischen `1334 = 3` / `8801 = 1..4`-SG-Ready-Eingang. Die bekannte 10-Minuten-Hold-State-Machine bleibt in V3.5 statisch erhalten.
+Für die erweiterte Familie gelten die Stufen **Low PV / Neutral / High PV**:
 
-Ebenfalls wichtig: `1334 = 4` wird vom PHNIX-App-Pfad für **AI Saving / dynamischen Stromtarif** verwendet. Das ist kein normaler manueller SG-Ready-Modus. Der zugrunde liegende Remote-Regelkomplex existiert bereits in V3.4; V3.5 erweitert ihn um zusätzliche Warmlink-Stellgrößen.
+| SG01 / Register 1334 | Eingang und erreichbare Stufen |
+| ---: | --- |
+| **5** | ein Kontakt: Kontakt 0 = Neutral, Kontakt 1 = High PV |
+| **6** | zwei Kontakte: Kontakt 1 = Low PV; beide 0 = Neutral; Kontakt 1 = 0 und Kontakt 2 = 1 = High PV |
+| **7** | Modbus über Register 8801: **1 = Low PV, 2 = Neutral, 3 = High PV** |
 
-Bei V3.5 sitzt `1334 / SG01` außerdem vor einem Teil der neuen MAIN-1540-Remote-Korrekturen. Insbesondere der `1334 = 7`-Zweig verwendet für die thermischen Korrekturen seinen SG-/Legacy-Pfad, statt dort die Warmlink-Werte 8024–8028 zu verwenden.
+Für die nicht eindeutig dokumentierte Kontaktkombination **1/1 bei 1334 = 6** wird derzeit keine zusätzliche Bedeutung angenommen.
+
+**Low PV** begrenzt die Leistung über **1336 / SG03**. **Neutral** bedeutet Normalbetrieb ohne SG-bedingte Leistungs- oder Temperaturanpassung. **High PV** verwendet die High-PV-Sollwertkorrekturen über **1338–1341**.
+
+Die physischen Varianten **5 und 6** sind in der V3.4-Firmware statisch bestätigt, aber noch nicht live am Gerät verifiziert. **Modus 7** ist praktisch deutlich besser bestätigt.
+
+Der feste 10-Minuten-Hold ist für den **klassischen virtuellen Pfad 1334 = 3** bestätigt. Für **1334 = 7** ist derselbe Hold durch die bisherigen Live-Tests nicht bestätigt; deshalb sollte er dort nicht ungeprüft vorausgesetzt werden.
+
+Ebenfalls wichtig: **1334 = 4** wird vom PHNIX-App-Pfad für **AI Saving / dynamischen Stromtarif** verwendet. Das ist kein normaler manueller SG-Ready-Modus. Der zugrunde liegende Remote-Regelkomplex existiert bereits in V3.4; V3.5 erweitert ihn um zusätzliche Warmlink-Stellgrößen.
+
+Bei V3.5 sitzt **1334 / SG01** außerdem vor einem Teil der neuen MAIN-1540-Remote-Korrekturen. Insbesondere der **1334 = 7**-Zweig verwendet für die thermischen Korrekturen seinen SG-/Legacy-Pfad, statt dort die Warmlink-Werte **8024–8028** zu verwenden. Die separaten Frequenz-Caps **8021–8023** besitzen eigene Gates.
 
 ## Steuerung über Modbus
 

@@ -18,6 +18,29 @@ from dialogs.dialog_helpers import (
 )
 
 
+SEARCH_TEXT_FIELDS = (
+    "name", "app_label", "block", "code", "description", "knowledge",
+    "note", "notes", "hint", "explanation", "info", "source", "unit",
+)
+
+
+def _mapping_search_text(data: dict[str, Any]) -> str:
+    """Return user-facing mapping text relevant to register searches."""
+    parts = [str(data.get(field, "")) for field in SEARCH_TEXT_FIELDS]
+    for field in ("value_map", "bit_map"):
+        mapping = data.get(field)
+        if isinstance(mapping, dict):
+            parts.extend(str(value) for value in mapping.values())
+    return " ".join(part for part in parts if part)
+
+
+def _item_search_haystack(item: dict[str, Any]) -> str:
+    """Build a common haystack including decimal and hexadecimal addresses."""
+    reg = int(item["reg"])
+    address_text = f"{reg} 0x{reg:X} {reg:X}"
+    return f"{address_text} {item.get('search_text', '')}"
+
+
 class OfflineRegisterBrowserDialog(QDialog):
     """Offline-Browser fuer alle Register aus dem Mapping, ohne Verbindung."""
 
@@ -34,7 +57,7 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.source_combo.addItem("Warmlink/WP", "warmlink")
         self.source_combo.addItem("Display/DWIN", "display")
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("nach Name/App-Name/Beschreibung suchen ...")
+        self.search_edit.setPlaceholderText("Register / Hex / Code / Name / Beschreibung suchen ...")
         self.search_edit.setText(str(self.main_window.settings.get("offline_register_browser_search", "")))
         self.regex_cb = QCheckBox("Regex")
         self.app_name_cb = QCheckBox("App-Name anzeigen")
@@ -115,6 +138,14 @@ class OfflineRegisterBrowserDialog(QDialog):
             for reg, info in sorted(getattr(self.main_window.display_regmap, "items", {}).items()):
                 name = str(getattr(info, "name", "") or "")
                 dtype = str(getattr(info, "dtype", "RAW") or "RAW")
+                display_search_data = {
+                    "name": name,
+                    "block": "DWIN",
+                    "code": f"0x{int(reg):04X}",
+                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
+                    "value_map": getattr(info, "value_map", None),
+                    "bit_map": getattr(info, "bit_map", None),
+                }
                 out.append({
                     "reg": int(reg),
                     "block": "DWIN",
@@ -125,6 +156,7 @@ class OfflineRegisterBrowserDialog(QDialog):
                     "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
                     "detail": "Display-/DWIN-Diagnosemapping. Diese Adressen dürfen die normale Warmlink-Registerliste nicht überschreiben.",
                     "has_extra": True,
+                    "search_text": _mapping_search_text(display_search_data),
                 })
             return sorted(out, key=lambda x: x["reg"])
 
@@ -137,6 +169,10 @@ class OfflineRegisterBrowserDialog(QDialog):
                 continue
             block, code, clean = register_meta_parts(data)
             info_text = register_extra_info_text(data, reg_no=reg, device_model=self.main_window.current_device_model()) or str(data.get("info", ""))
+            note = str(data.get("note", "")).strip()
+            detail_text = info_text
+            if note:
+                detail_text = "\n".join(part for part in (info_text, f"Notiz: {note}") if part)
             out.append({
                 "reg": reg,
                 "block": block,
@@ -144,9 +180,10 @@ class OfflineRegisterBrowserDialog(QDialog):
                 "name": clean,
                 "app_label": str(data.get("app_label", "")),
                 "dtype": str(data.get("type", "RAW")),
-                "info": info_text.replace("\n", " | "),
-                "detail": info_text,
+                "info": detail_text.replace("\n", " | "),
+                "detail": detail_text,
                 "has_extra": register_has_extra_info(data, reg_no=reg, device_model=self.main_window.current_device_model()),
+                "search_text": _mapping_search_text(data),
             })
         return sorted(out, key=lambda x: x["reg"])
 
@@ -159,13 +196,13 @@ class OfflineRegisterBrowserDialog(QDialog):
             if self.regex_cb.isChecked():
                 pat = re.compile(text, re.IGNORECASE)
                 for it in self.items:
-                    hay = " ".join(str(it.get(k, "")) for k in ("name", "app_label", "info", "code", "block"))
+                    hay = _item_search_haystack(it)
                     if pat.search(hay):
                         items.append(it)
             else:
                 needle = text.lower()
                 for it in self.items:
-                    hay = " ".join(str(it.get(k, "")) for k in ("name", "app_label", "info", "code", "block")).lower()
+                    hay = _item_search_haystack(it).lower()
                     if needle in hay:
                         items.append(it)
         except re.error:

@@ -1,5 +1,46 @@
 ## Unreleased
 
+- Register 1388 und 1389 als Taupunkt-Sicherheitsabstand beziehungsweise Raum-/T04-ΔT-Schaltschwelle korrekt benannt und als Kelvin-Differenzen formatiert.
+- Register 1402 als Mindest-Abtauzeit in Minuten dokumentiert und mit der ausdrücklich projektinternen, fiktiven Kennung D100 versehen.
+- Beschreibungen und Wissensdatenbank um die bestätigten V3.5-Regelpfade, Defaults, Hysteresen und Abtau-Ausnahmen ergänzt.
+
+## 0.2.67
+
+- Warmlink-/Service-Register im 8xxx-Bereich werden bei Empfang oder explizitem Lesen direkt in der normalen Hauptregistertabelle angezeigt.
+- Bekannte Werte 8001, 8004, 8006, 8021–8028 und 8055 verwenden dort ihre Reverse-Engineering-Namen und Datentypen; unbekannte 8xxx-Werte bleiben als RAW-Werte sichtbar.
+- FC10-Serviceframes aktualisieren die enthaltenen Einzelregister über den normalen Änderungs- und Tabellenpfad, ohne Schreibfreigaben oder automatische Abfragen zu ergänzen.
+- Separaten Warmlink-Service-/Engineering-Dialog aus den Programmeinstellungen entfernt.
+
+## 0.2.66
+
+- Verzögerung beim Schließen der Programmeinstellungen behoben.
+- Theme, Tabellenfilter, Gerätemodell und Kommunikationsparameter werden nur noch bei tatsächlicher Änderung neu angewendet.
+- Mehrfache Settings-Speichervorgänge beim Bestätigen reduziert.
+
+## 0.2.65
+
+- V3.5-Warmlink-Serviceparameter auf den aktuellen Reverse-Engineering-Stand gebracht; 8021–8023 als Cooling-/Heating-/DHW-Frequenzcaps und 8027/8028 mit Heiz-/Kühlvorzeichen dokumentiert.
+- 8055 als RAM-only ohne eigenen TTL sowie MAIN:1430/1492 inklusive Persistenz, Byteaufteilung und Gates präzisiert; irreführende harte 6-Hz-Quantisierung entfernt.
+- Engineering-Parameter lassen sich optional in den Programmeinstellungen einblenden; neue read-only Service-/Engineering-Diagnose für 8021–8028 und 8055.
+- Rollen des internen FoxAir-Boardbusses und des getrennten Warmlink/LTE-Busses im Busadressdialog aktualisiert.
+
+
+### V3.5 Remote-Regelwertkorrektur
+- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt; die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
+- Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschließlich gruppenbezogener TTL, Cooling-/Heating-/DHW-Caps und bestätigter Heiz-/Kühlvorzeichen.
+- MAIN:1492 und MAIN:1430 als optional sichtbare Engineeringparameter aufgenommen; Warmlink 8055 bleibt in der read-only Diagnose sichtbar und für Schreibzugriffe gesperrt.
+
+### SG Ready / SG01
+- SG01/MAIN:1334 um AI Saving / Remote Energy Control (`4`) und die erweiterte SG/PV-Familie `5/6/7` ergänzt.
+- SG-Ready-Editor unterstützt alle bekannten SG01-Modi und unterscheidet klassischen Vier-Zustands-Pfad, AI Saving sowie Low/Neutral/High-Pfad.
+- Register 8801 wird im Editor nur bei SG01 `3` oder `7` am direkten User-/Mainboard-Modbus angeboten und geschrieben.
+- Statische Bestätigung, Live-Verifikation und offene Herstellerbezeichnung der erweiterten Familie sind getrennt dokumentiert.
+
+### Register-Mapping und Schreibschutz
+- Offene Erkenntnisse aus #117, #138, #139 und #140 ergänzt: DIAG-Register, Statusbitfelder, Heiz-/Sommerabschaltung, A38-Niederdruckbegrenzer und C13–C15-PID-Regler.
+- C14/MAIN:1349 wird zentral unmittelbar vor jedem normalen Register-Write auf mindestens 1 validiert, damit auch manuelles Schreiben und Backup-Restore keinen ungeschützten Divisor 0 an die Firmware übertragen können.
+- Unsichere Zählerzuordnungen, Reservepfade und weiterhin offene Bit-/Statussemantik sind ausdrücklich als wahrscheinlich beziehungsweise offen gekennzeichnet.
+
 ### Geräte-Info und Registerdaten
 - Die drei direkten Geräte-Info-Reads werden mit jeweils einer Sekunde Buspause entzerrt.
 - Cloud-Sonderfunktion im Dialog dezent hervorgehoben und oberhalb der direkten Abfrage angeordnet.

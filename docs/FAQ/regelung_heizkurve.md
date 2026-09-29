@@ -62,6 +62,44 @@ Damit muss nicht für jede Wetterlage manuell eine neue Vorlauftemperatur einges
 
 Bei Firmware **V3.4** kann die Heizkurve außerdem zusammen mit den Leistungstimern verwendet werden.
 
+### H36 – Art der Außentemperaturkompensation
+
+In den untersuchten GL9-Firmwares **V3.4 und V3.5** wählt **H36 (Register 1236)** die Art der Heizkurve:
+
+| H36 | Modus |
+| ---: | --- |
+| **0** | Aus |
+| **1** | Lineare Kennlinie |
+| **2** | 7-Punkt-Kennlinie |
+
+#### Lineare Kennlinie
+
+Im Modus **H36 = 1** bestimmen **Register 1234** (Steigung) und **Register 1235** (Offset bzw. Mittelpunkt) die lineare Heizkurve.
+
+#### 7-Punkt-Kennlinie
+
+Im Modus **H36 = 2** werden Heiz-Solltemperaturen an sieben festen Außentemperatur-Stützstellen vorgegeben:
+
+| Außentemperatur | Register des Heiz-Sollwerts |
+| ---: | ---: |
+| **-20 °C** | **1250** |
+| **-10 °C** | **1251** |
+| **-5 °C** | **1252** |
+| **0 °C** | **1235** |
+| **+5 °C** | **1253** |
+| **+10 °C** | **1254** |
+| **+20 °C** | **1255** |
+
+Zwischen benachbarten Punkten interpoliert die Regelung linear. Für die Kurvenberechnung wird die verwendete Außentemperatur auf **-20 bis +20 °C** begrenzt.
+
+**Register 1234** spielt im 7-Punkt-Modus keine Rolle. **Register 1235** hat damit eine Doppelrolle: linearer Offset/Mittelpunkt in Modus 1 und 0-°C-Sollwert in Modus 2.
+
+#### Grenzen und aktuelle Werte
+
+Nach der Kurvenberechnung wird das Ergebnis durch **R10 (Register 1164, minimale Heiz-Solltemperatur)** und **R11 (Register 1165, maximale Heiz-Solltemperatur)** begrenzt.
+
+Die aktuell für die Kurve verwendete Außentemperatur steht in **Register 2048**, die daraus resultierende kompensierte Solltemperatur in **Register 2014**. Diese beiden Werte sind Laufzeitwerte und werden in FoxAir Control nur angezeigt, nicht als Kurvenparameter geschrieben.
+
 ## Warum startet die Wärmepumpe manchmal nicht?
 
 Wenn die WP trotz vermeintlicher Heizanforderung nicht startet, zuerst prüfen:

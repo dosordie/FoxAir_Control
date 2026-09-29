@@ -427,6 +427,39 @@ WARMLINK_PRODUCT_IDS: list[str] = [
     "1552190345066967040", "1534450342119510016", "1480699335514533888",
 ]
 
+# Engineering-Register des Modbus-Service-Slaves 0x63. Diese Runtimewerte
+# sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
+WARMLINK_SERVICE_SLAVE = 0x63
+WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
+    8001: {"name": "Remote-Control-Mode-Selector", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Remote-Control-Modus 1..4; übernommener Modus wird als MAIN:1691 exportiert"},
+    8004: {"name": "Remote-Control Schwellwert / MAIN1427", "type": "int16", "mode": "service-observed", "write_allowed": False, "effect": "Wird im Remote-Control-Modus 4 im 8004/MAIN1427-Schwellautomaten verwendet; physikalische Einheit noch offen"},
+    8006: {"name": "Remote-Control Change-/Generation-Token", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an"},
+    8021: {"name": "Cooling Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Cooling", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8022: {"name": "Heating Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Heating", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8023: {"name": "DHW Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "DHW", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
+    8024: {"name": "Kuehl-Wassersollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "cooling_target = R03 - value"},
+    8025: {"name": "Heiz-Wassersollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "heating_target = R02 + value"},
+    8026: {"name": "WW-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "dhw_target = R01 + value"},
+    8027: {"name": "Zone-1-Raumtemperatur-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "Heating: target += offset; Cooling: target -= offset"},
+    8028: {"name": "Zone-2-Raumtemperatur-Sollwertoffset", "type": "int16", "mode": "service-write", "write_allowed": False, "ttl_minutes": 120, "ttl_group": "target_offsets", "effect": "Heating: target += offset; Cooling: target -= offset"},
+    8055: {"name": "Positiver Multi-Zone-Heiz-Wassersollwertboost", "type": "signed int16", "mode": "engineering/experimental", "write_allowed": False, "persistence": "RAM-only; Boot-Default 0; kein eigener Mainboard-TTL", "effect": "effective_heating_target_raw = clamp(base_heating_target_raw + int16(value) * uint8(MAIN1492.high) / 10, local_min_raw, local_max_raw)", "gates": "MAIN:1492.high != 0; Z01 in {4,5,6}; MAIN:1430 != 0; int16(value) >= 1"},
+}
+
+def warmlink_service_metadata(slave_addr: int, register: int) -> dict[str, object] | None:
+    """Return metadata for an observed service register, never a write grant."""
+    register = int(register)
+    if int(slave_addr) != WARMLINK_SERVICE_SLAVE or not 8000 <= register <= 8999:
+        return None
+    known = WARMLINK_SERVICE_REGISTERS.get(register)
+    if known is not None:
+        return dict(known)
+    return {
+        "name": f"Warmlink Service Register {register}",
+        "type": "RAW",
+        "mode": "service-observed",
+        "write_allowed": False,
+    }
+
 WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '1208': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '2014': {'allow_code_mismatch': True,
@@ -663,7 +696,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
          'confidence': 'confirmed',
          'local_code': 'A38',
          'modbus_register': 1342,
-         'name': 'Main Loop Flow Small / Hauptkreis Mindestdurchfluss klein',
+         'name': 'Low Pressure of Limiting Frequency / Niederdruck-Grenzwert für Frequenzbegrenzung',
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '20.0',
          'rangeStart': '0.0',
@@ -2248,7 +2281,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
                'local_code': 'SGstatus',
                'modbus_register': 2133,
                'name': 'SG Status',
-               'note': 'Manuell bestätigt: Register 2133 = SG Status; Werte 0=kein SG Ready aktiv, 4=SG Ready aktiv; Werte 1-3 aktuell unbekannt.',
+               'note': 'Register 2133 = SG Status. Im klassischen Pfad gelten die Modi 0..4; bei SG01=7 sind 1..3 als Low PV, Neutral und High PV bestätigt. Die Semantik bei SG01=5/6 bleibt offen.',
                'rangeEnd': '4',
                'rangeStart': '0',
                'write_allowed': False},
@@ -2257,8 +2290,9 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataT
           'local_code': 'SG01',
           'modbus_register': 1334,
           'name': 'SG Ready Mode / SG-Funktion',
-          'note': 'SG Ready: 0=Aus, 1=Einfach, 2=Erweitert; confirmed local mapping, cloud write not yet proven; '
-                  'Confirmed by static cleanup: cloud_code == local register code',
+          'note': 'Beobachtete Cloud-Metadaten nennen weiterhin 0..2. MAIN:1334 unterstützt lokal laut Firmwareanalyse '
+                  '0..7; Cloud-Schreibbarkeit der erweiterten Werte ist nicht bestätigt. Confirmed by static '
+                  'cleanup: cloud_code == local register code',
           'rangeEnd': '2',
           'rangeStart': '0',
           'write_allowed': False},

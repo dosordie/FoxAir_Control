@@ -17,7 +17,6 @@ py -m PyInstaller ^
   --add-data "assets;assets" ^
   --add-data "app_icon.png;." ^
   --add-data "app_icon.ico;." ^
-  --add-data "docs\public;docs\public" ^
   --collect-submodules keyring ^
   --hidden-import keyring.backends.Windows ^
   --hidden-import keyring.backends.null ^

@@ -45,6 +45,18 @@ from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
+from core.at_compensation import (
+    AT_LIVE_REGISTERS,
+    AT_MODE_VALUES,
+    AT_READ_BLOCKS,
+    AT_SEVEN_POINT_REGISTERS,
+    FALLBACK_TARGET_LIMITS,
+    calculate_seven_point_target,
+    encode_temp1,
+    linear_write_plan,
+    seven_point_write_plan,
+    target_limits,
+)
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
@@ -139,11 +151,12 @@ from core.foxair_phnix_core import (
     numeric_value_by_type,
     format_value_by_type,
     s16,
+    validate_register_write_value,
 )
 
 
-APP_VERSION = "0.2.62"
-BUILD_DATE = "2026-08-27"
+APP_VERSION = "0.3.0"
+BUILD_DATE = "2026-09-29"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -1646,7 +1659,7 @@ class DualBusLoggerDialog(QDialog):
         self.display_passive_analyzer_cb = QCheckBox("Display Passiv-Analyzer / Rohframes + Korrelation")
         self.display_passive_analyzer_cb.setChecked(True)
         self.display_raw_file_cb = QCheckBox("Display RAW-Datenstrom in .bin + .hex.txt mitschreiben")
-        self.display_raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
+        self.display_raw_file_cb.setChecked(False)
         self.display_scan_cb = QCheckBox("Display/DWIN Unit 0x03 Kandidaten aktiv scannen")
         self.display_scan_cb.setChecked(False)
         self.display_unit1_scan_cb = QCheckBox("Display Unit 0x01 Livewerte aktiv pollen")
@@ -2573,12 +2586,7 @@ class DualBusLoggerDialog(QDialog):
                 old_known = reg_no in mw.last_values
                 old = mw.last_values.get(reg_no)
                 value_diff = old != raw
-                was_cached = reg_no in mw.cached_regs
-                # Cachewerte sind Start-/Vergleichshilfe, aber keine Live-Basis
-                # fuer eine sichtbare Aenderungsmarkierung.
-                real_changed = bool(old_known and (not was_cached) and value_diff)
-                if was_cached:
-                    mw.cached_regs.discard(reg_no)
+                real_changed = bool(old_known and value_diff)
                 if value_diff:
                     if old is None:
                         mw.previous_value_texts.setdefault(reg_no, "--")
@@ -2588,7 +2596,7 @@ class DualBusLoggerDialog(QDialog):
                     mw._send_udp_register_change(reg, old)
                     changed.append(f"{reg_no}: {old} -> {raw} ({reg.display_value})")
                 mw.last_values[reg_no] = raw
-                if value_diff or was_cached or reg_no not in mw.table_rows:
+                if value_diff or reg_no not in mw.table_rows:
                     mw._upsert_register_row(reg, real_changed)
                 if reg_no == 2034:
                     mw._update_contact_table(raw)
@@ -2759,6 +2767,16 @@ class DualBusLoggerDialog(QDialog):
         self.warmlink_frames += 1
         if getattr(frame, "mode", "") == "read-response":
             self._associate_warmlink_read_response(frame)
+        if getattr(frame, "crc_ok", False) and int(getattr(frame, "slave_addr", -1)) == DEFAULT_BUS_ADDR:
+            service_regs = [
+                reg for reg in list(getattr(frame, "registers", []) or [])
+                if 8000 <= int(getattr(reg, "reg", -1)) <= 8999
+            ]
+            if service_regs:
+                self._apply_regs_to_main_window(
+                    service_regs,
+                    f"Warmlink-Serviceframe Unit 0x{DEFAULT_BUS_ADDR:02X}",
+                )
         self._remember_warmlink_values(frame)
         self._frame_summary("WARMLINK", frame, self.warmlink_last)
         self._update_status()
@@ -3157,6 +3175,18 @@ class CommunicationSettingsDialog(QDialog):
         self.update_asset_combo.setCurrentIndex(uidx if uidx >= 0 else 0)
         general_form.addRow("Update-Download:", self.update_asset_combo)
 
+        self.engineering_cb = QCheckBox("Engineering-Parameter anzeigen")
+        self.engineering_cb.setChecked(bool(main_window.settings.get("show_engineering_parameters", False)))
+        self.engineering_cb.setToolTip(
+            "Zeigt zusätzlich Reverse-Engineering-/Experimentalparameter im Parameterfenster an.\n\n"
+            "Diese Werte sind teilweise nicht vom Hersteller dokumentiert. Änderungen können das Regelverhalten beeinflussen."
+        )
+        engineering_row = QWidget()
+        engineering_layout = QHBoxLayout(engineering_row)
+        engineering_layout.setContentsMargins(0, 0, 0, 0)
+        engineering_layout.addWidget(self.engineering_cb)
+        general_form.addRow("Engineering:", engineering_row)
+
         self.connection_actions_row = QWidget()
         connection_actions_layout = QHBoxLayout(self.connection_actions_row)
         connection_actions_layout.setContentsMargins(0, 0, 0, 0)
@@ -3223,15 +3253,11 @@ class CommunicationSettingsDialog(QDialog):
         self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
         self.raw_log_cb.setChecked(bool(getattr(main_window, "raw_log_cb", None) and main_window.raw_log_cb.isChecked()))
         self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
-        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
-        self.raw_file_cb.setChecked(bool(getattr(main_window, "raw_file_cb", None) and main_window.raw_file_cb.isChecked()))
-        self.raw_file_cb.setToolTip("Schreibt den RAW-Datenstrom zusätzlich in eine Binärdatei im Benutzerordner.")
         self.known_only_cb = QCheckBox("nur bekannte Register anzeigen")
         self.known_only_cb.setChecked(bool(getattr(main_window, "known_only_cb", None) and main_window.known_only_cb.isChecked()))
         self.log_changes_only_cb = QCheckBox("nur Änderungen loggen")
         self.log_changes_only_cb.setChecked(bool(getattr(main_window, "log_changes_only_cb", None) and main_window.log_changes_only_cb.isChecked()))
         logging_form.addRow("RAW-Anzeige:", self.raw_log_cb)
-        logging_form.addRow("RAW-Datei:", self.raw_file_cb)
         logging_form.addRow("Registertabelle:", self.known_only_cb)
         logging_form.addRow("Logfilter:", self.log_changes_only_cb)
 
@@ -3251,6 +3277,21 @@ class CommunicationSettingsDialog(QDialog):
         self.transport_combo.currentIndexChanged.connect(lambda _=None: self._transport_changed())
         self._backend_changed(load_values=True)
         self._update_connection_actions()
+
+        # Keep only the small set of values needed to avoid expensive work on an
+        # unchanged OK.  In particular, do not copy the complete settings tree.
+        self._initial_theme = str(main_window.settings.get("theme", "system"))
+        self._initial_device_model = str(main_window.current_device_model())
+        self._initial_show_engineering_parameters = bool(main_window.settings.get("show_engineering_parameters", False))
+        self._initial_show_public_warning = bool(main_window.settings.get("show_public_warning", True))
+        self._initial_known_only = bool(self.known_only_cb.isChecked())
+        self._initial_backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        self._initial_communication = self._communication_fields_snapshot()
+        self._initial_live_poll = (
+            bool(self.live_poll_cb.isChecked()), int(self.live_poll_interval_spin.value())
+        )
+        self._initial_udp_diagnostic = dict(udp_diagnostic_defaults(main_window.settings.get("udp_diagnostic", {})))
+        self._initial_show_dual_logger = bool(self.display_dual_logger_cb.isChecked())
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
@@ -3309,7 +3350,7 @@ class CommunicationSettingsDialog(QDialog):
             return
         self._save_current_fields_to_selected_backend()
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.main_window.apply_communication_settings(backend)
+        self.main_window.apply_communication_settings(backend, save=False)
         self.main_window._save_settings(sync_main_fields=False)
         self.main_window.connect_to_device()
         self._apply_communication_lock_state()
@@ -3352,6 +3393,21 @@ class CommunicationSettingsDialog(QDialog):
             parity=str(self.parity_combo.currentData() or "N"),
             bytesize=int(self.bytesize_combo.currentData() or 8),
             stopbits=float(self.stopbits_combo.currentData() or 1.0),
+        )
+
+    def _communication_fields_snapshot(self) -> tuple:
+        """Return the selected backend's editable connection values."""
+        return (
+            str(self.backend_combo.currentData() or "warmlink_raw"),
+            str(self.transport_combo.currentData() or "tcp"),
+            self.host_edit.text().strip(),
+            int(self.port_spin.value()),
+            self.serial_port_edit.text().strip(),
+            int(self.baud_spin.value()),
+            str(self.parity_combo.currentData() or "N"),
+            int(self.bytesize_combo.currentData() or 8),
+            float(self.stopbits_combo.currentData() or 1.0),
+            int(self.unit_spin.value()),
         )
 
     def _backend_changed(self, load_values: bool = True):
@@ -3400,25 +3456,41 @@ class CommunicationSettingsDialog(QDialog):
             w.setVisible(is_serial)
 
     def accept(self):
+        self._apply_changes()
+        super().accept()
+
+    def _apply_changes(self):
         comm_locked = bool(self.main_window.connected)
-        if not comm_locked:
+        communication_changed = (
+            not comm_locked
+            and self._communication_fields_snapshot() != self._initial_communication
+        )
+        if communication_changed:
             self._save_current_fields_to_selected_backend()
         if hasattr(self.main_window, "autoconnect_cb"):
             self.main_window.autoconnect_cb.setChecked(bool(self.autoconnect_cb.isChecked()))
         if hasattr(self.main_window, "raw_log_cb"):
             self.main_window.raw_log_cb.setChecked(bool(self.raw_log_cb.isChecked()))
-        if hasattr(self.main_window, "raw_file_cb"):
-            self.main_window.raw_file_cb.setChecked(bool(self.raw_file_cb.isChecked()))
-            self.main_window.on_raw_file_checkbox_changed()
-        if hasattr(self.main_window, "known_only_cb"):
-            self.main_window.known_only_cb.setChecked(bool(self.known_only_cb.isChecked()))
+        new_known_only = bool(self.known_only_cb.isChecked())
+        if hasattr(self.main_window, "known_only_cb") and new_known_only != self._initial_known_only:
+            self.main_window.known_only_cb.setChecked(new_known_only)
             self.main_window.rebuild_table_filter()
         if hasattr(self.main_window, "log_changes_only_cb"):
             self.main_window.log_changes_only_cb.setChecked(bool(self.log_changes_only_cb.isChecked()))
 
-        self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
-        self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
+        new_warning = bool(self.show_warning_cb.isChecked())
+        new_theme = str(self.theme_combo.currentData() or "system")
+        new_engineering = bool(self.engineering_cb.isChecked())
+        new_device = str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL)
+        theme_changed = new_theme != self._initial_theme
+        device_changed = new_device != self._initial_device_model
+        engineering_changed = new_engineering != self._initial_show_engineering_parameters
+        warning_changed = new_warning != self._initial_show_public_warning
+
+        self.main_window.settings["show_public_warning"] = new_warning
+        self.main_window.settings["theme"] = new_theme
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
+        self.main_window.settings["show_engineering_parameters"] = new_engineering
         self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
         self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
@@ -3427,34 +3499,40 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.init_pause_spin.setValue(int(self.init_pause_spin.value()))
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
-        self.main_window.settings["udp_diagnostic"] = udp_diagnostic_defaults({
+        udp_diagnostic = udp_diagnostic_defaults({
             "enabled": bool(self.udp_enabled_cb.isChecked()),
             "host": self.udp_host_edit.text().strip(),
             "port": int(self.udp_port_spin.value()),
             "send_register_changes": bool(self.udp_reg_cb.isChecked()),
             "send_raw_bus": bool(self.udp_raw_cb.isChecked()),
         })
-        if hasattr(self.main_window, "udp_diagnostic"):
-            self.main_window.udp_diagnostic.configure(self.main_window.settings.get("udp_diagnostic", {}))
-        selected_backend = (
-            self.main_window.current_backend_key()
-            if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
-        )
+        self.main_window.settings["udp_diagnostic"] = udp_diagnostic
+        if hasattr(self.main_window, "udp_diagnostic") and udp_diagnostic != self._initial_udp_diagnostic:
+            self.main_window.udp_diagnostic.configure(udp_diagnostic)
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
-        self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
-        apply_app_theme(QApplication.instance(), self.main_window.settings["theme"])
-        if hasattr(self.main_window, "public_warning_label"):
-            self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
-        self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
-        if not comm_locked:
+        show_dual_logger = bool(self.display_dual_logger_cb.isChecked())
+        self.main_window.settings["show_dual_logger_button_display"] = show_dual_logger
+        if theme_changed:
+            apply_app_theme(QApplication.instance(), new_theme)
+        if warning_changed and hasattr(self.main_window, "public_warning_label"):
+            self.main_window.public_warning_label.setVisible(new_warning)
+        if (engineering_changed or device_changed) and getattr(self.main_window, "parameter_dialog", None) is not None:
+            self.main_window.parameter_dialog.close()
+            self.main_window.parameter_dialog = None
+        if device_changed:
+            self.main_window.set_current_device_model(new_device, save=False)
+        if communication_changed:
             backend = str(self.backend_combo.currentData() or "warmlink_raw")
-            self.main_window.apply_communication_settings(backend)
-        self.main_window._apply_live_poll_timer_state()
-        self.main_window._update_dual_logger_button_visibility()
-        self.main_window._refresh_search_highlights()
+            self.main_window.apply_communication_settings(backend, save=False)
+        live_poll = (bool(self.live_poll_cb.isChecked()), int(self.live_poll_interval_spin.value()))
+        if live_poll != self._initial_live_poll:
+            self.main_window._apply_live_poll_timer_state()
+        if show_dual_logger != self._initial_show_dual_logger:
+            self.main_window._update_dual_logger_button_visibility()
+        if theme_changed:
+            self.main_window._refresh_search_highlights()
         self.main_window._save_settings(sync_main_fields=False)
-        super().accept()
 
 
 
@@ -3840,13 +3918,91 @@ class WPControlDialog(QDialog):
 class CurveCanvas(QWidget):
     """Kleine Canvas-Grafik fuer die AT-Kompensationskurve ohne externe Abhaengigkeiten."""
 
+    pointDragged = Signal(int, float)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.points: list[tuple[float, float, bool]] = []
+        self.runtime_point: Optional[tuple[float, float]] = None
+        self.value_limits = FALLBACK_TARGET_LIMITS
+        self.editable = False
+        self._dragged_point: Optional[int] = None
         self.setMinimumHeight(260)
+
+    def set_editable(self, editable: bool):
+        self.editable = bool(editable)
+        self.setCursor(Qt.CursorShape.OpenHandCursor if self.editable else Qt.CursorShape.ArrowCursor)
+        self.setToolTip("Kurvenpunkte mit der Maus nach oben oder unten ziehen." if self.editable else "")
+
+    def set_value_limits(self, minimum: float, maximum: float):
+        self.value_limits = (float(minimum), float(maximum))
+        self.update()
+
+    def _plot_data(self):
+        rect = self.rect().adjusted(45, 15, -20, -35)
+        if not self.points or rect.width() <= 10 or rect.height() <= 10:
+            return None
+        xs = [point[0] for point in self.points]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = self.value_limits
+        if max_x == min_x or max_y <= min_y:
+            return None
+        return rect, min_x, max_x, min_y, max_y
+
+    def _screen_points(self):
+        data = self._plot_data()
+        if data is None:
+            return []
+        rect, min_x, max_x, min_y, max_y = data
+        return [
+            (
+                rect.left() + (x - min_x) / (max_x - min_x) * rect.width(),
+                rect.bottom() - (y - min_y) / (max_y - min_y) * rect.height(),
+            )
+            for x, y, _clipped in self.points
+        ]
+
+    def mousePressEvent(self, event):
+        if self.editable and event.button() == Qt.MouseButton.LeftButton:
+            pos = event.position()
+            candidates = [
+                ((pos.x() - x) ** 2 + (pos.y() - y) ** 2, index)
+                for index, (x, y) in enumerate(self._screen_points())
+            ]
+            if candidates:
+                distance, index = min(candidates)
+                if distance <= 14 ** 2:
+                    self._dragged_point = index
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                    event.accept()
+                    return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        data = self._plot_data()
+        if self._dragged_point is not None and data is not None:
+            rect, _min_x, _max_x, min_y, max_y = data
+            ratio = (rect.bottom() - event.position().y()) / rect.height()
+            value = min_y + max(0.0, min(1.0, ratio)) * (max_y - min_y)
+            self.pointDragged.emit(self._dragged_point, value)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._dragged_point is not None:
+            self._dragged_point = None
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def set_points(self, points: list[tuple[float, float, bool]]):
         self.points = points
+        self.update()
+
+    def set_runtime_point(self, point: Optional[tuple[float, float]]):
+        self.runtime_point = point
         self.update()
 
     def paintEvent(self, event):
@@ -3881,13 +4037,10 @@ class CurveCanvas(QWidget):
             painter.drawText(rect.center(), "Keine Kurvendaten")
             return
 
-        xs = [p[0] for p in self.points]
-        ys = [p[1] for p in self.points]
-        min_x, max_x = min(xs), max(xs)
-        min_y = min(ys + [10.0])
-        max_y = max(ys + [55.0])
-        if max_y - min_y < 1:
-            max_y = min_y + 1
+        data = self._plot_data()
+        if data is None:
+            return
+        rect, min_x, max_x, min_y, max_y = data
 
         def sx(x):
             return rect.left() + (float(x) - min_x) / (max_x - min_x) * rect.width()
@@ -3907,10 +4060,21 @@ class CurveCanvas(QWidget):
             painter.drawText(int(x) - 14, int(y) - 10, f"{target:.0f}")
             painter.drawText(int(x) - 18, rect.bottom() + 20, f"{at:.0f}")
 
+        if self.runtime_point is not None:
+            at, target = self.runtime_point
+            if min_x <= at <= max_x and min_y <= target <= max_y:
+                x, y = sx(at), sy(target)
+                painter.setPen(QPen(QColor(210, 40, 80), 2))
+                painter.setBrush(QColor(210, 40, 80))
+                painter.drawEllipse(int(x) - 6, int(y) - 6, 12, 12)
+                painter.drawText(int(x) + 8, int(y) - 8, "aktuell")
+
+
 
 class ATCompensationDialog(QDialog):
-    """AT-Kompensationskurve Zone 1: H36/1236, Slope 1234, Offset 1235."""
-    CURVE_AT_POINTS = [-30, -20, -10, 0, 10, 20]
+    """Editor for the GL9 H36 outdoor-temperature compensation modes."""
+    LINEAR_PREVIEW_AT_POINTS = [-20, -10, -5, 0, 5, 10, 20]
+    LIVE_REGISTERS = AT_LIVE_REGISTERS
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -3935,17 +4099,11 @@ class ATCompensationDialog(QDialog):
 
     def _temp(self, reg_no: int) -> Optional[float]:
         raw = self._raw(reg_no)
-        if raw is None:
-            return None
-        return numeric_value_by_type(raw, "TEMP1")
+        return None if raw is None else numeric_value_by_type(raw, "TEMP1")
 
-    def _slope(self) -> float:
-        raw = self._raw(1234)
-        return numeric_value_by_type(raw, "DIGI5") if raw is not None else float(self.slope_spin.value())
-
-    def _offset(self) -> float:
-        raw = self._raw(1235)
-        return numeric_value_by_type(raw, "TEMP1") if raw is not None else float(self.offset_spin.value())
+    @staticmethod
+    def _temp_raw(value: float) -> int:
+        return encode_temp1(value)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -3953,38 +4111,59 @@ class ATCompensationDialog(QDialog):
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #555; padding: 2px;")
         layout.addWidget(self.status_label)
-        self.enable_cb = QCheckBox("AT-Kompensationskurve Zone 1 aktivieren (H36 / Register 1236)")
-        layout.addWidget(self.enable_cb)
+
+        mode_row = QHBoxLayout()
+        mode_row.addWidget(QLabel("Modus (H36 / Register 1236):"))
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("Aus", 0)
+        self.mode_combo.addItem("Linear", 1)
+        self.mode_combo.addItem("7-Punkt", 2)
+        mode_row.addWidget(self.mode_combo)
+        mode_row.addStretch(1)
+        layout.addLayout(mode_row)
 
         status_box = QGroupBox("Aktueller Status")
         layout.addWidget(status_box)
         status = QGridLayout(status_box)
         self.current_at_label = QLabel("--")
         self.current_target_label = QLabel("--")
-        self.formula_label = QLabel("vermutlich: Ziel = Offset - Slope × AT, mit Mindestbegrenzung")
-        self.formula_label.setWordWrap(True)
+        self.limit_label = QLabel("R10/R11: --")
         status.addWidget(QLabel("Außentemperatur (2048):"), 0, 0)
         status.addWidget(self.current_at_label, 0, 1)
         status.addWidget(QLabel("aktuelle kompensierte Solltemp. (2014):"), 1, 0)
         status.addWidget(self.current_target_label, 1, 1)
-        status.addWidget(self.formula_label, 2, 0, 1, 2)
+        status.addWidget(self.limit_label, 2, 0, 1, 2)
 
-        edit_box = QGroupBox("Kurvenparameter")
-        layout.addWidget(edit_box)
-        edit = QGridLayout(edit_box)
-        self.slope_spin = QDoubleSpinBox(); self.slope_spin.setRange(0.0, 3.5); self.slope_spin.setDecimals(1); self.slope_spin.setSingleStep(0.1)
-        self.offset_spin = QDoubleSpinBox(); self.offset_spin.setRange(0.0, 85.0); self.offset_spin.setDecimals(1); self.offset_spin.setSingleStep(0.5)
-        self.min_target_spin = QDoubleSpinBox(); self.min_target_spin.setRange(0.0, 60.0); self.min_target_spin.setDecimals(1); self.min_target_spin.setSingleStep(0.5); self.min_target_spin.setValue(15.0)
-        edit.addWidget(QLabel("Slope 1234:"), 0, 0); edit.addWidget(self.slope_spin, 0, 1)
-        edit.addWidget(QLabel("Offset 1235:"), 0, 2); edit.addWidget(self.offset_spin, 0, 3)
-        edit.addWidget(QLabel("Mindestwert Anzeige:"), 1, 0); edit.addWidget(self.min_target_spin, 1, 1)
-        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-        self.min_target_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.linear_box = QGroupBox("Lineare Kennlinie")
+        layout.addWidget(self.linear_box)
+        linear = QGridLayout(self.linear_box)
+        self.slope_spin = QDoubleSpinBox(); self.slope_spin.setRange(-20.0, 20.0); self.slope_spin.setDecimals(1); self.slope_spin.setSingleStep(0.1)
+        self.offset_spin = QDoubleSpinBox(); self.offset_spin.setRange(-100.0, 100.0); self.offset_spin.setDecimals(1); self.offset_spin.setSingleStep(0.5)
+        linear.addWidget(QLabel("Steigung (1234):"), 0, 0); linear.addWidget(self.slope_spin, 0, 1)
+        linear.addWidget(QLabel("Offset / Mittelpunkt (1235):"), 0, 2); linear.addWidget(self.offset_spin, 0, 3)
+
+        self.seven_box = QGroupBox("7-Punkt-Kennlinie")
+        layout.addWidget(self.seven_box)
+        seven_layout = QVBoxLayout(self.seven_box)
+        self.seven_table = QTableWidget(len(AT_SEVEN_POINT_REGISTERS), 2)
+        self.seven_table.setHorizontalHeaderLabels(["feste AT", "Heiz-Solltemperatur"])
+        self.seven_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.seven_table.verticalHeader().setVisible(False)
+        for row, (at, register) in enumerate(AT_SEVEN_POINT_REGISTERS):
+            at_item = QTableWidgetItem(f"{at:+g} °C  (Register {register})")
+            at_item.setFlags(at_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.seven_table.setItem(row, 0, at_item)
+            spin = QDoubleSpinBox(); spin.setRange(*FALLBACK_TARGET_LIMITS); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
+            spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+            self.seven_table.setCellWidget(row, 1, spin)
+        seven_layout.addWidget(self.seven_table)
+        drag_hint = QLabel("Tipp: Die sieben Punkte können auch direkt in der Kurve mit der Maus verschoben werden.")
+        drag_hint.setWordWrap(True)
+        seven_layout.addWidget(drag_hint)
 
         self.curve_canvas = CurveCanvas(self)
+        self.curve_canvas.pointDragged.connect(self._curve_point_dragged)
         layout.addWidget(self.curve_canvas)
-
         self.curve_table = QTableWidget(0, 3)
         self.curve_table.setHorizontalHeaderLabels(["AT °C", "berechnete Zieltemp. °C", "Hinweis"])
         self.curve_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -3995,115 +4174,156 @@ class ATCompensationDialog(QDialog):
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("von WP lesen")
         self.apply_live_btn = QPushButton("aus Live-Werten laden")
-        self.write_enable_btn = QPushButton("H36 schreiben")
-        self.write_params_btn = QPushButton("Slope/Offset schreiben")
+        self.write_mode_btn = QPushButton("H36-Modus schreiben")
+        self.write_linear_btn = QPushButton("Linearparameter schreiben")
+        self.write_seven_btn = QPushButton("7-Punkt-Kurve schreiben")
         self.auto_refresh_cb = QCheckBox("Autorefresh")
-        self.auto_refresh_interval = QSpinBox()
-        self.auto_refresh_interval.setRange(2, 3600)
-        self.auto_refresh_interval.setValue(10)
-        self.auto_refresh_interval.setSuffix(" s")
+        self.auto_refresh_interval = QSpinBox(); self.auto_refresh_interval.setRange(2, 3600); self.auto_refresh_interval.setValue(10); self.auto_refresh_interval.setSuffix(" s")
         self.close_btn = QPushButton("Schließen")
-        for w in (self.read_btn, self.apply_live_btn, self.write_enable_btn, self.write_params_btn):
-            buttons.addWidget(w)
-        buttons.addSpacing(12)
-        buttons.addWidget(self.auto_refresh_cb)
-        buttons.addWidget(self.auto_refresh_interval)
+        for widget in (self.read_btn, self.apply_live_btn, self.write_mode_btn, self.write_linear_btn, self.write_seven_btn):
+            buttons.addWidget(widget)
+        buttons.addWidget(self.auto_refresh_cb); buttons.addWidget(self.auto_refresh_interval)
         buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
 
+        self.mode_combo.currentIndexChanged.connect(self._mode_changed)
+        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
         self.read_btn.clicked.connect(self.read_from_wp)
         self.apply_live_btn.clicked.connect(self.refresh_from_live)
+        self.write_mode_btn.clicked.connect(self.write_mode)
+        self.write_linear_btn.clicked.connect(self.write_linear_params)
+        self.write_seven_btn.clicked.connect(self.write_seven_points)
         self.auto_refresh_cb.toggled.connect(self._toggle_auto_refresh)
         self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
-        self.write_enable_btn.clicked.connect(self.write_enable)
-        self.write_params_btn.clicked.connect(self.write_params)
         self.close_btn.clicked.connect(self.close)
+        self._mode_changed()
+
+    def _seven_spins(self):
+        return [self.seven_table.cellWidget(row, 1) for row in range(len(AT_SEVEN_POINT_REGISTERS))]
+
+    def _seven_targets(self) -> dict[int, float]:
+        return {register: float(spin.value()) for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins())}
+
+    def _limits(self) -> tuple[float, float]:
+        minimum = self._temp(1164)
+        maximum = self._temp(1165)
+        return target_limits(minimum, maximum)
+
+    def _update_target_editor_limits(self) -> None:
+        minimum, maximum = self._limits()
+        for spin in self._seven_spins():
+            spin.setRange(minimum, maximum)
+
+    def _mode_changed(self, _index=None):
+        mode = int(self.mode_combo.currentData())
+        self.linear_box.setVisible(mode == 1)
+        self.seven_box.setVisible(mode == 2)
+        self.write_linear_btn.setEnabled(mode == 1)
+        self.write_seven_btn.setEnabled(mode == 2)
+        self.curve_canvas.set_editable(mode == 2)
+        self.update_curve_table()
+
+    def _curve_point_dragged(self, index: int, value: float) -> None:
+        spins = self._seven_spins()
+        if int(self.mode_combo.currentData()) == 2 and 0 <= index < len(spins):
+            spins[index].setValue(value)
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
 
     def show_read_success(self) -> None:
-        self.refresh_from_live()
-        self.status_label.setText("AT-Kompensation gelesen.")
+        self.refresh_from_live(); self.status_label.setText("AT-Kompensation gelesen.")
 
     def show_read_timeout(self) -> None:
         self.status_label.setText("AT-Kompensation Timeout / keine Antwort.")
 
     def update_from_live_register(self, reg):
-        if int(getattr(reg, "reg", -1)) in {1234, 1235, 1236, 2014, 2048}:
+        if int(getattr(reg, "reg", -1)) in self.LIVE_REGISTERS:
             self.refresh_from_live()
 
     def refresh_from_live(self):
-        enabled = self._raw(1236)
-        if enabled is not None:
-            self.enable_cb.setChecked(bool(enabled))
+        mode = self._raw(1236)
+        if mode in AT_MODE_VALUES:
+            index = self.mode_combo.findData(mode)
+            self.mode_combo.setCurrentIndex(index)
         slope = self._raw(1234)
         if slope is not None:
             self.slope_spin.setValue(numeric_value_by_type(slope, "DIGI5"))
         offset = self._raw(1235)
         if offset is not None:
             self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
-        at = self._temp(2048)
-        target = self._temp(2014)
-        self.current_at_label.setText("--" if at is None else f"{at:.1f} °C")
+        self._update_target_editor_limits()
+        for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
+            value = self._temp(register)
+            if value is not None:
+                spin.setValue(value)
+        current_at, target = self._temp(2048), self._temp(2014)
+        self.current_at_label.setText("--" if current_at is None else f"{current_at:.1f} °C")
         self.current_target_label.setText("--" if target is None else f"{target:.1f} °C")
+        minimum, maximum = self._temp(1164), self._temp(1165)
+        self.limit_label.setText("R10/R11: --" if minimum is None or maximum is None else f"R10/R11: {minimum:.1f} … {maximum:.1f} °C")
+        self.curve_canvas.set_runtime_point(None if current_at is None or target is None else (current_at, target))
         self.update_curve_table()
 
     def update_curve_table(self):
-        slope = float(self.slope_spin.value())
-        offset = float(self.offset_spin.value())
-        min_target = float(self.min_target_spin.value())
-        curve_points: list[tuple[float, float, bool]] = []
-        self.curve_table.setRowCount(len(self.CURVE_AT_POINTS))
-        for row, at in enumerate(self.CURVE_AT_POINTS):
-            raw_target = offset - slope * float(at)
-            target = max(min_target, raw_target)
-            was_clipped = target != raw_target
-            curve_points.append((float(at), float(target), was_clipped))
-            clipped = "Mindestwert" if was_clipped else ""
-            for col, text in enumerate((f"{at:.1f}", f"{target:.1f}", clipped)):
-                item = QTableWidgetItem(text)
-                self.curve_table.setItem(row, col, item)
-        if hasattr(self, "curve_canvas"):
-            self.curve_canvas.set_points(curve_points)
+        mode = int(self.mode_combo.currentData())
+        minimum, maximum = self._limits()
+        self.curve_canvas.set_value_limits(minimum, maximum)
+        ats = [at for at, _register in AT_SEVEN_POINT_REGISTERS]
+        targets = self._seven_targets()
+        curve_points = []
+        self.curve_table.setRowCount(len(ats) if mode else 0)
+        for row, at in enumerate(ats if mode else []):
+            if mode == 2:
+                raw_target = targets[AT_SEVEN_POINT_REGISTERS[row][1]]
+                target = calculate_seven_point_target(at, targets, minimum, maximum)
+            else:
+                raw_target = float(self.offset_spin.value()) - float(self.slope_spin.value()) * at
+                target = max(minimum, min(maximum, raw_target))
+            clipped = target != raw_target
+            curve_points.append((at, target, clipped))
+            for col, value in enumerate((f"{at:.1f}", f"{target:.1f}", "R10/R11" if clipped else "")):
+                self.curve_table.setItem(row, col, QTableWidgetItem(value))
+        self.curve_canvas.set_points(curve_points)
 
     def _toggle_auto_refresh(self, enabled: bool):
         if enabled:
-            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000)
-            self.read_from_wp()
+            self.auto_refresh_timer.start(int(self.auto_refresh_interval.value()) * 1000); self.read_from_wp()
         else:
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title: str, text: str) -> bool:
         return ask_yes_no(self, title, text, default_yes=False)
 
-    def write_enable(self):
-        value = 1 if self.enable_cb.isChecked() else 0
-        if self._confirm_write("AT-Kompensation schreiben", f"Register 1236 / H36 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
-            self.status_label.setText("Schreibe AT-Kompensation ...")
-            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36")
-            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
+    def write_mode(self):
+        value = int(self.mode_combo.currentData())
+        label = self.mode_combo.currentText()
+        if self._confirm_write("AT-Kompensation schreiben", f"Nur Register 1236 / H36 auf {value} ({label}) schreiben?"):
+            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36-Modus")
+            self.status_label.setText("AT-Kompensationsmodus Schreiben gesendet.")
 
-    def write_params(self):
-        slope_raw = int(round(float(self.slope_spin.value()) * 10.0)) & 0xFFFF
-        offset_raw = int(round(float(self.offset_spin.value()) * 10.0)) & 0xFFFF
-        text = f"Slope 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
-        if self._confirm_write("AT-Kurvenparameter schreiben", text):
-            self.status_label.setText("Schreibe AT-Kompensation ...")
-            self.main_window.send_register_write(1234, slope_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Slope")
-            self.main_window.send_register_write(1235, offset_raw, DEFAULT_BUS_ADDR, label="AT-Kompensation Offset", delay_ms=350)
-            self.status_label.setText("AT-Kompensation Schreiben gesendet.")
+    def write_linear_params(self):
+        writes = linear_write_plan(self.slope_spin.value(), self.offset_spin.value())
+        slope_raw, offset_raw = writes[0][1], writes[1][1]
+        text = f"Steigung 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
+        if self._confirm_write("Lineare AT-Kurve schreiben", text):
+            for index, (register, raw_value) in enumerate(writes):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation linear {register}", delay_ms=index * 350)
+            self.status_label.setText("Lineare AT-Kurve Schreiben gesendet.")
+
+    def write_seven_points(self):
+        values = self._seven_targets()
+        lines = [f"{at:+g} °C → {values[register]:.1f} °C (Register {register})" for at, register in AT_SEVEN_POINT_REGISTERS]
+        if self._confirm_write("7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines)):
+            for index, (register, raw_value) in enumerate(seven_point_write_plan(values)):
+                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation 7-Punkt {register}", delay_ms=index * 350)
+            self.status_label.setText("7-Punkt-AT-Kurve Schreiben gesendet.")
 
     def read_from_wp(self):
         self.status_label.setText("Lese AT-Kompensation ...")
-        for addr, qty, label in [(1234, 3, "AT-Kompensation 1234-1236"), (2014, 1, "AT-Kompensation aktuelle Solltemp. 2014"), (2048, 1, "AT-Kompensation Außentemperatur 2048")]:
-            if addr == 1234:
-                self.status_label.setText("Lese AT-Kompensation Parameter ...")
-            elif addr == 2014:
-                self.status_label.setText("Lese aktuelle Solltemperatur ...")
-            elif addr == 2048:
-                self.status_label.setText("Lese Außentemperatur ...")
-            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        for addr, qty in AT_READ_BLOCKS:
+            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=f"AT-Kompensation {addr}", delay_ms=250)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
 
@@ -4129,8 +4349,6 @@ class MainWindow(QMainWindow):
         # PUBLIC/Installer: AppData (Program Files ist ohne Adminrechte nicht beschreibbar).
         # PRIVATE/Portable: Programmordner.
         self.user_data_dir = app_user_data_dir()
-        self.cache_file_path = os.path.join(self.user_data_dir, "foxair_phnix_last_values.json")
-        self.old_cache_file_path = os.path.join(self.user_data_dir, "warmlink_last_values.json")
         self.settings_path = os.path.join(self.user_data_dir, "foxair_phnix_settings.json")
         self.old_settings_path = os.path.join(self.user_data_dir, "warmlink_gui_settings.json")
         self.knowledge_path = os.path.join(self.user_data_dir, "data/foxair_phnix_knowledge.json")
@@ -4168,14 +4386,11 @@ class MainWindow(QMainWindow):
         # zusammengefasst, damit das GUI-Log bei Poll-Stuermen (z. B.
         # 0x02/3001) nicht tausende identische Zeilen pro Sekunde anhaengt.
         self.log_throttle_state: Dict[tuple[Any, ...], dict[str, Any]] = {}
-        self.raw_file: Optional[BinaryIO] = None
-        self.raw_file_path: Optional[str] = None
         self.warmlink_capture: Optional[WarmlinkRawCapture] = None
         self.warmlink_capture_dialog: Optional[WarmlinkCaptureDialog] = None
         self.capture_power_inhibit_active = False
         self.capture_log_queue: queue.Queue[str] = queue.Queue()
         self.capture_special_frame_queue: queue.Queue[dict[str, Any]] = queue.Queue()
-        self.cached_regs: set[int] = set()
         # Register, deren Wert sich seit dem letzten "Hauptfenster leeren" geändert hat.
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
@@ -4283,9 +4498,6 @@ class MainWindow(QMainWindow):
         # V0.2.38: alter GUI-Init-Timer entfernt.
         # Init-Lesen wird jetzt je Backend durch eigene Controller gesteuert.
         self.init_read_timer = None
-        self.cache_timer = QTimer(self)
-        self.cache_timer.timeout.connect(lambda: self.save_value_cache(silent=True))
-        self._apply_cache_timer_state()
         self.live_poll_timer = QTimer(self)
         self.live_poll_timer.timeout.connect(self._live_poll_tick)
         self.live_poll_step = 0
@@ -4293,8 +4505,6 @@ class MainWindow(QMainWindow):
         self._log(f"Register-Mapping: {self.regmap_path} ({len(self.regmap)} Einträge)")
         if os.path.exists(self.display_regmap_path):
             self._log(f"Display-Diagnose-Mapping: {self.display_regmap_path} ({len(self.display_regmap)} Einträge, getrennt von Warmlink)")
-        if self.cache_load_start_cb.isChecked():
-            self.load_value_cache(silent=False)
         # PRIVATE fix16: Bereichsfarben nach dem ersten Qt-Layout/Stylesheet-Pass
         # nochmal setzen. Dadurch greifen 10xx/30xx-Farben auch direkt nach
         # Programmstart/Cache-Aufbau, nicht erst nach dem ersten Live-Read.
@@ -4539,14 +4749,13 @@ class MainWindow(QMainWindow):
         self.log_level_combo.setCurrentIndex(lvl_idx if lvl_idx >= 0 else 1)
         self.raw_log_cb = QCheckBox("RAW anzeigen (HEX+ASCII)")
         self.raw_log_cb.setToolTip("Zeigt Rohbytes im sichtbaren Log als HEX+ASCII. Nur für Debug nötig; RAW-Datei-Mitschrift bleibt separat.")
-        self.raw_file_cb = QCheckBox("Raw in Datei (nc/bin)")
         self.raw_ascii_cb = QCheckBox("Raw ASCII-Vorschau")
         self.raw_ascii_cb.setChecked(True)
         self.raw_ascii_cb.setVisible(False)
         self.clear_log_btn = QPushButton("Log leeren")
-        self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.")
+        self.clear_log_btn.setToolTip("Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.")
         self.clear_main_btn = QPushButton("Hauptfenster leeren")
-        self.clear_main_btn.setToolTip("Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.")
+        self.clear_main_btn.setToolTip("Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.")
 
         self.about_btn = QPushButton("About")
         self.about_btn.setMaximumWidth(86)
@@ -4557,8 +4766,8 @@ class MainWindow(QMainWindow):
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
         apply_button_icon(self.device_info_btn, "assets/icons/device_info.svg", "Geräte-Info", "Geräte-Info", "Mainboard-, ProductKey- und Geräteidentitätsinformationen anzeigen", show_text=True)
-        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Raw-Datei und Registerwerte bleiben erhalten.", show_text=True)
-        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", "Hauptfenster leeren", "Registertabelle/Hauptwerte leeren; Verbindung, Log, Raw-Datei und Werte-Cache-Datei bleiben unverändert.", show_text=True)
+        apply_button_icon(self.clear_log_btn, "assets/icons/clear_log.svg", "Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.", "Log leeren", "Nur das sichtbare Logfenster leeren; Registerwerte bleiben erhalten.", show_text=True)
+        apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", "Hauptfenster leeren", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
         top.addWidget(self.cloud_btn)
@@ -4571,7 +4780,6 @@ class MainWindow(QMainWindow):
         top.addWidget(QLabel("Log:"))
         top.addWidget(self.log_level_combo)
         top.addWidget(self.raw_log_cb)
-        top.addWidget(self.raw_file_cb)
         # V0.2.41 fix6: eigene RAW-ASCII-Option ist überflüssig;
         # RAW anzeigen liefert jetzt immer HEX+ASCII. Checkbox bleibt nur
         # intern/kompatibel, wird aber nicht mehr in die Kopfzeile gesetzt.
@@ -4614,7 +4822,7 @@ class MainWindow(QMainWindow):
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
         self._enable_touch_scrolling_for_table(self.register_table)
-        self.register_table.itemDoubleClicked.connect(self.open_manual_register_dialog_from_table_item)
+        self.register_table.itemDoubleClicked.connect(self.open_register_quick_write_from_table_item)
         upper.addWidget(self.register_table)
 
         side = QWidget()
@@ -4816,40 +5024,6 @@ class MainWindow(QMainWindow):
         self.bus_table.verticalHeader().setVisible(False)
         self.bus_table.setSortingEnabled(False)
 
-        cache_box = QGroupBox("Werte-Cache")
-        side_layout.addWidget(cache_box)
-        cache_outer_layout = QVBoxLayout(cache_box)
-        cache_outer_layout.setContentsMargins(8, 8, 8, 8)
-        cache_top = QHBoxLayout()
-        self.cache_toggle_btn = QPushButton("Einstellungen ...")
-        self.cache_load_btn = QPushButton("Cache laden")
-        self.cache_save_btn = QPushButton("Cache speichern")
-        cache_top.addWidget(self.cache_toggle_btn)
-        cache_top.addWidget(self.cache_load_btn)
-        cache_top.addWidget(self.cache_save_btn)
-        cache_top.addStretch(1)
-        cache_outer_layout.addLayout(cache_top)
-
-        self.cache_options_widget = QWidget()
-        cache_layout = QFormLayout(self.cache_options_widget)
-        cache_layout.setContentsMargins(0, 4, 0, 0)
-        self.cache_load_start_cb = QCheckBox("beim Start laden")
-        self.cache_save_exit_cb = QCheckBox("beim Beenden speichern")
-        self.cache_save_cyclic_cb = QCheckBox("zyklisch speichern")
-        self.cache_interval_spin = QSpinBox()
-        self.cache_interval_spin.setRange(5, 3600)
-        self.cache_interval_spin.setValue(int(self.settings.get("cache_interval_s", 60)))
-        self.cache_interval_spin.setSuffix(" s")
-        self.cache_load_start_cb.setChecked(bool(self.settings.get("cache_load_on_start", False)))
-        self.cache_save_exit_cb.setChecked(bool(self.settings.get("cache_save_on_exit", True)))
-        self.cache_save_cyclic_cb.setChecked(bool(self.settings.get("cache_save_cyclic", False)))
-        cache_layout.addRow(self.cache_load_start_cb)
-        cache_layout.addRow(self.cache_save_exit_cb)
-        cache_layout.addRow(self.cache_save_cyclic_cb)
-        cache_layout.addRow("Intervall:", self.cache_interval_spin)
-        self.cache_options_widget.setVisible(False)
-        cache_outer_layout.addWidget(self.cache_options_widget)
-
         stats_box = QGroupBox("Status")
         side_layout.addWidget(stats_box)
         stats_layout = QGridLayout(stats_box)
@@ -4860,7 +5034,6 @@ class MainWindow(QMainWindow):
         self.last_bus_label = QLabel("--")
         self.direction_label = QLabel("--")
         self.foreign_count_label = QLabel("0")
-        self.raw_file_label = QLabel("--")
         stats_layout.addWidget(QLabel("Verbindung:"), 0, 0)
         stats_layout.addWidget(self.status_label, 0, 1)
         stats_layout.addWidget(QLabel("Frames:"), 1, 0)
@@ -4875,8 +5048,6 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.direction_label, 5, 1)
         stats_layout.addWidget(QLabel("Fremdframes:"), 6, 0)
         stats_layout.addWidget(self.foreign_count_label, 6, 1)
-        stats_layout.addWidget(QLabel("Raw-Datei:"), 7, 0)
-        stats_layout.addWidget(self.raw_file_label, 7, 1)
         side_layout.addStretch(1)
 
         self.log_text = QTextEdit()
@@ -4918,7 +5089,6 @@ class MainWindow(QMainWindow):
         self.name_search_edit.returnPressed.connect(self.search_name_now)
         self.known_only_cb.stateChanged.connect(lambda _=None: self.rebuild_table_filter())
         self.log_level_combo.currentIndexChanged.connect(lambda _=None: self._on_log_level_changed())
-        self.raw_file_cb.stateChanged.connect(lambda _=None: self.on_raw_file_checkbox_changed())
         self.clear_log_btn.clicked.connect(self.clear_log)
         self.clear_main_btn.clicked.connect(self.clear_main_window_values)
         self.contact_popup_btn.clicked.connect(self.open_contact_decoder)
@@ -4933,11 +5103,6 @@ class MainWindow(QMainWindow):
         self.dual_logger_btn.clicked.connect(self.open_dual_logger_dialog)
         self.warmlink_capture_btn.clicked.connect(self.open_warmlink_capture_dialog)
         self.backup_restore_btn.clicked.connect(self.open_backup_restore)
-        self.cache_toggle_btn.clicked.connect(self.toggle_cache_options)
-        self.cache_load_btn.clicked.connect(lambda: self.load_value_cache(silent=False))
-        self.cache_save_btn.clicked.connect(lambda: self.save_value_cache(silent=False))
-        self.cache_save_cyclic_cb.stateChanged.connect(lambda _=None: self._apply_cache_timer_state())
-        self.cache_interval_spin.valueChanged.connect(lambda _=None: self._apply_cache_timer_state())
         self.register_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.register_table.customContextMenuRequested.connect(self.open_register_context_menu)
 
@@ -4967,11 +5132,10 @@ class MainWindow(QMainWindow):
             "backend_settings": self.settings.get("backend_settings", {}),
             "device_model": self.current_device_model(),
             "autoconnect_on_start": self.autoconnect_cb.isChecked(),
-            "cache_load_on_start": self.cache_load_start_cb.isChecked(),
-            "cache_save_on_exit": self.cache_save_exit_cb.isChecked(),
-            "cache_save_cyclic": self.cache_save_cyclic_cb.isChecked(),
-            "cache_interval_s": int(self.cache_interval_spin.value()),
             "show_public_warning": bool(self.settings.get("show_public_warning", True)),
+            "show_engineering_parameters": bool(
+                self.settings.get("show_engineering_parameters", False)
+            ),
             "theme": str(self.settings.get("theme", "system")),
             "update_asset_mode": str(self.settings.get("update_asset_mode", "auto")),
             "auto_read_init_on_startup": bool(self.settings.get("auto_read_init_on_startup", False)),
@@ -5034,14 +5198,15 @@ class MainWindow(QMainWindow):
             dev = DEFAULT_DEVICE_MODEL
         return dev
 
-    def set_current_device_model(self, device_model: str):
+    def set_current_device_model(self, device_model: str, save: bool = True):
         dev = str(device_model or DEFAULT_DEVICE_MODEL)
         if dev == "foxair_blue_gl8_1":
             dev = "foxair_blue_bl8_1"
         if dev not in DEVICE_MODEL_LABELS:
             dev = DEFAULT_DEVICE_MODEL
         self.settings["device_model"] = dev
-        self._save_settings(sync_main_fields=False)
+        if save:
+            self._save_settings(sync_main_fields=False)
         label = DEVICE_MODEL_LABELS.get(dev, dev)
         self._log(f"Geräteauswahl für Defaultwerte: {label} ({DEVICE_MODEL_HINT})")
         if self.parameter_dialog is not None and self.parameter_dialog.isVisible():
@@ -5117,7 +5282,7 @@ class MainWindow(QMainWindow):
             "display_translate_0x2000": False,
         }
 
-    def apply_communication_settings(self, backend: str):
+    def apply_communication_settings(self, backend: str, save: bool = True):
         backend = backend if backend in BACKEND_LABELS else ("standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw")
         idx = self.backend_combo.findData(backend)
         if idx >= 0:
@@ -5130,7 +5295,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         self._update_comm_summary()
-        self._save_settings(sync_main_fields=False)
+        if save:
+            self._save_settings(sync_main_fields=False)
         self._log(f"Kommunikation eingestellt: {self._communication_summary_text()}")
 
     def open_communication_settings(self):
@@ -5179,14 +5345,6 @@ class MainWindow(QMainWindow):
             return
         self.comm_summary_label.setText(self._communication_summary_text())
 
-    def _apply_cache_timer_state(self):
-        if not hasattr(self, "cache_timer"):
-            return
-        if self.cache_save_cyclic_cb.isChecked():
-            self.cache_timer.start(int(self.cache_interval_spin.value()) * 1000)
-            self._log(f"Werte-Cache zyklisch aktiv: alle {int(self.cache_interval_spin.value())} s")
-        else:
-            self.cache_timer.stop()
 
     def _apply_live_poll_timer_state(self):
         if not hasattr(self, "live_poll_timer"):
@@ -5212,33 +5370,7 @@ class MainWindow(QMainWindow):
         self.live_poll_step = int(getattr(self, "live_poll_step", 0)) + 1
         self.send_read_request(addr, qty, slave_addr=slave_addr, label=f"Auto-Poll {label}")
 
-    def _snapshot_for_register(self, reg_no: int) -> dict:
-        reg = self.latest_regs[reg_no]
-        return {
-            "reg": int(reg.reg),
-            "raw_value": int(reg.raw_value),
-            "slave_addr": int(getattr(reg, "slave_addr", DEFAULT_BUS_ADDR)),
-            "frame_type": int(getattr(reg, "frame_type", reg.reg)),
-            "name": str(getattr(reg, "name", "")),
-            "dtype": str(getattr(reg, "dtype", "RAW")),
-            "timestamp": float(getattr(reg, "timestamp", time.time())),
-        }
 
-    def save_value_cache(self, silent: bool = False):
-        try:
-            data = {
-                "saved_at": time.time(),
-                "host": self.host_edit.text().strip(),
-                "port": int(self.port_edit.value()),
-                "registers": [self._snapshot_for_register(reg_no) for reg_no in sorted(self.latest_regs)],
-            }
-            os.makedirs(os.path.dirname(self.cache_file_path), exist_ok=True)
-            with open(self.cache_file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            if not silent:
-                self._log(f"Werte-Cache gespeichert: {self.cache_file_path} ({len(data['registers'])} Register)")
-        except Exception as exc:
-            self._log(f"Werte-Cache speichern fehlgeschlagen: {exc}")
 
     def _display_parts_for_register(self, reg_no: int, fallback_name: str = "") -> tuple[str, str, str]:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
@@ -5355,119 +5487,8 @@ class MainWindow(QMainWindow):
             return text
         return f"{text} {unit}".strip()
 
-    def _cached_register_from_snapshot(self, item: dict) -> Optional[DecodedRegister]:
-        try:
-            reg_no = int(item["reg"])
-            raw_value = int(item["raw_value"]) & 0xFFFF
-            info = self.regmap.get(reg_no)
-            dtype = info.dtype if info.dtype != "RAW" or not item.get("dtype") else str(item.get("dtype", "RAW"))
-            name = info.name or str(item.get("name", ""))
-            return DecodedRegister(
-                slave_addr=int(item.get("slave_addr", DEFAULT_BUS_ADDR)),
-                reg=reg_no,
-                index=0,
-                frame_type=int(item.get("frame_type", reg_no)),
-                raw_value=raw_value,
-                signed_value=s16(raw_value),
-                display_value=self._format_cached_value(raw_value, dtype),
-                name=name,
-                dtype=dtype,
-                timestamp=float(item.get("timestamp", time.time())),
-            )
-        except Exception:
-            return None
 
-    def _format_cached_value(self, raw_value: int, dtype: str) -> str:
-        # Gleiche Darstellung wie der Parser; lokal gehalten, damit Cache-Laden ohne Live-Frame funktioniert.
-        signed = s16(raw_value)
-        if dtype in ("TEMP", "TEMP1"):
-            return f"{signed / 10.0:.1f} °C"
-        if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
-            return f"{signed / 2.0:.1f} °C"
-        if dtype in ("BAR_X10", "PRESSURE_BAR_X10"):
-            return f"{signed / 10.0:.1f} bar"
-        if dtype in ("AMP_X2", "CURRENT_A_X2"):
-            return f"{signed / 2.0:.1f} A"
-        if dtype in ("AMP_X10", "CURRENT_A_X10"):
-            return f"{signed / 10.0:.1f} A"
-        if dtype in ("VOLT", "VOLTS", "V"):
-            return f"{signed} V"
-        if dtype in ("WATT", "WATTS", "POWER_W"):
-            return f"{signed} W"
-        if dtype in ("RPM", "FAN_RPM"):
-            return f"{signed} rpm"
-        if dtype in ("KWH_PER_H", "KW_PER_H"):
-            return f"{signed} kW/h"
-        if dtype in ("KWH", "ENERGY_KWH"):
-            return f"{signed} kWh"
-        if dtype in ("VERSION_X10", "DISPLAY_VERSION_X10"):
-            return f"V{signed / 10.0:.1f}"
-        if dtype in ("FLOW_M3H_X100", "FLOW_X100"):
-            return f"{signed / 100.0:.1f} m³/h"
-        if dtype in ("FLOW_M3H_X10", "FLOW_X10"):
-            return f"{signed / 10.0:.1f} m³/h"
-        if dtype in ("MINUTES", "MIN"):
-            return f"{signed} min"
-        if dtype in ("SECONDS", "SEC"):
-            return f"{signed} s"
-        if dtype in ("HOURS", "HOUR"):
-            return f"{signed} h"
-        if dtype in ("DAYS", "DAY"):
-            return f"{signed} days"
-        if dtype in ("HZ", "FREQUENCY_HZ"):
-            return f"{signed} Hz"
-        if dtype in ("STEPS_N", "EEV_STEPS", "STEPS"):
-            return f"{signed} N"
-        if dtype in ("PERCENT", "PCT"):
-            return f"{signed} %"
-        if dtype in ("DIGI5",):
-            return f"{signed / 10.0:.1f}"
-        if dtype == "DIGI6":
-            return f"{signed / 1000.0:.3f}"
-        if dtype == "DIGI19":
-            return f"{signed / 100.0:.2f}"
-        if dtype == "DIGI4":
-            return f"{signed / 5.0:.1f}"
-        if dtype == "DIGI1":
-            return f"{signed}"
-        if dtype == "DIGI9":
-            return f"{signed} raw / evtl. {signed / 10.0:.1f}"
-        return str(signed)
 
-    def load_value_cache(self, silent: bool = False):
-        cache_path = self.cache_file_path
-        if not os.path.exists(cache_path) and os.path.exists(getattr(self, "old_cache_file_path", "")):
-            cache_path = self.old_cache_file_path
-        if not os.path.exists(cache_path):
-            if not silent:
-                self._log(f"Werte-Cache nicht gefunden: {self.cache_file_path}")
-            return
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            items = data.get("registers", []) if isinstance(data, dict) else []
-            loaded = 0
-            for item in items:
-                reg = self._cached_register_from_snapshot(item)
-                if reg is None:
-                    continue
-                self.cached_regs.add(reg.reg)
-                self.latest_regs[reg.reg] = reg
-                self.last_values[reg.reg] = int(reg.raw_value)
-                self.previous_value_texts.setdefault(reg.reg, "--")
-                if not (self.known_only_cb.isChecked() and not reg.name):
-                    self._upsert_register_row(reg, changed=False)
-                loaded += 1
-            self._recalculate_value_search()
-            self._recalculate_name_search()
-            self._refresh_search_highlights()
-            self.reg_count_label.setText(str(len(self.last_values)))
-            if not silent:
-                stamp = data.get("saved_at")
-                stamp_text = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(stamp)) if stamp else "unbekannt"
-                self._log(f"Werte-Cache geladen: {loaded} Register, Stand {stamp_text}. Geladene neutrale Zeilen sind grau; 10xx/30xx behalten ihre Bereichsfarbe.")
-        except Exception as exc:
-            self._log(f"Werte-Cache laden fehlgeschlagen: {exc}")
 
     def check_for_updates_on_startup(self):
         self.check_for_updates(silent_no_update=True)
@@ -5737,10 +5758,10 @@ class MainWindow(QMainWindow):
 
     def clear_log(self):
         self.log_text.clear()
-        self._log("Log geleert. Raw-Datei/Registerwerte unverändert.")
+        self._log("Log geleert. Registerwerte unverändert.")
 
     def clear_main_window_values(self):
-        """Nur die Haupt-Registeransicht leeren, ohne Log/Verbindung/Cache-Datei anzufassen."""
+        """Nur die Haupt-Registeransicht leeren, ohne Log oder Verbindung anzufassen."""
         old_count = len(self.last_values)
         self.register_table.setSortingEnabled(False)
         self.register_table.setUpdatesEnabled(False)
@@ -5750,7 +5771,6 @@ class MainWindow(QMainWindow):
             self.latest_regs.clear()
             self.last_values.clear()
             self.previous_value_texts.clear()
-            self.cached_regs.clear()
             self.register_change_highlights.clear()
             self.cloud_overlay_by_reg.clear()
             self.last_contact_value = None
@@ -5766,7 +5786,7 @@ class MainWindow(QMainWindow):
             self.reg_count_label.setText("0")
         finally:
             self.register_table.setUpdatesEnabled(True)
-        self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log, Raw-Datei und Cache-Datei unverändert.")
+        self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log und Verbindung unverändert.")
 
     def _parse_int_text(self, text: str) -> int:
         text = str(text).strip().replace("_", "")
@@ -5827,22 +5847,23 @@ class MainWindow(QMainWindow):
         1,5 °C -> raw 15). Explizite Raw-Schreibpfade rufen diese Methode mit
         raw=True auf oder verwenden weiterhin _parse_int_text().
         """
-        if raw:
-            return self._parse_int_text(text)
         info = self.regmap.get(int(reg_no))
+        if raw:
+            return validate_register_write_value(self._parse_int_text(text), info)
         dtype = info.dtype if info else "RAW"
         scale = self._write_scale_for_dtype(dtype)
         if scale is None:
             try:
-                return self._parse_int_text(text)
+                raw_value = self._parse_int_text(text)
             except ValueError as exc:
                 original = str(text).strip()
                 if "," in original or "." in original:
                     raise ValueError(f"Ungültiger Zahlenwert: {original}") from exc
                 raise
-        dec = self._parse_decimal_text(text)
-        raw_dec = (dec * scale).to_integral_value(rounding=ROUND_HALF_UP)
-        return int(raw_dec)
+        else:
+            dec = self._parse_decimal_text(text)
+            raw_value = int((dec * scale).to_integral_value(rounding=ROUND_HALF_UP))
+        return validate_register_write_value(raw_value, info)
 
     def _display_write_input_for_register(self, reg_no: int, raw_value: int) -> str:
         info = self.regmap.get(int(reg_no))
@@ -6184,13 +6205,11 @@ class MainWindow(QMainWindow):
             self._update_init_read_progress()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
-            self._close_raw_file()
             self._log("DisplayWorker/Display-INIT Verbindung gestoppt.")
             return
 
         if self.worker:
             self.worker.stop()
-        self._close_raw_file()
 
     @Slot()
     def _clear_thread_refs(self):
@@ -6220,8 +6239,6 @@ class MainWindow(QMainWindow):
         self._update_init_read_progress()
         self._update_init_read_button_state()
         self._start_warmlink_capture_if_enabled()
-        if self.raw_file_cb.isChecked():
-            self._open_raw_file()
         if bool(self.settings.get("auto_read_init_on_startup", False)) and not passive:
             QTimer.singleShot(800, self.send_init_reads)
         self._apply_live_poll_timer_state()
@@ -6244,7 +6261,6 @@ class MainWindow(QMainWindow):
             self._update_connection_button_icons()
             if hasattr(self, "live_poll_timer"):
                 self.live_poll_timer.stop()
-            self._close_raw_file()
             self._log("Display-Hauptverbindung wurde vom DisplayWorker abgeloest; UI bleibt verbunden, Disconnect stoppt den DisplayWorker.")
             return
 
@@ -6258,7 +6274,6 @@ class MainWindow(QMainWindow):
         self._update_init_read_button_state()
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
-        self._close_raw_file()
         self._stop_warmlink_capture("gestoppt")
 
     @Slot(str)
@@ -6403,36 +6418,6 @@ class MainWindow(QMainWindow):
             self.warmlink_capture = None
         self._set_capture_power_inhibit(False)
         self._drain_capture_gui_log_queue()
-
-    def _open_raw_file(self):
-        if self.raw_file:
-            return
-        log_dir = os.path.join(getattr(self, "user_data_dir", self.base_dir), "raw_logs")
-        os.makedirs(log_dir, exist_ok=True)
-        stamp = time.strftime("%Y%m%d_%H%M%S")
-        self.raw_file_path = os.path.join(log_dir, f"foxair_phnix_raw_{stamp}.bin")
-        self.raw_file = open(self.raw_file_path, "ab")
-        self.raw_file_label.setText(os.path.basename(self.raw_file_path))
-        self._log(f"RAW-Datei geöffnet: {self.raw_file_path}")
-
-    def _close_raw_file(self):
-        if self.raw_file:
-            try:
-                self.raw_file.flush()
-                self.raw_file.close()
-            finally:
-                self._log(f"RAW-Datei geschlossen: {self.raw_file_path}")
-                self.raw_file = None
-                self.raw_file_path = None
-                self.raw_file_label.setText("--")
-
-    @Slot()
-    def on_raw_file_checkbox_changed(self):
-        if self.raw_file_cb.isChecked() and self.connected:
-            self._open_raw_file()
-        elif not self.raw_file_cb.isChecked():
-            self._close_raw_file()
-
     def _send_udp_raw_bus(self, direction: str, chunk: bytes) -> None:
         diag = getattr(self, "udp_diagnostic", None)
         if diag is not None:
@@ -6474,12 +6459,6 @@ class MainWindow(QMainWindow):
             self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, Pending-Read offen: {pending_preview}{more}", level=7, force=True)
         else:
             self._log(f"DEBUG RX: {len(chunk)} Byte eingegangen, kein Pending-Read offen", level=7)
-        if self.raw_file_cb.isChecked():
-            if not self.raw_file:
-                self._open_raw_file()
-            if self.raw_file:
-                self.raw_file.write(chunk)
-                self.raw_file.flush()
         if self.raw_log_cb.isChecked():
             # V0.2.41 fix6: RAW anzeigen liefert immer HEX+ASCII.
             # Die separate RAW-ASCII-Checkbox ist damit überflüssig.
@@ -6697,14 +6676,9 @@ class MainWindow(QMainWindow):
             old_known = reg.reg in self.last_values
             old_value = self.last_values.get(reg.reg)
             value_diff = old_value != reg.raw_value
-            was_cached = reg.reg in self.cached_regs
-            # PRIVATE fix51: Erster Live-Wert nach Programmstart/Leeren ist ein
-            # Initialwert und soll NICHT als Änderung markiert werden. Auch ein
-            # vom Cache geladener Altwert zaehlt noch nicht als Live-Basis; erst
-            # ab dem zweiten echten Live-Wert darf die Änderungsfarbe greifen.
-            changed = bool(old_known and (not was_cached) and value_diff)
-            if was_cached:
-                self.cached_regs.discard(reg.reg)
+            # Der erste Live-Wert nach Programmstart/Leeren ist ein Initialwert
+            # und wird erst ab dem zweiten echten Live-Wert als Änderung gewertet.
+            changed = bool(old_known and value_diff)
             if value_diff:
                 if old_value is None:
                     self.previous_value_texts.setdefault(reg.reg, "--")
@@ -6724,7 +6698,7 @@ class MainWindow(QMainWindow):
                 elif int(reg.reg) == 2012:
                     display_hmi_frame_had_true_2012 = True
 
-            if changed or was_cached or reg.reg not in self.table_rows:
+            if changed or reg.reg not in self.table_rows:
                 self._upsert_register_row(reg, changed)
 
             if reg.reg == 2034:
@@ -6821,10 +6795,7 @@ class MainWindow(QMainWindow):
         old_known = 2012 in self.last_values
         old_value = self.last_values.get(2012)
         value_diff = old_value != raw_value
-        was_cached = 2012 in self.cached_regs
-        changed = bool(old_known and (not was_cached) and value_diff)
-        if was_cached:
-            self.cached_regs.discard(2012)
+        changed = bool(old_known and value_diff)
         if value_diff:
             if old_value is None:
                 self.previous_value_texts.setdefault(2012, "--")
@@ -6843,7 +6814,7 @@ class MainWindow(QMainWindow):
             timestamp=time.time(),
         )
         self.last_values[2012] = raw_value
-        if changed or was_cached or 2012 not in self.table_rows:
+        if changed or 2012 not in self.table_rows:
             self._upsert_register_row(reg, changed)
         if changed:
             self._log(
@@ -6937,7 +6908,7 @@ class MainWindow(QMainWindow):
         self.register_change_highlights.add(reg_no)
         # PRIVATE fix51: direkt auf die bestehende Zeile anwenden. Bisher war
         # die Markierung zwar gespeichert, konnte aber danach durch normale
-        # Bereichs-/Cache-/Such-Refreshes optisch wieder verschwinden.
+        # Bereichs-/Such-Refreshes optisch wieder verschwinden.
         self._apply_register_row_visual_state(reg_no, force_changed=True)
 
     def _background_for_register(self, reg_no: int, changed: bool) -> QColor:
@@ -6946,7 +6917,7 @@ class MainWindow(QMainWindow):
 
         # Priorität: Suchtreffer und Änderungen. Änderungen bleiben bis
         # "Hauptfenster leeren" sichtbar; dadurch werden sie nicht von einem
-        # Tabellen-/Cache-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
+        # Tabellen-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
         if reg_no in self.value_search_matches or reg_no in self.name_search_matches:
             return self._register_search_color(dark)
         if changed or self._register_change_highlight_active(reg_no):
@@ -6955,11 +6926,6 @@ class MainWindow(QMainWindow):
         area = self._register_area_color(reg_no, dark)
         if area is not None:
             return area
-
-        # Cache-Grau nur für neutrale Bereiche verwenden. 10xx/30xx/91xxx behalten
-        # ihre Bereichsfarbe auch direkt nach Cache-/Tabellenaufbau.
-        if reg_no in self.cached_regs:
-            return QColor(55, 55, 55) if dark else QColor(225, 225, 225)
 
         return QColor(37, 37, 37) if dark else QColor(255, 255, 255)
 
@@ -6975,7 +6941,7 @@ class MainWindow(QMainWindow):
         """Setzt Hintergrund/Fett fuer eine komplette Haupttabellen-Zeile.
 
         Das ist die eine zentrale Stelle fuer Bereichsfarbe + dauerhafte
-        Aenderungsmarkierung. Sie wird nach Upsert, Such-Refresh, Cache-/
+        Aenderungsmarkierung. Sie wird nach Upsert sowie Such-/
         Filter-Rebuild und Theme-Wechsel verwendet.
         """
         reg_no = int(reg_no)
@@ -7496,10 +7462,6 @@ class MainWindow(QMainWindow):
         )
         self.dual_logger_btn.setVisible(visible)
 
-    def toggle_cache_options(self):
-        visible = not self.cache_options_widget.isVisible()
-        self.cache_options_widget.setVisible(visible)
-        self.cache_toggle_btn.setText("Einstellungen ausblenden" if visible else "Einstellungen ...")
 
     def _refresh_search_highlights(self):
         # PRIVATE fix51: Such-/Bereichs-/Aenderungsfarben immer ueber die
@@ -8581,43 +8543,53 @@ class MainWindow(QMainWindow):
 
     # V0.2.38: alter generischer Init-Timerpfad entfernt. Warmlink/Standard/Display nutzen eigene Controller.
 
-    def open_manual_register_dialog_from_table_item(self, item):
-        if item is None:
-            return
-        row = item.row()
+    def _register_and_bus_from_table_row(self, row: int) -> Optional[tuple[int, int]]:
         reg_item = self.register_table.item(row, 0)
         if reg_item is None:
-            return
+            return None
         try:
             reg_no = int(reg_item.text())
-        except ValueError:
-            return
+        except (TypeError, ValueError):
+            return None
         try:
-            bus_text = self.register_table.item(row, 9).text() if self.register_table.item(row, 9) else self.write_bus_edit.text()
+            bus_item = self.register_table.item(row, 9)
+            bus_text = bus_item.text() if bus_item else self.write_bus_edit.text()
             slave_addr = self._parse_int_text(bus_text)
         except Exception:
             slave_addr = DEFAULT_BUS_ADDR
+        return reg_no, slave_addr
+
+    def open_manual_register_dialog_from_table_item(self, item):
+        if item is None:
+            return
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
+            return
+        reg_no, slave_addr = register_and_bus
         self._open_manual_register_dialog_for_register(reg_no, slave_addr)
+
+    def open_register_quick_write_from_table_item(self, item):
+        """Open the same quick-write path used by the register context menu."""
+        if item is None:
+            return
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
+            return
+        reg_no, slave_addr = register_and_bus
+        self.open_register_quick_write(reg_no, slave_addr)
 
     def open_register_context_menu(self, pos):
         item = self.register_table.itemAt(pos)
         if item is None:
             return
-        row = item.row()
-        reg_item = self.register_table.item(row, 0)
-        if reg_item is None:
+        register_and_bus = self._register_and_bus_from_table_row(item.row())
+        if register_and_bus is None:
             return
-        try:
-            reg_no = int(reg_item.text())
-        except ValueError:
-            return
-        try:
-            bus_text = self.register_table.item(row, 9).text() if self.register_table.item(row, 9) else self.write_bus_edit.text()
-            row_slave_addr = self._parse_int_text(bus_text)
-        except Exception:
-            row_slave_addr = DEFAULT_BUS_ADDR
+        reg_no, row_slave_addr = register_and_bus
 
-        result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
+        result = exec_register_context_menu(
+            self, reg_no, self.register_table.viewport().mapToGlobal(pos), slave_addr=row_slave_addr
+        )
         if result is None:
             return
         if result.action == RegisterContextAction.QUICK_WRITE:
@@ -10083,6 +10055,11 @@ class MainWindow(QMainWindow):
         self._display_user_value_complete_current(False)
 
     def send_register_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        # Zentrale letzte Sicherheitsgrenze fuer alle normalen Register-Writes.
+        # Aufrufer wie Restore und das manuelle Popup liefern bewusst RAW-Werte
+        # und umgehen deshalb teilweise parse_register_write_value().
+        addr = int(addr)
+        value = validate_register_write_value(int(value), self.regmap.get(addr)) & 0xFFFF
         # fix9: Im Display-Backend werden bekannte Parameterpaket-Nutzwerte wie echte
         # Display-Bedienung geschrieben: Reg 1012 -> 23F4, ACK-gesteuert, ohne Extra-Dialog.
         if self._queue_display_param_user_write_from_normal(addr, value, slave_addr, label=label, delay_ms=delay_ms):
@@ -10158,16 +10135,7 @@ class MainWindow(QMainWindow):
                 self._log("WRITE abgebrochen: nicht gesendet.")
                 return
 
-            self._log(
-                f"WRITE wird GESENDET [{self.current_backend_label()} / {fc_text}]: bus=0x{wire_slave:02X}, "
-                f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
-                f"value={value}/0x{value:04X}, TX={hexdump(frame, -1)}"
-            )
-            io_worker = self._active_io_worker()
-            if io_worker is None:
-                self._log("WRITE nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
-                return
-            io_worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, write_single=self._write_single_for_backend())
+            self.send_register_write(addr, value, slave_addr=slave_addr, label="Direktfeld")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Eingabe", str(exc))
 
@@ -10637,6 +10605,10 @@ class MainWindow(QMainWindow):
             self._log("TIMER nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
 
+        values = [
+            (int(addr), validate_register_write_value(int(value), self.regmap.get(int(addr))) & 0xFFFF, label)
+            for addr, value, label in values
+        ]
         display_plan = self._display_timer_batch_plan(values, slave_addr)
         if display_plan is not None and not display_plan:
             self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): Write nicht gesendet (Init/Snapshot gestartet oder keine geänderten Werte übrig).")
@@ -10654,9 +10626,8 @@ class MainWindow(QMainWindow):
             self._send_display_timer_batch(display_plan, delay_ms, title)
             return
 
-        for addr, value, _label in values:
-            _frame, wire_addr, wire_slave, _note, _fc_text = self._build_write_frame_for_backend(addr, value, slave_addr)
-            self.worker.enqueue_write(wire_addr, value, slave_addr=wire_slave, post_delay_ms=delay_ms, write_single=self._write_single_for_backend())
+        for addr, value, label in values:
+            self.send_register_write(addr, value, slave_addr=slave_addr, label=label, delay_ms=delay_ms)
         self._notify_timer_sg_write_status(title, f"{title}: Schreiben gesendet.")
         QTimer.singleShot(6500, lambda t=title: self._notify_timer_sg_write_status(t, "Bereit."))
 
@@ -10681,8 +10652,6 @@ class MainWindow(QMainWindow):
                 pass
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
-        if self.cache_save_exit_cb.isChecked():
-            self.save_value_cache(silent=False)
         self.disconnect_from_device()
         self._stop_warmlink_capture("App wird beendet")
         event.accept()

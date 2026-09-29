@@ -8,6 +8,12 @@ from typing import Any
 from core.udp_diagnostics import udp_diagnostic_defaults
 
 
+def engineering_parameter_is_visible(data: dict[str, Any], settings: dict[str, Any]) -> bool:
+    """Apply UI visibility only; this deliberately never changes write policy."""
+    is_engineering = str(data.get("ui_visibility", "")).lower() == "engineering"
+    return not is_engineering or bool(settings.get("show_engineering_parameters", False))
+
+
 def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     """Ensure WarmLink cloud settings exist with stable defaults."""
     cfg = settings.setdefault("warmlink_cloud", {})
@@ -32,11 +38,8 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
         settings = {}
     settings.setdefault("backend_settings", {})
     settings.setdefault("device_model", "foxair_green_gl9_1")
-    settings.setdefault("cache_load_on_start", False)
-    settings.setdefault("cache_save_on_exit", True)
-    settings.setdefault("cache_save_cyclic", False)
-    settings.setdefault("cache_interval_s", 60)
     settings.setdefault("show_public_warning", True)
+    settings.setdefault("show_engineering_parameters", False)
     settings.setdefault("theme", "system")
     settings.setdefault("update_asset_mode", "auto")
     settings.setdefault("auto_read_init_on_startup", False)
