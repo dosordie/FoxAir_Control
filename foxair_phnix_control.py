@@ -38,7 +38,6 @@ from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
-from dialogs.warmlink_service_dialog import WarmlinkServiceDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
 from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
@@ -156,7 +155,7 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.66"
+APP_VERSION = "0.2.67"
 BUILD_DATE = "2026-09-29"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
@@ -2768,6 +2767,16 @@ class DualBusLoggerDialog(QDialog):
         self.warmlink_frames += 1
         if getattr(frame, "mode", "") == "read-response":
             self._associate_warmlink_read_response(frame)
+        if getattr(frame, "crc_ok", False) and int(getattr(frame, "slave_addr", -1)) == DEFAULT_BUS_ADDR:
+            service_regs = [
+                reg for reg in list(getattr(frame, "registers", []) or [])
+                if 8000 <= int(getattr(reg, "reg", -1)) <= 8999
+            ]
+            if service_regs:
+                self._apply_regs_to_main_window(
+                    service_regs,
+                    f"Warmlink-Serviceframe Unit 0x{DEFAULT_BUS_ADDR:02X}",
+                )
         self._remember_warmlink_values(frame)
         self._frame_summary("WARMLINK", frame, self.warmlink_last)
         self._update_status()
@@ -3172,14 +3181,10 @@ class CommunicationSettingsDialog(QDialog):
             "Zeigt zusätzlich Reverse-Engineering-/Experimentalparameter im Parameterfenster an.\n\n"
             "Diese Werte sind teilweise nicht vom Hersteller dokumentiert. Änderungen können das Regelverhalten beeinflussen."
         )
-        self.warmlink_service_btn = QPushButton("Warmlink Service / Engineering ...")
-        self.warmlink_service_btn.setToolTip("Read-only Diagnoseansicht der Service-Register 8021–8028 und 8055.")
-        self.warmlink_service_btn.clicked.connect(self._open_warmlink_service)
         engineering_row = QWidget()
         engineering_layout = QHBoxLayout(engineering_row)
         engineering_layout.setContentsMargins(0, 0, 0, 0)
         engineering_layout.addWidget(self.engineering_cb)
-        engineering_layout.addWidget(self.warmlink_service_btn)
         general_form.addRow("Engineering:", engineering_row)
 
         self.connection_actions_row = QWidget()
@@ -3290,9 +3295,6 @@ class CommunicationSettingsDialog(QDialog):
 
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
-
-    def _open_warmlink_service(self):
-        WarmlinkServiceDialog(self.main_window).exec()
 
     def _communication_lock_widgets(self, include_labels: bool = False) -> tuple[QWidget, ...]:
         widgets = (
@@ -8585,7 +8587,9 @@ class MainWindow(QMainWindow):
             return
         reg_no, row_slave_addr = register_and_bus
 
-        result = exec_register_context_menu(self, reg_no, self.register_table.viewport().mapToGlobal(pos))
+        result = exec_register_context_menu(
+            self, reg_no, self.register_table.viewport().mapToGlobal(pos), slave_addr=row_slave_addr
+        )
         if result is None:
             return
         if result.action == RegisterContextAction.QUICK_WRITE:

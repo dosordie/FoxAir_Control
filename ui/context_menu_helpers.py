@@ -14,6 +14,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QWidget
 
 from cloud.cloud_write_helpers import cloud_code_for_register
+from cloud.warmlink_codes import warmlink_service_metadata
 
 
 class RegisterContextAction(str, Enum):
@@ -48,7 +49,9 @@ def _register_cloud_write_code(reg_no: int) -> str | None:
     return cloud_code_for_register(reg_no, require_write_allowed=True)
 
 
-def build_register_context_menu(parent: QWidget, reg_no: int) -> tuple[QMenu, dict[QAction, RegisterContextMenuResult]]:
+def build_register_context_menu(
+    parent: QWidget, reg_no: int, slave_addr: int | None = None
+) -> tuple[QMenu, dict[QAction, RegisterContextMenuResult]]:
     """Build the register-table context menu and map actions to MainWindow callbacks.
 
     The visual order and labels are kept identical to the previous inline menu in
@@ -58,8 +61,10 @@ def build_register_context_menu(parent: QWidget, reg_no: int) -> tuple[QMenu, di
     menu = QMenu(parent)
     action_map: dict[QAction, RegisterContextMenuResult] = {}
 
-    act_quick_write = _add_action(menu, f"Register {reg_no} schnell schreiben ...")
-    action_map[act_quick_write] = RegisterContextMenuResult(RegisterContextAction.QUICK_WRITE)
+    service_meta = warmlink_service_metadata(slave_addr, reg_no) if slave_addr is not None else None
+    if not service_meta or bool(service_meta.get("write_allowed", False)):
+        act_quick_write = _add_action(menu, f"Register {reg_no} schnell schreiben ...")
+        action_map[act_quick_write] = RegisterContextMenuResult(RegisterContextAction.QUICK_WRITE)
 
     cloud_code = _register_cloud_write_code(reg_no)
     if cloud_code:
@@ -74,16 +79,19 @@ def build_register_context_menu(parent: QWidget, reg_no: int) -> tuple[QMenu, di
     act_read_ten = _add_action(menu, f"10 Register ab {reg_no} lesen")
     action_map[act_read_ten] = RegisterContextMenuResult(RegisterContextAction.READ_TEN)
 
-    act_use_write = _add_action(menu, "Adresse ins Schreib-/Lesefeld übernehmen")
-    action_map[act_use_write] = RegisterContextMenuResult(RegisterContextAction.USE_WRITE_ADDRESS)
+    if not service_meta or bool(service_meta.get("write_allowed", False)):
+        act_use_write = _add_action(menu, "Adresse ins Schreib-/Lesefeld übernehmen")
+        action_map[act_use_write] = RegisterContextMenuResult(RegisterContextAction.USE_WRITE_ADDRESS)
 
     return menu, action_map
 
 
-def exec_register_context_menu(parent: QWidget, reg_no: int, global_pos) -> RegisterContextMenuResult | None:
+def exec_register_context_menu(
+    parent: QWidget, reg_no: int, global_pos, slave_addr: int | None = None
+) -> RegisterContextMenuResult | None:
     """Show the register-table context menu and return the selected action."""
 
-    menu, action_map = build_register_context_menu(parent, reg_no)
+    menu, action_map = build_register_context_menu(parent, reg_no, slave_addr=slave_addr)
     selected_action = menu.exec(global_pos)
     if selected_action is None:
         return None
