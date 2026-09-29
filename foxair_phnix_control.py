@@ -156,7 +156,7 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.2.65"
+APP_VERSION = "0.2.66"
 BUILD_DATE = "2026-09-29"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
@@ -3273,6 +3273,21 @@ class CommunicationSettingsDialog(QDialog):
         self._backend_changed(load_values=True)
         self._update_connection_actions()
 
+        # Keep only the small set of values needed to avoid expensive work on an
+        # unchanged OK.  In particular, do not copy the complete settings tree.
+        self._initial_theme = str(main_window.settings.get("theme", "system"))
+        self._initial_device_model = str(main_window.current_device_model())
+        self._initial_show_engineering_parameters = bool(main_window.settings.get("show_engineering_parameters", False))
+        self._initial_show_public_warning = bool(main_window.settings.get("show_public_warning", True))
+        self._initial_known_only = bool(self.known_only_cb.isChecked())
+        self._initial_backend = str(self.backend_combo.currentData() or "warmlink_raw")
+        self._initial_communication = self._communication_fields_snapshot()
+        self._initial_live_poll = (
+            bool(self.live_poll_cb.isChecked()), int(self.live_poll_interval_spin.value())
+        )
+        self._initial_udp_diagnostic = dict(udp_diagnostic_defaults(main_window.settings.get("udp_diagnostic", {})))
+        self._initial_show_dual_logger = bool(self.display_dual_logger_cb.isChecked())
+
     def _is_warmlink_backend_key(self, key: str) -> bool:
         return str(key or "") == "warmlink_raw"
 
@@ -3333,7 +3348,7 @@ class CommunicationSettingsDialog(QDialog):
             return
         self._save_current_fields_to_selected_backend()
         backend = str(self.backend_combo.currentData() or "warmlink_raw")
-        self.main_window.apply_communication_settings(backend)
+        self.main_window.apply_communication_settings(backend, save=False)
         self.main_window._save_settings(sync_main_fields=False)
         self.main_window.connect_to_device()
         self._apply_communication_lock_state()
@@ -3376,6 +3391,21 @@ class CommunicationSettingsDialog(QDialog):
             parity=str(self.parity_combo.currentData() or "N"),
             bytesize=int(self.bytesize_combo.currentData() or 8),
             stopbits=float(self.stopbits_combo.currentData() or 1.0),
+        )
+
+    def _communication_fields_snapshot(self) -> tuple:
+        """Return the selected backend's editable connection values."""
+        return (
+            str(self.backend_combo.currentData() or "warmlink_raw"),
+            str(self.transport_combo.currentData() or "tcp"),
+            self.host_edit.text().strip(),
+            int(self.port_spin.value()),
+            self.serial_port_edit.text().strip(),
+            int(self.baud_spin.value()),
+            str(self.parity_combo.currentData() or "N"),
+            int(self.bytesize_combo.currentData() or 8),
+            float(self.stopbits_combo.currentData() or 1.0),
+            int(self.unit_spin.value()),
         )
 
     def _backend_changed(self, load_values: bool = True):
@@ -3424,23 +3454,41 @@ class CommunicationSettingsDialog(QDialog):
             w.setVisible(is_serial)
 
     def accept(self):
+        self._apply_changes()
+        super().accept()
+
+    def _apply_changes(self):
         comm_locked = bool(self.main_window.connected)
-        if not comm_locked:
+        communication_changed = (
+            not comm_locked
+            and self._communication_fields_snapshot() != self._initial_communication
+        )
+        if communication_changed:
             self._save_current_fields_to_selected_backend()
         if hasattr(self.main_window, "autoconnect_cb"):
             self.main_window.autoconnect_cb.setChecked(bool(self.autoconnect_cb.isChecked()))
         if hasattr(self.main_window, "raw_log_cb"):
             self.main_window.raw_log_cb.setChecked(bool(self.raw_log_cb.isChecked()))
-        if hasattr(self.main_window, "known_only_cb"):
-            self.main_window.known_only_cb.setChecked(bool(self.known_only_cb.isChecked()))
+        new_known_only = bool(self.known_only_cb.isChecked())
+        if hasattr(self.main_window, "known_only_cb") and new_known_only != self._initial_known_only:
+            self.main_window.known_only_cb.setChecked(new_known_only)
             self.main_window.rebuild_table_filter()
         if hasattr(self.main_window, "log_changes_only_cb"):
             self.main_window.log_changes_only_cb.setChecked(bool(self.log_changes_only_cb.isChecked()))
 
-        self.main_window.settings["show_public_warning"] = bool(self.show_warning_cb.isChecked())
-        self.main_window.settings["theme"] = str(self.theme_combo.currentData() or "system")
+        new_warning = bool(self.show_warning_cb.isChecked())
+        new_theme = str(self.theme_combo.currentData() or "system")
+        new_engineering = bool(self.engineering_cb.isChecked())
+        new_device = str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL)
+        theme_changed = new_theme != self._initial_theme
+        device_changed = new_device != self._initial_device_model
+        engineering_changed = new_engineering != self._initial_show_engineering_parameters
+        warning_changed = new_warning != self._initial_show_public_warning
+
+        self.main_window.settings["show_public_warning"] = new_warning
+        self.main_window.settings["theme"] = new_theme
         self.main_window.settings["update_asset_mode"] = str(self.update_asset_combo.currentData() or "auto")
-        self.main_window.settings["show_engineering_parameters"] = bool(self.engineering_cb.isChecked())
+        self.main_window.settings["show_engineering_parameters"] = new_engineering
         self.main_window.settings["auto_read_init_on_startup"] = bool(self.auto_read_init_cb.isChecked())
         self.main_window.settings["auto_poll_live_values"] = bool(self.live_poll_cb.isChecked())
         self.main_window.settings["live_poll_interval_s"] = int(self.live_poll_interval_spin.value())
@@ -3449,37 +3497,40 @@ class CommunicationSettingsDialog(QDialog):
             self.main_window.init_pause_spin.setValue(int(self.init_pause_spin.value()))
         self.main_window.settings["tab_auto_poll"] = bool(self.tab_auto_poll_cb.isChecked())
         self.main_window.settings["tab_poll_interval_s"] = int(self.tab_poll_interval_spin.value())
-        self.main_window.settings["udp_diagnostic"] = udp_diagnostic_defaults({
+        udp_diagnostic = udp_diagnostic_defaults({
             "enabled": bool(self.udp_enabled_cb.isChecked()),
             "host": self.udp_host_edit.text().strip(),
             "port": int(self.udp_port_spin.value()),
             "send_register_changes": bool(self.udp_reg_cb.isChecked()),
             "send_raw_bus": bool(self.udp_raw_cb.isChecked()),
         })
-        if hasattr(self.main_window, "udp_diagnostic"):
-            self.main_window.udp_diagnostic.configure(self.main_window.settings.get("udp_diagnostic", {}))
-        selected_backend = (
-            self.main_window.current_backend_key()
-            if comm_locked else str(self.backend_combo.currentData() or "warmlink_raw")
-        )
+        self.main_window.settings["udp_diagnostic"] = udp_diagnostic
+        if hasattr(self.main_window, "udp_diagnostic") and udp_diagnostic != self._initial_udp_diagnostic:
+            self.main_window.udp_diagnostic.configure(udp_diagnostic)
         # V0.2.41 fix7: nicht mehr als normale Option anzeigen; intern FC16 beibehalten.
         self.main_window.settings["display_write_mode"] = "fc16"
-        self.main_window.settings["show_dual_logger_button_display"] = bool(self.display_dual_logger_cb.isChecked())
-        apply_app_theme(QApplication.instance(), self.main_window.settings["theme"])
-        if hasattr(self.main_window, "public_warning_label"):
-            self.main_window.public_warning_label.setVisible(bool(self.show_warning_cb.isChecked()))
-        self.main_window.set_current_device_model(str(self.device_combo.currentData() or DEFAULT_DEVICE_MODEL))
-        if not comm_locked:
-            backend = str(self.backend_combo.currentData() or "warmlink_raw")
-            self.main_window.apply_communication_settings(backend)
-        self.main_window._apply_live_poll_timer_state()
-        self.main_window._update_dual_logger_button_visibility()
-        self.main_window._refresh_search_highlights()
-        if getattr(self.main_window, "parameter_dialog", None) is not None:
+        show_dual_logger = bool(self.display_dual_logger_cb.isChecked())
+        self.main_window.settings["show_dual_logger_button_display"] = show_dual_logger
+        if theme_changed:
+            apply_app_theme(QApplication.instance(), new_theme)
+        if warning_changed and hasattr(self.main_window, "public_warning_label"):
+            self.main_window.public_warning_label.setVisible(new_warning)
+        if (engineering_changed or device_changed) and getattr(self.main_window, "parameter_dialog", None) is not None:
             self.main_window.parameter_dialog.close()
             self.main_window.parameter_dialog = None
+        if device_changed:
+            self.main_window.set_current_device_model(new_device, save=False)
+        if communication_changed:
+            backend = str(self.backend_combo.currentData() or "warmlink_raw")
+            self.main_window.apply_communication_settings(backend, save=False)
+        live_poll = (bool(self.live_poll_cb.isChecked()), int(self.live_poll_interval_spin.value()))
+        if live_poll != self._initial_live_poll:
+            self.main_window._apply_live_poll_timer_state()
+        if show_dual_logger != self._initial_show_dual_logger:
+            self.main_window._update_dual_logger_button_visibility()
+        if theme_changed:
+            self.main_window._refresh_search_highlights()
         self.main_window._save_settings(sync_main_fields=False)
-        super().accept()
 
 
 
@@ -5145,14 +5196,15 @@ class MainWindow(QMainWindow):
             dev = DEFAULT_DEVICE_MODEL
         return dev
 
-    def set_current_device_model(self, device_model: str):
+    def set_current_device_model(self, device_model: str, save: bool = True):
         dev = str(device_model or DEFAULT_DEVICE_MODEL)
         if dev == "foxair_blue_gl8_1":
             dev = "foxair_blue_bl8_1"
         if dev not in DEVICE_MODEL_LABELS:
             dev = DEFAULT_DEVICE_MODEL
         self.settings["device_model"] = dev
-        self._save_settings(sync_main_fields=False)
+        if save:
+            self._save_settings(sync_main_fields=False)
         label = DEVICE_MODEL_LABELS.get(dev, dev)
         self._log(f"Geräteauswahl für Defaultwerte: {label} ({DEVICE_MODEL_HINT})")
         if self.parameter_dialog is not None and self.parameter_dialog.isVisible():
@@ -5228,7 +5280,7 @@ class MainWindow(QMainWindow):
             "display_translate_0x2000": False,
         }
 
-    def apply_communication_settings(self, backend: str):
+    def apply_communication_settings(self, backend: str, save: bool = True):
         backend = backend if backend in BACKEND_LABELS else ("standard_modbus" if APP_EDITION.upper() == "PUBLIC" else "warmlink_raw")
         idx = self.backend_combo.findData(backend)
         if idx >= 0:
@@ -5241,7 +5293,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         self._update_comm_summary()
-        self._save_settings(sync_main_fields=False)
+        if save:
+            self._save_settings(sync_main_fields=False)
         self._log(f"Kommunikation eingestellt: {self._communication_summary_text()}")
 
     def open_communication_settings(self):

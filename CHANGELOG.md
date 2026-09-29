@@ -1,5 +1,11 @@
 ## Unreleased
 
+## 0.2.66
+
+- Verzögerung beim Schließen der Programmeinstellungen behoben.
+- Theme, Tabellenfilter, Gerätemodell und Kommunikationsparameter werden nur noch bei tatsächlicher Änderung neu angewendet.
+- Mehrfache Settings-Speichervorgänge beim Bestätigen reduziert.
+
 ## 0.2.65
 
 - V3.5-Warmlink-Serviceparameter auf den aktuellen Reverse-Engineering-Stand gebracht; 8021–8023 als Cooling-/Heating-/DHW-Frequenzcaps und 8027/8028 mit Heiz-/Kühlvorzeichen dokumentiert.
