@@ -1665,6 +1665,27 @@
     "description": "ASM: 自动商检水泵转速",
     "source": "ASM DEMONS.ASM"
   },
+  "1388": {
+    "default": "2.0 K",
+    "description": "Taupunkt-Sicherheitsabstand für den Kühl-Sollwert; RAW / 10 = K.",
+    "knowledge": "Bei MAIN:1387=2 berechnet die Firmware aus Raumtemperatur und relativer Feuchte den Taupunkt. Der finale Kühl-Sollwert wird auf max(normaler Kühl-Sollwert, Taupunkt + MAIN:1388 / 10) begrenzt. Damit ist 1388 eine Kondensationsschutzfunktion für die Kühlung.",
+    "notes": "Default RAW 20 = 2,0 K.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
+  "1389": {
+    "default": "4.0 K",
+    "description": "ΔT-Schaltschwelle zwischen der Raumtemperatur des Temperatur-/Feuchtesensors und dem lokalen T04; RAW / 10 = K.",
+    "knowledge": "Bei MAIN:1387=2 wird der interne Status EIN, sobald T_Raum − T04 ≥ MAIN:1389 ist. Er wird bei T_Raum − T04 ≤ MAIN:1389 − 1,0 K zurückgesetzt. Beim Default gelten damit 4,0 K EIN und 3,0 K AUS. Der Status fließt in die Freigabe-/Sperrlogik ein. 1389 verwendet T04 direkt und nicht die über 1463 ausgewählte effektive Außentemperatur.",
+    "notes": "Die Firmwarewirkung ist bestätigt. Kühl-Sperr-/Free-Cooling-Kriterium ist eine funktionale Interpretation; der offizielle PHNIX-Name ist offen.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
+  "1402": {
+    "default": "2 min",
+    "description": "Mindest-Abtauzeit, bevor die reguläre temperaturabhängige Abtaubeendigung zulässig ist. Einheit: Minuten.",
+    "knowledge": "Im Abtau-State 2 wird ein alle 30 Sekunden erhöhter Laufzeitzähler mit 2 × MAIN:1402 verglichen. Damit entspricht der Parameterwert Minuten. Erst nach Ablauf dieser Mindestzeit darf die normale Abtau-Endtemperatur den Übergang in State 3 auslösen.",
+    "notes": "D100 ist eine fiktive projektinterne Kennung, kein bestätigter Hersteller-Code. Eine separate hohe Temperaturgrenze von etwa 33,0 °C kann die Mindestzeit übersteuern; D19 bleibt die maximale Abtaudauer.",
+    "source": "Reverse Engineering GL9 Firmware V3.5"
+  },
   "1432": {
     "default": "4.4",
     "description": "0,0 bis 10,0 °C",

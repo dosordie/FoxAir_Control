@@ -4157,23 +4157,35 @@
     "type": "RAW"
   },
   "1388": {
+    "default": "2.0 K",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Mindestabstand/Floor eines temperaturkompensierten Wasser-Sollwerts / Erforschen!",
-    "type": "RAW"
+    "name": "Kühl-Mindesttemperatur über Taupunkt",
+    "type": "TEMP1",
+    "unit": "K",
+    "description": "Taupunkt-Sicherheitsabstand für den Kühl-Sollwert. Bei aktivem Raumtemperatur-/Feuchtesensor-Modus 1387=2 begrenzt die Firmware den Kühl-Sollwert auf mindestens berechneter Taupunkt plus 1388. RAW / 10 = K; Default RAW 20 = 2,0 K."
   },
   "1389": {
+    "default": "4.0 K",
     "function": "03/16",
     "mode": "r/w",
-    "name": "AT-Differenz-Schaltschwelle eines Sollwert-/Kompensationsmodus, mit 1 K Hysterese / Erforschen!",
-    "type": "RAW"
+    "name": "Raum-/T04-ΔT-Schaltschwelle",
+    "type": "TEMP1",
+    "unit": "K",
+    "description": "Schaltschwelle zwischen der Raumtemperatur des Temperatur-/Feuchtesensors und dem lokalen Außentemperaturfühler T04. EIN bei T_Raum − T04 ≥ 1389, AUS mit fester 1,0-K-Hysterese. RAW / 10 = K; Default RAW 40 = 4,0 K. Der offizielle Herstellername ist nicht bekannt.",
+    "temperature_source": "local_t04"
   },
   "1402": {
+    "block": "D",
+    "code": "D100",
+    "default": "2 min",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Bestätigungs-/Entprellzeit für Defrost-Ende über D17 / Erforschen!",
-    "notes": "Interessant, genau anschauen!.",
-    "type": "RAW"
+    "name": "Mindest-Abtauzeit",
+    "notes": "D100 ist eine fiktive, projektinterne Bezeichnung abseits der bestätigten Hersteller-Codes und kein bestätigter PHNIX-Menüname.",
+    "type": "MINUTES",
+    "unit": "min",
+    "description": "Mindestlaufzeit des eigentlichen Abtauens, bevor die reguläre temperaturabhängige Abtaubeendigung zulässig ist. Default 2 min. Eine separate hohe Temperaturgrenze von etwa 33,0 °C kann die Mindestzeit übersteuern; D19 bleibt die maximale Abtaudauer."
   },
   "1422": {
     "function": "03/16",
