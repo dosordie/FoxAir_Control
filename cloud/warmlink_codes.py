@@ -431,6 +431,9 @@ WARMLINK_PRODUCT_IDS: list[str] = [
 # sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
 WARMLINK_SERVICE_SLAVE = 0x63
 WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
+    8001: {"name": "Remote-Control-Mode-Selector", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Remote-Control-Modus 1..4; übernommener Modus wird als MAIN:1691 exportiert"},
+    8004: {"name": "Remote-Control Schwellwert / MAIN1427", "type": "int16", "mode": "service-observed", "write_allowed": False, "effect": "Wird im Remote-Control-Modus 4 im 8004/MAIN1427-Schwellautomaten verwendet; physikalische Einheit noch offen"},
+    8006: {"name": "Remote-Control Change-/Generation-Token", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an"},
     8021: {"name": "Cooling Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Cooling", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8022: {"name": "Heating Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Heating", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8023: {"name": "DHW Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "DHW", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},

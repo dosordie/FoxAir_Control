@@ -3,7 +3,7 @@
 ## 0.2.67
 
 - Warmlink-/Service-Register im 8xxx-Bereich werden bei Empfang oder explizitem Lesen direkt in der normalen Hauptregistertabelle angezeigt.
-- Bekannte Werte 8021–8028 und 8055 verwenden dort ihre Reverse-Engineering-Namen und Datentypen; unbekannte 8xxx-Werte bleiben als RAW-Werte sichtbar.
+- Bekannte Werte 8001, 8004, 8006, 8021–8028 und 8055 verwenden dort ihre Reverse-Engineering-Namen und Datentypen; unbekannte 8xxx-Werte bleiben als RAW-Werte sichtbar.
 - FC10-Serviceframes aktualisieren die enthaltenen Einzelregister über den normalen Änderungs- und Tabellenpfad, ohne Schreibfreigaben oder automatische Abfragen zu ergänzen.
 - Separaten Warmlink-Service-/Engineering-Dialog aus den Programmeinstellungen entfernt.
 

@@ -38,6 +38,30 @@ def test_known_service_register_uses_metadata():
     assert register.slave_addr == 0x63
 
 
+@pytest.mark.parametrize(
+    ("reg_no", "name_fragment", "dtype"),
+    [
+        (8001, "Remote-Control-Mode", "uint16"),
+        (8004, "Remote-Control Schwellwert / MAIN1427", "int16"),
+        (8006, "Change-/Generation-Token", "uint16"),
+    ],
+)
+def test_legacy_remote_service_registers_use_known_metadata(reg_no, name_fragment, dtype):
+    register = _decode_fc10(reg_no, [7]).registers[0]
+    assert name_fragment in register.name
+    assert register.dtype == dtype
+    assert register.name != f"Warmlink Service Register {reg_no}"
+
+
+def test_legacy_remote_service_metadata_remains_read_only_and_unitless():
+    from cloud.warmlink_codes import WARMLINK_SERVICE_REGISTERS
+
+    for reg_no in (8001, 8004, 8006):
+        assert WARMLINK_SERVICE_REGISTERS[reg_no]["write_allowed"] is False
+    assert "unit" not in WARMLINK_SERVICE_REGISTERS[8004]
+    assert "range" not in WARMLINK_SERVICE_REGISTERS[8004]
+
+
 def test_signed_service_register_keeps_raw_and_signed_values():
     register = _decode_fc10(8055, [0xFFFF]).registers[0]
     assert register.raw_value == 0xFFFF
