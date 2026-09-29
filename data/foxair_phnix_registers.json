@@ -6330,6 +6330,7 @@
     "mode": "r/w",
     "name": "Remote-Regelwertkorrektur V3.5",
     "type": "ENUM",
+    "ui_visibility": "engineering",
     "block": "REMOTE",
     "code": "REMOTE1540",
     "app_label": "V3.5+ Remote-/Warmlink-Regelung",

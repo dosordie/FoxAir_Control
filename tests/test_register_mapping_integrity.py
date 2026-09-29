@@ -230,6 +230,7 @@ def test_v35_remote_main_register_metadata():
     assert gate["mode"] == "r/w"
     assert gate["firmware"] == "V3.5+"
     assert gate["default"] == "0"
+    assert gate["ui_visibility"] == "engineering"
     assert gate["value_map"] == {"0": "Aus", "1": "Ein"}
     assert "Warmlink" in gate["app_label"]
 
