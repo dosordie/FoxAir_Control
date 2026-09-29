@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from cloud.warmlink_codes import warmlink_service_rows
+from cloud.warmlink_codes import WARMLINK_SERVICE_SLAVE, warmlink_service_metadata
 from core.bus_address_info import display_bus_address_info
 from core.settings_manager import engineering_parameter_is_visible, ensure_defaults
 
@@ -23,13 +23,17 @@ def test_engineering_visibility_defaults_off_and_does_not_change_metadata():
         assert definitions[register]["code"] == f"MAIN{register}"
 
 
-def test_service_diagnosis_is_complete_and_read_only():
-    rows = warmlink_service_rows({8021: 47, 8055: 10})
-    assert [int(row["register"]) for row in rows] == list(range(8021, 8029)) + [8055]
-    assert rows[0]["raw"] == "47"
-    assert rows[-1]["raw"] == "10"
-    assert all("0x63" in row["transport"] for row in rows)
-    assert all("nicht freigegeben" in row["write_status"] for row in rows)
+def test_service_metadata_is_transport_scoped_and_read_only():
+    known = warmlink_service_metadata(WARMLINK_SERVICE_SLAVE, 8022)
+    unknown = warmlink_service_metadata(WARMLINK_SERVICE_SLAVE, 8099)
+    assert known["name"] == "Heating Compressor Frequency Cap"
+    assert known["type"] == "uint16"
+    assert known["write_allowed"] is False
+    assert unknown == {
+        "name": "Warmlink Service Register 8099", "type": "RAW",
+        "mode": "service-observed", "write_allowed": False,
+    }
+    assert warmlink_service_metadata(0x01, 8022) is None
 
 
 def test_documented_bus_roles():

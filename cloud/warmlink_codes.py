@@ -442,36 +442,20 @@ WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
     8055: {"name": "Positiver Multi-Zone-Heiz-Wassersollwertboost", "type": "signed int16", "mode": "engineering/experimental", "write_allowed": False, "persistence": "RAM-only; Boot-Default 0; kein eigener Mainboard-TTL", "effect": "effective_heating_target_raw = clamp(base_heating_target_raw + int16(value) * uint8(MAIN1492.high) / 10, local_min_raw, local_max_raw)", "gates": "MAIN:1492.high != 0; Z01 in {4,5,6}; MAIN:1430 != 0; int16(value) >= 1"},
 }
 
-WARMLINK_SERVICE_KNOWLEDGE = (
-    "Warmlink-/LTE-Service-Modbus, Slave 0x63, FC10; getrennt von Standard- und Display-Modbus. "
-    "8021-8023 begrenzen Cooling/Heating/DHW auf min(normale Referenz, Remote-Cap). Ihr gemeinsamer "
-    "Logik-/Timerkomplex laeuft nach 20 Minuten kontinuierlichem Verdichterlauf ab; Verdichterstopp "
-    "setzt den Laufzeitzaehler zurueck. 8024-8028 gehoeren zu einer gruppenbezogenen 120-Minuten-"
-    "TTL-/Resetlogik. 8027/8028 addieren im Heizen und subtrahieren im Kuehlen. 8055 gehoert nicht "
-    "zu dieser TTL: RAM-only, Boot-Default 0, ohne gefundenen eigenen Mainboard-TTL; aktiv bis extern "
-    "ueberschrieben oder Mainboard-Neustart. 8055 bleibt experimentell und fuer Writes gesperrt."
-)
-
-
-def warmlink_service_rows(values: dict[int, int] | None = None) -> list[dict[str, str]]:
-    """Build read-only presentation rows without adding a service write path."""
-    values = values or {}
-    rows = []
-    for register, meta in sorted(WARMLINK_SERVICE_REGISTERS.items()):
-        lifetime = (
-            f"TTL {meta['ttl_minutes']} min ({meta.get('ttl_group', 'Gruppe')})"
-            if "ttl_minutes" in meta else str(meta.get("persistence", "--"))
-        )
-        experimental = "experimental" in str(meta.get("mode", ""))
-        rows.append({
-            "register": str(register), "name": str(meta["name"]),
-            "raw": "--" if register not in values else str(values[register]),
-            "meaning": str(meta.get("effect", "--")), "type": str(meta.get("type", "RAW")),
-            "lifetime": lifetime,
-            "transport": f"Warmlink Service / Slave 0x{WARMLINK_SERVICE_SLAVE:02X} / FC10",
-            "write_status": "experimentell; nicht freigegeben" if experimental else "nicht freigegeben",
-        })
-    return rows
+def warmlink_service_metadata(slave_addr: int, register: int) -> dict[str, object] | None:
+    """Return metadata for an observed service register, never a write grant."""
+    register = int(register)
+    if int(slave_addr) != WARMLINK_SERVICE_SLAVE or not 8000 <= register <= 8999:
+        return None
+    known = WARMLINK_SERVICE_REGISTERS.get(register)
+    if known is not None:
+        return dict(known)
+    return {
+        "name": f"Warmlink Service Register {register}",
+        "type": "RAW",
+        "mode": "service-observed",
+        "write_allowed": False,
+    }
 
 WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},
  '1208': {'cloud_dataType': 'DIGI1', 'rangeEnd': '500', 'rangeStart': '0'},

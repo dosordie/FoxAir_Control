@@ -15,6 +15,8 @@ except Exception:  # pyserial optional, nur fuer COM-Port Transport
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from cloud.warmlink_codes import warmlink_service_metadata
+
 DEFAULT_BUS_ADDR = 0x63
 MODBUS_FUNC_READ_HOLDING = 0x03
 MODBUS_FUNC_WRITE_SINGLE = 0x06
@@ -376,6 +378,10 @@ def format_value_by_type(
 ) -> str:
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
+    if dtype in ("UINT16", "UNSIGNED INT16"):
+        return str(int(raw_value) & 0xFFFF)
+    if dtype in ("INT16", "SIGNED INT16"):
+        return str(signed)
     if value_map and raw_value in value_map:
         return f"{raw_value} = {value_map[raw_value]}"
     if value_map and signed in value_map:
@@ -694,6 +700,9 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
         for idx, raw_value in enumerate(words):
             reg = base + idx
             info = regmap.get(reg)
+            service_meta = warmlink_service_metadata(slave_addr, reg)
+            name = str(service_meta["name"]) if service_meta else info.name
+            dtype = str(service_meta["type"]) if service_meta else info.dtype
             registers.append(DecodedRegister(
                 slave_addr=slave_addr,
                 reg=reg,
@@ -701,9 +710,12 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
                 frame_type=block_type,
                 raw_value=raw_value,
                 signed_value=s16(raw_value),
-                display_value=format_value_by_type(raw_value, info.dtype, info.value_map, info.bit_map),
-                name=info.name,
-                dtype=info.dtype,
+                display_value=format_value_by_type(
+                    raw_value, dtype, None if service_meta else info.value_map,
+                    None if service_meta else info.bit_map,
+                ),
+                name=name,
+                dtype=dtype,
                 timestamp=ts,
             ))
 
@@ -754,6 +766,9 @@ def decode_read_response_registers(frame: DecodedFrame, start_reg: int, regmap: 
     for idx, raw_value in enumerate(words):
         reg_no = start_reg + idx
         info = regmap.get(reg_no)
+        service_meta = warmlink_service_metadata(frame.slave_addr, reg_no)
+        name = str(service_meta["name"]) if service_meta else info.name
+        dtype = str(service_meta["type"]) if service_meta else info.dtype
         regs.append(DecodedRegister(
             slave_addr=frame.slave_addr,
             reg=reg_no,
@@ -761,9 +776,12 @@ def decode_read_response_registers(frame: DecodedFrame, start_reg: int, regmap: 
             frame_type=start_reg,
             raw_value=raw_value,
             signed_value=s16(raw_value),
-            display_value=format_value_by_type(raw_value, info.dtype, info.value_map, info.bit_map),
-            name=info.name,
-            dtype=info.dtype,
+            display_value=format_value_by_type(
+                raw_value, dtype, None if service_meta else info.value_map,
+                None if service_meta else info.bit_map,
+            ),
+            name=name,
+            dtype=dtype,
             timestamp=ts,
         ))
     return regs
