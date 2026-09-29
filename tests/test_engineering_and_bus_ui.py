@@ -17,10 +17,13 @@ def test_engineering_visibility_defaults_off_and_does_not_change_metadata():
     assert engineering_parameter_is_visible({}, {})
 
     definitions = json.loads((Path(__file__).parents[1] / "data/foxair_phnix_registers.json").read_text(encoding="utf-8"))
-    for register in ("1430", "1492"):
+    for register in ("1430", "1492", "1540"):
         assert not engineering_parameter_is_visible(definitions[register], {"show_engineering_parameters": False})
         assert engineering_parameter_is_visible(definitions[register], {"show_engineering_parameters": True})
-        assert definitions[register]["code"] == f"MAIN{register}"
+
+    assert definitions["1430"]["code"] == "MAIN1430"
+    assert definitions["1492"]["code"] == "MAIN1492"
+    assert definitions["1540"]["code"] == "REMOTE1540"
 
 
 def test_service_metadata_is_transport_scoped_and_read_only():
