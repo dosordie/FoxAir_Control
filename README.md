@@ -48,7 +48,8 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Cloud-Wertefinder
 - Cloud-Schreibtest mit bestätigtem Endpunkt `app/device/control?lang=en`
 - Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
-- **Cloud-only Zeilen** gibt es nur im WarmLink-Cloud-Fenster; dort ist der Schalter standardmäßig aktiviert
+- Cloudwerte können als Overlay im Hauptfenster erscheinen; optionale **Cloud-only Zeilen** zeigen bestätigte Mappings auch ohne zuvor gelesenen lokalen Wert
+- Der Doppelklickdialog bietet bei aktiver Cloud-Verbindung **Cloud lesen** und – nur für ausdrücklich freigegebene Schreibcodes – **Cloud schreiben**
 - Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames bleibt aktiv
 - Runtime-Code ist in `core/`, `workers/`, `cloud/`, `dialogs/`, `ui/` und `data/` gegliedert
 

@@ -487,6 +487,7 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token = None
         self._cloud_token_login_at = 0.0
         self._cloud_token_username = ""
+        self.main_window.set_cloud_connection_state(False)
         self.status_label.setText("Zugang gelöscht.")
         self.main_window._log("WarmLink Cloud: Zugang gelöscht.")
 
@@ -603,6 +604,7 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log("WarmLink Cloud Fehler: " + text)
         lower = text.lower()
         if "401" in lower or "-100" in lower or "please login again" in lower or "login" in lower:
+            self.main_window.set_cloud_connection_state(False)
             user = self.username_edit.text().strip()
             self._cloud_token = None
             self._cloud_token_login_at = 0.0
@@ -617,6 +619,7 @@ class WarmLinkCloudDialog(QDialog):
         self.devices = [d for d in devices if isinstance(d, dict)]
         self.refresh_devices()
         self._save_settings()
+        self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
     def _on_data(self, rows: list):
         self.data_rows = [r for r in rows if isinstance(r, dict)]
@@ -967,22 +970,13 @@ class WarmLinkCloudDialog(QDialog):
         confidence = str(hint.get("confidence") or code_confidence(code) or "")
         local_code_hint = str(hint.get("local_code") or "")
         write_allowed = bool(hint.get("write_allowed", False))
-        reg = hint.get("modbus_register")
-        if reg in (None, ""):
+        reg_no, register_json_code, error = self.main_window._validated_cloud_modbus_register(code, hint)
+        if reg_no is None:
             return {"mapping_status": "Cloud-only" if not hint else "Kein Register", "modbus_register": "", "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
-        try:
-            reg_no = int(reg)
-        except Exception:
-            return {"mapping_status": "Kein Register", "modbus_register": str(reg), "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
-        register_json_code = ""
-        if reg_no in getattr(self.main_window.regmap, "items", {}):
-            register_json_code = self.main_window._code_for_register(reg_no)
         if confidence != "confirmed":
             status = "Nicht bestätigt"
-        elif not register_json_code:
+        elif error or not register_json_code:
             status = "Kein Register"
-        elif not self.main_window._is_safe_cloud_local_mapping(code, register_json_code, hint):
-            status = "Code-Mismatch"
         else:
             status = "OK"
         return {

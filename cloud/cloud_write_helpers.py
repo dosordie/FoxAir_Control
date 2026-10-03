@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from cloud.mapping_validation import cloud_hint_matches_local_code, register_code_from_definition
+from cloud.register_resolver import resolve_cloud_register
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
 
 try:
@@ -47,28 +47,9 @@ def _static_register_defs() -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def _static_local_code_for_register(reg_no: int) -> str:
-    defs = _static_register_defs()
-    definition = defs.get(str(int(reg_no)))
-    if definition is None:
-        return ""
-    return register_code_from_definition(definition)
-
-
-def _cloud_mapping_is_valid_for_register(code: str, hint: Mapping[str, Any], reg_no: int) -> bool:
-    local_code = _static_local_code_for_register(reg_no)
-    return cloud_hint_matches_local_code(code, hint, local_code)
-
-
 def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
     """Return whether a mapped cloud code is safe to offer for writing."""
-    if not hint.get("modbus_register"):
-        return False
-    try:
-        mapped_register = int(hint.get("modbus_register"))
-    except Exception:
-        return False
-    if not _cloud_mapping_is_valid_for_register(str(code), hint, mapped_register):
+    if resolve_cloud_register(str(code), hint, _static_register_defs()) is None:
         return False
     if str(hint.get("confidence") or "").lower() != "confirmed":
         return False
@@ -84,13 +65,8 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     best: tuple[int, str] | None = None
     rank = {"confirmed": 0}
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
-        try:
-            mapped = int(hint.get("modbus_register")) if hint.get("modbus_register") not in (None, "") else None
-        except Exception:
-            mapped = None
+        mapped = resolve_cloud_register(str(code), hint, _static_register_defs())
         if mapped != target:
-            continue
-        if not _cloud_mapping_is_valid_for_register(str(code), hint, target):
             continue
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
             continue

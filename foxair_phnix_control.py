@@ -62,7 +62,7 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.token_store import get_password, get_token
-from cloud.mapping_validation import cloud_hint_matches_local_code
+from cloud.register_resolver import resolve_cloud_register
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
     cloud_write_choice_options,
@@ -70,7 +70,7 @@ from cloud.cloud_write_helpers import (
     cloud_write_values_for_code,
     current_raw_text_for_cloud_write,
 )
-from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
+from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker, WarmLinkCloudWorker
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer, QSize
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
@@ -1391,9 +1391,30 @@ class RegisterQuickWriteDialog(QDialog):
         self.close_btn.clicked.connect(self.close)
         buttons.addWidget(self.read_btn)
         buttons.addWidget(self.write_btn)
+        self.cloud_read_btn = QPushButton("Cloud lesen")
+        self.cloud_write_btn = QPushButton("Cloud schreiben")
+        self.cloud_read_btn.clicked.connect(self.read_cloud_register)
+        self.cloud_write_btn.clicked.connect(lambda: self.main_window.open_cloud_write_for_register(self.reg_no))
+        buttons.addWidget(self.cloud_read_btn)
+        buttons.addWidget(self.cloud_write_btn)
         buttons.addStretch(1)
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            self.read_btn.setEnabled(False)
+            self.write_btn.setEnabled(False)
+        self.update_cloud_actions()
+
+    def update_cloud_actions(self):
+        connected = self.main_window.is_cloud_connected()
+        self.cloud_read_btn.setVisible(bool(connected and self.main_window.cloud_code_for_register(self.reg_no)))
+        self.cloud_write_btn.setVisible(bool(
+            connected and self.main_window.cloud_code_for_register(self.reg_no, require_write_allowed=True)
+        ))
+
+    def read_cloud_register(self):
+        self.status_label.setText("Lese Cloud-Wert ...")
+        self.main_window.read_cloud_register(self.reg_no)
 
     def _parse_bus(self) -> int:
         return int(self.slave_addr)
@@ -1455,6 +1476,7 @@ class RegisterQuickWriteDialog(QDialog):
         QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def refresh_from_live(self):
+        self.update_cloud_actions()
         old_raw = self._last_raw
         reg = self.main_window.latest_regs.get(self.reg_no)
         if reg is None:
@@ -1484,6 +1506,8 @@ class RegisterQuickWriteDialog(QDialog):
             self.status_label.setText("Gelesener Rohwert aktualisiert.")
 
     def read_register(self):
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            return
         try:
             self.status_label.setText("Lese Register ...")
             self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
@@ -1491,6 +1515,8 @@ class RegisterQuickWriteDialog(QDialog):
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
     def write_register(self):
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            return
         try:
             value = self.main_window.parse_register_write_value(self.reg_no, self.write_value_edit.text()) & 0xFFFF
             self.status_label.setText("Schreibe Register ...")
@@ -4471,6 +4497,10 @@ class MainWindow(QMainWindow):
         self.cloud_write_thread: Optional[QThread] = None
         self.cloud_write_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.cloud_write_code: str = ""
+        self.cloud_read_thread: Optional[QThread] = None
+        self.cloud_read_worker: Optional[WarmLinkCloudWorker] = None
+        self.cloud_session_authenticated = False
+        self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
         self.cloud_last_rows: list[dict[str, Any]] = []
         self.about_dialog: Optional[AboutDialog] = None
@@ -5429,6 +5459,9 @@ class MainWindow(QMainWindow):
         )
 
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
+        if int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D:
+            # getDataByCode already returns an engineering value.
+            return str(reg.display_value)
         if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
@@ -5786,6 +5819,8 @@ class MainWindow(QMainWindow):
             self.reg_count_label.setText("0")
         finally:
             self.register_table.setUpdatesEnabled(True)
+        if self._cloud_only_enabled() and self.cloud_last_rows:
+            self.apply_cloud_rows_to_main(self.cloud_last_rows, show_cloud_only=True)
         self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log und Verbindung unverändert.")
 
     def _parse_int_text(self, text: str) -> int:
@@ -7164,12 +7199,6 @@ class MainWindow(QMainWindow):
             self._apply_cloud_only_visibility()
         self._log(f"Cloud-only Zeilen: {'ein' if self._cloud_only_enabled() else 'aus'}", level=2)
 
-    def _is_safe_cloud_local_mapping(
-        self, cloud_code: str, local_code: str, hint: dict[str, Any] | None = None
-    ) -> bool:
-        """Return True only for fachlich passende Cloud-/Lokal-Code-Mappings."""
-        return cloud_hint_matches_local_code(cloud_code, hint or cloud_hint(cloud_code), local_code)
-
     def _validated_cloud_modbus_register(self, cloud_code: str, hint: dict[str, Any] | None = None) -> tuple[int | None, str, str]:
         """Validate a Cloud hint against the static local register map.
 
@@ -7178,7 +7207,7 @@ class MainWindow(QMainWindow):
         rows.
         """
         hint = hint or cloud_hint(cloud_code)
-        reg_no = cloud_modbus_register(cloud_code)
+        reg_no = resolve_cloud_register(cloud_code, hint, self.register_defs)
         if reg_no is None:
             return None, "", "no_register"
         try:
@@ -7188,8 +7217,6 @@ class MainWindow(QMainWindow):
         if reg_no not in getattr(self.regmap, "items", {}):
             return None, "", "unknown_register"
         local_code = self._code_for_register(reg_no)
-        if not self._is_safe_cloud_local_mapping(cloud_code, local_code, hint):
-            return None, local_code, "code_mismatch"
         return reg_no, local_code, ""
 
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
@@ -8604,6 +8631,59 @@ class MainWindow(QMainWindow):
             self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
 
 
+    def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
+        """Record a proven session, independently of whether polling is active."""
+        self.cloud_session_authenticated = bool(authenticated)
+        self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
+
+    def is_cloud_connected(self) -> bool:
+        return bool(self.cloud_session_authenticated and self.cloud_session_device_code)
+
+    def cloud_code_for_register(self, reg_no: int, require_write_allowed: bool = False) -> str | None:
+        return cloud_code_for_register(reg_no, require_write_allowed=require_write_allowed)
+
+    def read_cloud_register(self, reg_no: int) -> None:
+        """Read one mapped cloud code asynchronously into the normal overlay path."""
+        code = self.cloud_code_for_register(reg_no)
+        if not self.is_cloud_connected() or not code:
+            return
+        if self.cloud_read_thread is not None:
+            QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Lesebefehl.")
+            return
+        user, pw, token, _saved_device = self._cloud_write_credentials()
+        if not user or not (pw or token):
+            return
+        self.cloud_read_thread = QThread(self)
+        self.cloud_read_worker = WarmLinkCloudWorker(
+            username=user,
+            password=pw or "",
+            codes=[code],
+            device_code=self.cloud_session_device_code,
+            poll_once=True,
+            initial_token=token,
+        )
+        worker = self.cloud_read_worker
+        thread = self.cloud_read_thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.data.connect(lambda rows: self.apply_cloud_rows_to_main(rows, show_cloud_only=True))
+        worker.error.connect(self._on_cloud_read_error)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._cloud_read_finished)
+        thread.start()
+
+    def _cloud_read_finished(self) -> None:
+        self.cloud_read_thread = None
+        self.cloud_read_worker = None
+
+    def _on_cloud_read_error(self, text: str) -> None:
+        self._log("WarmLink Cloud lesen: " + str(text))
+        lower = str(text).lower()
+        if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
+            self.set_cloud_connection_state(False)
+
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
         """Zugangsdaten fuer Cloud-Schreiben aus Dialog/Settings/Keyring holen."""
         cfg = self.settings.get("warmlink_cloud", {}) if isinstance(self.settings.get("warmlink_cloud", {}), dict) else {}
@@ -8772,6 +8852,9 @@ class MainWindow(QMainWindow):
 
     def _on_cloud_write_error(self, text: str):
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
+        lower = str(text).lower()
+        if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
+            self.set_cloud_connection_state(False)
         QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + translate_cloud_error_message(str(text)))
 
     def _cloud_write_finished(self):
