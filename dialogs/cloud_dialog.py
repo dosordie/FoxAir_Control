@@ -332,7 +332,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
         self.save_token_cb.toggled.connect(self._save_token_toggled)
-        self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
+        self.device_combo.currentIndexChanged.connect(self._device_selection_changed)
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
         self.mapping_issues_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -494,6 +494,11 @@ class WarmLinkCloudDialog(QDialog):
     def _selected_device_code(self) -> str | None:
         data = self.device_combo.currentData()
         return str(data).strip() if data else None
+
+    def _device_selection_changed(self, _index: int | None = None) -> None:
+        self._save_settings()
+        if getattr(self.main_window, "cloud_session_authenticated", False):
+            self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
     def _start_worker(self, poll_once: bool, just_login: bool = False):
         if self.cloud_thread is not None:
