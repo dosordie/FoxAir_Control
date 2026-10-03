@@ -975,9 +975,12 @@ class WarmLinkCloudDialog(QDialog):
             return {"mapping_status": "Cloud-only" if not hint else "Kein Register", "modbus_register": "", "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
         if confidence != "confirmed":
             status = "Nicht bestätigt"
-        elif error or not register_json_code:
+        elif error:
             status = "Kein Register"
         else:
+            # Explizite bestätigte Aliase wie Power, Mode, O15/O17 oder
+            # code_version dürfen auf lokale Register ohne eigenes code-Feld
+            # zeigen. Der zentrale Resolver hat diese Zuordnung bereits geprüft.
             status = "OK"
         return {
             "mapping_status": status,
