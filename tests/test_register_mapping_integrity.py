@@ -317,3 +317,65 @@ def test_sg_ready_editor_handles_direct_only_8801():
     assert "Low PV / Neutral / High PV" in docs
     assert "10-minütige Umschaltsperre" in docs
     assert "zunächst auf `0` und anschließend wieder auf `3`" in docs
+
+
+
+def test_warmlink_cloud_confirmed_mappings_follow_current_local_codes():
+    from cloud.warmlink_codes import (
+        ALL_WARMLINK_CLOUD_CODES,
+        WARMLINK_CLOUD_CODE_HINTS,
+        WARMLINK_GL9_TESTED_UNSUPPORTED_CODES,
+    )
+
+    main, _display = _load_static_maps()
+
+    by_code = {}
+    for register, metadata in main.items():
+        local_code = str(metadata.get("code") or "").strip()
+        if local_code:
+            by_code.setdefault(local_code, []).append(int(register))
+
+    # A confirmed local_code is the stable identity. Stored register numbers
+    # must follow the current register map instead of historical addresses.
+    for cloud_code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
+        if str(hint.get("confidence") or "").lower() != "confirmed":
+            continue
+        local_code = str(hint.get("local_code") or "").strip()
+        matches = by_code.get(local_code, [])
+        if len(matches) == 1:
+            assert int(hint["modbus_register"]) == matches[0], (
+                f"{cloud_code}: stale Cloud mapping for {local_code}"
+            )
+
+    expected_live_aliases = {
+        "Power": 1011,
+        "Mode": 1012,
+        "E17": 1147,
+        "1206": 1206,
+        "1208": 1208,
+        "compensate_slope": 1234,
+        "compensate_offset": 1235,
+        "O15": 2020,
+        "O17": 2022,
+        "InputCurrent1": 2029,
+        "2029": 2029,
+        "2030": 2030,
+        "2031": 2031,
+        "T35": 2057,
+        "code_version": 2104,
+        "MainBoard Version": 2105,
+    }
+    for cloud_code, register in expected_live_aliases.items():
+        hint = WARMLINK_CLOUD_CODE_HINTS[cloud_code]
+        assert hint["confidence"] == "confirmed"
+        assert int(hint["modbus_register"]) == register
+
+    for code in ("InputCurrent1", "2029", "2030", "2031"):
+        assert code in ALL_WARMLINK_CLOUD_CODES
+
+    assert {"Manual-mute", "State_power", "State_mode", "Set_Temp"}.issubset(
+        set(WARMLINK_GL9_TESTED_UNSUPPORTED_CODES)
+    )
+
+    assert WARMLINK_CLOUD_CODE_HINTS["Z21"]["confidence"] == "unknown"
+    assert WARMLINK_CLOUD_CODE_HINTS["H45"]["confidence"] == "unknown"
