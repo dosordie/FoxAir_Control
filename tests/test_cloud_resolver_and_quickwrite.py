@@ -84,3 +84,42 @@ def test_quickwrite_buttons_and_connection_visibility():
     assert not cloud_only.read_btn.isEnabled()
     assert not cloud_only.write_btn.isEnabled()
     assert application is not None
+
+
+
+def test_cloud_connection_state_refreshes_open_quickwrite_dialogs():
+    app_module = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+
+    calls = []
+    dialog = SimpleNamespace(
+        isVisible=lambda: True,
+        update_cloud_actions=lambda: calls.append("updated"),
+    )
+    window = SimpleNamespace(
+        cloud_session_authenticated=False,
+        cloud_session_device_code="",
+        register_write_dialogs={(0x63, 1011): dialog},
+    )
+
+    app_module.MainWindow.set_cloud_connection_state(window, True, "device-1")
+    assert window.cloud_session_authenticated is True
+    assert window.cloud_session_device_code == "device-1"
+    assert calls == ["updated"]
+
+    app_module.MainWindow.set_cloud_connection_state(window, False)
+    assert window.cloud_session_authenticated is False
+    assert window.cloud_session_device_code == ""
+    assert calls == ["updated", "updated"]
+
+
+def test_cloud_dialog_accepts_confirmed_explicit_alias_without_local_code():
+    cloud_dialog_module = pytest.importorskip("dialogs.cloud_dialog", exc_type=ImportError)
+
+    fake = SimpleNamespace(
+        main_window=SimpleNamespace(
+            _validated_cloud_modbus_register=lambda _code, _hint: (1011, "", "")
+        )
+    )
+    status = cloud_dialog_module.WarmLinkCloudDialog._mapping_status(fake, "Power")
+    assert status["mapping_status"] == "OK"
+    assert status["modbus_register"] == "1011"
