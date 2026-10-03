@@ -1407,6 +1407,9 @@ class RegisterQuickWriteDialog(QDialog):
 
     def update_cloud_actions(self):
         connected = self.main_window.is_cloud_connected()
+        cloud_only = self.main_window._is_cloud_only_register(self.reg_no)
+        self.read_btn.setEnabled(not cloud_only)
+        self.write_btn.setEnabled(not cloud_only)
         self.cloud_read_btn.setVisible(bool(connected and self.main_window.cloud_code_for_register(self.reg_no)))
         self.cloud_write_btn.setVisible(bool(
             connected and self.main_window.cloud_code_for_register(self.reg_no, require_write_allowed=True)
@@ -8635,6 +8638,15 @@ class MainWindow(QMainWindow):
         """Record a proven session, independently of whether polling is active."""
         self.cloud_session_authenticated = bool(authenticated)
         self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
+        # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
+        # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
+        # Register-Refresh sichtbar bzw. unsichtbar bleiben.
+        for dialog in list(getattr(self, "register_write_dialogs", {}).values()):
+            try:
+                if dialog is not None and dialog.isVisible():
+                    dialog.update_cloud_actions()
+            except Exception:
+                pass
 
     def is_cloud_connected(self) -> bool:
         return bool(self.cloud_session_authenticated and self.cloud_session_device_code)
