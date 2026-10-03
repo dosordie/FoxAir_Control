@@ -3053,15 +3053,10 @@ def is_known_code(code: str) -> bool:
 
 
 def code_modbus_register(code: str) -> int | None:
-    """Return the statically confirmed Modbus register for a cloud code."""
-    hint = cloud_hint(code)
-    if str(hint.get("confidence") or "").lower() != "confirmed":
-        return None
-    reg = hint.get("modbus_register")
-    try:
-        return int(reg) if reg is not None else None
-    except Exception:
-        return None
+    """Resolve a confirmed cloud code against the current local register map."""
+    from cloud.register_resolver import resolve_cloud_register
+
+    return resolve_cloud_register(code, cloud_hint(code))
 
 
 def code_name(code: str) -> str:
@@ -3073,11 +3068,4 @@ def code_unit(code: str) -> str:
 
 
 def code_confidence(code: str) -> str:
-    hint = cloud_hint(code)
-    confidence = str(hint.get("confidence") or "")
-    if confidence == "confirmed":
-        local_code = str(hint.get("local_code") or "").strip()
-        manual_mismatch = hint.get("manual_confirmed") or hint.get("allow_code_mismatch")
-        if local_code and local_code != str(code).strip() and not manual_mismatch:
-            return "candidate"
-    return confidence
+    return str(cloud_hint(code).get("confidence") or "")

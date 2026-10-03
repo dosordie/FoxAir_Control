@@ -331,6 +331,8 @@ def test_warmlink_cloud_confirmed_mappings_follow_current_local_codes():
 
     by_code = {}
     for register, metadata in main.items():
+        if not isinstance(metadata, dict):
+            continue
         local_code = str(metadata.get("code") or "").strip()
         if local_code:
             by_code.setdefault(local_code, []).append(int(register))

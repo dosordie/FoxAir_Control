@@ -332,7 +332,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
         self.save_token_cb.toggled.connect(self._save_token_toggled)
-        self.device_combo.currentIndexChanged.connect(lambda _=None: self._save_settings())
+        self.device_combo.currentIndexChanged.connect(self._device_selection_changed)
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
         self.mapping_issues_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -487,12 +487,18 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token = None
         self._cloud_token_login_at = 0.0
         self._cloud_token_username = ""
+        self.main_window.set_cloud_connection_state(False)
         self.status_label.setText("Zugang gelöscht.")
         self.main_window._log("WarmLink Cloud: Zugang gelöscht.")
 
     def _selected_device_code(self) -> str | None:
         data = self.device_combo.currentData()
         return str(data).strip() if data else None
+
+    def _device_selection_changed(self, _index: int | None = None) -> None:
+        self._save_settings()
+        if getattr(self.main_window, "cloud_session_authenticated", False):
+            self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
     def _start_worker(self, poll_once: bool, just_login: bool = False):
         if self.cloud_thread is not None:
@@ -603,6 +609,7 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log("WarmLink Cloud Fehler: " + text)
         lower = text.lower()
         if "401" in lower or "-100" in lower or "please login again" in lower or "login" in lower:
+            self.main_window.set_cloud_connection_state(False)
             user = self.username_edit.text().strip()
             self._cloud_token = None
             self._cloud_token_login_at = 0.0
@@ -617,6 +624,7 @@ class WarmLinkCloudDialog(QDialog):
         self.devices = [d for d in devices if isinstance(d, dict)]
         self.refresh_devices()
         self._save_settings()
+        self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
     def _on_data(self, rows: list):
         self.data_rows = [r for r in rows if isinstance(r, dict)]
@@ -967,23 +975,17 @@ class WarmLinkCloudDialog(QDialog):
         confidence = str(hint.get("confidence") or code_confidence(code) or "")
         local_code_hint = str(hint.get("local_code") or "")
         write_allowed = bool(hint.get("write_allowed", False))
-        reg = hint.get("modbus_register")
-        if reg in (None, ""):
+        reg_no, register_json_code, error = self.main_window._validated_cloud_modbus_register(code, hint)
+        if reg_no is None:
             return {"mapping_status": "Cloud-only" if not hint else "Kein Register", "modbus_register": "", "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
-        try:
-            reg_no = int(reg)
-        except Exception:
-            return {"mapping_status": "Kein Register", "modbus_register": str(reg), "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
-        register_json_code = ""
-        if reg_no in getattr(self.main_window.regmap, "items", {}):
-            register_json_code = self.main_window._code_for_register(reg_no)
         if confidence != "confirmed":
             status = "Nicht bestätigt"
-        elif not register_json_code:
+        elif error:
             status = "Kein Register"
-        elif not self.main_window._is_safe_cloud_local_mapping(code, register_json_code, hint):
-            status = "Code-Mismatch"
         else:
+            # Explizite bestätigte Aliase wie Power, Mode, O15/O17 oder
+            # code_version dürfen auf lokale Register ohne eigenes code-Feld
+            # zeigen. Der zentrale Resolver hat diese Zuordnung bereits geprüft.
             status = "OK"
         return {
             "mapping_status": status,
