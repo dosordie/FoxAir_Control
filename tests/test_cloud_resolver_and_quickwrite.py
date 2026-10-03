@@ -37,7 +37,8 @@ def test_cloud_engineering_values_are_not_locally_rescaled():
         ("code_version", "3.5", "3.5"),
         ("compensate_offset", "44.0", "44.0 °C"),
     ]:
-        display = app.MainWindow._cloud_display_text(SimpleNamespace(), code, value)
+        fake_window = SimpleNamespace(regmap=SimpleNamespace(get=lambda _reg: None))
+        display = app.MainWindow._cloud_display_text(fake_window, code, value)
         reg = app.DecodedRegister(0xC1, 1, 0, 0xC10D, 0, 0, display, "", "", 0)
         assert app.MainWindow._display_value_for_main_table(SimpleNamespace(), reg) == expected
 
