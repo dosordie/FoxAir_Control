@@ -19,18 +19,20 @@ from cloud.warmlink_api import (
     normalize_data_values,
     normalize_device_list,
 )
+from cloud.known_devices import merge_discovered_and_known_devices, select_available_device_code
+from cloud.known_devices import validation_has_value
 
 
 def devices_with_known_code_fallback(
     devices: list[dict[str, Any]], device_code: str | None,
 ) -> list[dict[str, Any]]:
-    """Keep an authorized stored device usable when account discovery is empty."""
-    if devices or not str(device_code or "").strip():
-        return devices
-    return [{
-        "deviceCode": str(device_code).strip(),
-        "discoverySource": "stored-device-code",
-    }]
+    """Compatibility wrapper: merge a stored selection into any discovery."""
+    result = merge_discovered_and_known_devices(devices, [device_code])
+    code = str(device_code or "").strip()
+    for device in result:
+        if code and device.get("deviceCode") == code and device.get("discoverySource") == "manual":
+            device["discoverySource"] = "stored-device-code"
+    return result
 
 
 def supported_codes_for_next_poll(
@@ -87,6 +89,56 @@ class WarmLinkCloudDebugWorker(QObject):
             self.finished.emit()
 
 
+class WarmLinkKnownDeviceValidationWorker(QObject):
+    """Validate one manually entered code with a small read-only request."""
+
+    validated = Signal(str, object)
+    error = Signal(str)
+    authentication_error = Signal(str)
+    token_updated = Signal(str)
+    finished = Signal()
+
+    VALIDATION_CODES = ["MainBoard Version", "code_version"]
+
+    def __init__(self, username: str, password: str, device_code: str,
+                 initial_token: str | None = None,
+                 preferred_login_method: str = "md5",
+                 login_fallbacks: bool = False) -> None:
+        super().__init__()
+        self.username = username
+        self.password = password
+        self.device_code = str(device_code or "").strip()
+        self.initial_token = initial_token
+        self.preferred_login_method = preferred_login_method
+        self.login_fallbacks = login_fallbacks
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            api = WarmLinkCloudApi(
+                self.username, self.password, initial_token=self.initial_token,
+            )
+            api.preferred_login_method = self.preferred_login_method
+            api.use_login_fallbacks = self.login_fallbacks
+            response = api.get_data_by_code(self.device_code, self.VALIDATION_CODES)
+            if not api.success(response):
+                if api._token_expired(response):
+                    raise WarmLinkAuthError(api.message(response) or "WarmLink-Login abgelaufen")
+                raise WarmLinkCloudError(api.message(response) or "Gerätecode konnte nicht gelesen werden")
+            rows = normalize_data_values(response, self.VALIDATION_CODES)
+            if not validation_has_value(rows):
+                raise WarmLinkCloudError("Kein lesbarer Validierungswert empfangen")
+            if api.token:
+                self.token_updated.emit(api.token)
+            self.validated.emit(self.device_code, rows)
+        except WarmLinkAuthError as exc:
+            self.authentication_error.emit(translate_cloud_error_message(str(exc)))
+        except Exception as exc:
+            self.error.emit(translate_cloud_error_message(str(exc)))
+        finally:
+            self.finished.emit()
+
+
 class WarmLinkCloudWorker(QObject):
     log = Signal(str)
     status = Signal(str)
@@ -104,6 +156,7 @@ class WarmLinkCloudWorker(QObject):
         codes: list[str],
         interval_s: int = 60,
         device_code: str | None = None,
+        known_device_codes: list[str] | None = None,
         poll_once: bool = False,
         timeout_s: float = 15.0,
         preferred_login_method: str | None = "md5",
@@ -117,6 +170,7 @@ class WarmLinkCloudWorker(QObject):
         self.codes = list(codes)
         self.interval_s = max(60, int(interval_s or 60))
         self.device_code = str(device_code or "").strip() or None
+        self.known_device_codes = list(known_device_codes or [])
         self.poll_once = bool(poll_once)
         self.timeout_s = float(timeout_s)
         self.preferred_login_method = str(preferred_login_method or "md5").strip() or "md5"
@@ -163,27 +217,22 @@ class WarmLinkCloudWorker(QObject):
                 self.token_updated.emit(api.token)
             self.status.emit("verbunden")
             devs = normalize_device_list(devices_response)
-            self.log.emit(f"WarmLink Cloud: {len(devs)} Gerät(e) gefunden")
+            discovered_count = len(devs)
+            known = list(self.known_device_codes)
+            if self.device_code and self.device_code not in known:
+                known.append(self.device_code)
+            devs = merge_discovered_and_known_devices(devs, known)
+            self.log.emit(
+                f"WarmLink Cloud: {discovered_count} Gerät(e) automatisch gefunden, "
+                f"{len(devs) - discovered_count} bekannte ergänzt"
+            )
             if not devs:
-                if not self.device_code:
-                    self.devices.emit([])
-                    self.error.emit("Keine Geräte per deviceList gefunden; Residence-/House-Discovery ist noch unbekannt")
-                    return
-                # Member accounts can have full access to a known code although
-                # deviceList is empty. Keep it selected and validate by reading.
-                devs = devices_with_known_code_fallback(devs, self.device_code)
-                self.log.emit("WarmLink Cloud: deviceList leer; gespeicherten deviceCode direkt validieren")
+                self.devices.emit([])
+                self.error.emit("Keine Geräte per deviceList oder als bekannte Gerätecodes gefunden; Residence-/House-Discovery ist noch unbekannt")
+                return
             self.devices.emit(devs)
 
-            selected = None
-            if self.device_code:
-                for dev in devs:
-                    if str(dev.get("deviceCode") or "") == self.device_code:
-                        selected = dev
-                        break
-            if selected is None:
-                selected = devs[0]
-                self.device_code = str(selected.get("deviceCode") or "").strip() or None
+            self.device_code = select_available_device_code(devs, self.device_code)
             if not self.device_code:
                 self.error.emit("Ausgewähltes Gerät hat keinen deviceCode")
                 self.finished.emit()

@@ -96,6 +96,15 @@ def test_empty_discovery_keeps_known_device_code():
     assert devices_with_known_code_fallback([], None) == []
 
 
+def test_known_device_code_is_added_to_nonempty_discovery():
+    assert devices_with_known_code_fallback(
+        [{"deviceCode": "A", "deviceNickName": "Eigene Anlage"}], "B",
+    ) == [
+        {"deviceCode": "A", "deviceNickName": "Eigene Anlage", "discoverySource": "deviceList"},
+        {"deviceCode": "B", "discoverySource": "stored-device-code"},
+    ]
+
+
 def test_discovery_reduces_followup_poll_to_live_supported_codes():
     discovery = [f"Code{i}" for i in range(418)]
     rows = [
