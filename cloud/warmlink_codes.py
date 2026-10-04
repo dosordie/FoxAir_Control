@@ -15,6 +15,13 @@ zusätzliche Cloud-Aliase/Livewerte aus direkten getDataByCode-Gegenchecks ergä
 
 from __future__ import annotations
 
+from cloud.warmlink_644_catalog import (
+    WARMLINK_644_APP_PARAMETERS,
+    app_644_cloud_code,
+    app_644_parameter,
+    known_644_codes,
+)
+
 WARMLINK_CLOUD_CREDIT = (
     "WarmLink/Linked-Go API mapping inspired by srbjessen/ha-warmlink, "
     "licensed under MIT. Original reverse engineering credited there to "
@@ -416,7 +423,9 @@ ALL_WARMLINK_CLOUD_CODES: list[str] = ['A03',
  'Fault3',
  'Fault4',
  'Fault7',
- 'Fault8']
+ 'Fault8',
+ 'Fault9',
+ 'Fault10']
 
 # Default = alles, was der dump_all-Lauf sinnvoll abgefragt hat.
 DEFAULT_WARMLINK_CLOUD_CODES: list[str] = list(ALL_WARMLINK_CLOUD_CODES)
@@ -443,6 +452,7 @@ WARMLINK_PRODUCT_IDS: list[str] = [
     "1713838037212577792", "1899374754815238145", "1544970221549498368",
     "1559733647991496705", "1506552523736190976", "1473911871244337152",
     "1552190345066967040", "1534450342119510016", "1480699335514533888",
+    "1737029209242152961",
 ]
 
 # Engineering-Register des Modbus-Service-Slaves 0x63. Diese Runtimewerte
@@ -1812,8 +1822,8 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
              'local_code': 'O01~023',
              'modbus_register': 2019,
              'name': 'Lastausgang / Output-Bits O01~O23',
-             'note': 'Auto-confirmed by mapping export: name/code match and value diff=0; status bitword, not '
-                     'write-enabled',
+             'note': 'Live-confirmed on family 644 / FW3.4: value 0x0400 (bit 10) while the physical '
+                     'Alarm/Sammelstörung output was active; status bitword, not write-enabled',
              'write_allowed': False},
  'O15': {'allow_code_mismatch': True,
          'cloud_dataType': 'DIGI1',
@@ -3043,9 +3053,76 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
           'unit': 'A',
           'write_allowed': False}}
 
+# Family 644 / FW3.4 live cloud test: all ten codes were returned as BINARY
+# current raw fault words. The register addresses below are a strong family
+# mapping inference, not a same-device live Modbus comparison; keeping
+# confidence=candidate prevents the resolver from treating them as confirmed
+# Cloud-to-Modbus mappings.
+_FAULT_WORD_REGISTER_CANDIDATES = {
+    "Fault1": 2085, "Fault2": 2086, "Fault3": 2087, "Fault4": 2088,
+    "Fault5": 2089, "Fault6": 2090, "Fault7": 2081, "Fault8": 2082,
+    "Fault9": 2083, "Fault10": 2084,
+}
+for _fault_code, _fault_register in _FAULT_WORD_REGISTER_CANDIDATES.items():
+    WARMLINK_CLOUD_CODE_HINTS[_fault_code] = {
+        "cloud_dataType": "BINARY",
+        "dataType": "bitword16",
+        "confidence": "candidate",
+        "cloud_live_confirmed": True,
+        "cloud_confidence": "confirmed",
+        "modbus_register": _fault_register,
+        "modbus_mapping_confidence": "strongly-inferred-family-644",
+        "name": f"Raw fault word {_fault_code.removeprefix('Fault')}",
+        "note": (
+            "Family 644 / FW3.4 cloud-live-confirmed as BINARY; local fault-word "
+            f"register {_fault_register} is strongly inferred, not same-device Modbus-confirmed"
+        ),
+        "write_allowed": False,
+    }
+
 
 def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})
+
+
+def merged_cloud_metadata(code: str) -> dict[str, object]:
+    """Merge independent evidence without replacing reviewed cloud metadata.
+
+    The app label is deliberately kept as ``app_label_644``.  In particular,
+    the conflicting app label for A03 must not replace its confirmed GL9 name,
+    Modbus register, confidence, or existing write grant.
+    """
+    cloud_code = str(code)
+    resource_code = cloud_code
+    for candidate in WARMLINK_644_APP_PARAMETERS:
+        if app_644_cloud_code(candidate) == cloud_code:
+            resource_code = candidate
+            break
+    app = app_644_parameter(resource_code) or {}
+    merged = dict(app)
+    if app:
+        merged["app_label_644"] = app.get("app_label")
+        merged["app_resource_code"] = resource_code
+    confirmed = cloud_hint(cloud_code)
+    merged.update(confirmed)  # stronger, existing reverse engineering wins
+    # Static mapping knowledge is not evidence that this particular device
+    # returned the code. Runtime rows carry the actual ``supported`` result.
+    merged["cloud_hint_known"] = bool(confirmed)
+    merged["cloud_supported"] = None
+    merged["modbus_mapped"] = confirmed.get("modbus_register") is not None
+    merged["write_confirmed"] = bool(confirmed.get("write_allowed", False))
+    if app and not confirmed:
+        merged["write_allowed"] = False
+    return merged
+
+
+# Read/discovery list for family 644. Android '_' suffixes are canonicalized to
+# the already observed cloud '-' spelling, so no duplicate speculative queries
+# are generated. App-only entries remain read-only candidates.
+WARMLINK_644_DISCOVERY_CODES: list[str] = list(dict.fromkeys([
+    *ALL_WARMLINK_CLOUD_CODES,
+    *known_644_codes(cloud_spelling=True),
+]))
 
 
 def is_known_code(code: str) -> bool:
@@ -3060,7 +3137,11 @@ def code_modbus_register(code: str) -> int | None:
 
 
 def code_name(code: str) -> str:
-    return str(cloud_hint(code).get("name") or code)
+    return str(merged_cloud_metadata(code).get("name") or merged_cloud_metadata(code).get("app_label_644") or code)
+
+
+def code_display_name(code: str) -> str:
+    return code_name(code)
 
 
 def code_unit(code: str) -> str:
@@ -3069,3 +3150,6 @@ def code_unit(code: str) -> str:
 
 def code_confidence(code: str) -> str:
     return str(cloud_hint(code).get("confidence") or "")
+
+
+cloud_modbus_register = code_modbus_register
