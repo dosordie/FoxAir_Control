@@ -23,7 +23,7 @@ from cloud.token_store import (
     set_password, set_token,
 )
 from cloud.warmlink_codes import (
-    DEFAULT_WARMLINK_CLOUD_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
+    WARMLINK_644_DISCOVERY_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
     cloud_modbus_register, WARMLINK_CLOUD_CREDIT, code_confidence,
     code_display_name, code_unit,
 )
@@ -263,8 +263,8 @@ class WarmLinkCloudDialog(QDialog):
         codes_tab = QWidget()
         codes_layout = QVBoxLayout(codes_tab)
         self.codes_edit = QTextEdit()
-        self.codes_edit.setPlainText("\n".join(DEFAULT_WARMLINK_CLOUD_CODES))
-        self.codes_edit.setToolTip("Ein Code pro Zeile oder kommasepariert. Initial werden alle bekannten dump_all-Codes abgefragt.")
+        self.codes_edit.setPlainText("\n".join(WARMLINK_644_DISCOVERY_CODES))
+        self.codes_edit.setToolTip("Familie 644: bestätigte Cloud-Codes plus read-only App-Kandidaten; unbekannte Codes sind erlaubt.")
         codes_layout.addWidget(QLabel("Code-Liste für getDataByCode:"))
         codes_layout.addWidget(self.codes_edit, 1)
         self.tabs.addTab(codes_tab, "Codes / Mapping")
@@ -437,7 +437,7 @@ class WarmLinkCloudDialog(QDialog):
             if code not in seen:
                 out.append(code)
                 seen.add(code)
-        return out or list(DEFAULT_WARMLINK_CLOUD_CODES)
+        return out or list(WARMLINK_644_DISCOVERY_CODES)
 
     def _password(self) -> str | None:
         user = self.username_edit.text().strip()

@@ -21,6 +21,26 @@ from cloud.warmlink_api import (
 )
 
 
+def devices_with_known_code_fallback(
+    devices: list[dict[str, Any]], device_code: str | None,
+) -> list[dict[str, Any]]:
+    """Keep an authorized stored device usable when account discovery is empty."""
+    if devices or not str(device_code or "").strip():
+        return devices
+    return [{
+        "deviceCode": str(device_code).strip(),
+        "discoverySource": "stored-device-code",
+    }]
+
+
+def supported_codes_for_next_poll(
+    requested_codes: list[str], rows: list[dict[str, Any]],
+) -> list[str]:
+    """Reduce a discovery request to codes actually returned by this device."""
+    supported = {str(row.get("code") or "") for row in rows if row.get("supported")}
+    return [code for code in requested_codes if code in supported]
+
+
 class WarmLinkCloudDebugWorker(QObject):
     """Runs one generic authenticated cloud request outside the GUI thread."""
 
@@ -143,12 +163,17 @@ class WarmLinkCloudWorker(QObject):
                 self.token_updated.emit(api.token)
             self.status.emit("verbunden")
             devs = normalize_device_list(devices_response)
-            self.devices.emit(devs)
             self.log.emit(f"WarmLink Cloud: {len(devs)} Gerät(e) gefunden")
             if not devs:
-                self.error.emit("Keine Geräte in der Cloud gefunden")
-                self.finished.emit()
-                return
+                if not self.device_code:
+                    self.devices.emit([])
+                    self.error.emit("Keine Geräte per deviceList gefunden; Residence-/House-Discovery ist noch unbekannt")
+                    return
+                # Member accounts can have full access to a known code although
+                # deviceList is empty. Keep it selected and validate by reading.
+                devs = devices_with_known_code_fallback(devs, self.device_code)
+                self.log.emit("WarmLink Cloud: deviceList leer; gespeicherten deviceCode direkt validieren")
+            self.devices.emit(devs)
 
             selected = None
             if self.device_code:
@@ -167,10 +192,18 @@ class WarmLinkCloudWorker(QObject):
             while not self._stop_event.is_set():
                 started = time.time()
                 try:
-                    response = api.get_data_by_code(self.device_code, self.codes)
+                    response = api.get_data_by_code_batched(self.device_code, self.codes)
+                    batch_failures = response.get("batchFailures", [])
+                    if batch_failures:
+                        failed_codes = sum(len(item.get("codes", [])) for item in batch_failures)
+                        self.log.emit(
+                            f"WarmLink Cloud: {failed_codes} Code(s) vom Gerät/API abgelehnt; "
+                            "übrige Blöcke wurden weiter ausgewertet"
+                        )
                     if api.token:
                         self.token_updated.emit(api.token)
                     rows_raw = normalize_data_values(response, self.codes)
+                    next_poll_codes = supported_codes_for_next_poll(self.codes, rows_raw)
                     now_txt = time.strftime("%Y-%m-%d %H:%M:%S")
                     rows: list[dict[str, Any]] = []
                     empty_current = 0
@@ -216,8 +249,18 @@ class WarmLinkCloudWorker(QObject):
                     self.status.emit(f"verbunden, letzter Abruf {now_txt}")
                     cached_txt = f", {empty_current} leer/unsupported davon Cache genutzt" if empty_current else ""
                     self.log.emit(f"WarmLink Cloud: Poll OK, {supported} Werte, {unsupported} leer/unsupported{cached_txt}")
+                    if next_poll_codes != self.codes:
+                        removed = len(self.codes) - len(next_poll_codes)
+                        self.codes = next_poll_codes
+                        self.log.emit(
+                            f"WarmLink Cloud: Discovery abgeschlossen; Folge-Polls verwenden "
+                            f"{len(self.codes)} unterstützte Codes ({removed} entfernt)"
+                        )
                     backoff_s = 5.0
                     if self.poll_once:
+                        break
+                    if not self.codes:
+                        self.error.emit("Discovery lieferte keine unterstützten Codes; Dauer-Poll beendet")
                         break
                     elapsed = time.time() - started
                     if self._sleep_interruptible(max(1.0, self.interval_s - elapsed)):
