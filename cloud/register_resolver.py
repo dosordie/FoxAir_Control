@@ -77,3 +77,23 @@ def resolve_cloud_register(
         return alias
     return None
 
+
+def resolve_cloud_projection_register(
+    cloud_code: str,
+    hint: Mapping[str, Any],
+    register_defs: Mapping[str, Any] | None = None,
+) -> int | None:
+    """Resolve read-only projections without promoting their Modbus confidence."""
+    confirmed = resolve_cloud_register(cloud_code, hint, register_defs)
+    if confirmed is not None:
+        return confirmed
+    if not bool(hint.get("cloud_projection_allowed")):
+        return None
+    if bool(hint.get("write_allowed")):
+        return None
+    try:
+        reg = int(hint.get("modbus_register"))
+    except (TypeError, ValueError):
+        return None
+    definitions = register_defs if register_defs is not None else current_register_definitions()
+    return reg if str(reg) in definitions else None

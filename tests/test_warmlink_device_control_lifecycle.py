@@ -177,3 +177,14 @@ def test_device_can_change_after_stop_and_next_worker_uses_new_code(monkeypatch)
     dialog._start_worker(poll_once=True)
 
     assert FakeWorker.created[-1].kwargs["device_code"] == "B"
+
+
+def test_validating_second_manual_device_preserves_first_and_updates_list():
+    dialog = make_dialog()
+    dialog._known_device_validated("C", [{"supported": True, "value": 1}])
+    assert dialog._cloud_settings()["known_device_codes"] == ["B", "C"]
+    assert [dialog.known_device_table.item(row, 0).text() for row in range(2)] == ["B", "C"]
+
+    dialog._known_device_validated("D", [{"supported": True, "value": 1}])
+    assert dialog._cloud_settings()["known_device_codes"] == ["B", "C", "D"]
+    assert [dialog.known_device_table.item(row, 0).text() for row in range(3)] == ["B", "C", "D"]

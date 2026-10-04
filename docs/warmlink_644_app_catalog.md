@@ -146,3 +146,29 @@ Historienendpunkte sind daher keine alleinige Quelle für aktuelle rohe
 Störungsbits. Der Worker wertet die unabhängig gelesenen `Fault1…Fault10`-Wörter
 weiter aus und schließt aus `isFault=false` nicht auf einen störungsfreien
 Rohzustand. Warum die Cloud diese Sichten unterschiedlich filtert, bleibt offen.
+
+## Mehrgeräteverwaltung und Cloud-Projektion
+
+Mehrere manuell validierte Gerätecodes werden dauerhaft als deduplizierte Liste
+`warmlink_cloud.known_device_codes` gespeichert und im Reiter **Geräte** separat
+verwaltet. Die Auswahlliste bildet die Vereinigung aus `deviceList` und den
+manuellen Codes; Metadaten aus `deviceList` haben Vorrang. Ein manueller Eintrag
+kann ausgewählt oder entfernt werden, ohne automatisch gefundene Geräte zu
+entfernen.
+
+Ist **Cloud im Hauptfenster anzeigen** aktiv, werden alle sinnvoll auf lokale
+Register projizierbaren Werte automatisch angezeigt – auch ohne vorherigen
+Modbus-Read. Der frühere Schalter „Cloud-only-Zeilen“ entfällt; sein Setting wird
+nur kompatibel eingelesen. Lokale Modbuswerte haben immer Vorrang und werden nie
+mit Cloudwerten überschrieben. Fehler-, Kontakt- und Lastausgangdecoder verwenden
+die getrennt gespeicherte Cloud-Projektion lediglich als Fallback.
+
+Ein zentraler Translator nutzt `value_map` und `bit_map` aus
+`data/foxair_phnix_registers.json`. Er liefert Rohwert, Hexdarstellung,
+Anzeigetext und aktive Bits für `O01~023`, `S01~S10`, Fault-Wörter und normale
+ENUM-Werte. Unbekannte aktive Bits bleiben ausdrücklich sichtbar.
+
+`Fault1` bis `Fault10` dürfen für die read-only Anzeige anhand der stark
+abgeleiteten Family-644-Zuordnung projiziert werden. Ihre Modbus-Confidence bleibt
+`candidate` beziehungsweise `strongly-inferred-family-644`; daraus entstehen
+weder ein `confirmed`-Mapping noch Schreibrechte.

@@ -1,10 +1,17 @@
 from cloud.known_devices import (
+    add_known_device_code,
     merge_discovered_and_known_devices,
     normalize_known_device_codes,
     remove_known_device_code,
     select_available_device_code,
     validation_has_value,
 )
+
+
+def test_append_multiple_known_devices_never_replaces_existing_values():
+    known = add_known_device_code(["A"], "B")
+    assert add_known_device_code(known, "C") == ["A", "B", "C"]
+    assert add_known_device_code(["A", "A", "B"], "A") == ["A", "B"]
 from workers import warmlink_cloud_worker
 
 

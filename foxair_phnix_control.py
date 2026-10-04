@@ -121,6 +121,8 @@ from cloud.warmlink_codes import (
     WARMLINK_CLOUD_CREDIT,
     code_display_name,
 )
+from cloud.register_resolver import resolve_cloud_projection_register
+from cloud.warmlink_value_translator import translate_cloud_value
 from core.settings_manager import ensure_defaults, load_settings, save_settings
 from core.udp_diagnostics import UdpDiagnosticSender, udp_diagnostic_defaults
 from core.update_checker import (
@@ -1394,7 +1396,7 @@ class RegisterQuickWriteDialog(QDialog):
         self.cloud_read_btn = QPushButton("Cloud lesen")
         self.cloud_write_btn = QPushButton("Cloud schreiben")
         self.cloud_read_btn.clicked.connect(self.read_cloud_register)
-        self.cloud_write_btn.clicked.connect(lambda: self.main_window.open_cloud_write_for_register(self.reg_no))
+        self.cloud_write_btn.clicked.connect(self.write_cloud_register)
         buttons.addWidget(self.cloud_read_btn)
         buttons.addWidget(self.cloud_write_btn)
         buttons.addStretch(1)
@@ -1418,6 +1420,9 @@ class RegisterQuickWriteDialog(QDialog):
     def read_cloud_register(self):
         self.status_label.setText("Lese Cloud-Wert ...")
         self.main_window.read_cloud_register(self.reg_no)
+
+    def write_cloud_register(self):
+        self.main_window.open_cloud_write_for_register(self.reg_no, self.write_value_edit.text())
 
     def _parse_bus(self) -> int:
         return int(self.slave_addr)
@@ -7157,10 +7162,7 @@ class MainWindow(QMainWindow):
         return f"{text} {unit}".strip()
 
     def _cloud_only_enabled(self) -> bool:
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict):
-            return True
-        return bool(cfg.get("show_cloud_only", True))
+        return True
 
     def _is_cloud_only_register(self, reg_no: int) -> bool:
         reg = self.latest_regs.get(int(reg_no))
@@ -7210,7 +7212,7 @@ class MainWindow(QMainWindow):
         rows.
         """
         hint = hint or cloud_hint(cloud_code)
-        reg_no = resolve_cloud_register(cloud_code, hint, self.register_defs)
+        reg_no = resolve_cloud_projection_register(cloud_code, hint, self.register_defs)
         if reg_no is None:
             return None, "", "no_register"
         try:
@@ -7232,7 +7234,7 @@ class MainWindow(QMainWindow):
         if rows is None:
             return
         self.cloud_last_rows = [dict(r) for r in rows if isinstance(r, dict)]
-        show_cloud_only = bool(show_cloud_only and self._cloud_only_enabled())
+        show_cloud_only = True
         changed_regs: list[int] = []
         seen_cloud_codes: set[str] = set()
         seen_registers: set[int] = set()
@@ -7267,24 +7269,37 @@ class MainWindow(QMainWindow):
             has_local_register = self._has_local_register_entry(reg_no)
             has_existing_row = reg_no in self.table_rows
             value = row.get("value", "")
+            translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint)
             info = {
                 "code": code,
-                "value": self._cloud_display_text(code, value),
+                "value": translated.display,
                 "raw_value": value,
+                "raw": translated.raw,
+                "active_bits": translated.active_bits,
                 "lastFetch": row.get("lastFetch", ""),
                 "confidence": code_confidence(code),
+                "source": "warmlink-cloud",
                 "dataType": row.get("dataType", ""),
             }
             self.cloud_overlay_by_reg[reg_no] = info
             changed_regs.append(reg_no)
+            if reg_no == 2034 and not self._has_local_register_entry(reg_no):
+                if self.contact_dialog is not None and self.contact_dialog.isVisible():
+                    self.contact_dialog.set_value(int(translated.raw))
+            if reg_no == 2019 and not self._has_local_register_entry(reg_no):
+                if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+                    self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
             if show_cloud_only and not has_local_register and not has_existing_row:
                 reg_info = self.regmap.get(reg_no)
-                raw_int, display_text = self._parse_cloud_numeric_value(value)
+                try:
+                    raw_int = int(translated.raw)
+                except (TypeError, ValueError):
+                    raw_int, _display_text = self._parse_cloud_numeric_value(value)
                 mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
                 mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
                 name = str(hint.get("name") or mapped_name or f"Cloud {code}")
                 dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
-                disp = self._cloud_display_text(code, value)
+                disp = translated.display
                 try:
                     signed = s16(raw_int & 0xFFFF)
                 except Exception:
@@ -7305,6 +7320,7 @@ class MainWindow(QMainWindow):
         for reg_no in changed_regs:
             self._refresh_cloud_cells_for_register(reg_no)
         if changed_regs:
+            self._update_fault_decoder()
             self.register_table.viewport().update()
 
     def clear_cloud_overlay(self) -> None:
@@ -7353,7 +7369,9 @@ class MainWindow(QMainWindow):
             self.load_output_dialog.set_value(value)
 
     def _fault_alarm_active(self) -> bool:
-        value = self.last_values.get(2019, self.last_load_output_value)
+        value = self.last_values.get(2019)
+        if value is None:
+            value = self.cloud_overlay_by_reg.get(2019, {}).get("raw")
         try:
             return bool(int(value) & (1 << 10)) if value is not None else False
         except Exception:
@@ -7361,9 +7379,13 @@ class MainWindow(QMainWindow):
 
     def _active_fault_count(self) -> int:
         count = 0
-        for reg_no in (2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083):
+        from dialogs.decoder_dialogs import FaultDecoderDialog
+        for reg_no in FaultDecoderDialog.FAULT_REGS:
             try:
-                raw = int(self.last_values.get(reg_no, 0)) & 0xFFFF
+                value = self.last_values.get(reg_no)
+                if value is None:
+                    value = self.cloud_overlay_by_reg.get(reg_no, {}).get("raw", 0)
+                raw = int(value) & 0xFFFF
             except Exception:
                 raw = 0
             count += raw.bit_count()
@@ -7441,7 +7463,10 @@ class MainWindow(QMainWindow):
 
     def open_contact_decoder(self):
         if self.contact_dialog is None or not self.contact_dialog.isVisible():
-            self.contact_dialog = ContactDecoderDialog(self, self.last_contact_value)
+            value = self.last_values.get(2034)
+            if value is None:
+                value = self.cloud_overlay_by_reg.get(2034, {}).get("raw")
+            self.contact_dialog = ContactDecoderDialog(self, value)
             self.contact_dialog.finished.connect(lambda _=None: setattr(self, "contact_dialog", None))
             self.contact_dialog.show()
         else:
@@ -7450,7 +7475,10 @@ class MainWindow(QMainWindow):
 
     def open_load_output_decoder(self):
         if self.load_output_dialog is None or not self.load_output_dialog.isVisible():
-            self.load_output_dialog = LoadOutputDecoderDialog(self, self.last_load_output_value if self.last_load_output_value is not None else self.last_values.get(2019))
+            value = self.last_values.get(2019)
+            if value is None:
+                value = self.cloud_overlay_by_reg.get(2019, {}).get("raw")
+            self.load_output_dialog = LoadOutputDecoderDialog(self, value)
             self.load_output_dialog.finished.connect(lambda _=None: setattr(self, "load_output_dialog", None))
             self.load_output_dialog.show()
         else:
@@ -8678,13 +8706,18 @@ class MainWindow(QMainWindow):
         thread = self.cloud_read_thread
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.data.connect(lambda rows: self.apply_cloud_rows_to_main(rows, show_cloud_only=True))
+        worker.data.connect(lambda rows: self._on_cloud_read_data(code, rows))
         worker.error.connect(self._on_cloud_read_error)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(self._cloud_read_finished)
         thread.start()
+
+    def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
+        self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
+        value = next((row.get("value") for row in rows if row.get("code") == code and row.get("supported")), None)
+        self._log(f"WarmLink Cloud Readback: {code}={value if value is not None else 'kein Wert'}", level=2)
 
     def _cloud_read_finished(self) -> None:
         self.cloud_read_thread = None
@@ -8772,12 +8805,24 @@ class MainWindow(QMainWindow):
         text = str(text).strip()
         return text if text != "" else None
 
-    def open_cloud_write_for_register(self, reg_no: int):
+    def open_cloud_write_for_register(self, reg_no: int, user_value: str | None = None):
         cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         if not cloud_code:
             QMessageBox.information(self, "WarmLink Cloud", f"Für Register {reg_no} ist kein freigegebener Cloud-Schreibcode gemappt.")
             return
-        value = self._ask_cloud_value(reg_no, cloud_code)
+        if user_value is None:
+            value = self._ask_cloud_value(reg_no, cloud_code)
+        else:
+            from cloud.cloud_write_helpers import cloud_write_value_from_user_input
+            info = self.regmap.get(int(reg_no))
+            try:
+                value = cloud_write_value_from_user_input(
+                    cloud_code, user_value, info,
+                    lambda text: self.parse_register_write_value(reg_no, text),
+                )
+            except ValueError as exc:
+                QMessageBox.warning(self, "WarmLink Cloud", str(exc))
+                return
         if value is None:
             return
         user, pw, token, device_code = self._cloud_write_credentials()

@@ -55,6 +55,15 @@ def remove_known_device_code(values: Any, device_code: str) -> list[str]:
     return [code for code in normalize_known_device_codes(values) if code != remove]
 
 
+def add_known_device_code(values: Any, device_code: str) -> list[str]:
+    """Append one code without ever replacing existing persistent entries."""
+    result = normalize_known_device_codes(values)
+    code = str(device_code or "").strip()
+    if code and code not in result:
+        result.append(code)
+    return result
+
+
 def select_available_device_code(
     devices: Iterable[dict[str, Any]], selected_device_code: str | None,
 ) -> str | None:

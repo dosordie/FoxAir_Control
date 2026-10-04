@@ -21,7 +21,8 @@ def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(cfg, dict):
         cfg = {}
         settings["warmlink_cloud"] = cfg
-    cfg.setdefault("show_cloud_only", True)
+    # Compatibility key retained, but overlay now always includes projectable rows.
+    cfg["show_cloud_only"] = True
     cfg.setdefault("login_method", "md5")
     cfg.setdefault("login_fallbacks", False)
     cfg.setdefault("save_token", True)
