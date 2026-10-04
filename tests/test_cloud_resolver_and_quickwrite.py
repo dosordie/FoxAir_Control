@@ -5,7 +5,8 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from cloud.register_resolver import resolve_cloud_register
+from cloud.register_resolver import resolve_cloud_projection_register, resolve_cloud_register
+from cloud.cloud_write_helpers import cloud_write_value_from_user_input
 from cloud.warmlink_codes import cloud_hint, cloud_modbus_register
 
 
@@ -27,6 +28,31 @@ def test_confirmed_local_code_follows_current_register_map():
 def test_candidate_and_ambiguous_codes_do_not_resolve():
     assert resolve_cloud_register("KG1", {"confidence": "candidate", "local_code": "KG1"}, {"100": {"code": "KG1"}}) is None
     assert resolve_cloud_register("R02", {"confidence": "confirmed", "local_code": "R02"}, {"1": {"code": "R02"}, "2": {"code": "R02"}}) is None
+
+
+def test_fault_projection_does_not_promote_modbus_mapping_or_writes():
+    hint = cloud_hint("Fault8")
+    assert resolve_cloud_register("Fault8", hint) is None
+    assert resolve_cloud_projection_register("Fault8", hint) == 2082
+    assert hint["confidence"] == "candidate"
+    assert hint["write_allowed"] is False
+
+
+def test_quickwrite_conversion_uses_existing_enum_and_engineering_input():
+    enum_reg = SimpleNamespace(dtype="DIGI1")
+    assert cloud_write_value_from_user_input("Power", "1", enum_reg, int) == "1"
+    temp_reg = SimpleNamespace(dtype="TEMP1")
+    assert cloud_write_value_from_user_input("T01", "34,5", temp_reg, lambda _text: 345) == "34.5"
+
+
+def test_empty_fault_history_does_not_change_projected_raw_fault_count():
+    app = pytest.importorskip("foxair_phnix_control", exc_type=ImportError)
+    window = SimpleNamespace(
+        last_values={},
+        cloud_overlay_by_reg={2082: {"raw": 0x0200}},
+        fault_history_v2={"objectResult": []},
+    )
+    assert app.MainWindow._active_fault_count(window) == 1
 
 
 def test_cloud_engineering_values_are_not_locally_rescaled():

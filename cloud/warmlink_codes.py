@@ -3072,6 +3072,7 @@ for _fault_code, _fault_register in _FAULT_WORD_REGISTER_CANDIDATES.items():
         "cloud_confidence": "confirmed",
         "modbus_register": _fault_register,
         "modbus_mapping_confidence": "strongly-inferred-family-644",
+        "cloud_projection_allowed": True,
         "name": f"Raw fault word {_fault_code.removeprefix('Fault')}",
         "note": (
             "Family 644 / FW3.4 cloud-live-confirmed as BINARY; local fault-word "

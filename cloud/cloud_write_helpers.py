@@ -114,3 +114,26 @@ def cloud_write_value_from_label(options: list[tuple[str, str]], selected_label:
         if label == selected_label:
             return value
     return None
+
+
+def cloud_write_value_from_user_input(
+    cloud_code: str, user_text: str, register: Any, parse_local_raw,
+) -> str:
+    """Convert the quick-write field to one unambiguous cloud engineering value."""
+    text = str(user_text).strip()
+    if not text:
+        raise ValueError("Der Cloud-Schreibwert ist leer.")
+    raw = int(parse_local_raw(text))
+    values = cloud_write_values_for_code(cloud_code)
+    if isinstance(values, Mapping) and values:
+        if str(raw) not in {str(key) for key in values}:
+            raise ValueError(f"Wert {raw} ist für Cloud-Code {cloud_code} nicht freigegeben.")
+        return str(raw)
+    dtype = str(getattr(register, "dtype", "") or "").upper()
+    scaled = {"TEMP", "TEMP1", "TEMP05", "TEMP_0_5", "STEP_0_5C", "DIGI5",
+              "DIGI6", "DIGI19", "DIGI4", "POWER_KW_X10", "KW_X10",
+              "BAR_X10", "FLOW_M3H_X10", "FLOW_M3H_X100", "AMP_X10", "AMP_X2"}
+    if dtype in scaled:
+        # The quick-write field already contains the engineering value expected by Cloud.
+        return text.replace(",", ".")
+    return str(raw)
