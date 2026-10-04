@@ -28,6 +28,9 @@ CLOUDSERVICE_API_ROOT = SERVICE_ROOT + "/cloudservice/api"
 
 ENDPOINT_LOGIN = "app/user/login"
 ENDPOINT_DEVICE_LIST = "app/device/deviceList"
+ENDPOINT_USER_INFO = "app/user/getUserInfo"
+ENDPOINT_LEGACY_SHARED_DEVICE_LIST = "app/device/getMyAppectDeviceShareDataList"
+ENDPOINT_UPDATE_DEVICE_NICKNAME = "app/device/updateDeviceNickName"
 ENDPOINT_GET_DATA_BY_CODE = "app/device/getDataByCode"
 ENDPOINT_GET_DEVICE_STATUS = "app/device/getDeviceStatus"
 ENDPOINT_GET_FAULT_DATA = "app/device/getFaultDataByDeviceCode"
@@ -386,9 +389,67 @@ class WarmLinkCloudApi:
         }
         return self.post(ENDPOINT_DEVICE_LIST, payload)
 
+    def get_user_info(self) -> dict[str, Any]:
+        """Return the official app user model (including userId, if supplied)."""
+        return self.post(ENDPOINT_USER_INFO, {})
+
+    def get_legacy_shared_devices(
+        self, user_id: str, product_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Query legacy direct shares; this is *not* Residence discovery."""
+        return self.post(ENDPOINT_LEGACY_SHARED_DEVICE_LIST, {
+            "toUser": str(user_id),
+            "productIds": product_ids or WARMLINK_PRODUCT_IDS,
+            "pageIndex": 1,
+            "pageSize": 999,
+        })
+
     def get_data_by_code(self, device_code: str, codes: list[str]) -> dict[str, Any]:
         payload = {"deviceCode": str(device_code), "protocalCodes": list(codes)}
         return self.post(ENDPOINT_GET_DATA_BY_CODE, payload)
+
+    def get_data_by_code_batched(
+        self, device_code: str, codes: list[str], batch_size: int = 50,
+    ) -> dict[str, Any]:
+        """Read a large discovery catalog without one bad batch losing all data.
+
+        WarmLink installations differ in supported family-644 codes. Every
+        batch is independent; failed batches become unsupported rows while
+        successful responses retain their cloud-provided metadata.
+        """
+        requested = list(dict.fromkeys(str(code) for code in codes if str(code)))
+        size = max(1, int(batch_size))
+        items: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+
+        def read_batch(batch: list[str]) -> None:
+            """Bisect failed groups so one unsupported candidate stays local."""
+            # Transport/authentication failures must reach the worker's normal
+            # retry path. Bisecting those would turn one outage into hundreds
+            # of requests and would incorrectly report the codes as unsupported.
+            response = self.get_data_by_code(device_code, batch)
+            if self.success(response):
+                items.extend(normalize_data_values(response, batch))
+                return
+            message = self.message(response)
+            if len(batch) > 1:
+                midpoint = len(batch) // 2
+                read_batch(batch[:midpoint])
+                read_batch(batch[midpoint:])
+                return
+            failures.append({"codes": batch, "message": message})
+            items.extend(normalize_data_values({}, batch))
+
+        for offset in range(0, len(requested), size):
+            batch = requested[offset:offset + size]
+            read_batch(batch)
+        return {
+            "error_code": "0",
+            "error_msg": "Success" if not failures else "Partial success",
+            "isReusltSuc": True,
+            "objectResult": items,
+            "batchFailures": failures,
+        }
 
     def get_device_status(self, device_code: str) -> dict[str, Any]:
         payloads = [
