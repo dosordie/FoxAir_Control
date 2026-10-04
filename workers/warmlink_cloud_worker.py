@@ -21,6 +21,18 @@ from cloud.warmlink_api import (
 )
 
 
+def devices_with_known_code_fallback(
+    devices: list[dict[str, Any]], device_code: str | None,
+) -> list[dict[str, Any]]:
+    """Keep an authorized stored device usable when account discovery is empty."""
+    if devices or not str(device_code or "").strip():
+        return devices
+    return [{
+        "deviceCode": str(device_code).strip(),
+        "discoverySource": "stored-device-code",
+    }]
+
+
 class WarmLinkCloudDebugWorker(QObject):
     """Runs one generic authenticated cloud request outside the GUI thread."""
 
@@ -143,12 +155,17 @@ class WarmLinkCloudWorker(QObject):
                 self.token_updated.emit(api.token)
             self.status.emit("verbunden")
             devs = normalize_device_list(devices_response)
-            self.devices.emit(devs)
             self.log.emit(f"WarmLink Cloud: {len(devs)} Gerät(e) gefunden")
             if not devs:
-                self.error.emit("Keine Geräte in der Cloud gefunden")
-                self.finished.emit()
-                return
+                if not self.device_code:
+                    self.devices.emit([])
+                    self.error.emit("Keine Geräte per deviceList gefunden; Residence-/House-Discovery ist noch unbekannt")
+                    return
+                # Member accounts can have full access to a known code although
+                # deviceList is empty. Keep it selected and validate by reading.
+                devs = devices_with_known_code_fallback(devs, self.device_code)
+                self.log.emit("WarmLink Cloud: deviceList leer; gespeicherten deviceCode direkt validieren")
+            self.devices.emit(devs)
 
             selected = None
             if self.device_code:
@@ -167,7 +184,7 @@ class WarmLinkCloudWorker(QObject):
             while not self._stop_event.is_set():
                 started = time.time()
                 try:
-                    response = api.get_data_by_code(self.device_code, self.codes)
+                    response = api.get_data_by_code_batched(self.device_code, self.codes)
                     if api.token:
                         self.token_updated.emit(api.token)
                     rows_raw = normalize_data_values(response, self.codes)

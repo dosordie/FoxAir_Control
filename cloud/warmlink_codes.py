@@ -15,6 +15,13 @@ zusätzliche Cloud-Aliase/Livewerte aus direkten getDataByCode-Gegenchecks ergä
 
 from __future__ import annotations
 
+from cloud.warmlink_644_catalog import (
+    WARMLINK_644_APP_PARAMETERS,
+    app_644_cloud_code,
+    app_644_parameter,
+    known_644_codes,
+)
+
 WARMLINK_CLOUD_CREDIT = (
     "WarmLink/Linked-Go API mapping inspired by srbjessen/ha-warmlink, "
     "licensed under MIT. Original reverse engineering credited there to "
@@ -443,6 +450,7 @@ WARMLINK_PRODUCT_IDS: list[str] = [
     "1713838037212577792", "1899374754815238145", "1544970221549498368",
     "1559733647991496705", "1506552523736190976", "1473911871244337152",
     "1552190345066967040", "1534450342119510016", "1480699335514533888",
+    "1737029209242152961",
 ]
 
 # Engineering-Register des Modbus-Service-Slaves 0x63. Diese Runtimewerte
@@ -3048,6 +3056,43 @@ def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})
 
 
+def merged_cloud_metadata(code: str) -> dict[str, object]:
+    """Merge independent evidence without replacing reviewed cloud metadata.
+
+    The app label is deliberately kept as ``app_label_644``.  In particular,
+    the conflicting app label for A03 must not replace its confirmed GL9 name,
+    Modbus register, confidence, or existing write grant.
+    """
+    cloud_code = str(code)
+    resource_code = cloud_code
+    for candidate in WARMLINK_644_APP_PARAMETERS:
+        if app_644_cloud_code(candidate) == cloud_code:
+            resource_code = candidate
+            break
+    app = app_644_parameter(resource_code) or {}
+    merged = dict(app)
+    if app:
+        merged["app_label_644"] = app.get("app_label")
+        merged["app_resource_code"] = resource_code
+    confirmed = cloud_hint(cloud_code)
+    merged.update(confirmed)  # stronger, existing reverse engineering wins
+    merged["cloud_supported"] = bool(confirmed)
+    merged["modbus_mapped"] = confirmed.get("modbus_register") is not None
+    merged["write_confirmed"] = bool(confirmed.get("write_allowed", False))
+    if app and not confirmed:
+        merged["write_allowed"] = False
+    return merged
+
+
+# Read/discovery list for family 644. Android '_' suffixes are canonicalized to
+# the already observed cloud '-' spelling, so no duplicate speculative queries
+# are generated. App-only entries remain read-only candidates.
+WARMLINK_644_DISCOVERY_CODES: list[str] = list(dict.fromkeys([
+    *ALL_WARMLINK_CLOUD_CODES,
+    *known_644_codes(cloud_spelling=True),
+]))
+
+
 def is_known_code(code: str) -> bool:
     return code in WARMLINK_CLOUD_CODE_HINTS
 
@@ -3060,7 +3105,11 @@ def code_modbus_register(code: str) -> int | None:
 
 
 def code_name(code: str) -> str:
-    return str(cloud_hint(code).get("name") or code)
+    return str(merged_cloud_metadata(code).get("name") or merged_cloud_metadata(code).get("app_label_644") or code)
+
+
+def code_display_name(code: str) -> str:
+    return code_name(code)
 
 
 def code_unit(code: str) -> str:
@@ -3069,3 +3118,6 @@ def code_unit(code: str) -> str:
 
 def code_confidence(code: str) -> str:
     return str(cloud_hint(code).get("confidence") or "")
+
+
+cloud_modbus_register = code_modbus_register
