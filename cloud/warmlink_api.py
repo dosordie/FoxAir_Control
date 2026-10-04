@@ -34,6 +34,9 @@ ENDPOINT_UPDATE_DEVICE_NICKNAME = "app/device/updateDeviceNickName"
 ENDPOINT_GET_DATA_BY_CODE = "app/device/getDataByCode"
 ENDPOINT_GET_DEVICE_STATUS = "app/device/getDeviceStatus"
 ENDPOINT_GET_FAULT_DATA = "app/device/getFaultDataByDeviceCode"
+ENDPOINT_GET_FAULT_DATA_V2 = "app/device/v2/getFaultDataByDeviceCode"
+ENDPOINT_HOUSE_LIST = "house/info/listOwnerHouses"
+ENDPOINT_HOUSE_DEVICES = "houseRelDevice/v4/selectHouseToDeviceData"
 ENDPOINT_DEVICE_CONTROL = "app/device/control"
 ENDPOINT_DEVICE_CONTROL_LANG = "app/device/control?lang=en"
 
@@ -220,16 +223,19 @@ class WarmLinkCloudApi:
         except TimeoutError as exc:
             raise WarmLinkCloudError(translate_cloud_error_message(f"Timeout nach {self.timeout:.0f}s")) from exc
 
-    def _request_json(self, endpoint: str, payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    def _request_json(self, endpoint: str, payload: dict[str, Any] | None = None,
+                      token: str | None = None, method: str = "POST") -> dict[str, Any]:
+        verb = str(method).upper()
+        body = None if verb == "GET" else json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
         headers = {
-            "Content-Type": "application/json;charset=utf-8",
             "Accept": "application/json",
             "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.0",
         }
+        if body is not None:
+            headers["Content-Type"] = "application/json;charset=utf-8"
         if token:
             headers["x-token"] = token
-        req = urllib.request.Request(self._url(endpoint), data=body, headers=headers, method="POST")
+        req = urllib.request.Request(self._url(endpoint), data=body, headers=headers, method=verb)
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
@@ -367,16 +373,23 @@ class WarmLinkCloudApi:
         raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + fallback_txt + (f" ({detail})" if detail else ""))
 
     def post(self, endpoint: str, payload: dict[str, Any], relogin: bool = True) -> dict[str, Any]:
+        return self.request(endpoint, payload, method="POST", relogin=relogin)
+
+    def get(self, endpoint: str, relogin: bool = True) -> dict[str, Any]:
+        return self.request(endpoint, None, method="GET", relogin=relogin)
+
+    def request(self, endpoint: str, payload: dict[str, Any] | None, *, method: str,
+                relogin: bool = True) -> dict[str, Any]:
         if self.token:
             self.reused_initial_token = True
         else:
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
-        data = self._request_json(endpoint, payload, token=self.token)
+        data = self._request_json(endpoint, payload, token=self.token, method=method)
         if relogin and self._token_expired(data):
             self.token = None
             self.last_login_at = 0.0
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
-            data = self._request_json(endpoint, payload, token=self.token)
+            data = self._request_json(endpoint, payload, token=self.token, method=method)
         if not isinstance(data, dict):
             raise WarmLinkCloudError("Ungueltige Antwortstruktur")
         return data
@@ -388,6 +401,17 @@ class WarmLinkCloudApi:
             "pageSize": "999",
         }
         return self.post(ENDPOINT_DEVICE_LIST, payload)
+
+    def get_houses(self) -> dict[str, Any]:
+        """Return all owner and membership Houses visible to the app account."""
+        return self.get(ENDPOINT_HOUSE_LIST)
+
+    def get_house_devices(self, house_id: str | int) -> dict[str, Any]:
+        return self.post(ENDPOINT_HOUSE_DEVICES, {
+            "appId": 16,
+            "houseId": str(house_id),
+            "level": 0,
+        })
 
     def get_user_info(self) -> dict[str, Any]:
         """Return the official app user model (including userId, if supplied)."""
@@ -487,6 +511,13 @@ class WarmLinkCloudApi:
         ]
         endpoints = [ENDPOINT_GET_FAULT_DATA, "cloudservice/api/device/getFaultDataByDeviceCode", "cloudservice/api/device/queryFaultDevice", "cloudservice/api/device/v4/listAllDeviceFault"]
         return self._post_first_success(endpoints, payloads)
+
+    def get_fault_data_v2(self, device_codes: list[str]) -> dict[str, Any]:
+        """Read backend fault history; raw Fault1…Fault10 remain independent."""
+        codes = list(dict.fromkeys(str(code).strip() for code in device_codes if str(code).strip()))
+        if not codes:
+            raise ValueError("deviceCodeList darf nicht leer sein")
+        return self.post(ENDPOINT_GET_FAULT_DATA_V2, {"deviceCodeList": codes})
 
     def _post_first_success(self, endpoints: list[str], payloads: list[dict[str, Any]]) -> dict[str, Any]:
         attempts: list[dict[str, Any]] = []
@@ -638,6 +669,77 @@ def normalize_device_list(response: dict[str, Any]) -> list[dict[str, Any]]:
         if obj.get("deviceCode") or obj.get("deviceId"):
             return [obj]
     return []
+
+
+def normalize_house_list(response: dict[str, Any]) -> list[dict[str, str]]:
+    """Keep only non-sensitive House identity metadata needed for discovery."""
+    obj = response.get("objectResult")
+    if not isinstance(obj, list):
+        return []
+    houses: list[dict[str, str]] = []
+    for item in obj:
+        if not isinstance(item, dict):
+            continue
+        house_id = str(item.get("id") or item.get("houseId") or "").strip()
+        if not house_id:
+            continue
+        role_type = item.get("roleType")
+        houses.append({
+            "id": house_id,
+            "houseName": str(item.get("houseName") or item.get("name") or "").strip(),
+            "roleType": "" if role_type is None else str(role_type).strip(),
+        })
+    return houses
+
+
+_HOUSE_DEVICE_FIELDS = {
+    "deviceCode", "deviceId", "deviceNickName", "deviceName", "deviceStatus",
+    "productId", "productKey", "model", "roomId", "areaId", "faultState",
+    "isFault", "isShared", "sn", "dtuSoftwareCode", "dtuSoftwareVer",
+}
+
+
+def normalize_house_devices(response: dict[str, Any], house: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Extract only documented direct and room device lists using a whitelist."""
+    obj = response.get("objectResult")
+    data = obj.get("data") if isinstance(obj, dict) else None
+    if not isinstance(data, list):
+        return []
+    house = house or {}
+    devices: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(raw: Any, area: Any = None, room: Any = None) -> None:
+        if not isinstance(raw, dict):
+            return
+        code = str(raw.get("deviceCode") or "").strip()
+        if not code or code in seen:
+            return
+        normalized = {key: raw[key] for key in _HOUSE_DEVICE_FIELDS if key in raw}
+        normalized["deviceCode"] = code
+        normalized["houseId"] = str(house.get("id") or raw.get("houseId") or "").strip()
+        if house.get("houseName"):
+            normalized["houseName"] = str(house["houseName"])
+        if house.get("roleType") not in (None, ""):
+            normalized["houseRoleType"] = str(house["roleType"])
+        if not normalized.get("areaId") and isinstance(area, dict):
+            normalized["areaId"] = area.get("areaId") or area.get("id")
+        if not normalized.get("roomId") and isinstance(room, dict):
+            normalized["roomId"] = room.get("roomId") or room.get("id")
+        devices.append(normalized)
+        seen.add(code)
+
+    for area in data:
+        if not isinstance(area, dict):
+            continue
+        for raw in area.get("houseRelDeviceList") or []:
+            add(raw, area=area)
+        for room in area.get("roomInfoResultList") or []:
+            if not isinstance(room, dict):
+                continue
+            for raw in room.get("houseRelDeviceList") or []:
+                add(raw, area=area, room=room)
+    return devices
 
 
 def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) -> list[dict[str, Any]]:

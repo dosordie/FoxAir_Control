@@ -29,19 +29,29 @@ def merge_discovered_and_known_devices(
     Discovery records are inserted first and are never updated from sparse
     manual placeholders, so all cloud metadata remains authoritative.
     """
+    return merge_device_sources(discovered, [], known_device_codes)
+
+
+def merge_device_sources(
+    discovered: Iterable[dict[str, Any]],
+    house_devices: Iterable[dict[str, Any]],
+    known_device_codes: Any,
+) -> list[dict[str, Any]]:
+    """Merge deviceList > House/Residence > manual, keyed by deviceCode."""
     result: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for raw in discovered:
-        if not isinstance(raw, dict):
-            continue
-        device = dict(raw)
-        code = str(device.get("deviceCode") or "").strip()
-        if code and code in seen:
-            continue
-        if code:
+    for source, devices in (("deviceList", discovered), ("house", house_devices)):
+        for raw in devices:
+            if not isinstance(raw, dict):
+                continue
+            device = dict(raw)
+            code = str(device.get("deviceCode") or "").strip()
+            if not code or code in seen:
+                continue
             seen.add(code)
-        device.setdefault("discoverySource", "deviceList")
-        result.append(device)
+            device["deviceCode"] = code
+            device.setdefault("discoverySource", source)
+            result.append(device)
     for code in normalize_known_device_codes(known_device_codes):
         if code not in seen:
             result.append({"deviceCode": code, "discoverySource": "manual"})
@@ -53,6 +63,15 @@ def remove_known_device_code(values: Any, device_code: str) -> list[str]:
     """Remove only the persistent manual registration for *device_code*."""
     remove = str(device_code or "").strip()
     return [code for code in normalize_known_device_codes(values) if code != remove]
+
+
+def add_known_device_code(values: Any, device_code: str) -> list[str]:
+    """Append one code without ever replacing existing persistent entries."""
+    result = normalize_known_device_codes(values)
+    code = str(device_code or "").strip()
+    if code and code not in result:
+        result.append(code)
+    return result
 
 
 def select_available_device_code(

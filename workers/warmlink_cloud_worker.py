@@ -18,8 +18,10 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
     normalize_data_values,
     normalize_device_list,
+    normalize_house_devices,
+    normalize_house_list,
 )
-from cloud.known_devices import merge_discovered_and_known_devices, select_available_device_code
+from cloud.known_devices import merge_discovered_and_known_devices, merge_device_sources, select_available_device_code
 from cloud.known_devices import validation_has_value
 
 
@@ -41,6 +43,63 @@ def supported_codes_for_next_poll(
     """Reduce a discovery request to codes actually returned by this device."""
     supported = {str(row.get("code") or "") for row in rows if row.get("supported")}
     return [code for code in requested_codes if code in supported]
+
+
+def discover_cloud_devices(
+    api: WarmLinkCloudApi,
+    known_device_codes: list[str],
+    selected_device_code: str | None = None,
+    log=None,
+) -> list[dict[str, Any]]:
+    """Discover deviceList and House devices, isolating non-auth House errors."""
+    emit = log or (lambda _message: None)
+    device_response = api.get_devices()
+    if api._token_expired(device_response):
+        raise WarmLinkAuthError(api.message(device_response) or "WarmLink-Login abgelaufen")
+    direct = normalize_device_list(device_response)
+    emit(f"WarmLink Cloud: {len(direct)} Gerät(e) über deviceList gefunden")
+
+    house_devices: list[dict[str, Any]] = []
+    house_response = api.get_houses()
+    if api._token_expired(house_response):
+        raise WarmLinkAuthError(api.message(house_response) or "WarmLink-Login abgelaufen")
+    if api.success(house_response):
+        houses = normalize_house_list(house_response)
+        emit(f"WarmLink Cloud: {len(houses)} House(s) gefunden")
+        for house in houses:
+            house_id = house["id"]
+            try:
+                response = api.get_house_devices(house_id)
+                if api._token_expired(response):
+                    raise WarmLinkAuthError(api.message(response) or "WarmLink-Login abgelaufen")
+                if not api.success(response):
+                    emit(f"WarmLink Cloud: House {house_id} → Fehler: {api.message(response) or 'API-Fehler'}")
+                    continue
+                found = normalize_house_devices(response, house)
+                house_devices.extend(found)
+                emit(f"WarmLink Cloud: House {house_id} → {len(found)} Gerät(e)")
+            except WarmLinkAuthError:
+                raise
+            except Exception as exc:
+                emit(f"WarmLink Cloud: House {house_id} → Fehler: {translate_cloud_error_message(str(exc))}")
+    else:
+        emit(f"WarmLink Cloud: House-Liste nicht verfügbar: {api.message(house_response) or 'API-Fehler'}")
+
+    known = list(known_device_codes)
+    if selected_device_code and selected_device_code not in known:
+        known.append(selected_device_code)
+    merged = merge_device_sources(direct, house_devices, known)
+    automatic_codes = {
+        str(device.get("deviceCode")) for device in [*direct, *house_devices]
+        if device.get("deviceCode")
+    }
+    manual_added = sum(
+        1 for device in merged
+        if device.get("discoverySource") == "manual" and device.get("deviceCode") not in automatic_codes
+    )
+    emit(f"WarmLink Cloud: insgesamt {len(merged)} eindeutige Cloud-Geräte")
+    emit(f"WarmLink Cloud: {manual_added} manuelle Fallback-Geräte ergänzt")
+    return merged
 
 
 class WarmLinkCloudDebugWorker(QObject):
@@ -206,7 +265,9 @@ class WarmLinkCloudWorker(QObject):
             if not api.has_fresh_token():
                 self.log.emit("WarmLink Cloud: Login wird versucht ...")
 
-            devices_response = api.get_devices()
+            devs = discover_cloud_devices(
+                api, self.known_device_codes, self.device_code, self.log.emit,
+            )
             if api.reused_initial_token and not api.last_login_method:
                 self.log.emit("WarmLink Cloud: gespeicherten Token verwendet")
             if api.last_login_method:
@@ -216,19 +277,9 @@ class WarmLinkCloudWorker(QObject):
             if api.token:
                 self.token_updated.emit(api.token)
             self.status.emit("verbunden")
-            devs = normalize_device_list(devices_response)
-            discovered_count = len(devs)
-            known = list(self.known_device_codes)
-            if self.device_code and self.device_code not in known:
-                known.append(self.device_code)
-            devs = merge_discovered_and_known_devices(devs, known)
-            self.log.emit(
-                f"WarmLink Cloud: {discovered_count} Gerät(e) automatisch gefunden, "
-                f"{len(devs) - discovered_count} bekannte ergänzt"
-            )
             if not devs:
                 self.devices.emit([])
-                self.error.emit("Keine Geräte per deviceList oder als bekannte Gerätecodes gefunden; Residence-/House-Discovery ist noch unbekannt")
+                self.error.emit("Keine Geräte über deviceList, House/Residence oder bekannte Gerätecodes gefunden.")
                 return
             self.devices.emit(devs)
 

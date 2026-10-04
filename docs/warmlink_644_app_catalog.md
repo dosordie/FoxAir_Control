@@ -71,9 +71,27 @@ Felder wie `deviceId`, `deviceCode`, `productId`, `productionCode`,
 der bestehenden Diagnosetabelle erhalten bleiben.
 
 Ein Live-Test mit einem Residence-Mitglied zeigt: `deviceList` kann die eigene
-Anlage liefern und trotzdem eine freigegebene Residence-Anlage auslassen,
-obwohl deren bekannter `deviceCode` über `getDataByCode` vollständig autorisiert
-ist. Deshalb können im Cloud-Dialog mehrere bekannte Gerätecodes ergänzt werden.
+Anlage liefern und trotzdem eine freigegebene Residence-Anlage auslassen.
+WarmLink 3.0.5 machte die echten PHNIX-/Retrofit-Klassen im normalen DEX
+sichtbar; daraus wurden die House-Endpunkte statisch rekonstruiert und am
+2026-10-04 anschließend live bestätigt:
+
+- `GET house/info/listOwnerHouses` (ohne Body)
+- `POST houseRelDevice/v4/selectHouseToDeviceData` mit
+  `{"appId": 16, "houseId": "<ID>", "level": 0}`
+
+`listOwnerHouses` lieferte dabei sowohl das eigene als auch freigegebene Houses
+anderer Creator. Beobachtet wurde `roleType=0` beim eigenen House und
+`roleType=1` bei Mitgliedschaft/Freigabe. Das ist keine abschließende Enum-
+Definition; unbekannte weitere Werte werden akzeptiert und `roleType` ist keine
+Voraussetzung für Discovery. House-Geräte werden sowohl direkt aus
+`data[].houseRelDeviceList[]` als auch aus
+`data[].roomInfoResultList[].houseRelDeviceList[]` gelesen.
+
+Damit gilt die bisher offene Residence-/House-Discovery praktisch als
+geschlossen. Die normale Discovery priorisiert `deviceList`, danach
+House/Residence und zuletzt manuelle Fallback-Codes. Deshalb können im
+Cloud-Dialog weiterhin mehrere bekannte Gerätecodes ergänzt werden.
 FoxAir Control prüft jeden Code vor dem Speichern mit einer kleinen, rein
 lesenden `getDataByCode`-Abfrage (`MainBoard Version` und `code_version`) und
 führt ihn anschließend mit `deviceList` zusammen. Cloud-Einträge haben bei
@@ -87,13 +105,13 @@ bereits Zugriff besitzen; FoxAir Control macht lediglich einen schon
 autorisierten Code auswählbar, den die automatische Discovery nicht liefert.
 
 `getMyAppectDeviceShareDataList` (einschließlich des API-Tippfehlers „Appect“)
-ist nach Live-Test **nur die ältere direkte Gerätefreigabe und nicht die neue
-Residence-/House-Geräteliste**. Die App besitzt separate House-, Member-, Floor-
-und Room-Funktionen, deren REST-Endpunkte wegen Jiagu jedoch unbekannt bleiben.
-FoxAir Control erfindet daher keine `/house`- oder `/residence`-Pfade. Eine
-dritte Discovery-Quelle „Residence/House“ bleibt offen.
-Die manuelle Liste bekannter Gerätecodes ist bis zur Identifikation eines
-bestätigten Residence-/House-Discovery-Endpunkts der sichere Fallback.
+ist nach Live-Test weiterhin nur die ältere direkte Gerätefreigabe. Die
+manuelle Liste bleibt als Fallback für ältere Serverstände, Diagnose und
+ungewöhnliche Share-Szenarien erhalten.
+
+Normalisierte House-Geräte enthalten nur technisch benötigte Gerätefelder.
+`deviceSecret`, ICCID, IMEI/MAC, Hausadresse und GPS-Koordinaten werden weder in
+die Geräteliste übernommen noch persistiert oder geloggt.
 
 ## Fault-Namespace
 
@@ -146,3 +164,38 @@ Historienendpunkte sind daher keine alleinige Quelle für aktuelle rohe
 Störungsbits. Der Worker wertet die unabhängig gelesenen `Fault1…Fault10`-Wörter
 weiter aus und schließt aus `isFault=false` nicht auf einen störungsfreien
 Rohzustand. Warum die Cloud diese Sichten unterschiedlich filtert, bleibt offen.
+
+WarmLink 3.0.5 legte zusätzlich
+`POST app/device/v2/getFaultDataByDeviceCode` offen. Live bestätigt ist das
+Payload `{"deviceCodeList": ["<deviceCode>"]}`; das alte Singularfeld
+`deviceCode` wird mit einer Validierungsfehlermeldung abgelehnt. Eine leere
+erfolgreiche `objectResult`-Historie und `isFault=false` können gleichzeitig mit
+aktiven `Fault1…Fault10`-Rohbits auftreten. Der v2-Endpunkt ist deshalb eine
+Backend-Historien-/Eventsicht und überschreibt niemals die aktuellen Raw-
+Faultwörter oder deren Decoder-Projektion.
+
+## Mehrgeräteverwaltung und Cloud-Projektion
+
+Mehrere manuell validierte Gerätecodes werden dauerhaft als deduplizierte Liste
+`warmlink_cloud.known_device_codes` gespeichert und im Reiter **Geräte** separat
+verwaltet. Die Auswahlliste bildet die Vereinigung aus `deviceList` und den
+manuellen Codes; Metadaten aus `deviceList` haben Vorrang. Ein manueller Eintrag
+kann ausgewählt oder entfernt werden, ohne automatisch gefundene Geräte zu
+entfernen.
+
+Ist **Cloud im Hauptfenster anzeigen** aktiv, werden alle sinnvoll auf lokale
+Register projizierbaren Werte automatisch angezeigt – auch ohne vorherigen
+Modbus-Read. Der frühere Schalter „Cloud-only-Zeilen“ entfällt; sein Setting wird
+nur kompatibel eingelesen. Lokale Modbuswerte haben immer Vorrang und werden nie
+mit Cloudwerten überschrieben. Fehler-, Kontakt- und Lastausgangdecoder verwenden
+die getrennt gespeicherte Cloud-Projektion lediglich als Fallback.
+
+Ein zentraler Translator nutzt `value_map` und `bit_map` aus
+`data/foxair_phnix_registers.json`. Er liefert Rohwert, Hexdarstellung,
+Anzeigetext und aktive Bits für `O01~023`, `S01~S10`, Fault-Wörter und normale
+ENUM-Werte. Unbekannte aktive Bits bleiben ausdrücklich sichtbar.
+
+`Fault1` bis `Fault10` dürfen für die read-only Anzeige anhand der stark
+abgeleiteten Family-644-Zuordnung projiziert werden. Ihre Modbus-Confidence bleibt
+`candidate` beziehungsweise `strongly-inferred-family-644`; daraus entstehen
+weder ein `confirmed`-Mapping noch Schreibrechte.

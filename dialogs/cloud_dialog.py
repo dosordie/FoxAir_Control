@@ -37,7 +37,7 @@ from workers.warmlink_cloud_worker import (
     WarmLinkKnownDeviceValidationWorker,
 )
 from cloud.known_devices import (
-    merge_discovered_and_known_devices, normalize_known_device_codes,
+    add_known_device_code, merge_discovered_and_known_devices, normalize_known_device_codes,
     remove_known_device_code,
 )
 from core.settings_manager import ensure_warmlink_cloud_defaults
@@ -118,8 +118,6 @@ class WarmLinkCloudDialog(QDialog):
         self.overlay_cb.setToolTip("Gemappte Cloud-Werte als Zusatzspalten/Cloud-only-Zeilen in der Haupttabelle anzeigen.")
         self.auto_start_cb = QCheckBox("Cloud-Polling beim App-Start")
         self.auto_start_cb.setToolTip("Startet Cloud-Polling im Hintergrund nach Programmstart, wenn Zugangsdaten gespeichert sind.")
-        self.cloud_only_cb = QCheckBox("Cloud-only-Zeilen")
-        self.cloud_only_cb.setToolTip("Gemappte Cloud-Werte auch dann als Zeile zeigen, wenn lokal noch kein Registerwert gelesen wurde.")
         self.login_fallbacks_cb = QCheckBox("Login-Fallbacks erlauben")
         self.login_fallbacks_cb.setToolTip("Wenn MD5 bzw. die gespeicherte Methode fehlschlägt, weitere Hash-/App-Login-Varianten testen.")
         self.save_token_cb = QCheckBox("Cloud-Token verwenden/speichern")
@@ -153,7 +151,7 @@ class WarmLinkCloudDialog(QDialog):
         login.addWidget(QLabel("Status:"), 3, 0)
         login.addWidget(self.status_label, 3, 1, 1, 2)
         btn_row = QHBoxLayout()
-        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.cloud_only_cb, self.login_fallbacks_cb, self.save_token_cb):
+        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.login_fallbacks_cb, self.save_token_cb):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
         login.addLayout(btn_row, 4, 0, 1, 4)
@@ -163,6 +161,12 @@ class WarmLinkCloudDialog(QDialog):
 
         dev_tab = QWidget()
         dev_layout = QVBoxLayout(dev_tab)
+        dev_layout.addWidget(QLabel("Manuell bekannte Geräte"))
+        self.known_device_table = QTableWidget(0, 3)
+        self.known_device_table.setHorizontalHeaderLabels(["Gerätecode", "Auswählen", "Entfernen"])
+        self.known_device_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.known_device_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        dev_layout.addWidget(self.known_device_table)
         self.device_table = QTableWidget(0, len(self.DEVICE_COLUMNS))
         self.device_table.setHorizontalHeaderLabels(self.DEVICE_COLUMNS)
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
@@ -344,7 +348,6 @@ class WarmLinkCloudDialog(QDialog):
         self.ids_cb.toggled.connect(lambda _=None: self.refresh_devices())
         self.auto_start_cb.toggled.connect(lambda _=None: self._save_settings())
         self.overlay_cb.toggled.connect(self._overlay_toggled)
-        self.cloud_only_cb.toggled.connect(lambda _=None: self._apply_overlay_to_main())
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
         self.save_token_cb.toggled.connect(self._save_token_toggled)
         self.device_combo.currentIndexChanged.connect(self._device_selection_changed)
@@ -384,7 +387,6 @@ class WarmLinkCloudDialog(QDialog):
             self.ids_cb,
             self.overlay_cb,
             self.auto_start_cb,
-            self.cloud_only_cb,
             self.login_fallbacks_cb,
             self.save_token_cb,
             self.interval_spin,
@@ -398,7 +400,6 @@ class WarmLinkCloudDialog(QDialog):
             self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
             self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
             self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
-            self.cloud_only_cb.setChecked(bool(cfg.get("show_cloud_only", True)))
             self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
             self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
             selected = str(cfg.get("selected_device_code", ""))
@@ -423,7 +424,7 @@ class WarmLinkCloudDialog(QDialog):
         cfg["show_ids"] = bool(self.ids_cb.isChecked())
         cfg["overlay_enabled"] = bool(self.overlay_cb.isChecked())
         cfg["auto_start_polling"] = bool(self.auto_start_cb.isChecked())
-        cfg["show_cloud_only"] = bool(self.cloud_only_cb.isChecked())
+        cfg["show_cloud_only"] = True
         cfg["login_method"] = str(cfg.get("login_method") or "md5").strip() or "md5"
         cfg["login_fallbacks"] = bool(self.login_fallbacks_cb.isChecked())
         cfg["save_token"] = bool(self.save_token_cb.isChecked())
@@ -520,6 +521,8 @@ class WarmLinkCloudDialog(QDialog):
         self._save_settings()
         if getattr(self.main_window, "cloud_session_authenticated", False):
             self.main_window.set_cloud_connection_state(True, self._selected_device_code())
+        if not self._loading_settings and self._selected_device_code():
+            self.main_window._log(f"WarmLink Cloud: Gerät ausgewählt: {self._mask(self._selected_device_code())}")
 
     def _update_device_controls(self) -> None:
         """Keep device mutation locked to a stopped cloud polling session."""
@@ -561,6 +564,7 @@ class WarmLinkCloudDialog(QDialog):
         preferred_login_method = str(cfg.get("login_method") or "md5").strip() or "md5"
         login_fallbacks = bool(cfg.get("login_fallbacks", False))
         self.status_label.setText("starte ...")
+        self.main_window._log("WarmLink Cloud: Login gestartet")
         self.test_btn.setEnabled(False)
         self.poll_once_btn.setEnabled(False)
         self.start_poll_btn.setEnabled(False)
@@ -593,11 +597,14 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
         self.cloud_thread.start()
+        if not poll_once and not just_login:
+            self.main_window._log("WarmLink Cloud: Polling gestartet")
 
     def stop_worker(self):
         if self.cloud_worker is not None:
             self.cloud_worker.stop()
             self.status_label.setText("Stop angefordert ...")
+            self.main_window._log("WarmLink Cloud: Polling gestoppt")
 
     def _worker_finished(self):
         if self.cloud_thread is not None:
@@ -698,7 +705,32 @@ class WarmLinkCloudDialog(QDialog):
                 val = device_table_value(dev, key, self.SENSITIVE_DEVICE_FIELDS, show_ids=self.ids_cb.isChecked())
                 self.device_table.setItem(row, col, QTableWidgetItem(val))
         self.device_table.resizeColumnsToContents()
+        self._refresh_known_device_table()
         self._update_device_controls()
+
+    def _refresh_known_device_table(self) -> None:
+        known = normalize_known_device_codes(self._cloud_settings().get("known_device_codes", []))
+        self.known_device_table.setRowCount(len(known))
+        for row, code in enumerate(known):
+            self.known_device_table.setItem(row, 0, QTableWidgetItem(code))
+            select = QPushButton("Auswählen")
+            select.clicked.connect(lambda _checked=False, c=code: self._select_known_device(c))
+            remove = QPushButton("Entfernen")
+            remove.clicked.connect(lambda _checked=False, c=code: self._remove_known_device(c))
+            self.known_device_table.setCellWidget(row, 1, select)
+            self.known_device_table.setCellWidget(row, 2, remove)
+
+    def _select_known_device(self, code: str) -> None:
+        index = self.device_combo.findData(code)
+        if index >= 0:
+            self.device_combo.setCurrentIndex(index)
+            self.main_window._log(f"WarmLink Cloud: Gerät ausgewählt: {self._mask(code)}")
+
+    def _remove_known_device(self, code: str) -> None:
+        index = self.device_combo.findData(code)
+        if index >= 0:
+            self.device_combo.setCurrentIndex(index)
+        self.remove_selected_known_device()
 
     def add_known_device(self) -> None:
         if self.cloud_thread is not None:
@@ -748,9 +780,7 @@ class WarmLinkCloudDialog(QDialog):
 
     def _known_device_validated(self, code: str, rows: list) -> None:
         cfg = self._cloud_settings()
-        known = normalize_known_device_codes(cfg.get("known_device_codes", []))
-        if code not in known:
-            known.append(code)
+        known = add_known_device_code(cfg.get("known_device_codes", []), code)
         cfg["known_device_codes"] = known
         cfg["selected_device_code"] = code
         self.devices = merge_discovered_and_known_devices(self.devices, known)
@@ -761,6 +791,7 @@ class WarmLinkCloudDialog(QDialog):
         self._save_settings()
         self.status_label.setText("Gerätecode geprüft und gespeichert.")
         self.main_window._log(f"WarmLink Cloud: manuellen Gerätecode {code} erfolgreich validiert")
+        self.main_window._log(f"WarmLink Cloud: Gerätecode hinzugefügt: {self._mask(code)}")
 
     def _known_device_validation_error(self, detail: str) -> None:
         self.status_label.setText("Gerätecode konnte nicht validiert werden.")
@@ -803,6 +834,7 @@ class WarmLinkCloudDialog(QDialog):
         else:
             cfg.pop("selected_device_code", None)
         self._save_settings()
+        self.main_window._log(f"WarmLink Cloud: Gerätecode entfernt: {self._mask(code)}")
 
     def refresh_data(self):
         rows = filtered_cloud_rows(
@@ -916,7 +948,7 @@ class WarmLinkCloudDialog(QDialog):
     def _apply_overlay_to_main(self):
         self._save_settings()
         if self.overlay_cb.isChecked():
-            self.main_window.apply_cloud_rows_to_main(self.data_rows, show_cloud_only=bool(self.cloud_only_cb.isChecked()))
+            self.main_window.apply_cloud_rows_to_main(self.data_rows, show_cloud_only=True)
         else:
             self.main_window.clear_cloud_overlay()
 
