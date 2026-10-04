@@ -70,11 +70,21 @@ Felder wie `deviceId`, `deviceCode`, `productId`, `productionCode`,
 `deviceNickName`, `deviceStatus`, `isFault` sowie vorhandene Firmwarefelder in
 der bestehenden Diagnosetabelle erhalten bleiben.
 
-Ein Live-Test mit einem Residence-Mitglied zeigt: `deviceList` kann leer sein,
-während ein bekannter `deviceCode` über `getDataByCode` vollständig autorisiert
-ist. Deshalb verwirft der Worker einen gespeicherten Code nicht mehr, sondern
-validiert und nutzt ihn direkt. Ohne bekannten Code wird weiterhin ehrlich
-gemeldet, dass keine automatische Discovery möglich war.
+Ein Live-Test mit einem Residence-Mitglied zeigt: `deviceList` kann die eigene
+Anlage liefern und trotzdem eine freigegebene Residence-Anlage auslassen,
+obwohl deren bekannter `deviceCode` über `getDataByCode` vollständig autorisiert
+ist. Deshalb können im Cloud-Dialog mehrere bekannte Gerätecodes ergänzt werden.
+FoxAir Control prüft jeden Code vor dem Speichern mit einer kleinen, rein
+lesenden `getDataByCode`-Abfrage (`MainBoard Version` und `code_version`) und
+führt ihn anschließend mit `deviceList` zusammen. Cloud-Einträge haben bei
+doppelten Codes Vorrang, sodass Nickname, IDs, Produktdaten und Status erhalten
+bleiben. Die Codes werden als `warmlink_cloud.known_device_codes` in den
+bestehenden Settings gespeichert und können im Dialog wieder entfernt werden.
+
+Diese Eingabe umgeht **keine Berechtigung**: Ein Gerätecode allein ermöglicht
+keinen Zugriff auf eine fremde Anlage. Der angemeldete Account muss in WarmLink
+bereits Zugriff besitzen; FoxAir Control macht lediglich einen schon
+autorisierten Code auswählbar, den die automatische Discovery nicht liefert.
 
 `getMyAppectDeviceShareDataList` (einschließlich des API-Tippfehlers „Appect“)
 ist nach Live-Test **nur die ältere direkte Gerätefreigabe und nicht die neue
@@ -82,6 +92,8 @@ Residence-/House-Geräteliste**. Die App besitzt separate House-, Member-, Floor
 und Room-Funktionen, deren REST-Endpunkte wegen Jiagu jedoch unbekannt bleiben.
 FoxAir Control erfindet daher keine `/house`- oder `/residence`-Pfade. Eine
 dritte Discovery-Quelle „Residence/House“ bleibt offen.
+Die manuelle Liste bekannter Gerätecodes ist bis zur Identifikation eines
+bestätigten Residence-/House-Discovery-Endpunkts der sichere Fallback.
 
 ## Fault-Namespace
 

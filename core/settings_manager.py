@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from core.udp_diagnostics import udp_diagnostic_defaults
+from cloud.known_devices import normalize_known_device_codes
 
 
 def engineering_parameter_is_visible(data: dict[str, Any], settings: dict[str, Any]) -> bool:
@@ -25,6 +26,7 @@ def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     cfg.setdefault("login_fallbacks", False)
     cfg.setdefault("save_token", True)
     cfg.setdefault("overlay_enabled", True)
+    cfg["known_device_codes"] = normalize_known_device_codes(cfg.get("known_device_codes", []))
     try:
         cfg["poll_interval_s"] = max(60, int(cfg.get("poll_interval_s", 60) or 60))
     except Exception:

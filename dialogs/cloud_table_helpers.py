@@ -51,6 +51,8 @@ def local_display_value(latest_regs: dict, reg_no: int) -> tuple[str, Optional[f
 
 def device_combo_label(device: dict[str, Any], show_ids: bool = False) -> tuple[str, str]:
     code = str(device.get("deviceCode") or "")
+    if device.get("discoverySource") in {"manual", "stored-device-code"}:
+        return f"{mask_cloud_value(code, show_ids=show_ids)} (manuell)", code
     nick = str(device.get("deviceNickName") or device.get("model") or device.get("custModel") or "Gerät")
     status = str(device.get("deviceStatus", ""))
     return f"{nick} | {status} | {mask_cloud_value(code, show_ids=show_ids)}", code
