@@ -100,6 +100,7 @@ def test_unknown_package_slot_is_backed_up_and_restored_bit_exactly(qapp):
             {"reg": 2001, "raw_value": 0x5678},  # außerhalb der Allowlist
         ]
     }
+    main_window.latest_regs[unknown_reg] = SimpleNamespace(raw_value=0)
     assert dialog._restore_items("changed") == [
         (unknown_reg, 0xFFFF, "")
     ]

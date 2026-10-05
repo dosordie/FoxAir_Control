@@ -198,6 +198,62 @@ class WarmLinkKnownDeviceValidationWorker(QObject):
             self.finished.emit()
 
 
+class WarmLinkCloudReadWorker(QObject):
+    """Read requested codes using the selected device, without discovery."""
+
+    log = Signal(str)
+    data = Signal(list)
+    error = Signal(str)
+    token_updated = Signal(str)
+    login_method = Signal(str)
+    finished = Signal()
+
+    def __init__(self, username: str, password: str, device_code: str,
+                 codes: list[str], initial_token: str | None = None,
+                 timeout_s: float = 15.0, preferred_login_method: str = "md5",
+                 login_fallbacks: bool = False) -> None:
+        super().__init__()
+        self.username = username
+        self.password = password
+        self.device_code = str(device_code or "").strip()
+        self.codes = list(dict.fromkeys(codes))
+        self.initial_token = initial_token
+        self.timeout_s = timeout_s
+        self.preferred_login_method = preferred_login_method
+        self.login_fallbacks = login_fallbacks
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            if not self.device_code:
+                raise WarmLinkCloudError("Kein Cloud-Gerät ausgewählt (deviceCode fehlt).")
+            if not self.codes:
+                raise WarmLinkCloudError("Keine Cloud-Codes angefordert.")
+            api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s,
+                                   initial_token=self.initial_token)
+            api.preferred_login_method = self.preferred_login_method
+            api.use_login_fallbacks = self.login_fallbacks
+            self.log.emit("WarmLink Cloud Einzelread: " + ", ".join(self.codes))
+            # The existing request mechanism reuses tokens and retries expired auth.
+            response = api.get_data_by_code(self.device_code, self.codes)
+            if not api.success(response):
+                raise WarmLinkCloudError(api.message(response) or "Cloud-Abfrage fehlgeschlagen")
+            rows = normalize_data_values(response, self.codes)
+            now = time.strftime("%Y-%m-%d %H:%M:%S")
+            for row in rows:
+                row.update(lastFetch=now, stale=False)
+            self.data.emit(rows)
+            if api.token:
+                self.token_updated.emit(api.token)
+            if api.last_login_method:
+                self.login_method.emit(api.last_login_method)
+                self.log.emit(f"WarmLink Cloud Einzelread: Login via {api.last_login_method}")
+        except Exception as exc:
+            self.error.emit(translate_cloud_error_message(str(exc)))
+        finally:
+            self.finished.emit()
+
+
 class WarmLinkCloudWorker(QObject):
     log = Signal(str)
     status = Signal(str)
