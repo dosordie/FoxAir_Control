@@ -68,6 +68,10 @@ class PollApi:
         self.calls.append("status")
         return success({"isFault": True})
 
+    def send_app_heartbeat(self, device):
+        self.calls.append("heartbeat")
+        return success({})
+
     def get_fault_data_by_device_code(self, device):
         pytest.fail("Polling must not fetch fault history")
 
@@ -76,6 +80,8 @@ class PollApi:
 def fake_api(monkeypatch):
     PollApi.created, PollApi.failures = [], []
     monkeypatch.setattr(workers, "WarmLinkCloudApi", PollApi)
+    monkeypatch.setattr(workers.WarmLinkCloudWorker, "_settle_after_heartbeat",
+                        lambda worker: worker._stop_event.is_set())
     return PollApi
 
 

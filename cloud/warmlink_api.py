@@ -402,6 +402,15 @@ class WarmLinkCloudApi:
         }
         return self.post(ENDPOINT_DEVICE_LIST, payload)
 
+    def send_app_heartbeat(self, device_code: str) -> dict[str, Any]:
+        """Trigger the app's live refresh with its dedicated, appId-free payload."""
+        code = str(device_code or "").strip()
+        if not code:
+            raise ValueError("deviceCode fehlt für app_heartbeat")
+        return self.post(ENDPOINT_DEVICE_CONTROL, {
+            "param": [{"deviceCode": code, "protocolCode": "app_heartbeat", "value": "23205"}],
+        })
+
     def get_houses(self) -> dict[str, Any]:
         """Return all owner and membership Houses visible to the app account."""
         return self.get(ENDPOINT_HOUSE_LIST)
