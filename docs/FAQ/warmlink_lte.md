@@ -129,9 +129,25 @@ aktualisiert Polling hauptsächlich Live- und Statuswerte, standardmäßig alle
 30 Sekunden. Das Intervall lässt sich im Cloud-Dialog einstellen.
 Konfigurationswerte bleiben mit ihrem letzten Abrufzeitpunkt gespeichert.
 Mit **Konfigurationswerte neu laden** können sie bei Bedarf erneut gelesen
-werden. **Geräte neu suchen** aktualisiert die Geräteliste.
+werden. **Geräte neu suchen** aktualisiert ausschließlich die Geräteliste;
+Werte werden erst mit **Jetzt abrufen** oder **Polling starten** gelesen.
+Die gefundene Geräteliste und Auswahl bleiben beim Schließen und erneuten
+Öffnen des Dialogs während derselben Programmsitzung erhalten.
+
+Im Geräte-Tab stehen eine kompakte Übersicht und Details zum ausgewählten
+Gerät. Geteilte Geräte können weniger Angaben liefern; fehlende Angaben
+werden als `—` dargestellt. IDs sind erst mit **IDs anzeigen** vollständig
+sichtbar.
+
+Ändert sich ein Cloudwert, blinkt seine Haupttabellenzeile kurz auf.
+**Cloud vorher** zeigt den bisherigen Cloudwert. Bei Cloud-only-Zeilen steht
+er außerdem unter **Letzter Wert**; bei lokal gelesenen Registern bleibt diese
+Spalte für den vorherigen lokalen Wert reserviert.
 
 Die Fortschrittsleiste zeigt den Verbindungsaufbau und den laufenden Abruf.
+Im Hauptfenster zeigt eine zusätzliche schmale Leiste den Abruffortschritt
+und die Restzeit bis zum nächsten Poll oder Retry. Nach dem Abruf beginnt
+das eingestellte Intervall; bei gestopptem Polling wird die Leiste ausgeblendet.
 Der Cloudbutton im Hauptfenster zeigt grau für getrennt, orange für
 Verbindungsaufbau, grün für verbunden und rot für einen Verbindungsfehler.
 Aktives Polling hat einen zusätzlichen Indikator; der Tooltip nennt den

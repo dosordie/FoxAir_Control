@@ -17,9 +17,11 @@ from cloud.warmlink_codes import (
 
 
 def mask_cloud_value(value: Any, show_ids: bool = False) -> str:
-    text = str(value or "")
-    if show_ids or len(text) <= 8:
+    text = str(value if value is not None else "")
+    if show_ids or not text:
         return text
+    if len(text) <= 8:
+        return "••••"
     return text[:4] + "…" + text[-4:]
 
 
@@ -54,13 +56,17 @@ def device_combo_label(device: dict[str, Any], show_ids: bool = False) -> tuple[
     code = str(device.get("deviceCode") or "")
     if device.get("discoverySource") in {"manual", "stored-device-code"}:
         return f"{mask_cloud_value(code, show_ids=show_ids)} (manuell)", code
-    nick = str(device.get("deviceNickName") or device.get("model") or device.get("custModel") or "Gerät")
+    nick = str(device.get("deviceNickName") or device.get("deviceName") or device.get("model") or device.get("custModel") or "Gerät")
     status = str(device.get("deviceStatus", ""))
     return f"{nick} | {status} | {mask_cloud_value(code, show_ids=show_ids)}", code
 
 
 def device_table_value(device: dict[str, Any], key: str, sensitive_fields: set[str], show_ids: bool = False) -> str:
-    value = device.get(key, "")
+    if key not in device or device[key] is None:
+        return "—"
+    value = device[key]
+    if key == "discoverySource" and value == "house":
+        value = "House"
     if key in sensitive_fields:
         value = mask_cloud_value(value, show_ids=show_ids)
     return str(value)

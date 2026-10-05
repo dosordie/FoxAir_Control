@@ -185,7 +185,7 @@ Die bestehende Cloud-Control-/Write-/Readback-Implementierung bleibt erhalten.
 
 ## Validierung
 
-`python -m pytest -q`: **389 bestanden**. Die Tests prüfen unter anderem die
+`python -m pytest -q`: **412 bestanden**. Die Tests prüfen unter anderem die
 Unit-Priorität, alle bestätigten lokalen Einheiten gegen widersprüchliche Hints,
 optionale Live-Metadaten, mehrere skalierte Typen, die R02-Vorbelegung und beide
 Schreibrepräsentationen, direkte API-Aufrufe, Session-/Geräteauswahl, Relogin,

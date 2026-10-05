@@ -695,12 +695,13 @@ def normalize_house_list(response: dict[str, Any]) -> list[dict[str, str]]:
         house_id = str(item.get("id") or item.get("houseId") or "").strip()
         if not house_id:
             continue
-        role_type = item.get("roleType")
-        houses.append({
-            "id": house_id,
-            "houseName": str(item.get("houseName") or item.get("name") or "").strip(),
-            "roleType": "" if role_type is None else str(role_type).strip(),
-        })
+        house = {"id": house_id}
+        for key, alias in (("houseName", "name"), ("roleType", "roleType")):
+            if key in item or alias in item:
+                value = item.get(key, item.get(alias))
+                if value is not None:
+                    house[key] = str(value).strip()
+        houses.append(house)
     return houses
 
 
@@ -708,6 +709,9 @@ _HOUSE_DEVICE_FIELDS = {
     "deviceCode", "deviceId", "deviceNickName", "deviceName", "deviceStatus",
     "productId", "productKey", "model", "roomId", "areaId", "faultState",
     "isFault", "isShared", "sn", "dtuSoftwareCode", "dtuSoftwareVer",
+    "is_fault", "custModel", "dtuSignalIntensity", "productionCode",
+    "wifiSoftwareCode", "wifiSoftwareVer",
+    "houseId", "houseName", "houseRoleType",
 }
 
 
@@ -719,27 +723,35 @@ def normalize_house_devices(response: dict[str, Any], house: dict[str, Any] | No
         return []
     house = house or {}
     devices: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    by_code: dict[str, dict[str, Any]] = {}
 
     def add(raw: Any, area: Any = None, room: Any = None) -> None:
         if not isinstance(raw, dict):
             return
         code = str(raw.get("deviceCode") or "").strip()
-        if not code or code in seen:
+        if not code:
             return
         normalized = {key: raw[key] for key in _HOUSE_DEVICE_FIELDS if key in raw}
         normalized["deviceCode"] = code
-        normalized["houseId"] = str(house.get("id") or raw.get("houseId") or "").strip()
-        if house.get("houseName"):
+        if house.get("id") or raw.get("houseId"):
+            normalized["houseId"] = str(house.get("id") or raw["houseId"]).strip()
+        if "houseName" in house:
             normalized["houseName"] = str(house["houseName"])
-        if house.get("roleType") not in (None, ""):
+        if "roleType" in house and house["roleType"] is not None:
             normalized["houseRoleType"] = str(house["roleType"])
-        if not normalized.get("areaId") and isinstance(area, dict):
-            normalized["areaId"] = area.get("areaId") or area.get("id")
-        if not normalized.get("roomId") and isinstance(room, dict):
-            normalized["roomId"] = room.get("roomId") or room.get("id")
-        devices.append(normalized)
-        seen.add(code)
+        for key, context in (("areaId", area), ("roomId", room)):
+            if (key not in normalized or normalized[key] in (None, "")) and isinstance(context, dict):
+                value = context.get(key, context.get("id"))
+                if value is not None:
+                    normalized[key] = value
+        if code in by_code:
+            existing = by_code[code]
+            for key, value in normalized.items():
+                if key not in existing or existing[key] in (None, ""):
+                    existing[key] = value
+        else:
+            devices.append(normalized)
+            by_code[code] = normalized
 
     for area in data:
         if not isinstance(area, dict):
