@@ -37,19 +37,21 @@ Nicht einfach einen anderen Typ wählen, nur damit irgendein Durchflusswert ersc
 
 ## P01 – Betriebsmodus der Hauptumwälzpumpe
 
-Parameter **P01** bestimmt, wie die Hauptumwälzpumpe außerhalb aktiver Heiz-, Warmwasser- und Schutzanforderungen betrieben wird.
+Parameter **P01** bestimmt vor allem das Verhalten der Hauptumwälzpumpe in Wartephasen, wenn die **Wärmepumpe eingeschaltet** ist, der Verdichter aber z. B. wegen erreichter Solltemperatur gerade nicht läuft.
+
+Ist die Wärmepumpe selbst ausgeschaltet, bleibt auch die Hauptumwälzpumpe normalerweise aus. Frostschutz-, Schutz- und andere Sonderanforderungen können die Pumpe trotzdem einschalten.
 
 Die V3.4-Firmware unterscheidet drei Modi:
 
 | P01 | Funktion |
 | ---: | --- |
-| **0 – Always On** | Pumpe wird im normalen Betrieb dauerhaft angefordert |
-| **1 – Saving** | Energiesparbetrieb mit festem internen Takt |
-| **2 – Interval** | frei einstellbarer Intervallbetrieb über P02/P03 |
+| **0 – Always On** | Pumpe läuft bei eingeschalteter Wärmepumpe auch in solchen Wartephasen dauerhaft weiter |
+| **1 – Saving** | Wartephasen werden mit einem festen internen Ein-/Aus-Takt überbrückt |
+| **2 – Interval** | Wartephasen werden mit dem über P02/P03 einstellbaren Ein-/Aus-Takt überbrückt |
 
 ### 0 – Always On
 
-Die Hauptumwälzpumpe wird im normalen Betrieb dauerhaft betrieben.
+Bei eingeschalteter Wärmepumpe wird die Hauptumwälzpumpe auch dann dauerhaft betrieben, wenn der Verdichter gerade nicht heizt bzw. kühlt.
 
 Übergeordnete Betriebs-, Schutz- oder Sonderzustände können die Pumpenansteuerung trotzdem beeinflussen.
 
@@ -57,7 +59,7 @@ Dieser Modus ist zum Testen einfach nachvollziehbar, verursacht aber unnötigen 
 
 ### 1 – Saving
 
-Der **Saving-Modus** verwendet einen eigenen, fest in der Firmware hinterlegten Takt.
+Der **Saving-Modus** verwendet für solche Wartephasen einen eigenen, fest in der Firmware hinterlegten Takt.
 
 In den entsprechenden Ruhe-/Standbyphasen läuft die Pumpe ungefähr:
 
@@ -75,7 +77,7 @@ Der 2-/30-Minuten-Ablauf ist aus der Firmware bestätigt. Die genaue Herstellerb
 
 ### 2 – Interval
 
-Im **Interval-Modus** wird der Pumpentakt über **P02** und **P03** eingestellt:
+Im **Interval-Modus** wird der Pumpentakt für diese Wartephasen über **P02** und **P03** eingestellt:
 
 - **P02** = Pause / Pumpe AUS
 - **P03** = Laufzeit / Pumpe EIN
