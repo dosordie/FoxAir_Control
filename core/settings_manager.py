@@ -29,9 +29,9 @@ def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     cfg.setdefault("overlay_enabled", True)
     cfg["known_device_codes"] = normalize_known_device_codes(cfg.get("known_device_codes", []))
     try:
-        cfg["poll_interval_s"] = max(60, int(cfg.get("poll_interval_s", 60) or 60))
+        cfg["poll_interval_s"] = min(3600, max(10, int(cfg.get("poll_interval_s", 30) or 30)))
     except Exception:
-        cfg["poll_interval_s"] = 60
+        cfg["poll_interval_s"] = 30
     return cfg
 
 

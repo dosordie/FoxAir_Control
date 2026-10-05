@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import threading
 import time
 from typing import Any
@@ -23,6 +24,8 @@ from cloud.warmlink_api import (
 )
 from cloud.known_devices import merge_discovered_and_known_devices, merge_device_sources, select_available_device_code
 from cloud.known_devices import validation_has_value
+from cloud.polling import CloudSession
+from cloud.token_store import load_cloud_credentials
 
 
 def devices_with_known_code_fallback(
@@ -50,12 +53,16 @@ def discover_cloud_devices(
     known_device_codes: list[str],
     selected_device_code: str | None = None,
     log=None,
+    progress=None,
+    cancelled=None,
 ) -> list[dict[str, Any]]:
     """Discover deviceList and House devices, isolating non-auth House errors."""
     emit = log or (lambda _message: None)
     device_response = api.get_devices()
     if api._token_expired(device_response):
         raise WarmLinkAuthError(api.message(device_response) or "WarmLink-Login abgelaufen")
+    if cancelled and cancelled():
+        return []
     direct = normalize_device_list(device_response)
     emit(f"WarmLink Cloud: {len(direct)} Gerät(e) über deviceList gefunden")
 
@@ -66,7 +73,11 @@ def discover_cloud_devices(
     if api.success(house_response):
         houses = normalize_house_list(house_response)
         emit(f"WarmLink Cloud: {len(houses)} House(s) gefunden")
-        for house in houses:
+        for index, house in enumerate(houses, 1):
+            if cancelled and cancelled():
+                break
+            if progress:
+                progress("DISCOVERING", index, len(houses))
             house_id = house["id"]
             try:
                 response = api.get_house_devices(house_id)
@@ -114,7 +125,7 @@ class WarmLinkCloudDebugWorker(QObject):
                  body: Any = None, timeout_s: float = 15.0,
                  initial_token: str | None = None,
                  preferred_login_method: str = "md5", login_fallbacks: bool = False,
-                 relogin_on_401: bool = False) -> None:
+                 relogin_on_401: bool = False, load_credentials: bool = False, use_saved_token: bool = True) -> None:
         super().__init__()
         self.username = username
         self.password = password
@@ -122,6 +133,8 @@ class WarmLinkCloudDebugWorker(QObject):
         self.endpoint = endpoint
         self.body = body
         self.timeout_s = timeout_s
+        self.load_credentials = load_credentials
+        self.use_saved_token = use_saved_token
         self.initial_token = initial_token
         self.preferred_login_method = preferred_login_method
         self.login_fallbacks = login_fallbacks
@@ -130,6 +143,10 @@ class WarmLinkCloudDebugWorker(QObject):
     @Slot()
     def run(self) -> None:
         try:
+            if self.load_credentials:
+                self.password, self.initial_token = load_cloud_credentials(
+                    self.username, self.password, self.initial_token,
+                    use_saved_token=self.use_saved_token)
             api = WarmLinkCloudApi(
                 self.username, self.password, timeout=self.timeout_s,
                 initial_token=self.initial_token,
@@ -162,11 +179,13 @@ class WarmLinkKnownDeviceValidationWorker(QObject):
     def __init__(self, username: str, password: str, device_code: str,
                  initial_token: str | None = None,
                  preferred_login_method: str = "md5",
-                 login_fallbacks: bool = False) -> None:
+                 login_fallbacks: bool = False, load_credentials: bool = False, use_saved_token: bool = True) -> None:
         super().__init__()
         self.username = username
         self.password = password
         self.device_code = str(device_code or "").strip()
+        self.load_credentials = load_credentials
+        self.use_saved_token = use_saved_token
         self.initial_token = initial_token
         self.preferred_login_method = preferred_login_method
         self.login_fallbacks = login_fallbacks
@@ -174,6 +193,10 @@ class WarmLinkKnownDeviceValidationWorker(QObject):
     @Slot()
     def run(self) -> None:
         try:
+            if self.load_credentials:
+                self.password, self.initial_token = load_cloud_credentials(
+                    self.username, self.password, self.initial_token,
+                    use_saved_token=self.use_saved_token)
             api = WarmLinkCloudApi(
                 self.username, self.password, initial_token=self.initial_token,
             )
@@ -211,12 +234,14 @@ class WarmLinkCloudReadWorker(QObject):
     def __init__(self, username: str, password: str, device_code: str,
                  codes: list[str], initial_token: str | None = None,
                  timeout_s: float = 15.0, preferred_login_method: str = "md5",
-                 login_fallbacks: bool = False) -> None:
+                 login_fallbacks: bool = False, load_credentials: bool = False, use_saved_token: bool = True) -> None:
         super().__init__()
         self.username = username
         self.password = password
         self.device_code = str(device_code or "").strip()
         self.codes = list(dict.fromkeys(codes))
+        self.load_credentials = load_credentials
+        self.use_saved_token = use_saved_token
         self.initial_token = initial_token
         self.timeout_s = timeout_s
         self.preferred_login_method = preferred_login_method
@@ -225,6 +250,10 @@ class WarmLinkCloudReadWorker(QObject):
     @Slot()
     def run(self) -> None:
         try:
+            if self.load_credentials:
+                self.password, self.initial_token = load_cloud_credentials(
+                    self.username, self.password, self.initial_token,
+                    use_saved_token=self.use_saved_token)
             if not self.device_code:
                 raise WarmLinkCloudError("Kein Cloud-Gerät ausgewählt (deviceCode fehlt).")
             if not self.codes:
@@ -263,13 +292,17 @@ class WarmLinkCloudWorker(QObject):
     login_method = Signal(str)
     token_updated = Signal(str)
     finished = Signal()
+    progress = Signal(str, int, int)
+    session_updated = Signal(object)
+    credentials_loaded = Signal(str, str)
+    connection_state = Signal(str)
 
     def __init__(
         self,
         username: str,
         password: str,
         codes: list[str],
-        interval_s: int = 60,
+        interval_s: int = 30,
         device_code: str | None = None,
         known_device_codes: list[str] | None = None,
         poll_once: bool = False,
@@ -278,12 +311,17 @@ class WarmLinkCloudWorker(QObject):
         login_fallbacks: bool = False,
         initial_token: str | None = None,
         initial_login_at: float | None = None,
+        session: CloudSession | None = None,
+        force_discovery: bool = False,
+        reload_static: bool = False,
+        load_credentials: bool = False,
+        use_saved_token: bool = True,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
         self.password = str(password or "")
-        self.codes = list(codes)
-        self.interval_s = max(60, int(interval_s or 60))
+        self.codes = list(dict.fromkeys(codes))
+        self.interval_s = min(3600, max(10, int(interval_s or 30)))
         self.device_code = str(device_code or "").strip() or None
         self.known_device_codes = list(known_device_codes or [])
         self.poll_once = bool(poll_once)
@@ -292,168 +330,187 @@ class WarmLinkCloudWorker(QObject):
         self.login_fallbacks = bool(login_fallbacks)
         self.initial_token = str(initial_token or "").strip() or None
         self.initial_login_at = float(initial_login_at or 0.0)
+        self.session = copy.deepcopy(session) if session else CloudSession()
+        self.force_discovery = force_discovery
+        self.reload_static = reload_static
+        self.load_credentials = load_credentials
+        self.use_saved_token = use_saved_token
+        self._reload_event = threading.Event()
+        self._wake_event = threading.Event()
         self._stop_event = threading.Event()
-        self._last_good_rows: list[dict[str, Any]] = []
-        self._last_good_by_code: dict[str, dict[str, Any]] = {}
 
     @Slot()
     def stop(self) -> None:
         self._stop_event.set()
+        self._wake_event.set()
+
+    def request_static_reload(self) -> None:
+        self._reload_event.set()
+        self._wake_event.set()
 
     def _sleep_interruptible(self, seconds: float) -> bool:
-        return self._stop_event.wait(max(0.1, float(seconds)))
+        self._wake_event.wait(max(0.1, seconds))
+        self._wake_event.clear()
+        return self._stop_event.is_set()
+
+    def _publish_session(self):
+        self.session_updated.emit(copy.deepcopy(self.session))
+
+    def _discover(self, api):
+        self.progress.emit("DISCOVERING", 0, 0)
+        devices = discover_cloud_devices(api, self.known_device_codes, self.device_code,
+            self.log.emit, self.progress.emit, self._stop_event.is_set)
+        if self._stop_event.is_set():
+            return False
+        if not devices:
+            raise WarmLinkCloudError("Keine Cloud-Geräte gefunden.")
+        selected = select_available_device_code(devices, self.device_code)
+        if not selected:
+            raise WarmLinkCloudError("Ausgewähltes Gerät hat keinen deviceCode")
+        self.device_code = selected
+        self.session = CloudSession(username=self.username, device_code=selected, devices=devices)
+        self._publish_session()
+        self.devices.emit(devices)
+        return True
 
     @Slot()
     def run(self) -> None:
         backoff_s = 5.0
-        api: WarmLinkCloudApi | None = None
+        api = None
         try:
-            api = WarmLinkCloudApi(
-                self.username,
-                self.password,
-                timeout=self.timeout_s,
-                initial_token=self.initial_token,
-                initial_login_at=self.initial_login_at,
-            )
+            self.progress.emit("CONNECTING", 0, 0)
+            self.connection_state.emit("CONNECTING")
+            if self.load_credentials:
+                self.progress.emit("LOADING_TOKEN", 0, 0)
+                self.password, self.initial_token = load_cloud_credentials(
+                    self.username, self.password, self.initial_token,
+                    use_saved_token=self.use_saved_token, log=self.log.emit)
+                self.credentials_loaded.emit(self.username, self.password or "")
+            if self._stop_event.is_set():
+                return
+            api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s,
+                                   initial_token=self.initial_token,
+                                   initial_login_at=self.initial_login_at)
             api.preferred_login_method = self.preferred_login_method
             api.use_login_fallbacks = self.login_fallbacks
-            self.status.emit("verbunden" if api.has_fresh_token() else "Login ...")
-            if not api.has_fresh_token():
-                self.log.emit("WarmLink Cloud: Login wird versucht ...")
-
-            devs = discover_cloud_devices(
-                api, self.known_device_codes, self.device_code, self.log.emit,
-            )
-            if api.reused_initial_token and not api.last_login_method:
-                self.log.emit("WarmLink Cloud: gespeicherten Token verwendet")
+            reuse = (not self.force_discovery and self.session.reusable(
+                self.username, self.device_code, api.token))
+            if not reuse:
+                if not self._discover(api):
+                    return
+            else:
+                self.devices.emit(self.session.devices)
+            needs_discovery = False
+            if self.session.candidates != self.codes:
+                self.session.scanned = False
             if api.last_login_method:
-                self.preferred_login_method = api.last_login_method
                 self.login_method.emit(api.last_login_method)
-                self.log.emit(f"WarmLink Cloud: Login OK via {api.last_login_method}")
-            if api.token:
-                self.token_updated.emit(api.token)
-            self.status.emit("verbunden")
-            if not devs:
-                self.devices.emit([])
-                self.error.emit("Keine Geräte über deviceList, House/Residence oder bekannte Gerätecodes gefunden.")
-                return
-            self.devices.emit(devs)
-
-            self.device_code = select_available_device_code(devs, self.device_code)
-            if not self.device_code:
-                self.error.emit("Ausgewähltes Gerät hat keinen deviceCode")
-                self.finished.emit()
-                return
-
             while not self._stop_event.is_set():
-                started = time.time()
+                if needs_discovery:
+                    if not self._discover(api):
+                        break
+                    needs_discovery = False
+                started = time.monotonic()
+                initial = not self.session.scanned
+                static_reload = self.reload_static or self._reload_event.is_set()
+                self.reload_static = False
+                self._reload_event.clear()
+                requested = self.codes if initial else (
+                    self.session.static_codes if static_reload else self.session.live_codes)
+                phase = "READING_INITIAL" if initial else ("READING_STATIC" if static_reload else "READING_LIVE")
                 try:
-                    response = api.get_data_by_code_batched(self.device_code, self.codes)
-                    batch_failures = response.get("batchFailures", [])
-                    if batch_failures:
-                        failed_codes = sum(len(item.get("codes", [])) for item in batch_failures)
-                        self.log.emit(
-                            f"WarmLink Cloud: {failed_codes} Code(s) vom Gerät/API abgelehnt; "
-                            "übrige Blöcke wurden weiter ausgewertet"
-                        )
+                    if requested:
+                        self.progress.emit(phase, 0, len(requested))
+                        token_before = api.token
+                        response = api.get_data_by_code_batched(self.device_code, requested,
+                            progress=lambda done, total: self.progress.emit(phase, done, total),
+                            cancelled=self._stop_event.is_set)
+                        if self._stop_event.is_set():
+                            break
+                        rows = normalize_data_values(response, requested)
+                        now = time.strftime("%Y-%m-%d %H:%M:%S")
+                        for row in rows:
+                            row.update(lastFetch=now, stale=False)
+                        self.session.merge(rows)
+                        if initial:
+                            self.session.classify(self.codes)
+                            if not self.session.supported_codes:
+                                self.session.scanned = False
+                                self._publish_session()
+                                self.connection_state.emit("ERROR")
+                                self.progress.emit("ERROR", 0, 0)
+                                self.error.emit("Keine unterstützten Werte für das ausgewählte Gerät")
+                                return
+                            self.log.emit(f"WarmLink Cloud: Initialscan {len(self.codes)} Kandidaten, "
+                                f"{len(self.session.supported_codes)} unterstützt: "
+                                f"{len(self.session.live_codes)} live, {len(self.session.static_codes)} statisch, "
+                                f"{len(self.session.other_codes)} weitere")
+                        self.session.validated = True
+                        token_changed = bool(api.token and api.token != token_before)
+                        if token_changed and not initial:
+                            self.session.scanned = False
+                        self._publish_session()
+                        self.data.emit([dict(self.session.rows[row["code"]]) for row in rows])
+                        self.connection_state.emit("CONNECTED" if self.poll_once else "POLLING")
+                        self.status.emit(f"verbunden, letzter Abruf {now}")
+                        self.log.emit(f"WarmLink Cloud: {phase} OK, {len(rows)} Werte")
                     if api.token:
                         self.token_updated.emit(api.token)
-                    rows_raw = normalize_data_values(response, self.codes)
-                    next_poll_codes = supported_codes_for_next_poll(self.codes, rows_raw)
-                    now_txt = time.strftime("%Y-%m-%d %H:%M:%S")
-                    rows: list[dict[str, Any]] = []
-                    empty_current = 0
-                    for row in rows_raw:
-                        code = str(row.get("code", ""))
-                        r = dict(row)
-                        r["lastFetch"] = now_txt
-                        r["stale"] = False
-                        if r.get("supported"):
-                            self._last_good_by_code[code] = dict(r)
-                            rows.append(r)
-                        elif code in self._last_good_by_code:
-                            # Leere/unsupported Cloud-Antworten ueberschreiben den
-                            # letzten gueltigen Wert nicht. Fuer UI/Overlay wird der
-                            # letzte gute Wert veraltet markiert.
-                            cached = dict(self._last_good_by_code[code])
-                            cached["stale"] = True
-                            cached["cached"] = True
-                            cached["currentEmpty"] = True
-                            cached["lastFetch"] = cached.get("lastFetch") or now_txt
-                            rows.append(cached)
-                            empty_current += 1
-                        else:
-                            rows.append(r)
-                            empty_current += 1
-                    self._last_good_rows = rows
-                    supported = sum(1 for r in rows if r.get("supported"))
-                    unsupported = sum(1 for r in rows_raw if not r.get("supported"))
-
-                    # Zusatzendpunkte: Status lesen; Faultdaten nur bei Hinweis auf Fehler.
-                    try:
-                        status_resp = api.get_device_status(self.device_code)
-                        if api.success(status_resp):
-                            self.log.emit("WarmLink Cloud: device/getDeviceStatus OK")
-                            obj = status_resp.get("objectResult")
-                            if isinstance(obj, dict) and (obj.get("isFault") or obj.get("is_fault")):
-                                fault_resp = api.get_fault_data_by_device_code(self.device_code)
-                                self.log.emit("WarmLink Cloud: device/getFaultDataByDeviceCode " + ("OK" if api.success(fault_resp) else "Fehler"))
-                    except Exception as status_exc:
-                        self.log.emit(f"WarmLink Cloud: Status/Fault Zusatzabfrage übersprungen: {status_exc}")
-
-                    self.data.emit(rows)
-                    self.status.emit(f"verbunden, letzter Abruf {now_txt}")
-                    cached_txt = f", {empty_current} leer/unsupported davon Cache genutzt" if empty_current else ""
-                    self.log.emit(f"WarmLink Cloud: Poll OK, {supported} Werte, {unsupported} leer/unsupported{cached_txt}")
-                    if next_poll_codes != self.codes:
-                        removed = len(self.codes) - len(next_poll_codes)
-                        self.codes = next_poll_codes
-                        self.log.emit(
-                            f"WarmLink Cloud: Discovery abgeschlossen; Folge-Polls verwenden "
-                            f"{len(self.codes)} unterstützte Codes ({removed} entfernt)"
-                        )
+                    if api.last_login_method:
+                        self.login_method.emit(api.last_login_method)
+                    # Status is tied only to initial/live reads. Fault history stays on demand.
+                    if not static_reload and not self._stop_event.is_set():
+                        try:
+                            status_token = api.token
+                            api.get_device_status(self.device_code)
+                            if api.token and api.token != status_token:
+                                self.session.scanned = False
+                                self._publish_session()
+                                self.token_updated.emit(api.token)
+                        except Exception as exc:
+                            self.log.emit("WarmLink Cloud: Statusabfrage übersprungen: " + str(exc))
                     backoff_s = 5.0
+                    self.progress.emit("CONNECTED" if self.poll_once else "POLLING", 0, 0)
                     if self.poll_once:
                         break
-                    if not self.codes:
-                        self.error.emit("Discovery lieferte keine unterstützten Codes; Dauer-Poll beendet")
+                    if not self.session.scanned:
+                        continue  # A renewed login invalidates the configuration snapshot.
+                    if self._sleep_interruptible(max(1.0, self.interval_s - (time.monotonic() - started))):
                         break
-                    elapsed = time.time() - started
-                    if self._sleep_interruptible(max(1.0, self.interval_s - elapsed)):
+                except Exception as exc:
+                    if self._stop_event.is_set():
                         break
-                except (WarmLinkAuthError, WarmLinkCloudError, Exception) as exc:
-                    msg = f"WarmLink Cloud: Poll Fehler: {exc}"
+                    if static_reload:
+                        self.reload_static = True
+                    auth_error = isinstance(exc, WarmLinkAuthError)
+                    if auth_error:
+                        self.session.validated = False
+                        self.session.scanned = False
+                        self._publish_session()
+                        self.connection_state.emit("ERROR")
+                    else:
+                        self.connection_state.emit("CONNECTING")
+                    lower = str(exc).lower()
+                    needs_discovery = auth_error or any(marker in lower for marker in ("invalid device", "device not found", "device does not exist", "no permission", "access denied"))
+                    if needs_discovery:
+                        if not auth_error:
+                            self.device_code = None  # An invalid saved selection must not win rediscovery.
+                        self.session.validated = self.session.scanned = False
+                        self._publish_session()
                     self.error.emit(translate_cloud_error_message(str(exc)))
-                    self.status.emit(f"Fehler, Retry in {int(backoff_s)}s")
-                    self.log.emit(msg)
-                    if self._last_good_rows:
-                        stale = []
-                        now_txt = time.strftime("%Y-%m-%d %H:%M:%S")
-                        for row in self._last_good_rows:
-                            r = dict(row)
-                            r["stale"] = True
-                            r["lastFetch"] = r.get("lastFetch") or now_txt
-                            stale.append(r)
+                    self.status.emit(f"Abruf fehlgeschlagen, Retry in {int(backoff_s)}s")
+                    stale = [{**self.session.rows[code], "stale": True} for code in requested
+                             if code in self.session.rows]
+                    if stale:
                         self.data.emit(stale)
-                    if self.poll_once:
+                    if self.poll_once or self._sleep_interruptible(backoff_s):
                         break
-                    if self._sleep_interruptible(backoff_s):
-                        break
-                    backoff_s = min(300.0, backoff_s * 2.0)
+                    backoff_s = min(300.0, backoff_s * 2)
         except Exception as exc:
-            msg = translate_cloud_error_message(str(exc))
-            self.error.emit(msg)
-            self.status.emit("Fehler: " + msg)
-            self.log.emit("WarmLink Cloud: Login/Start Fehler: " + msg)
-            if api is not None and getattr(api, "last_login_attempts", None):
-                attempts = "; ".join(
-                    f"{a.get('attempt')}={a.get('error_code') or a.get('http_status') or a.get('message') or 'fail'}"
-                    for a in api.last_login_attempts
-                )
-                if attempts:
-                    self.log.emit("WarmLink Cloud: Login-Versuche: " + attempts)
-            if not self.login_fallbacks:
-                self.log.emit("WarmLink Cloud: Login-Fallbacks deaktiviert")
+            if not self._stop_event.is_set():
+                self.connection_state.emit("ERROR")
+                self.progress.emit("ERROR", 0, 0)
+                self.error.emit(translate_cloud_error_message(str(exc)))
         finally:
             self.finished.emit()
 
@@ -475,6 +532,7 @@ class WarmLinkCloudCommandWorker(QObject):
         dry_run: bool = True,
         timeout_s: float = 15.0,
         initial_token: str | None = None,
+        load_credentials: bool = False, use_saved_token: bool = True,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -485,11 +543,17 @@ class WarmLinkCloudCommandWorker(QObject):
         self.endpoint = str(endpoint or ENDPOINT_WRITE_MODEL_VALUE).strip()
         self.dry_run = bool(dry_run)
         self.timeout_s = float(timeout_s)
+        self.load_credentials = load_credentials
+        self.use_saved_token = use_saved_token
         self.initial_token = str(initial_token or "").strip() or None
 
     @Slot()
     def run(self) -> None:
         try:
+            if self.load_credentials:
+                self.password, self.initial_token = load_cloud_credentials(
+                    self.username, self.password, self.initial_token,
+                    use_saved_token=self.use_saved_token)
             api = WarmLinkCloudApi(self.username, self.password, timeout=self.timeout_s, initial_token=self.initial_token)
             if self.initial_token:
                 self.log.emit("WarmLink Cloud schreiben: gespeicherten/vorhandenen Token verwendet")

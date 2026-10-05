@@ -116,6 +116,16 @@ class WarmlinkInitReadController:
 
         now = time.monotonic()
         if self.current is not None:
+            scheduler = getattr(owner, "warmlink_read_scheduler", None)
+            if scheduler:
+                addr, qty, label, slave, retry = self.current
+                requests = [item[2] for item in scheduler.queue] + ([scheduler.active] if scheduler.active else [])
+                matching = next((r for r in requests if r.get("addr") == addr and r.get("quantity") == qty and r.get("label") == label), None)
+                if matching:
+                    if matching.get("sent_monotonic") is None:
+                        QTimer.singleShot(250, self.step)
+                        return
+                    self.waiting_since = matching["sent_monotonic"]
             age = now - self.waiting_since
             if age < self.timeout_s:
                 QTimer.singleShot(250, self.step)

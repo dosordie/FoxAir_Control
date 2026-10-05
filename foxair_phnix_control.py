@@ -61,7 +61,8 @@ from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
 )
-from cloud.token_store import get_password, get_token, set_token
+from cloud.token_store import AsyncKeyringStore, get_password, get_token, set_token
+from core.warmlink_request_scheduler import (WarmlinkRequestScheduler, WARMLINK_READ_TIMEOUT_S, WARMLINK_READBACK_DELAY_MS)
 from cloud.register_resolver import resolve_cloud_register
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
@@ -568,6 +569,8 @@ class ReaderWorker(QObject):
     frame_decoded = Signal(object)
     raw_chunk = Signal(bytes)
     tx_chunk = Signal(bytes)
+    read_sent = Signal(int, int, int)
+    read_failed = Signal(int, int, int, str)
     tx_blocked_attempt = Signal(str, int, int, int)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
@@ -807,6 +810,8 @@ class ReaderWorker(QObject):
 
                 if not self.client or not self.client.is_connected():
                     self.error.emit("Nicht verbunden, kann nicht senden.")
+                    if kind == "read":
+                        self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), "Nicht verbunden")
                     continue
                 # Last safety barrier immediately before both TX accounting and send.
                 if self.tx_blocked:
@@ -815,6 +820,8 @@ class ReaderWorker(QObject):
                     continue
                 self.tx_chunk.emit(frame)
                 self.client.send(frame)
+                if kind == "read":
+                    self.read_sent.emit(int(addr), int(value_or_quantity), int(slave_addr))
                 self.last_send_monotonic = time.monotonic()
                 self.last_send_desc = action
                 self.rx_after_last_send = False
@@ -825,6 +832,8 @@ class ReaderWorker(QObject):
                     return
             except Exception as exc:
                 self.error.emit(str(exc))
+                if kind == "read":
+                    self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), str(exc))
 
     def _check_rx_timeout(self):
         if self.transport != "serial":
@@ -1540,12 +1549,13 @@ class RegisterQuickWriteDialog(QDialog):
             self.refresh_from_live()
             self.status_label.setText("Gelesener Rohwert aktualisiert.")
 
-    def read_register(self):
+    def read_register(self, *, readback=False):
         if self.main_window._is_cloud_only_register(self.reg_no):
             return
         try:
             self.status_label.setText("Lese Register ...")
-            self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
+            self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}", priority="readback" if readback else "manual",
+                start_delay_ms=WARMLINK_READBACK_DELAY_MS if readback and self.main_window.current_backend_key() == "warmlink_raw" else 0)
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
@@ -1567,7 +1577,7 @@ class RegisterQuickWriteDialog(QDialog):
             f"(wire 0x{int(wire_addr):04X}) = {int(value) & 0xFFFF} / 0x{int(value) & 0xFFFF:04X}. Lese Wert erneut ..."
         )
         try:
-            self.read_register()
+            self.read_register(readback=True)
         except Exception:
             # ACK ist bereits der Schreiberfolg; ein ausbleibender Readback darf das nicht als Fehler darstellen.
             self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen konnte nicht gestartet werden.")
@@ -4456,6 +4466,7 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
+        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
         self.pending_write_requests: list[dict[str, Any]] = []
         self.device_info_tracker = DeviceInfoTracker()
         self.device_info_dialog: Optional[DeviceInfoDialog] = None
@@ -4633,7 +4644,10 @@ class MainWindow(QMainWindow):
             return
         self.device_info_tracker.start()
         self._log("Sonderfunktion Update Anfrage Cloud: LTE-Modem sendet Geräteinformationen per MQTT an die Cloud.")
-        worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
+        if self.current_backend_key() == "warmlink_raw":
+            self.send_read_request(4, 1, slave_addr=0x63, label="Geräte-Info Cloud-Anfrage", expect_response=False)
+        else:
+            worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
         if self.device_info_dialog is not None:
             self.device_info_dialog.refresh()
 
@@ -4839,6 +4853,7 @@ class MainWindow(QMainWindow):
         apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", "Hauptfenster leeren", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
+        self.set_cloud_ui_state("DISCONNECTED")
         top.addWidget(self.cloud_btn)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
@@ -6248,6 +6263,8 @@ class MainWindow(QMainWindow):
         self.worker.error.connect(self.on_error)
         self.worker.log.connect(self._log)
         self.worker.frame_decoded.connect(self.on_frame_decoded)
+        self.worker.read_sent.connect(self._on_warmlink_read_sent)
+        self.worker.read_failed.connect(self._on_warmlink_read_failed)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
         self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.tx_blocked_attempt.connect(self._on_passive_tx_blocked)
@@ -6319,6 +6336,10 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_disconnected(self):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.cancel()
+            self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
         # Beim Backend "Modbus Display" wird fuer "Alle bekannten Register lesen"
         # absichtlich der robuste DisplayWorker-Pfad benutzt. Dadurch trennt die
         # urspruengliche Hauptverbindung auf Port 2002 (EOF), waehrend der
@@ -6428,6 +6449,9 @@ class MainWindow(QMainWindow):
             controller = getattr(self, "warmlink_init_controller", None)
             if controller is not None and getattr(controller, "active", False): controller.cancel()
             self.pending_read_requests = []
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if scheduler:
+                scheduler.cancel()
             if hasattr(self, "write_send_btn"): self.write_send_btn.setEnabled(False)
             if hasattr(self, "init_read_btn"): self.init_read_btn.setEnabled(False)
             self._log(f"Firmware-Capture: TX-Sperre AKTIV – streng passiv; {dropped} Queue-Einträge verworfen.")
@@ -7272,101 +7296,136 @@ class MainWindow(QMainWindow):
         self.cloud_last_rows = list(cached_rows.values())
         show_cloud_only = True
         changed_regs: list[int] = []
+        new_cloud_row = False
         seen_cloud_codes: set[str] = set()
         seen_registers: set[int] = set()
-        for row in rows:
-            if not isinstance(row, dict) or not row.get("supported"):
+        old_updates = self.register_table.updatesEnabled()
+        old_suppress = getattr(self, "_suppress_name_resize", False)
+        old_count = self.register_table.rowCount()
+        self.register_table.setUpdatesEnabled(False)
+        self._suppress_name_resize = True
+        try:
+            for row in rows:
+                if not isinstance(row, dict) or not row.get("supported"):
+                    continue
+                code = str(row.get("code", "")).strip()
+                if not code or code in seen_cloud_codes:
+                    continue
+                seen_cloud_codes.add(code)
+                hint = cloud_hint(code)
+                reg_no, local_code, validation_error = self._validated_cloud_modbus_register(code, hint)
+                raw_reg_no = cloud_modbus_register(code)
+                if reg_no is None:
+                    try:
+                        stale_reg = int(raw_reg_no) if raw_reg_no is not None else None
+                    except Exception:
+                        stale_reg = None
+                    if stale_reg is not None and stale_reg in self.cloud_overlay_by_reg:
+                        self.cloud_overlay_by_reg.pop(stale_reg, None)
+                        changed_regs.append(stale_reg)
+                    if validation_error == "code_mismatch":
+                        self._log(
+                            f"Cloud mapping skipped: code mismatch cloud={code} "
+                            f"local={local_code or '?'} reg={raw_reg_no}",
+                            level=2,
+                        )
+                    continue
+                if reg_no in seen_registers:
+                    continue
+                seen_registers.add(reg_no)
+                has_local_register = self._has_local_register_entry(reg_no)
+                value = row.get("value", "")
+                translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint, row)
+                info = {
+                    "code": code,
+                    "value": translated.display,
+                    "raw_value": value,
+                    "raw": translated.raw,
+                    "engineering_value": translated.raw,
+                    "metadata": dict(row),
+                    "active_bits": translated.active_bits,
+                    "lastFetch": row.get("lastFetch", ""),
+                    "confidence": code_confidence(code),
+                    "source": "warmlink-cloud",
+                    "dataType": row.get("dataType", ""),
+                }
+                old_info = self.cloud_overlay_by_reg.get(reg_no, {})
+                if old_info == info:
+                    continue
+                self.cloud_overlay_by_reg[reg_no] = info
+                changed_regs.append(reg_no)
+                if reg_no == 2034 and not self._has_local_register_entry(reg_no):
+                    if self.contact_dialog is not None and self.contact_dialog.isVisible():
+                        self.contact_dialog.set_value(int(translated.raw))
+                if reg_no == 2019 and not self._has_local_register_entry(reg_no):
+                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+                        self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
+                if show_cloud_only and not has_local_register and (old_info.get("value") != info["value"] or reg_no not in self.table_rows):
+                    new_cloud_row = new_cloud_row or reg_no not in self.table_rows
+                    reg_info = self.regmap.get(reg_no)
+                    try:
+                        raw_int = int(translated.raw)
+                    except (TypeError, ValueError):
+                        raw_int, _display_text = self._parse_cloud_numeric_value(value)
+                    mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
+                    mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
+                    name = str(hint.get("name") or mapped_name or f"Cloud {code}")
+                    dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
+                    # raw_value remains a legacy numeric carrier for existing
+                    # projections/bit decoders. value_source marks it as Cloud;
+                    # local_raw_value is None, cloud_value retains full precision.
+                    disp = translated.display
+                    try:
+                        signed = s16(raw_int & 0xFFFF)
+                    except Exception:
+                        signed = raw_int
+                    self._upsert_register_row(DecodedRegister(
+                        slave_addr=0xC1,
+                        reg=int(reg_no),
+                        index=0,
+                        frame_type=0xC10D,
+                        raw_value=raw_int & 0xFFFF,
+                        signed_value=signed,
+                        display_value=disp,
+                        name=name,
+                        dtype=dtype,
+                        timestamp=time.time(),
+                        value_source="cloud",
+                        cloud_value=translated.raw,
+                    ), changed=False)
+                for dialog in list(self.register_write_dialogs.values()):
+                    if dialog.reg_no == reg_no:
+                        dialog.update_from_cloud_value()
+            if new_cloud_row:
+                self._apply_cloud_only_visibility()
+            for reg_no in changed_regs:
+                self._refresh_cloud_cells_for_register(reg_no)
+            if changed_regs:
+                if any(reg == 2019 or 2081 <= reg <= 2090 for reg in changed_regs):
+                    self._update_fault_decoder()
+                self.register_table.viewport().update()
+        finally:
+            self._suppress_name_resize = old_suppress
+            self.register_table.setUpdatesEnabled(old_updates)
+        if old_count != self.register_table.rowCount() and not old_suppress:
+            self._resize_name_column()
+
+    def clear_cloud_device_values(self):
+        """Discard values of the previous cloud device, retaining local registers."""
+        self.clear_cloud_overlay()
+        for reg_no in list(self.latest_regs):
+            if not self._is_cloud_only_register(reg_no):
                 continue
-            code = str(row.get("code", "")).strip()
-            if not code or code in seen_cloud_codes:
-                continue
-            seen_cloud_codes.add(code)
-            hint = cloud_hint(code)
-            reg_no, local_code, validation_error = self._validated_cloud_modbus_register(code, hint)
-            raw_reg_no = cloud_modbus_register(code)
-            if reg_no is None:
-                try:
-                    stale_reg = int(raw_reg_no) if raw_reg_no is not None else None
-                except Exception:
-                    stale_reg = None
-                if stale_reg is not None and stale_reg in self.cloud_overlay_by_reg:
-                    self.cloud_overlay_by_reg.pop(stale_reg, None)
-                    changed_regs.append(stale_reg)
-                if validation_error == "code_mismatch":
-                    self._log(
-                        f"Cloud mapping skipped: code mismatch cloud={code} "
-                        f"local={local_code or '?'} reg={raw_reg_no}",
-                        level=2,
-                    )
-                continue
-            if reg_no in seen_registers:
-                continue
-            seen_registers.add(reg_no)
-            has_local_register = self._has_local_register_entry(reg_no)
-            value = row.get("value", "")
-            translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint, row)
-            info = {
-                "code": code,
-                "value": translated.display,
-                "raw_value": value,
-                "raw": translated.raw,
-                "engineering_value": translated.raw,
-                "metadata": dict(row),
-                "active_bits": translated.active_bits,
-                "lastFetch": row.get("lastFetch", ""),
-                "confidence": code_confidence(code),
-                "source": "warmlink-cloud",
-                "dataType": row.get("dataType", ""),
-            }
-            self.cloud_overlay_by_reg[reg_no] = info
-            changed_regs.append(reg_no)
-            if reg_no == 2034 and not self._has_local_register_entry(reg_no):
-                if self.contact_dialog is not None and self.contact_dialog.isVisible():
-                    self.contact_dialog.set_value(int(translated.raw))
-            if reg_no == 2019 and not self._has_local_register_entry(reg_no):
-                if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
-                    self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
-            if show_cloud_only and not has_local_register:
-                reg_info = self.regmap.get(reg_no)
-                try:
-                    raw_int = int(translated.raw)
-                except (TypeError, ValueError):
-                    raw_int, _display_text = self._parse_cloud_numeric_value(value)
-                mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
-                mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
-                name = str(hint.get("name") or mapped_name or f"Cloud {code}")
-                dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
-                # raw_value remains a legacy numeric carrier for existing
-                # projections/bit decoders. value_source marks it as Cloud;
-                # local_raw_value is None, cloud_value retains full precision.
-                disp = translated.display
-                try:
-                    signed = s16(raw_int & 0xFFFF)
-                except Exception:
-                    signed = raw_int
-                self._upsert_register_row(DecodedRegister(
-                    slave_addr=0xC1,
-                    reg=int(reg_no),
-                    index=0,
-                    frame_type=0xC10D,
-                    raw_value=raw_int & 0xFFFF,
-                    signed_value=signed,
-                    display_value=disp,
-                    name=name,
-                    dtype=dtype,
-                    timestamp=time.time(),
-                    value_source="cloud",
-                    cloud_value=translated.raw,
-                ), changed=False)
-            for dialog in list(self.register_write_dialogs.values()):
-                if dialog.reg_no == reg_no:
-                    dialog.update_from_cloud_value()
-        self._apply_cloud_only_visibility()
-        for reg_no in changed_regs:
-            self._refresh_cloud_cells_for_register(reg_no)
-        if changed_regs:
-            self._update_fault_decoder()
-            self.register_table.viewport().update()
+            self.latest_regs.pop(reg_no, None)
+            row = self.table_rows.pop(reg_no, None)
+            if row is not None:
+                self.register_table.removeRow(row)
+                for key in self.table_rows:
+                    if self.table_rows[key] > row:
+                        self.table_rows[key] -= 1
+        for dialog in self.register_write_dialogs.values():
+            dialog.refresh_from_live()
+        self._update_fault_decoder()
 
     def clear_cloud_overlay(self) -> None:
         regs = list(self.cloud_overlay_by_reg.keys())
@@ -7392,7 +7451,8 @@ class MainWindow(QMainWindow):
             if item is None:
                 item = QTableWidgetItem()
                 self.register_table.setItem(row, col, item)
-            item.setText(val)
+            if item.text() != val:
+                item.setText(val)
             if cloud_info:
                 item.setToolTip(f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})")
         self._apply_register_row_visual_state(int(reg_no))
@@ -8214,6 +8274,8 @@ class MainWindow(QMainWindow):
         return False
 
     def _pending_read_timeout_s(self, req: dict[str, Any]) -> float:
+        if req.get("scheduler"):
+            return WARMLINK_READ_TIMEOUT_S
         label = str(req.get("label", ""))
         if label.startswith("manuell") or label.startswith("manuelles Popup"):
             return 5.0
@@ -8230,9 +8292,12 @@ class MainWindow(QMainWindow):
 
     def remove_pending_read_requests_by_label(self, labels: set[str], log_prefix: str = "READ") -> int:
         labels = {str(label) for label in labels}
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.cancel_labels(labels)
         removed = 0
         for req in list(getattr(self, "pending_read_requests", []) or []):
-            if str(req.get("label", "")) not in labels:
+            if str(req.get("label", "")) not in labels or req.get("scheduler"):
                 continue
             try:
                 self.pending_read_requests.remove(req)
@@ -8252,6 +8317,8 @@ class MainWindow(QMainWindow):
     def _check_pending_read_timeouts(self) -> None:
         now = time.time()
         for req in list(getattr(self, "pending_read_requests", []) or []):
+            if req.get("scheduler") and req.get("time") is None:
+                continue
             timeout_s = self._pending_read_timeout_s(req)
             if now - float(req.get("time", now)) < timeout_s:
                 continue
@@ -8259,6 +8326,9 @@ class MainWindow(QMainWindow):
                 self.pending_read_requests.remove(req)
             except ValueError:
                 continue
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if req.get("scheduler") and scheduler:
+                scheduler.complete(req, timeout=True)
             addr = int(req.get("addr", req.get("wire_addr", 0)))
             qty = int(req.get("quantity", 1))
             label = f" ({req.get('label')})" if req.get("label") else ""
@@ -8339,7 +8409,13 @@ class MainWindow(QMainWindow):
         if self.pending_read_requests:
             self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=True)
         self._check_pending_read_timeouts()
-        for req in list(self.pending_read_requests):
+        requests = list(self.pending_read_requests)
+        if self.current_backend_key() == "warmlink_raw" and getattr(self, "warmlink_read_scheduler", None):
+            active = self.warmlink_read_scheduler.matching(int(frame.slave_addr), len(frame.payload))
+            requests = [active] if active is not None else []
+            if active is None:
+                self.warmlink_read_scheduler.unmatched_response()
+        for req in requests:
             if int(req["slave_addr"]) != int(frame.slave_addr):
                 continue
             quantity = int(req["quantity"])
@@ -8398,6 +8474,8 @@ class MainWindow(QMainWindow):
                         )
             self._check_endblock_signature(frame, start_addr)
             self.pending_read_requests.remove(req)
+            if req.get("scheduler"):
+                self.warmlink_read_scheduler.complete(req)
             label = f" ({req.get('label')})" if req.get("label") else ""
             self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register")
             if frame.registers:
@@ -8499,7 +8577,46 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
-    def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+    def _warmlink_queue_log(self, text):
+        self._log(text, level=7)
+
+    def _send_warmlink_read(self, request):
+        worker = self._active_io_worker()
+        if worker is None or self._is_firmware_capture_mode():
+            self.warmlink_read_scheduler.cancel()
+            self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
+            return
+        # Stale legacy pending entries may not suppress or steal a scheduled read.
+        self.pending_read_requests = [r for r in self.pending_read_requests if not (
+            int(r.get("slave_addr", -1)) == request["slave_addr"]
+            and int(r.get("wire_addr", r.get("addr", -1))) == request["wire_addr"]
+            and int(r.get("quantity", -1)) == request["quantity"])]
+        request.update(rx_count_at_send=int(getattr(worker, "total_rx_bytes", 0)),
+                       restbuffer_at_send=bool(getattr(worker, "buf", None)),
+                       restbuffer_len_at_send=len(getattr(worker, "buf", b"")))
+        if request.get("expect_response", True):
+            self.pending_read_requests.append(request)
+        worker.enqueue_read(request["wire_addr"], request["quantity"],
+            slave_addr=request["slave_addr"], post_delay_ms=request.get("delay_ms", 0))
+
+    @Slot(int, int, int)
+    def _on_warmlink_read_sent(self, addr, quantity, slave):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.sent(addr, quantity, slave)
+
+    @Slot(int, int, int, str)
+    def _on_warmlink_read_failed(self, addr, quantity, slave, error):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler and scheduler.active and scheduler.key(scheduler.active) == (slave, addr, quantity):
+            self._warmlink_queue_log("WARMLINK READ send failed: " + error)
+            self._warmlink_read_timeout(scheduler.active)
+
+    def _warmlink_read_timeout(self, request):
+        request["time"] = time.time() - WARMLINK_READ_TIMEOUT_S - 0.01
+        self._check_pending_read_timeouts()
+
+    def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0, *, priority=None, start_delay_ms=0, expect_response=True):
         # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
         # normale FC03-Reads absetzen. Stattdessen den bewährten Reboot-Snapshot
         # anstoßen. Manuelle FC03-Reads bleiben absichtlich direkt möglich, damit
@@ -8516,8 +8633,9 @@ class MainWindow(QMainWindow):
         note_text = f", {note}" if note else ""
         if self.current_backend_key() == "display_modbus" and int(slave_addr) != int(wire_slave):
             note_text += f", Display-Unit aus Einstellungen verwendet: Eingabe 0x{int(slave_addr):02X} -> TX 0x{wire_slave:02X}"
+        action = "READ angefordert" if self.current_backend_key() == "warmlink_raw" else "READ wird GESENDET"
         self._log(
-            f"READ wird GESENDET [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
+            f"{action} [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
             f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
             f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}"
         )
@@ -8525,6 +8643,17 @@ class MainWindow(QMainWindow):
         if io_worker is None:
             self._log("READ nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
+
+        if self.current_backend_key() == "warmlink_raw":
+            if self._is_firmware_capture_mode():
+                self._log("Firmware-Capture aktiv – Senden gesperrt.")
+                return
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if scheduler is None:
+                scheduler = self.warmlink_read_scheduler = WarmlinkRequestScheduler(self,
+                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+            return scheduler.submit({"slave_addr": wire_slave, "addr": addr, "wire_addr": wire_addr,
+                "quantity": quantity, "label": label, "delay_ms": delay_ms, "expect_response": expect_response}, priority, start_delay_ms)
 
         # Wenn der DisplayWorker den Bus übernommen hat, landen die Antworten im
         # DualBusLoggerDialog und nicht mehr im normalen MainWindow-Framepfad.
@@ -8707,9 +8836,40 @@ class MainWindow(QMainWindow):
             self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
 
 
+    def set_cloud_ui_state(self, state, *, device_name=None, last_success_at=None):
+        self.cloud_ui_state = state
+        if device_name is not None:
+            self.cloud_ui_device_name = device_name
+        if last_success_at is not None:
+            self.cloud_last_success_at = last_success_at
+        button = getattr(self, "cloud_btn", None)
+        if button is None:
+            return
+        button.setProperty("cloudState", state)
+        button.setProperty("pollingActive", state == "POLLING")
+        styles = {
+            "DISCONNECTED": "border-left: 4px solid #808080;",
+            "CONNECTING": "border-left: 4px solid #d69b23;",
+            "CONNECTED": "border-left: 4px solid #38965b;",
+            "POLLING": "border-left: 4px solid #38965b; border-bottom: 2px solid #38965b;",
+            "ERROR": "border-left: 4px solid #c84b4b;",
+        }
+        button.setStyleSheet(styles.get(state, styles["DISCONNECTED"]))
+        text = {"DISCONNECTED": "Nicht verbunden", "CONNECTING": "Verbindung wird aufgebaut / erneuert",
+                "CONNECTED": "Verbunden", "POLLING": "Verbunden\nPolling aktiv", "ERROR": "Verbindung unterbrochen"}
+        lines = ["WarmLink Cloud", text.get(state, state)]
+        name = getattr(self, "cloud_ui_device_name", "")
+        if name:
+            lines.append("Gerät: " + name)
+        last = getattr(self, "cloud_last_success_at", None)
+        if last:
+            lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
+        button.setToolTip("\n".join(lines))
+
     def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
         """Record a proven session, independently of whether polling is active."""
         self.cloud_session_authenticated = bool(authenticated)
+        self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
         self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
@@ -8737,7 +8897,7 @@ class MainWindow(QMainWindow):
         if self.cloud_read_thread is not None:
             return "Es läuft bereits ein Cloud-Lesebefehl."
         user, pw, token, _saved_device = self._cloud_write_credentials()
-        if not user or not (pw or token):
+        if not user:
             return "Cloud-Zugang fehlt."
         self.cloud_read_reg_no = int(reg_no)
         self.cloud_read_code = code
@@ -8746,7 +8906,8 @@ class MainWindow(QMainWindow):
         self.cloud_read_thread = QThread(self)
         self.cloud_read_worker = WarmLinkCloudReadWorker(
             username=user, password=pw or "", codes=[code],
-            device_code=self.cloud_session_device_code, initial_token=token,
+            device_code=self.cloud_session_device_code, initial_token=token, load_credentials=True,
+            use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
             preferred_login_method=str(cfg.get("login_method") or "md5"),
             login_fallbacks=bool(cfg.get("login_fallbacks", False)),
         )
@@ -8774,6 +8935,8 @@ class MainWindow(QMainWindow):
 
     def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
         self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
+        if self.warmlink_cloud_dialog is not None:
+            self.warmlink_cloud_dialog._on_data(rows)
         row = next((r for r in rows if r.get("code") == code and r.get("supported")), None)
         error = "Cloud liefert keinen Wert für " + code if row is None else ""
         display = self.cloud_overlay_by_reg.get(self.cloud_read_reg_no, {}).get("value", "kein Wert")
@@ -8793,10 +8956,11 @@ class MainWindow(QMainWindow):
         if dlg is not None and dlg.username_edit.text().strip() == self._cloud_read_username:
             dlg._on_token_updated(token)
         elif self.settings.get("warmlink_cloud", {}).get("save_token", True):
-            try:
-                set_token(self._cloud_read_username, token)
-            except Exception as exc:
-                self._log("WarmLink Cloud: Token konnte nicht gespeichert werden: " + str(exc))
+            store = getattr(self, "_cloud_keyring_store", None)
+            if store is None:
+                store = self._cloud_keyring_store = AsyncKeyringStore(self)
+            username = self._cloud_read_username
+            store.submit(lambda: set_token(username, token))
 
     @Slot(str)
     def _on_cloud_read_login_method(self, method: str) -> None:
@@ -8822,6 +8986,7 @@ class MainWindow(QMainWindow):
         lower = str(text).lower()
         if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
             self.set_cloud_connection_state(False)
+            self.set_cloud_ui_state("ERROR")
 
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
         """Zugangsdaten fuer Cloud-Schreiben aus Dialog/Settings/Keyring holen."""
@@ -8849,28 +9014,8 @@ class MainWindow(QMainWindow):
             return None, None, None, device_code or None
         if not token and getattr(self, "_cloud_read_token_username", "") == user:
             token = getattr(self, "_cloud_read_token", None)
-        if use_token and not token:
-            try:
-                token = get_token(user)
-            except Exception as exc:
-                self._log("WarmLink Cloud: Token konnte nicht aus dem OS-Keyring gelesen werden: " + str(exc))
-                token = None
-        if token:
-            if not pw:
-                try:
-                    pw = get_password(user)
-                except Exception as exc:
-                    self._log("WarmLink Cloud: Passwort konnte nicht für Token-Fallback gelesen werden: " + str(exc))
-                    pw = None
-            return user, pw, token, device_code or None
-        if pw:
-            return user, pw, None, device_code or None
-        try:
-            pw = get_password(user)
-        except Exception as exc:
-            QMessageBox.warning(self, "WarmLink Cloud", f"Passwort konnte nicht aus dem OS-Keyring gelesen werden:\n{exc}")
-            return user, None, None, device_code or None
-        return user, pw, None, device_code or None
+        # OS access happens in the read/write workers; this GUI helper stays fast.
+        return user, pw or "", token, device_code or None
 
     def _ask_cloud_value(self, reg_no: int, cloud_code: str) -> str | None:
         values = cloud_write_values_for_code(cloud_code)
@@ -8929,7 +9074,7 @@ class MainWindow(QMainWindow):
         if value is None:
             return
         user, pw, token, device_code = self._cloud_write_credentials()
-        if not user or not (pw or token):
+        if not user:
             QMessageBox.warning(
                 self,
                 "WarmLink Cloud",
@@ -8959,7 +9104,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Schreibbefehl.")
             return
         user, pw, token, saved_device_code = self._cloud_write_credentials()
-        if not user or not (pw or token):
+        if not user:
             QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Zugang fehlt oder Passwort ist nicht im Keyring gespeichert.")
             return
         dev = str(device_code or saved_device_code or "").strip()
@@ -8974,7 +9119,8 @@ class MainWindow(QMainWindow):
             value=str(value),
             endpoint=ENDPOINT_AUTO_WRITE,
             dry_run=False,
-            initial_token=token,
+            initial_token=token, load_credentials=True,
+            use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
         )
         self.cloud_write_worker.moveToThread(self.cloud_write_thread)
         self.cloud_write_thread.started.connect(self.cloud_write_worker.run)
@@ -8996,6 +9142,11 @@ class MainWindow(QMainWindow):
         payload = data.get("payload")
         readback = data.get("readback") if isinstance(data, dict) else None
         rb_txt = ""
+        if isinstance(readback, dict) and readback.get("supported"):
+            readback = {**readback, "lastFetch": time.strftime("%Y-%m-%d %H:%M:%S"), "stale": False}
+            self.apply_cloud_rows_to_main([readback])
+            if self.warmlink_cloud_dialog is not None:
+                self.warmlink_cloud_dialog._on_data([readback])
         if isinstance(readback, dict):
             rb_val = readback.get("value")
             rb_status = readback.get("status") or ("OK" if readback.get("supported") else "")
@@ -9016,6 +9167,7 @@ class MainWindow(QMainWindow):
         lower = str(text).lower()
         if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
             self.set_cloud_connection_state(False)
+            self.set_cloud_ui_state("ERROR")
         QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + translate_cloud_error_message(str(text)))
 
     def _cloud_write_finished(self):
@@ -10886,6 +11038,14 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        cloud_dialog = self.warmlink_cloud_dialog
+        if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
+            if not getattr(self, "_close_after_cloud_poll", False):
+                self._close_after_cloud_poll = True
+                cloud_dialog.cloud_thread.finished.connect(self.close)
+            cloud_dialog.stop_worker()
+            event.ignore()
+            return
         if self.cloud_read_thread is not None:
             self._close_after_cloud_read = True
             event.ignore()
