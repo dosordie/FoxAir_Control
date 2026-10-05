@@ -28,6 +28,9 @@ from cloud.polling import CloudSession, CloudTimingState
 from cloud.token_store import load_cloud_credentials
 
 
+WARMLINK_APP_HEARTBEAT_SETTLE_S = 1.0
+
+
 def devices_with_known_code_fallback(
     devices: list[dict[str, Any]], device_code: str | None,
 ) -> list[dict[str, Any]]:
@@ -356,6 +359,28 @@ class WarmLinkCloudWorker(QObject):
         self._wake_event.clear()
         return self._stop_event.is_set()
 
+    def _settle_after_heartbeat(self) -> bool:
+        # A static-reload wake must not shorten the DTU/cloud settle time.
+        # Stop uses the same Event as the rest of this worker and wakes immediately.
+        return self._stop_event.wait(WARMLINK_APP_HEARTBEAT_SETTLE_S)
+
+    def _prepare_live_refresh(self, api) -> bool:
+        if self._stop_event.is_set():
+            return False
+        try:
+            response = api.send_app_heartbeat(self.device_code)
+            if api._token_expired(response):
+                raise WarmLinkAuthError(api.message(response) or "WarmLink-Login abgelaufen")
+            if not api.success(response):
+                raise WarmLinkCloudError(api.message(response) or "Cloud lehnt app_heartbeat ab")
+        except WarmLinkAuthError:
+            raise  # Keep the existing auth invalidation/retry path.
+        except Exception as exc:
+            if not self._stop_event.is_set():
+                self.log.emit("WarmLink Cloud: Heartbeat fehlgeschlagen: " + translate_cloud_error_message(str(exc)))
+            return not self._stop_event.is_set()  # Still try the normal live read.
+        return not self._settle_after_heartbeat()
+
     def _publish_session(self):
         self.session_updated.emit(copy.deepcopy(self.session))
 
@@ -459,6 +484,8 @@ class WarmLinkCloudWorker(QObject):
                     if requested:
                         self._emit_progress(phase, 0, len(requested))
                         token_before = api.token
+                        if not initial and not static_reload and not self._prepare_live_refresh(api):
+                            break
                         response = api.get_data_by_code_batched(self.device_code, requested,
                             progress=lambda done, total: self._emit_progress(phase, done, total),
                             cancelled=self._stop_event.is_set)

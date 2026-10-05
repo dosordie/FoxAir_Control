@@ -80,6 +80,60 @@ der Konfigurationsgruppe. `getDeviceStatus` läuft beim Initial-/Livepoll;
 Konfigurationsnachladen ruft weder Status noch House-/Device-Discovery ab.
 Fault-History wird nicht automatisch bei jedem Poll angefordert.
 
+### App-Heartbeat für echte Live-Aktualisierung
+
+Am **05.10.2026** wurde nach dem Reverse Engineering von WarmLink Android
+3.0.5 (`DeviceDetail416Activity`, GL9/Softwarefamilie 644) an einer realen
+FoxAir GL9 experimentell bestätigt:
+
+```text
+app_heartbeat=23205
+→ Mainboard-Traffic
+→ FC16 ab 1191 (63 10 04 A7 …)
+→ vollständiger FC16-Liveblock 2001–2090 (63 10 07 D1 00 5A B4 …)
+```
+
+Der dedizierte API-Aufruf `send_app_heartbeat(device_code)` sendet über die
+bestehende CRM-Verbindung exakt `POST app/device/control` mit:
+
+```json
+{
+  "param": [
+    {
+      "deviceCode": "<deviceCode>",
+      "protocolCode": "app_heartbeat",
+      "value": "23205"
+    }
+  ]
+}
+```
+
+Dieser Payload enthält **kein `appId`** und verwendet nicht den allgemeinen
+Cloud-Schreibpfad. Authentifizierung und Token-Erneuerung laufen unverändert
+über `WarmLinkCloudApi.post()` in derselben API-Instanz.
+
+Ein `READING_LIVE`-Zyklus einer gescannten Session sendet einmal den Heartbeat,
+wartet nach Erfolg `WARMLINK_APP_HEARTBEAT_SETTLE_S = 1.0` Sekunden und liest
+anschließend ausschließlich `session.live_codes`. Das gilt auch für **Jetzt
+abrufen**, wenn die Session bereits gescannt ist. Die Wartezeit läuft im Worker
+und wartet auf dessen Stop-Event; Stop beendet sie sofort. Ein statischer
+Reload-Wake verkürzt diese Settle-Zeit nicht. Fortschritt, Merge, Overlay,
+Historie und der Countdown verwenden weiterhin den bestehenden Pollpfad.
+
+Initialscan, reines Konfigurationsnachladen, Discovery-only, Gerätecode-
+Validierung, API-Debugger und Einzelread-/Schreib-Readback-Worker senden keinen
+automatischen Heartbeat. Die Live-/Static-/Other-Klassifikation bleibt erhalten.
+Ein normaler IoT-/Cloudfehler des Heartbeats wird einmal knapp geloggt; der
+Live-Read läuft ohne Settle-Zeit trotzdem weiter. Authentifizierungsfehler
+verwenden die bestehende Session-Invalidierung und Retry-Behandlung.
+Erfolgreiche Heartbeats erzeugen keine zusätzliche Logzeile pro Zyklus.
+
+Ein vorgelagerter Request `63 03 00 06 00 01 6C 49` ist als Zusammenhang
+wahrscheinlich, wurde beim isolierten Heartbeat-Test aber **nicht direkt
+mitgeschnitten**. Der bestätigte Ablauf oben behauptet diesen Zwischenschritt
+daher nicht als beobachtet. Die Hardwarebeobachtung stammt aus dem gemeldeten
+GL9-Test; die Implementierung wurde hier mit API-/Worker-Mocks geprüft.
+
 ## Session und Bedienung
 
 `MainWindow.cloud_session` hält die Session unabhängig vom Dialog. Ein neu
@@ -265,6 +319,11 @@ tatsächliches Schließen und Neuöffnen des Dialogs, Discovery-only ohne Wert-/
 Statusaufrufe, Device-Merge, fehlende Shared-Felder, Maskierung, Worker-Deadlines,
 statisches Nachladen sowie Countdown ohne zusätzliche API-Aufrufe.
 
+`tests/test_cloud_app_heartbeat.py` prüft den exakten appId-freien Payload,
+POST-/Relogin-Wiederverwendung, Heartbeat→Settle→Live-Read, einen Heartbeat je
+Livezyklus, isolierte andere Worker/Abfragemodi, Fehler-Fallback, Tokenwechsel
+und reaktionsfähigen Stop während der echten Settle-Zeit.
+
 `tests/test_warmlink_request_scheduler.py` verwendet echte FC03-/FC16-Frames,
 den echten `ReaderWorker`-Sendepfad und die normale Hauptfenster-Dekodierung.
 Prüffälle: zwei qty=1-Reads, richtige Adresszuordnung, Readback-Priorität,
@@ -284,10 +343,15 @@ für das neue Live-Update; der größte einzelne neue GUI-Batch lag im Median
 bei **48 ms**. Gemessen wird die Datenansicht, nicht die gesamte Windows-GUI
 oder Cloud-Latenz. Die Zahlen sind keine plattformübergreifende Zeitgarantie.
 
-Ein realer Windows-/Wärmepumpentest steht noch aus. Mock-/Protokolltests
+Ein realer Windows-/Wärmepumpentest dieser Implementierung steht noch aus.
+Die Heartbeat-Hardwarebeobachtung oben stammt aus dem gemeldeten GL9-Test.
+Mock-/Protokolltests
 belegen die Read-/ACK-Zuordnung und Skalierung, nicht die tatsächliche
 Antwortlatenz eines konkreten LTE-Modems.
 
-Abschlussprüfung: `python -m pytest -q` — **412 bestanden**;
+Abschlussprüfung: `python -m pytest -q` — **433 bestanden**;
 `python -m compileall -q .` und `git diff --check` erfolgreich.
+Im ersten Gesamtlauf fiel ein unveränderter FC03-Timertest an seiner
+530-ms-Wartegrenze aus; er bestand isoliert und der zweite vollständige Lauf
+war grün. Scheduler und seine Tests wurden für den Heartbeat nicht geändert.
 Der Metadaten-Audit meldet weiterhin keine belegten Unit-/Range-Konflikte.

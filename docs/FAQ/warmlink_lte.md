@@ -127,6 +127,11 @@ Für den normalen Betrieb ist FoxAir Control aber nicht erforderlich.
 Beim ersten Abruf lädt FoxAir Control die verfügbaren Cloudwerte. Danach
 aktualisiert Polling hauptsächlich Live- und Statuswerte, standardmäßig alle
 30 Sekunden. Das Intervall lässt sich im Cloud-Dialog einstellen.
+Jeder Liveabruf fordert zuvor mit dem WarmLink-App-Heartbeat aktuelle
+Statusdaten an und liest sie nach einer kurzen Wartezeit aus der Cloud.
+Der Mechanismus wurde am 05.10.2026 an einer GL9 experimentell bestätigt.
+Schlägt der Heartbeat vorübergehend fehl, werden die verfügbaren Cloudwerte
+trotzdem gelesen. **Polling stoppen** bricht auch die kurze Wartezeit ab.
 Konfigurationswerte bleiben mit ihrem letzten Abrufzeitpunkt gespeichert.
 Mit **Konfigurationswerte neu laden** können sie bei Bedarf erneut gelesen
 werden. **Geräte neu suchen** aktualisiert ausschließlich die Geräteliste;
