@@ -28,12 +28,25 @@ Wichtige Werte:
 
 Beim Abtauen kann die Pumpe wieder mit hoher bzw. voller Leistung laufen.
 
+## P11
+
+**P11 – Target Temp. Diff. for Pump Speed Control** gibt die gewünschte Wasserspreizung vor.
+
+Die Regelung vergleicht die tatsächliche Spreizung zwischen **Einlass- und Auslasswassertemperatur** mit P11:
+
+- Spreizung zu groß → Pumpendrehzahl erhöhen
+- Spreizung zu klein → Pumpendrehzahl reduzieren
+
+Innerhalb von ungefähr **±1 K** erfolgt keine Delta-T-Korrektur. Ab ungefähr **±3 K** wird stärker korrigiert.
+
+Die automatische Pumpenregelung verwendet dafür direkt die Einlass- und Auslasswassertemperatur. Sie ist damit nach aktuellem Reverse-Engineering-Stand **nicht von der gewählten Haupt-Regeltemperatur** abhängig, z. B. davon, ob die Wärmepumpe nach Auslasstemperatur oder Puffertemperatur regelt.
+
 ## P12
 
 **P12 – Pump Speed Adjust Range for Each Period** beeinflusst, wie stark die Pumpendrehzahl pro Regelschritt verändert wird.
 
 Für die normale Inbetriebnahme sollte dieser Wert zunächst nicht unnötig verändert werden.
-Steht Original auf 2
+Der beobachtete Originalwert ist **2**.
 
 ## Wenn die Pumpe nicht regelt
 
