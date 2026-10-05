@@ -131,10 +131,7 @@ def test_new_worker_has_independent_per_device_value_caches():
     second = warmlink_cloud_worker.WarmLinkCloudWorker(
         "user", "password", ["code"], device_code="B",
     )
-    first._last_good_rows.append({"code": "code", "value": 1})
-    first._last_good_by_code["code"] = {"value": 1}
+    first.session.rows["code"] = {"value": 1}
 
-    assert second._last_good_rows == []
-    assert second._last_good_by_code == {}
-    assert first._last_good_rows is not second._last_good_rows
-    assert first._last_good_by_code is not second._last_good_by_code
+    assert second.session.rows == {}
+    assert first.session.rows is not second.session.rows

@@ -434,6 +434,7 @@ class WarmLinkCloudApi:
 
     def get_data_by_code_batched(
         self, device_code: str, codes: list[str], batch_size: int = 50,
+        *, progress=None, cancelled=None,
     ) -> dict[str, Any]:
         """Read a large discovery catalog without one bad batch losing all data.
 
@@ -466,7 +467,12 @@ class WarmLinkCloudApi:
                 return True
             raise WarmLinkCloudError(self.message(response) or "WarmLink API-Fehler beim Code-Abruf")
 
+        completed = 0
+
         def read_batch(batch: list[str]) -> None:
+            nonlocal completed
+            if cancelled and cancelled():
+                raise WarmLinkCloudError("Cloud-Abfrage gestoppt")
             """Bisect failed groups so one unsupported candidate stays local."""
             # Transport/authentication failures must reach the worker's normal
             # retry path. Bisecting those would turn one outage into hundreds
@@ -474,6 +480,9 @@ class WarmLinkCloudApi:
             response = self.get_data_by_code(device_code, batch)
             if self.success(response):
                 items.extend(normalize_data_values(response, batch))
+                completed += len(batch)
+                if progress:
+                    progress(completed, len(requested))
                 return
             code_related_failure(response)
             message = self.message(response)
@@ -484,6 +493,9 @@ class WarmLinkCloudApi:
                 return
             failures.append({"codes": batch, "message": message})
             items.extend(normalize_data_values({}, batch))
+            completed += len(batch)
+            if progress:
+                progress(completed, len(requested))
 
         for offset in range(0, len(requested), size):
             batch = requested[offset:offset + size]

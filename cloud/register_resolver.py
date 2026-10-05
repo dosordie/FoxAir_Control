@@ -46,6 +46,19 @@ def current_register_definitions() -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+@lru_cache(maxsize=1)
+def _current_register_code_index():
+    index = {}
+    for reg_text, definition in current_register_definitions().items():
+        code = register_code_from_definition(definition).upper()
+        if code:
+            try:
+                index.setdefault(code, []).append(int(reg_text))
+            except (TypeError, ValueError):
+                pass
+    return index
+
+
 def resolve_cloud_register(
     cloud_code: str,
     hint: Mapping[str, Any],
@@ -62,14 +75,17 @@ def resolve_cloud_register(
     definitions = register_defs if register_defs is not None else current_register_definitions()
     local_code = str(hint.get("local_code") or "").strip().upper()
     if local_code:
-        matches: list[int] = []
-        for reg_text, definition in definitions.items():
-            if register_code_from_definition(definition).upper() != local_code:
-                continue
-            try:
-                matches.append(int(reg_text))
-            except (TypeError, ValueError):
-                continue
+        if register_defs is None:
+            matches = _current_register_code_index().get(local_code, [])
+        else:
+            matches = []
+            for reg_text, definition in definitions.items():
+                if register_code_from_definition(definition).upper() != local_code:
+                    continue
+                try:
+                    matches.append(int(reg_text))
+                except (TypeError, ValueError):
+                    continue
         if len(matches) == 1:
             return matches[0]
     alias = CONFIRMED_REGISTER_ALIASES.get(code)

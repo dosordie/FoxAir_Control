@@ -75,6 +75,10 @@ class FakeWorker:
         self.login_method = FakeSignal()
         self.token_updated = FakeSignal()
         self.finished = FakeSignal()
+        self.progress = FakeSignal()
+        self.session_updated = FakeSignal()
+        self.credentials_loaded = FakeSignal()
+        self.connection_state = FakeSignal()
         self.__class__.created.append(self)
 
     def moveToThread(self, thread):

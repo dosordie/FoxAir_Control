@@ -125,6 +125,7 @@ def test_cloud_connection_state_refreshes_open_quickwrite_dialogs():
     window = SimpleNamespace(
         cloud_session_authenticated=False,
         cloud_session_device_code="",
+        set_cloud_ui_state=lambda state: None,
         register_write_dialogs={(0x63, 1011): dialog},
     )
 

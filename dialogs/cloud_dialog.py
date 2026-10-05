@@ -7,20 +7,21 @@ import time
 import urllib.parse
 from typing import Any, Optional
 
-from PySide6.QtCore import QThread, QTimer
+from PySide6.QtCore import QThread, QTimer, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
     QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView, QInputDialog,
     QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTableWidget,
-    QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
+    QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
 )
 
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, translate_cloud_error_message,
 )
 from cloud.metadata import resolve_cloud_range
+from cloud.polling import CloudSession
 from cloud.token_store import (
-    KEYRING_SERVICE, delete_password, delete_token, get_password, get_token,
+    AsyncKeyringStore, KEYRING_SERVICE, delete_password, delete_token,
     set_password, set_token,
 )
 from cloud.warmlink_codes import (
@@ -81,6 +82,26 @@ class WarmLinkCloudDialog(QDialog):
         self._cloud_token_login_at: float = 0.0
         self._cloud_token_username: str = ""
         self._loading_settings = False
+        self._session_password = None
+        self.session = CloudSession()
+        self._keyring = AsyncKeyringStore(self)
+        self._cached_password = ""
+        self._credentials_username = ""
+        self._compare_dirty = self._finder_dirty = True
+        self._data_codes = []
+        self._rendered_data = {}
+        self._mapping_cache = {}
+        self._pending_overlay = {}
+        self._overlay_structure_changed = False
+        self._overlay_timer = QTimer(self)
+        self._overlay_timer.setSingleShot(True)
+        self._overlay_timer.timeout.connect(self._flush_overlay_chunk)
+        self._pending_data_rows = []
+        self._data_render_timer = QTimer(self)
+        self._data_render_timer.setSingleShot(True)
+        self._data_render_timer.timeout.connect(self._render_data_chunk)
+        self._data_resize_pending = False
+        self._stopping = False
         self._build_ui()
         self._load_settings()
 
@@ -109,10 +130,10 @@ class WarmLinkCloudDialog(QDialog):
         self.status_label = QLabel("nicht verbunden")
         self.status_label.setWordWrap(True)
         self.interval_spin = QSpinBox()
-        self.interval_spin.setRange(60, 86400)
-        self.interval_spin.setValue(60)
+        self.interval_spin.setRange(10, 3600)
+        self.interval_spin.setValue(30)
         self.interval_spin.setSuffix(" s")
-        self.interval_spin.setToolTip("Default 60s. Kürzere Intervalle sind bewusst gesperrt, um API-Limits zu schonen.")
+        self.interval_spin.setToolTip("Livewerte alle 30 s; einstellbar von 10 bis 3600 s. Konfiguration wird separat geladen.")
         self.ids_cb = QCheckBox("IDs anzeigen")
         self.ids_cb.setToolTip("Sensible Felder wie deviceCode, deviceId, SN und ICCID im UI anzeigen.")
         self.overlay_cb = QCheckBox("Cloud im Hauptfenster anzeigen")
@@ -121,13 +142,19 @@ class WarmLinkCloudDialog(QDialog):
         self.auto_start_cb.setToolTip("Startet Cloud-Polling im Hintergrund nach Programmstart, wenn Zugangsdaten gespeichert sind.")
         self.login_fallbacks_cb = QCheckBox("Login-Fallbacks erlauben")
         self.login_fallbacks_cb.setToolTip("Wenn MD5 bzw. die gespeicherte Methode fehlschlägt, weitere Hash-/App-Login-Varianten testen.")
-        self.save_token_cb = QCheckBox("Cloud-Token verwenden/speichern")
-        self.save_token_cb.setToolTip("Verwendet gespeicherte Cloud-Token beim Start und speichert neue Token sicher im OS-Keyring, nicht in settings.json. Standard: aktiv.")
+        self.save_token_cb = QCheckBox("Cloud-Token im Keyring speichern")
+        self.save_token_cb.setToolTip("Lädt und speichert Token im OS-Keyring. Der Token der aktuellen Sitzung bleibt auch ohne Speicherung im Arbeitsspeicher verfügbar.")
         self.test_btn = QPushButton("Login testen")
         self.save_btn = QPushButton("Zugang speichern")
         self.delete_btn = QPushButton("Zugang löschen")
         self.poll_once_btn = QPushButton("Jetzt abrufen")
         self.start_poll_btn = QPushButton("Polling starten")
+        self.reload_static_btn = QPushButton("Konfigurationswerte neu laden")
+        self.rediscover_btn = QPushButton("Geräte neu suchen")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("Bereit")
         self.stop_poll_btn = QPushButton("Polling stoppen")
         self.stop_poll_btn.setEnabled(False)
         self.device_combo = QComboBox()
@@ -147,6 +174,7 @@ class WarmLinkCloudDialog(QDialog):
         device_buttons = QHBoxLayout()
         device_buttons.addWidget(self.add_device_btn)
         device_buttons.addWidget(self.remove_device_btn)
+        device_buttons.addWidget(self.rediscover_btn)
         device_buttons.addStretch(1)
         login.addLayout(device_buttons, 3, 3)
         login.addWidget(QLabel("Status:"), 3, 0)
@@ -156,6 +184,10 @@ class WarmLinkCloudDialog(QDialog):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
         login.addLayout(btn_row, 4, 0, 1, 4)
+        progress_row = QHBoxLayout()
+        progress_row.addWidget(self.progress_bar, 1)
+        progress_row.addWidget(self.reload_static_btn)
+        login.addLayout(progress_row, 5, 0, 1, 4)
 
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs, 1)
@@ -196,7 +228,7 @@ class WarmLinkCloudDialog(QDialog):
         data_layout.addLayout(filter_row)
         self.data_table = QTableWidget(0, len(self.DATA_COLUMNS))
         self.data_table.setHorizontalHeaderLabels(self.DATA_COLUMNS)
-        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.data_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.data_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         data_layout.addWidget(self.data_table, 1)
@@ -208,6 +240,9 @@ class WarmLinkCloudDialog(QDialog):
         compare_hint.setWordWrap(True)
         compare_layout.addWidget(compare_hint)
         compare_btn_row = QHBoxLayout()
+        self.compare_refresh_btn = QPushButton("Vergleich aktualisieren")
+        self.compare_refresh_btn.clicked.connect(self.refresh_compare)
+        compare_btn_row.addWidget(self.compare_refresh_btn)
         self.export_mapping_candidates_btn = QPushButton("Mapping-Kandidaten exportieren")
         self.export_mapping_candidates_btn.setToolTip("Exportiert alle aktuellen Cloud-Daten mit bekannten lokalen Mappings und optionalen Wertefinder-Kandidaten als CSV.")
         compare_btn_row.addStretch(1)
@@ -215,7 +250,7 @@ class WarmLinkCloudDialog(QDialog):
         compare_layout.addLayout(compare_btn_row)
         self.compare_table = QTableWidget(0, len(self.COMPARE_COLUMNS))
         self.compare_table.setHorizontalHeaderLabels(self.COMPARE_COLUMNS)
-        self.compare_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.compare_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.compare_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.compare_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         compare_layout.addWidget(self.compare_table, 1)
@@ -344,6 +379,9 @@ class WarmLinkCloudDialog(QDialog):
         self.poll_once_btn.clicked.connect(lambda: self._start_worker(poll_once=True, just_login=False))
         self.start_poll_btn.clicked.connect(lambda: self._start_worker(poll_once=False, just_login=False))
         self.stop_poll_btn.clicked.connect(self.stop_worker)
+        self.reload_static_btn.clicked.connect(self.reload_static_values)
+        self.rediscover_btn.clicked.connect(lambda: self._start_worker(True, force_discovery=True))
+        self.tabs.currentChanged.connect(self._tab_changed)
         self.save_btn.clicked.connect(self.save_credentials)
         self.delete_btn.clicked.connect(self.delete_credentials)
         self.ids_cb.toggled.connect(lambda _=None: self.refresh_devices())
@@ -372,15 +410,9 @@ class WarmLinkCloudDialog(QDialog):
         self._refresh_write_values()
 
     def _initial_token_for_user(self, user: str) -> str | None:
-        if not bool(self._cloud_settings().get("save_token", True)):
-            return None
         if self._cloud_token_username == user and self._cloud_token:
             return self._cloud_token
-        try:
-            return get_token(user)
-        except Exception as exc:
-            self.main_window._log("WarmLink Cloud: Token-Keyring nicht verfügbar: " + str(exc))
-            return None
+        return None
 
     def _load_settings(self):
         cfg = self._cloud_settings()
@@ -397,7 +429,7 @@ class WarmLinkCloudDialog(QDialog):
         self._loading_settings = True
         try:
             self.username_edit.setText(str(cfg.get("username", "")))
-            self.interval_spin.setValue(max(60, int(cfg.get("poll_interval_s", 60) or 60)))
+            self.interval_spin.setValue(min(3600, max(10, int(cfg.get("poll_interval_s", 30) or 30))))
             self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
             self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
             self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
@@ -440,10 +472,7 @@ class WarmLinkCloudDialog(QDialog):
             return
         user = self.username_edit.text().strip()
         if user:
-            try:
-                delete_token(user)
-            except Exception as exc:
-                self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
+            self._keyring.submit(lambda: delete_token(user))
         self._cloud_token = None
         self._cloud_token_login_at = 0.0
         self._cloud_token_username = ""
@@ -462,17 +491,14 @@ class WarmLinkCloudDialog(QDialog):
         return out or list(WARMLINK_644_DISCOVERY_CODES)
 
     def _password(self) -> str | None:
+        # Only in-memory data here. Workers load an absent password from the OS.
         user = self.username_edit.text().strip()
-        pw = self.password_edit.text()
-        if pw:
-            return pw
-        if not user:
-            return None
-        try:
-            return get_password(user)
-        except Exception as exc:
-            QMessageBox.warning(self, "Keyring fehlt", str(exc))
-            return None
+        return self.password_edit.text() or (self._cached_password if self._credentials_username == user else "")
+
+    @Slot(str, str)
+    def _on_credentials_loaded(self, user, password):
+        self._credentials_username, self._cached_password = user, password
+
 
     def save_credentials(self):
         user = self.username_edit.text().strip()
@@ -481,26 +507,29 @@ class WarmLinkCloudDialog(QDialog):
             QMessageBox.warning(self, "WarmLink Cloud", "Benutzername fehlt.")
             return
         if pw:
-            try:
-                set_password(user, pw)
-            except Exception as exc:
-                QMessageBox.warning(self, "Keyring fehlt", str(exc))
-                return
-            self.password_edit.clear()
-            self.password_edit.setPlaceholderText("Passwort im OS-Keyring gespeichert")
+            self._cached_password, self._credentials_username = pw, user
+            self.status_label.setText("Zugang wird gespeichert ...")
+            def saved(_value, error):
+                if error:
+                    self.status_label.setText("Keyring: Speichern fehlgeschlagen")
+                    return
+                if self.username_edit.text().strip() == user and self.password_edit.text() == pw:
+                    self.password_edit.clear()
+                self.status_label.setText("Zugang im OS-Keyring gespeichert.")
+                self.main_window._log("WarmLink Cloud: Zugang im OS-Keyring gespeichert.")
+            self._keyring.submit(lambda: set_password(user, pw), saved)
         self._save_settings()
-        self.status_label.setText(f"Zugang gespeichert. Passwort liegt im OS-Keyring-Service {KEYRING_SERVICE}.")
-        self.main_window._log("WarmLink Cloud: Zugang gespeichert (E-Mail in Settings, Passwort im OS-Keyring).")
+        if not pw:
+            self.status_label.setText("Einstellungen gespeichert.")
 
     def delete_credentials(self):
         user = self.username_edit.text().strip()
         if user:
-            try:
-                delete_password(user)
-                delete_token(user)
-            except Exception as exc:
-                QMessageBox.warning(self, "Keyring", str(exc))
-                return
+            self._keyring.submit(lambda: (delete_password(user), delete_token(user)))
+        self._cached_password = ""
+        self._credentials_username = ""
+        self.session = CloudSession()
+        self.stop_worker()
         cfg = self._cloud_settings()
         for key in ("username", "selected_device_code"):
             cfg.pop(key, None)
@@ -518,6 +547,18 @@ class WarmLinkCloudDialog(QDialog):
         return str(data).strip() if data else None
 
     def _device_selection_changed(self, _index: int | None = None) -> None:
+        if not self._loading_settings and self.session.device_code and self.session.device_code != self._selected_device_code():
+            self.session = CloudSession()
+            self.data_rows = []
+            self._pending_overlay.clear()
+            self._pending_data_rows.clear()
+            self._data_render_timer.stop()
+            self._compare_dirty = self._finder_dirty = True
+            self.refresh_data()
+            if hasattr(self.main_window, "clear_cloud_device_values"):
+                self.main_window.clear_cloud_device_values()
+            elif hasattr(self.main_window, "clear_cloud_overlay"):
+                self.main_window.clear_cloud_overlay()
         self._update_device_controls()
         self._save_settings()
         if getattr(self.main_window, "cloud_session_authenticated", False):
@@ -535,8 +576,14 @@ class WarmLinkCloudDialog(QDialog):
             in normalize_known_device_codes(self._cloud_settings().get("known_device_codes", []))
         )
         self.remove_device_btn.setEnabled(not running and selected_is_known)
+        self.rediscover_btn.setEnabled(not running)
+        self.username_edit.setEnabled(not running)
+        self.password_edit.setEnabled(not running)
+        self.delete_btn.setEnabled(not running)
+        self.interval_spin.setEnabled(not running)
+        self.reload_static_btn.setEnabled(bool(self.session.scanned and self.session.static_codes) and not self._stopping)
 
-    def _start_worker(self, poll_once: bool, just_login: bool = False):
+    def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False):
         if self.cloud_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Cloud-Worker läuft bereits.")
             return
@@ -545,23 +592,32 @@ class WarmLinkCloudDialog(QDialog):
             return
         user = self.username_edit.text().strip()
         pw = self._password()
-        if not user or not pw:
-            QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort fehlt. Passwort ggf. zuerst speichern oder eingeben.")
+        if not user:
+            QMessageBox.warning(self, "WarmLink Cloud", "Benutzername fehlt.")
             return
         self._save_settings()
         cfg = self._cloud_settings()
-        initial_token = None
-        initial_login_at = 0.0
-        if bool(cfg.get("save_token", True)):
-            if self._cloud_token_username == user and self._cloud_token:
-                initial_token = self._cloud_token
-                initial_login_at = self._cloud_token_login_at
-            else:
-                try:
-                    initial_token = get_token(user)
-                    initial_login_at = time.time() if initial_token else 0.0
-                except Exception as exc:
-                    self.main_window._log("WarmLink Cloud: Token-Keyring nicht verfügbar: " + str(exc))
+        credentials_changed = bool(self.password_edit.text() and self.password_edit.text() != self._session_password)
+        if credentials_changed:
+            self.session = CloudSession()
+        self._session_password = self.password_edit.text() or self._session_password
+        initial_token = None if credentials_changed else self._initial_token_for_user(user)
+        initial_login_at = self._cloud_token_login_at if initial_token else 0.0
+        if self.session.username != user or self.session.device_code != self._selected_device_code() or force_discovery:
+            self.session = CloudSession()
+            self.data_rows = []
+            self._pending_overlay.clear()
+            self._pending_data_rows.clear()
+            self._data_render_timer.stop()
+            self._compare_dirty = self._finder_dirty = True
+            self.refresh_data()
+            if hasattr(self.main_window, "clear_cloud_device_values"):
+                self.main_window.clear_cloud_device_values()
+            elif hasattr(self.main_window, "clear_cloud_overlay"):
+                self.main_window.clear_cloud_overlay()
+        self._stopping = False
+        self._on_progress("CONNECTING", 0, 0)
+        self._on_connection_state("CONNECTING")
         preferred_login_method = str(cfg.get("login_method") or "md5").strip() or "md5"
         login_fallbacks = bool(cfg.get("login_fallbacks", False))
         self.status_label.setText("starte ...")
@@ -584,6 +640,8 @@ class WarmLinkCloudDialog(QDialog):
             login_fallbacks=login_fallbacks,
             initial_token=initial_token,
             initial_login_at=initial_login_at,
+            session=self.session, force_discovery=force_discovery, reload_static=reload_static,
+            load_credentials=True, use_saved_token=bool(cfg.get("save_token", True)) and not credentials_changed,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
         self.cloud_thread.started.connect(self.cloud_worker.run)
@@ -594,6 +652,10 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.error.connect(self._on_worker_error)
         self.cloud_worker.login_method.connect(self._on_login_method)
         self.cloud_worker.token_updated.connect(self._on_token_updated)
+        self.cloud_worker.progress.connect(self._on_progress)
+        self.cloud_worker.session_updated.connect(self._on_session_updated)
+        self.cloud_worker.credentials_loaded.connect(self._on_credentials_loaded)
+        self.cloud_worker.connection_state.connect(self._on_connection_state)
         self.cloud_worker.finished.connect(self.cloud_thread.quit)
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
@@ -603,10 +665,13 @@ class WarmLinkCloudDialog(QDialog):
 
     def stop_worker(self):
         if self.cloud_worker is not None:
+            self._stopping = True
+            self._update_device_controls()
             self.cloud_worker.stop()
             self.status_label.setText("Stop angefordert ...")
             self.main_window._log("WarmLink Cloud: Polling gestoppt")
 
+    @Slot()
     def _worker_finished(self):
         if self.cloud_thread is not None:
             self.cloud_thread.deleteLater()
@@ -616,27 +681,40 @@ class WarmLinkCloudDialog(QDialog):
         self.poll_once_btn.setEnabled(True)
         self.start_poll_btn.setEnabled(True)
         self.stop_poll_btn.setEnabled(False)
+        was_stopping = self._stopping
+        self._stopping = False
         self._update_device_controls()
-        if "Stop" in self.status_label.text():
+        if getattr(self.main_window, "cloud_session_authenticated", False):
+            self._on_connection_state("CONNECTED")
+        elif self._cloud_token is None and getattr(self.main_window, "cloud_ui_state", "") != "ERROR":
+            self._on_connection_state("DISCONNECTED")
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(1)
+        if was_stopping:
             self.status_label.setText("gestoppt")
+            self.progress_bar.setFormat("Polling gestoppt")
+        elif getattr(self.main_window, "cloud_ui_state", "") == "CONNECTED":
+            self.progress_bar.setFormat("Cloud verbunden")
 
+    @Slot(str)
     def _on_worker_log(self, text: str):
         self.main_window._log(str(text))
 
+    @Slot(str)
     def _on_token_updated(self, token: str):
         token = str(token or "").strip()
         if not token:
             return
         user = self.username_edit.text().strip()
+        if self._cloud_token_username == user and self._cloud_token == token:
+            return
         self._cloud_token = token
         self._cloud_token_login_at = time.time()
         self._cloud_token_username = user
         if self.save_token_cb.isChecked():
-            try:
-                set_token(user, token)
-            except Exception as exc:
-                self.main_window._log("WarmLink Cloud: Token konnte nicht gespeichert werden: " + str(exc))
+            self._keyring.submit(lambda: set_token(user, token))
 
+    @Slot(str)
     def _on_login_method(self, method: str):
         method = str(method or "").strip()
         if not method:
@@ -646,9 +724,11 @@ class WarmLinkCloudDialog(QDialog):
             cfg["login_method"] = method
             self.main_window._save_settings(sync_main_fields=False)
 
+    @Slot(str)
     def _on_worker_status(self, text: str):
         self.status_label.setText(str(text))
 
+    @Slot(str)
     def _on_worker_error(self, text: str):
         text = translate_cloud_error_message(str(text))
         self.status_label.setText("Fehler: " + text)
@@ -656,31 +736,119 @@ class WarmLinkCloudDialog(QDialog):
         lower = text.lower()
         if "401" in lower or "-100" in lower or "please login again" in lower or "login" in lower:
             self.main_window.set_cloud_connection_state(False)
+            self._on_connection_state("ERROR")
             user = self.username_edit.text().strip()
             self._cloud_token = None
             self._cloud_token_login_at = 0.0
             self._cloud_token_username = ""
             if user:
-                try:
-                    delete_token(user)
-                except Exception as exc:
-                    self.main_window._log("WarmLink Cloud: Token konnte nicht gelöscht werden: " + str(exc))
+                self._keyring.submit(lambda: delete_token(user))
 
+    @Slot(list)
     def _on_devices(self, devices: list):
         self.devices = merge_discovered_and_known_devices(
             [d for d in devices if isinstance(d, dict)],
             self._cloud_settings().get("known_device_codes", []),
         )
         self.refresh_devices()
+        selected = self.device_combo.findData(self.session.device_code)
+        if selected >= 0:
+            blocked = self.device_combo.blockSignals(True)
+            self.device_combo.setCurrentIndex(selected)
+            self.device_combo.blockSignals(blocked)
         self._save_settings()
         self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
+    @Slot(object)
+    def _on_session_updated(self, session):
+        if self.session.scanned and not session.scanned and not session.validated:
+            self.data_rows = []
+            self._pending_overlay.clear()
+            self._pending_data_rows.clear()
+            self._data_render_timer.stop()
+            self._compare_dirty = self._finder_dirty = True
+            if hasattr(self.main_window, "clear_cloud_device_values"):
+                self.main_window.clear_cloud_device_values()
+            elif hasattr(self.main_window, "clear_cloud_overlay"):
+                self.main_window.clear_cloud_overlay()
+        # External single reads may have arrived while a live HTTP batch ran.
+        for row in self.data_rows:
+            code = str(row.get("code"))
+            if str(row.get("lastFetch") or "") >= str(session.rows.get(code, {}).get("lastFetch") or ""):
+                session.merge([row])
+        self.session = session
+        self._update_device_controls()
+
+    @Slot(str)
+    def _on_connection_state(self, state):
+        if self._stopping and state == "POLLING":
+            state = "CONNECTED"
+        device = next((d for d in self.devices if d.get("deviceCode") == self._selected_device_code()), {})
+        name = str(device.get("deviceNickName") or device.get("model") or "")
+        setter = getattr(self.main_window, "set_cloud_ui_state", None)
+        if setter:
+            if state == "ERROR":
+                self.main_window.set_cloud_connection_state(False)
+            elif state in ("CONNECTED", "POLLING"):
+                self.main_window.set_cloud_connection_state(True, self._selected_device_code())
+            setter(state, device_name=name)
+
+    @Slot(str, int, int)
+    def _on_progress(self, phase, done, total):
+        labels = {"CONNECTING": "Cloud-Verbindung wird aufgebaut ...", "LOADING_TOKEN": "Token wird geladen ...",
+                  "DISCOVERING": "Geräte werden gesucht ...", "READING_INITIAL": "Cloudwerte werden gelesen",
+                  "READING_STATIC": "Konfigurationswerte werden gelesen", "READING_LIVE": "Livewerte werden gelesen",
+                  "POLLING": "Polling aktiv", "CONNECTED": "Cloud verbunden", "ERROR": "Cloud-Verbindungsfehler"}
+        self.progress_bar.setRange(0, total if total else (0 if phase in ("CONNECTING", "LOADING_TOKEN", "DISCOVERING") else 1))
+        self.progress_bar.setValue(done if total else 1)
+        count = f" · {len(self.session.supported_codes)} unterstützte Werte" if phase in ("CONNECTED", "POLLING") and self.session.scanned else ""
+        self.progress_bar.setFormat(labels.get(phase, phase) + (f" {done}/{total}" if total else count))
+        if not self._stopping:
+            self.status_label.setText(labels.get(phase, phase))
+
+    def reload_static_values(self):
+        if self.cloud_worker:
+            self.cloud_worker.request_static_reload()
+        else:
+            self._start_worker(True, reload_static=True)
+
+    @Slot(list)
     def _on_data(self, rows: list):
-        self.data_rows = [r for r in rows if isinstance(r, dict)]
-        self.refresh_data()
-        self.refresh_compare()
-        self.refresh_finder_codes()
-        self._apply_overlay_to_main()
+        started = time.perf_counter()
+        existing = {str(row.get("code")): row for row in self.data_rows}
+        delta = []
+        for row in rows:
+            if isinstance(row, dict) and row.get("code"):
+                code = str(row["code"])
+                merged = {**existing.get(code, {}), **row}
+                if existing.get(code) != merged:
+                    delta.append(merged)
+                existing[code] = merged
+        self.data_rows = list(existing.values())
+        self.session.merge(rows)
+        self._compare_dirty = self._finder_dirty = True
+        self._tab_changed(self.tabs.currentIndex())
+        self._apply_overlay_to_main(delta)
+        good = [r for r in rows if r.get("supported") and not r.get("stale")]
+        if good:
+            setter = getattr(self.main_window, "set_cloud_ui_state", None)
+            if setter:
+                setter(getattr(self.main_window, "cloud_ui_state", "CONNECTED"), last_success_at=time.time())
+        self.main_window._log(f"WarmLink Cloud: GUI-Teilupdate {len(delta)} Werte in {(time.perf_counter()-started)*1000:.1f} ms")
+
+    def _tab_changed(self, index):
+        if not self.isVisible():
+            return
+        if index == 1:
+            self.refresh_data()
+        elif index == 2 and self._compare_dirty:
+            self.refresh_compare()
+        elif index == 3 and self._finder_dirty:
+            self.refresh_finder_codes()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._tab_changed(self.tabs.currentIndex())
 
     def _mask(self, value: Any) -> str:
         return mask_cloud_value(value, show_ids=self.ids_cb.isChecked())
@@ -755,7 +923,7 @@ class WarmLinkCloudDialog(QDialog):
             return
         user = self.username_edit.text().strip()
         password = self._password()
-        if not user or not password:
+        if not user:
             QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort fehlt.")
             return
         cfg = self._cloud_settings()
@@ -764,7 +932,8 @@ class WarmLinkCloudDialog(QDialog):
         self.validation_thread = QThread(self)
         self.validation_worker = WarmLinkKnownDeviceValidationWorker(
             user, password, code,
-            initial_token=self._initial_token_for_user(user),
+            initial_token=self._initial_token_for_user(user), load_credentials=True,
+            use_saved_token=bool(cfg.get("save_token", True)),
             preferred_login_method=str(cfg.get("login_method") or "md5"),
             login_fallbacks=bool(cfg.get("login_fallbacks", False)),
         )
@@ -845,22 +1014,56 @@ class WarmLinkCloudDialog(QDialog):
         )
         if self.mapping_issues_only_cb.isChecked():
             rows = [row for row in rows if self._mapping_status(str(row.get("code", "")))["mapping_status"] != "OK"]
-        self.data_table.setRowCount(len(rows))
-        for r, row in enumerate(rows):
-            vals, status = data_table_values(row, mapping_status=self._mapping_status(str(row.get("code", "")))["mapping_status"])
-            bounds = resolve_cloud_range(str(row.get("code", "")), cloud_hint(str(row.get("code", ""))), row)
-            for c, val in enumerate(vals):
-                item = QTableWidgetItem(str(val))
-                if c in (4, 5):
-                    item.setToolTip(bounds.description)
-                elif status != "OK":
-                    item.setToolTip(status)
-                self.data_table.setItem(r, c, item)
-        self.data_table.resizeColumnsToContents()
+        codes = [str(row.get("code", "")) for row in rows]
+        structural = codes != self._data_codes
+        if structural:
+            self.data_table.setRowCount(len(rows))
+            self._rendered_data.clear()
+            self._data_codes = codes
+        self._pending_data_rows = [(r, row) for r, row in enumerate(rows)
+                                   if self._rendered_data.get(codes[r]) != row]
+        self._data_resize_pending = self._data_resize_pending or structural
+        self._render_data_chunk()
+
+    @Slot()
+    def _render_data_chunk(self):
+        batch, self._pending_data_rows = self._pending_data_rows[:40], self._pending_data_rows[40:]
+        self.data_table.setUpdatesEnabled(False)
+        try:
+            for r, row in batch:
+                code = str(row.get("code", ""))
+                mapping = self._mapping_cache.get(code)
+                if mapping is None:
+                    mapping = self._mapping_cache[code] = self._mapping_status(code)["mapping_status"]
+                vals, status = data_table_values(row, mapping_status=mapping)
+                bounds = resolve_cloud_range(code, cloud_hint(code), row)
+                for c, val in enumerate(vals):
+                    item = self.data_table.item(r, c)
+                    if item is None:
+                        item = QTableWidgetItem()
+                        self.data_table.setItem(r, c, item)
+                    if item.text() != str(val):
+                        item.setText(str(val))
+                    tooltip = bounds.description if c in (4, 5) else (status if status != "OK" else "")
+                    if item.toolTip() != tooltip:
+                        item.setToolTip(tooltip)
+                self._rendered_data[code] = dict(row)
+        finally:
+            self.data_table.setUpdatesEnabled(True)
+        if self._pending_data_rows:
+            self._data_render_timer.start(0)
+        elif self._data_resize_pending:
+            self._data_resize_pending = False
+            self.data_table.resizeColumnsToContents()
 
     def refresh_compare(self):
+        self._compare_dirty = False
         rows = compare_source_rows(self.data_rows)
-        self.compare_table.setRowCount(len(rows))
+        codes = [str(row[0].get("code")) for row in rows]
+        structural = codes != getattr(self, "_compare_codes", [])
+        self._compare_codes = codes
+        if structural:
+            self.compare_table.setRowCount(len(rows))
         for r, (row, reg_no) in enumerate(rows):
             vals, status = compare_table_values(
                 row,
@@ -871,13 +1074,18 @@ class WarmLinkCloudDialog(QDialog):
                 cloud_display_text=self.main_window._cloud_display_text,
             )
             for c, val in enumerate(vals):
-                item = QTableWidgetItem(str(val))
-                if status not in ("OK", ""):
-                    item.setToolTip(status)
-                self.compare_table.setItem(r, c, item)
-        self.compare_table.resizeColumnsToContents()
+                item = self.compare_table.item(r, c)
+                if item is None:
+                    item = QTableWidgetItem()
+                    self.compare_table.setItem(r, c, item)
+                if item.text() != str(val):
+                    item.setText(str(val))
+                item.setToolTip(status if status not in ("OK", "") else "")
+        if structural:
+            self.compare_table.resizeColumnsToContents()
 
     def refresh_finder_codes(self):
+        self._finder_dirty = False
         current = str(self.finder_code_combo.currentData() or self.finder_code_combo.currentText() or "") if hasattr(self, "finder_code_combo") else ""
         self.finder_code_combo.blockSignals(True)
         self.finder_code_combo.clear()
@@ -906,7 +1114,6 @@ class WarmLinkCloudDialog(QDialog):
         self.finder_btn.setEnabled(False)
         self.finder_btn.setText("suche ...")
         self.main_window.statusBar().showMessage("WarmLink Cloud Wertefinder: Suche läuft ...", 5000)
-        QApplication.processEvents()
         QTimer.singleShot(0, self._run_value_finder_now)
 
     def _run_value_finder_now(self):
@@ -947,14 +1154,40 @@ class WarmLinkCloudDialog(QDialog):
         if self.overlay_cb.isChecked():
             self._apply_overlay_to_main()
         else:
+            self._pending_overlay.clear()
             self.main_window.clear_cloud_overlay()
 
-    def _apply_overlay_to_main(self):
-        self._save_settings()
-        if self.overlay_cb.isChecked():
-            self.main_window.apply_cloud_rows_to_main(self.data_rows, show_cloud_only=True)
-        else:
+    def _apply_overlay_to_main(self, rows=None):
+        if not self.overlay_cb.isChecked():
+            self._pending_overlay.clear()
             self.main_window.clear_cloud_overlay()
+            return
+        for row in self.data_rows if rows is None else rows:
+            self._pending_overlay[str(row.get("code"))] = row
+        self._flush_overlay_chunk()
+
+    @Slot()
+    def _flush_overlay_chunk(self):
+        if not self.overlay_cb.isChecked():
+            self._pending_overlay.clear()
+            return
+        codes = list(self._pending_overlay)[:40]
+        batch = [self._pending_overlay.pop(code) for code in codes]
+        if batch:
+            main = self.main_window
+            old_suppress = getattr(main, "_suppress_name_resize", False)
+            old_count = main.register_table.rowCount()
+            main._suppress_name_resize = True
+            try:
+                main.apply_cloud_rows_to_main(batch, show_cloud_only=True)
+            finally:
+                main._suppress_name_resize = old_suppress
+            self._overlay_structure_changed |= main.register_table.rowCount() != old_count
+        if self._pending_overlay:
+            self._overlay_timer.start(0)
+        elif self._overlay_structure_changed:
+            self._overlay_structure_changed = False
+            self.main_window._resize_name_column()
 
     def _refresh_write_values(self):
         self.write_value_combo.clear()
@@ -987,7 +1220,7 @@ class WarmLinkCloudDialog(QDialog):
         value = str(self.write_value_combo.currentData() or "")
         endpoint = self.write_endpoint_edit.text().strip() or ENDPOINT_AUTO_WRITE
         dry_run = not self.write_send_cb.isChecked()
-        if not user or not pw or not dev or not code:
+        if not user or not dev or not code:
             QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort/Gerät/Code fehlt.")
             return
         if not dry_run:
@@ -1003,7 +1236,11 @@ class WarmLinkCloudDialog(QDialog):
         self.write_btn.setEnabled(False)
         self.write_result.append(f"Starte {'Dry-Run' if dry_run else 'SENDEN'}: {code}={value} via {endpoint}")
         self.command_thread = QThread(self)
-        self.command_worker = WarmLinkCloudCommandWorker(user, pw, dev, code, value, endpoint=endpoint, dry_run=dry_run)
+        self.command_worker = WarmLinkCloudCommandWorker(
+            user, pw, dev, code, value, endpoint=endpoint, dry_run=dry_run, load_credentials=True,
+            initial_token=self._initial_token_for_user(user),
+            use_saved_token=bool(self._cloud_settings().get("save_token", True)),
+        )
         self.command_worker.moveToThread(self.command_thread)
         self.command_thread.started.connect(self.command_worker.run)
         self.command_worker.log.connect(self._on_command_log)
@@ -1044,7 +1281,7 @@ class WarmLinkCloudDialog(QDialog):
         path = self.debug_path_edit.text().strip()
         token = self._initial_token_for_user(user)
         pw = self._password() if not token else (self.password_edit.text() or "")
-        if not user or (not token and not pw):
+        if not user:
             QMessageBox.warning(self, "WarmLink Cloud", "Benutzername sowie vorhandener Token oder Passwort fehlen.")
             return
         if not path:
@@ -1068,7 +1305,8 @@ class WarmLinkCloudDialog(QDialog):
             user, pw or "", method, path, body=body, initial_token=token,
             preferred_login_method=str(cfg.get("login_method") or "md5"),
             login_fallbacks=bool(cfg.get("login_fallbacks", False)),
-            relogin_on_401=self.debug_relogin_cb.isChecked(),
+            relogin_on_401=self.debug_relogin_cb.isChecked(), load_credentials=True,
+            use_saved_token=bool(cfg.get("save_token", True)),
         )
         self.debug_worker.moveToThread(self.debug_thread)
         self.debug_thread.started.connect(self.debug_worker.run)

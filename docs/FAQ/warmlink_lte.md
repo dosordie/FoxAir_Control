@@ -121,3 +121,19 @@ FoxAir Control kann zusätzlich direkt mit der Wärmepumpe bzw. dem WarmLink-/LT
 [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
 Für den normalen Betrieb ist FoxAir Control aber nicht erforderlich.
+
+## Cloudwerte in FoxAir Control aktualisieren
+
+Beim ersten Abruf lädt FoxAir Control die verfügbaren Cloudwerte. Danach
+aktualisiert Polling hauptsächlich Live- und Statuswerte, standardmäßig alle
+30 Sekunden. Das Intervall lässt sich im Cloud-Dialog einstellen.
+Konfigurationswerte bleiben mit ihrem letzten Abrufzeitpunkt gespeichert.
+Mit **Konfigurationswerte neu laden** können sie bei Bedarf erneut gelesen
+werden. **Geräte neu suchen** aktualisiert die Geräteliste.
+
+Die Fortschrittsleiste zeigt den Verbindungsaufbau und den laufenden Abruf.
+Der Cloudbutton im Hauptfenster zeigt grau für getrennt, orange für
+Verbindungsaufbau, grün für verbunden und rot für einen Verbindungsfehler.
+Aktives Polling hat einen zusätzlichen Indikator; der Tooltip nennt den
+letzten erfolgreichen Abruf. Beim Ausblenden des Cloud-Dialogs läuft Polling
+weiter. Zum Beenden **Polling stoppen** verwenden.

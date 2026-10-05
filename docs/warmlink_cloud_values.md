@@ -185,7 +185,7 @@ Die bestehende Cloud-Control-/Write-/Readback-Implementierung bleibt erhalten.
 
 ## Validierung
 
-`python -m pytest -q`: **344 bestanden**. Die Tests prüfen unter anderem die
+`python -m pytest -q`: **389 bestanden**. Die Tests prüfen unter anderem die
 Unit-Priorität, alle bestätigten lokalen Einheiten gegen widersprüchliche Hints,
 optionale Live-Metadaten, mehrere skalierte Typen, die R02-Vorbelegung und beide
 Schreibrepräsentationen, direkte API-Aufrufe, Session-/Geräteauswahl, Relogin,
@@ -199,3 +199,7 @@ Drei bereits im unveränderten Ausgangsstand fehlschlagende Tests hatten
 unvollständige Fixtures: der Backup-Test erwartete einen geänderten Wert trotz
 identischem Istwert; zwei Capture-Stubs enthielten benötigte Methoden nicht.
 Diese Fixtures wurden korrigiert, ohne die zugehörige Produktlogik zu ändern.
+
+Cloud-Session, geteiltes Polling, GUI-Fortschritt und Warmlink-FC03-Readback
+werden zusätzlich in [WarmLink-Polling und Readback](warmlink_polling_and_readback.md)
+beschrieben und getestet.
