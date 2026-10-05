@@ -100,8 +100,6 @@ def discover_cloud_devices(
         emit(f"WarmLink Cloud: House-Liste nicht verfügbar: {api.message(house_response) or 'API-Fehler'}")
 
     known = list(known_device_codes)
-    if selected_device_code and selected_device_code not in known:
-        known.append(selected_device_code)
     merged = merge_device_sources(direct, house_devices, known)
     automatic_codes = {
         str(device.get("deviceCode")) for device in [*direct, *house_devices]
@@ -112,7 +110,8 @@ def discover_cloud_devices(
         if device.get("discoverySource") == "manual" and device.get("deviceCode") not in automatic_codes
     )
     emit(f"WarmLink Cloud: insgesamt {len(merged)} eindeutige Cloud-Geräte")
-    emit(f"WarmLink Cloud: {manual_added} manuelle Fallback-Geräte ergänzt")
+    if known:
+        emit(f"WarmLink Cloud: {manual_added} manuelle Fallback-Geräte ergänzt")
     return merged
 
 
@@ -319,6 +318,7 @@ class WarmLinkCloudWorker(QObject):
         force_discovery: bool = False,
         discovery_only: bool = False,
         reload_static: bool = False,
+        full_scan: bool = False,
         load_credentials: bool = False,
         use_saved_token: bool = True,
     ) -> None:
@@ -339,9 +339,12 @@ class WarmLinkCloudWorker(QObject):
         self.force_discovery = force_discovery
         self.discovery_only = discovery_only
         self.reload_static = reload_static
+        self.full_scan = full_scan
         self.load_credentials = load_credentials
         self.use_saved_token = use_saved_token
         self._reload_event = threading.Event()
+        self._full_scan_event = threading.Event()
+        self._full_scan_codes = None
         self._wake_event = threading.Event()
         self._stop_event = threading.Event()
 
@@ -352,6 +355,11 @@ class WarmLinkCloudWorker(QObject):
 
     def request_static_reload(self) -> None:
         self._reload_event.set()
+        self._wake_event.set()
+
+    def request_full_scan(self, codes=None) -> None:
+        self._full_scan_codes = tuple(codes) if codes is not None else None
+        self._full_scan_event.set()
         self._wake_event.set()
 
     def _sleep_interruptible(self, seconds: float) -> bool:
@@ -416,7 +424,7 @@ class WarmLinkCloudWorker(QObject):
         if self.discovery_only and self.session.username == self.username and self.session.device_code == selected:
             self.session.devices = devices
         else:
-            self.session = CloudSession(username=self.username, device_code=selected, devices=devices)
+            self.session = CloudSession(username=self.username, device_code=selected, devices=devices, devices_cached=True)
         if self.discovery_only:
             self.session.validated = True
         self._publish_session()
@@ -464,6 +472,8 @@ class WarmLinkCloudWorker(QObject):
                 self.status.emit(f"{len(self.session.devices)} Geräte gefunden")
                 return
             needs_discovery = False
+            if not api.token or not self.session.validated:
+                self.session.scanned = False
             if self.session.candidates != self.codes:
                 self.session.scanned = False
             if api.last_login_method:
@@ -473,7 +483,11 @@ class WarmLinkCloudWorker(QObject):
                     if not self._discover(api):
                         break
                     needs_discovery = False
-                initial = not self.session.scanned
+                initial = not self.session.scanned or self.full_scan or self._full_scan_event.is_set()
+                self.full_scan = False
+                if self._full_scan_event.is_set() and self._full_scan_codes is not None:
+                    self.codes = list(dict.fromkeys(self._full_scan_codes))
+                self._full_scan_event.clear()
                 static_reload = self.reload_static or self._reload_event.is_set()
                 self.reload_static = False
                 self._reload_event.clear()
@@ -497,7 +511,7 @@ class WarmLinkCloudWorker(QObject):
                             row.update(lastFetch=now, stale=False)
                         self.session.merge(rows)
                         if initial:
-                            self.session.classify(self.codes)
+                            self.session.classify(self.codes, rows)
                             if not self.session.supported_codes:
                                 self.session.scanned = False
                                 self._publish_session()
@@ -523,7 +537,7 @@ class WarmLinkCloudWorker(QObject):
                     if api.last_login_method:
                         self.login_method.emit(api.last_login_method)
                     # Status is tied only to initial/live reads. Fault history stays on demand.
-                    if not static_reload and not self._stop_event.is_set():
+                    if (initial or not static_reload) and not self._stop_event.is_set():
                         try:
                             status_token = api.token
                             api.get_device_status(self.device_code)
@@ -535,12 +549,12 @@ class WarmLinkCloudWorker(QObject):
                             self.log.emit("WarmLink Cloud: Statusabfrage übersprungen: " + str(exc))
                     backoff_s = 5.0
                     self.progress.emit("CONNECTED" if self.poll_once else "POLLING", 0, 0)
-                    if self.poll_once:
+                    if self.poll_once and not self._full_scan_event.is_set():
                         break
                     if not self.session.scanned:
                         continue  # A renewed login invalidates the configuration snapshot.
                     # A static reload wakes the wait, but keeps the live deadline.
-                    if not static_reload or next_poll_at is None:
+                    if initial or not static_reload or next_poll_at is None:
                         next_poll_at = time.monotonic() + self.interval_s
                     self._emit_wait("POLL_WAIT", next_poll_at, self.interval_s)
                     if self._sleep_interruptible(max(0.0, next_poll_at - time.monotonic())):
@@ -548,6 +562,8 @@ class WarmLinkCloudWorker(QObject):
                 except Exception as exc:
                     if self._stop_event.is_set():
                         break
+                    if initial:
+                        self.full_scan = True
                     if static_reload:
                         self.reload_static = True
                     auth_error = isinstance(exc, WarmLinkAuthError)
@@ -559,7 +575,7 @@ class WarmLinkCloudWorker(QObject):
                     else:
                         self.connection_state.emit("CONNECTING")
                     lower = str(exc).lower()
-                    needs_discovery = auth_error or any(marker in lower for marker in ("invalid device", "device not found", "device does not exist", "no permission", "access denied"))
+                    needs_discovery = any(marker in lower for marker in ("invalid device", "device not found", "device does not exist", "no permission", "access denied"))
                     if needs_discovery:
                         if not auth_error:
                             self.device_code = None  # An invalid saved selection must not win rediscovery.

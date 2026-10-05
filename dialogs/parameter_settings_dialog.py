@@ -331,8 +331,8 @@ class ParameterSettingsDialog(QDialog):
         self.read_status_timer.setInterval(500)
         self.read_status_timer.timeout.connect(self._update_read_status)
 
-        self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels(["Register", "Code", "Name", "aktueller Wert", "Rohwert", "Typ", "Info"])
+        self.table = QTableWidget(0, 8)
+        self.table.setHorizontalHeaderLabels(["Register", "Code", "Name", "aktueller Wert", "Rohwert (lokal)", "Typ", "Info", "Cloud"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSortingEnabled(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -471,15 +471,15 @@ class ParameterSettingsDialog(QDialog):
 
     def _display_for_item(self, item: dict[str, Any]) -> tuple[str, str]:
         reg_no = int(item["reg"])
-        reg = self.main_window.latest_regs.get(reg_no)
-        raw: Optional[int] = None
+        sources = self.main_window.register_value_sources(reg_no)
+        reg = sources.local_register
+        raw: Optional[int] = sources.local_raw
         decoded = "--"
         if reg is not None:
             raw = int(reg.raw_value) & 0xFFFF
             mapped = self._mapping_label(raw, item)
             decoded = mapped if mapped is not None else str(reg.display_value)
-        elif reg_no in self.main_window.last_values:
-            raw = int(self.main_window.last_values[reg_no]) & 0xFFFF
+        elif raw is not None:
             mapped = self._mapping_label(raw, item)
             if mapped is not None:
                 decoded = mapped
@@ -489,7 +489,7 @@ class ParameterSettingsDialog(QDialog):
                 info = self.main_window.regmap.get(reg_no)
                 decoded = format_value_by_type(raw, info.dtype if info else item.get("dtype", "RAW"), info.value_map if info else None, info.bit_map if info else None)
         if raw is None:
-            return "--", "--"
+            return sources.cloud_display or "--", "--"
         return decoded, str(raw)
 
     def _info_text(self, item: dict[str, Any]) -> str:
@@ -554,6 +554,7 @@ class ParameterSettingsDialog(QDialog):
                 raw_text,
                 item.get("dtype", "RAW"),
                 self._info_text(item),
+                self.main_window.register_value_sources(int(item["reg"])).cloud_display or "--",
             ]
             is_block_row = is_block_dtype(item.get("dtype", ""))
             self.table.setRowHeight(row, 19 if is_block_row else 24)
@@ -606,6 +607,27 @@ class ParameterSettingsDialog(QDialog):
         if reg_no in visible_regs:
             self.refresh_table()
 
+    def update_from_cloud_register(self, reg_no: int):
+        """Update only this visible row, including when the table is sorted."""
+        item = self._find_item_by_reg(reg_no)
+        if item is None:
+            return
+        value_text, raw_text = self._display_for_item(item)
+        cloud_text = self.main_window.register_value_sources(reg_no).cloud_display or "--"
+        sorting = self.table.isSortingEnabled()
+        self.table.setSortingEnabled(False)
+        try:
+            for row in range(self.table.rowCount()):
+                cell = self.table.item(row, 0)
+                if cell is not None and cell.data(Qt.UserRole) == reg_no:
+                    for col, text in ((3, value_text), (4, raw_text), (7, cloud_text)):
+                        cell = self.table.item(row, col)
+                        cell.setText(text)
+                        cell.setToolTip(text)
+                    break
+        finally:
+            self.table.setSortingEnabled(sorting)
+
     def _selected_reg(self) -> Optional[int]:
         row = self.table.currentRow()
         if row < 0:
@@ -642,6 +664,9 @@ class ParameterSettingsDialog(QDialog):
         self.main_window.open_register_quick_write(reg_no, self._parse_bus())
 
     def read_visible_registers(self, auto: bool = False):
+        if not getattr(self.main_window, "connected", False):
+            self._set_read_status("Status: Cloudwerte werden durch Abrufe und Schreib-Readbacks aktualisiert.")
+            return
         items = self._visible_items()
         if not items:
             self._set_read_status("Status: keine sichtbaren Parameter", error=True)

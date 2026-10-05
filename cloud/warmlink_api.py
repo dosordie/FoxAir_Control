@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
+from cloud.device_metadata import safe_device_metadata
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
 BASE_URL = SERVICE_ROOT + "/crmservice/api"
@@ -194,7 +195,7 @@ class WarmLinkCloudApi:
         raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.0",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.1",
         }
         if raw_body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -229,7 +230,7 @@ class WarmLinkCloudApi:
         body = None if verb == "GET" else json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.0",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.1",
         }
         if body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -714,18 +715,8 @@ def normalize_house_list(response: dict[str, Any]) -> list[dict[str, str]]:
     return houses
 
 
-_HOUSE_DEVICE_FIELDS = {
-    "deviceCode", "deviceId", "deviceNickName", "deviceName", "deviceStatus",
-    "productId", "productKey", "model", "roomId", "areaId", "faultState",
-    "isFault", "isShared", "sn", "dtuSoftwareCode", "dtuSoftwareVer",
-    "is_fault", "custModel", "dtuSignalIntensity", "productionCode",
-    "wifiSoftwareCode", "wifiSoftwareVer",
-    "houseId", "houseName", "houseRoleType",
-}
-
-
 def normalize_house_devices(response: dict[str, Any], house: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    """Extract only documented direct and room device lists using a whitelist."""
+    """Extract direct and room devices, preserving metadata except auth secrets."""
     obj = response.get("objectResult")
     data = obj.get("data") if isinstance(obj, dict) else None
     if not isinstance(data, list):
@@ -740,7 +731,7 @@ def normalize_house_devices(response: dict[str, Any], house: dict[str, Any] | No
         code = str(raw.get("deviceCode") or "").strip()
         if not code:
             return
-        normalized = {key: raw[key] for key in _HOUSE_DEVICE_FIELDS if key in raw}
+        normalized = safe_device_metadata(raw)
         normalized["deviceCode"] = code
         if house.get("id") or raw.get("houseId"):
             normalized["houseId"] = str(house.get("id") or raw["houseId"]).strip()

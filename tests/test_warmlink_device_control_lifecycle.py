@@ -105,92 +105,51 @@ def make_dialog():
     return dialog
 
 
-def test_worker_lifecycle_locks_device_controls_and_restores_manual_remove(monkeypatch):
+def test_worker_lifecycle_locks_selection_and_discovery_and_restores_them(monkeypatch):
     dialog = make_dialog()
-    dialog.devices = [
-        {"deviceCode": "A", "discoverySource": "deviceList"},
-        {"deviceCode": "B", "discoverySource": "manual"},
-    ]
-    dialog.refresh_devices()
+    dialog._on_devices([{"deviceCode": "A"}, {"deviceCode": "B"}])
     dialog.device_combo.setCurrentIndex(dialog.device_combo.findData("B"))
     monkeypatch.setattr(cloud_dialog_module, "QThread", FakeThread)
     monkeypatch.setattr(cloud_dialog_module, "WarmLinkCloudWorker", FakeWorker)
-
     dialog._start_worker(poll_once=False)
-
-    assert not dialog.device_combo.isEnabled()
-    assert not dialog.add_device_btn.isEnabled()
-    assert not dialog.remove_device_btn.isEnabled()
+    assert not dialog.device_combo.isEnabled() and not dialog.rediscover_btn.isEnabled()
+    assert not dialog.username_edit.isEnabled()
     assert FakeWorker.created[-1].kwargs["device_code"] == "B"
-
+    assert "known_device_codes" not in FakeWorker.created[-1].kwargs
     dialog._worker_finished()
-
-    assert dialog.device_combo.isEnabled()
-    assert dialog.add_device_btn.isEnabled()
-    assert dialog.remove_device_btn.isEnabled()
+    assert dialog.device_combo.isEnabled() and dialog.rediscover_btn.isEnabled()
+    assert dialog.username_edit.isEnabled()
 
 
-def test_automatic_device_remove_stays_disabled_after_worker_end():
+def test_legacy_manual_settings_are_tolerated_but_not_used_as_devices():
     dialog = make_dialog()
-    dialog.devices = [
-        {"deviceCode": "A", "discoverySource": "deviceList"},
-        {"deviceCode": "B", "discoverySource": "manual"},
-    ]
-    dialog.refresh_devices()
-    dialog.device_combo.setCurrentIndex(dialog.device_combo.findData("A"))
-    dialog.cloud_thread = FakeThread()
-
-    dialog._worker_finished()
-
-    assert dialog.device_combo.isEnabled()
-    assert dialog.add_device_btn.isEnabled()
-    assert not dialog.remove_device_btn.isEnabled()
+    assert dialog.devices == [] and dialog.device_combo.count() == 0
+    assert dialog._cloud_settings()["known_device_codes"] == ["B"]
+    for attribute in ("add_device_btn", "remove_device_btn", "known_device_table", "add_known_device"):
+        assert not hasattr(dialog, attribute)
 
 
-def test_add_and_remove_guards_do_nothing_while_worker_runs(monkeypatch):
+def test_device_can_change_after_stop_and_next_worker_uses_cached_new_code(monkeypatch):
     dialog = make_dialog()
-    dialog.devices = [{"deviceCode": "B", "discoverySource": "manual"}]
-    dialog.refresh_devices()
-    before_settings = dict(dialog._cloud_settings())
-    before_devices = list(dialog.devices)
-    dialog.cloud_thread = FakeThread()
-    monkeypatch.setattr(
-        cloud_dialog_module.QInputDialog, "getText",
-        lambda *args: (_ for _ in ()).throw(AssertionError("input dialog must not open")),
-    )
-
-    dialog.add_known_device()
-    dialog.remove_selected_known_device()
-
-    assert dialog._cloud_settings() == before_settings
-    assert dialog.devices == before_devices
-
-
-def test_device_can_change_after_stop_and_next_worker_uses_new_code(monkeypatch):
-    dialog = make_dialog()
-    dialog.devices = [
-        {"deviceCode": "A", "discoverySource": "deviceList"},
-        {"deviceCode": "B", "discoverySource": "manual"},
-    ]
-    dialog.refresh_devices()
+    dialog._on_devices([{"deviceCode": "A"}, {"deviceCode": "B"}])
     dialog.cloud_thread = FakeThread()
     dialog._worker_finished()
     dialog.device_combo.setCurrentIndex(dialog.device_combo.findData("B"))
     monkeypatch.setattr(cloud_dialog_module, "QThread", FakeThread)
     monkeypatch.setattr(cloud_dialog_module, "WarmLinkCloudWorker", FakeWorker)
-
     dialog._start_worker(poll_once=True)
+    kwargs = FakeWorker.created[-1].kwargs
+    assert kwargs["device_code"] == "B"
+    assert kwargs["session"].reusable("user@example.test", "B", None)
 
-    assert FakeWorker.created[-1].kwargs["device_code"] == "B"
 
-
-def test_validating_second_manual_device_preserves_first_and_updates_list():
+def test_discovery_replaces_persistent_cache_and_removes_missing_devices():
     dialog = make_dialog()
-    dialog.ids_cb.setChecked(True)
-    dialog._known_device_validated("C", [{"supported": True, "value": 1}])
-    assert dialog._cloud_settings()["known_device_codes"] == ["B", "C"]
-    assert [dialog.known_device_table.item(row, 0).text() for row in range(2)] == ["B", "C"]
-
-    dialog._known_device_validated("D", [{"supported": True, "value": 1}])
-    assert dialog._cloud_settings()["known_device_codes"] == ["B", "C", "D"]
-    assert [dialog.known_device_table.item(row, 0).text() for row in range(3)] == ["B", "C", "D"]
+    dialog._on_devices([{"deviceCode": "A", "extra": 1}, {"deviceCode": "B"}])
+    dialog.device_combo.setCurrentIndex(dialog.device_combo.findData("B"))
+    dialog._on_devices([{"deviceCode": "C", "extra": 2}])
+    cfg = dialog._cloud_settings()
+    assert cfg["cached_devices_username"] == "user@example.test"
+    assert cfg["cached_devices"] == [{"deviceCode": "C", "extra": 2, "discoverySource": "deviceList"}]
+    assert cfg["selected_device_code"] == "C"
+    assert dialog.device_combo.count() == 1

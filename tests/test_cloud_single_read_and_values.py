@@ -247,15 +247,14 @@ def test_missing_selected_device_finishes_without_api_call(application, monkeypa
     assert window.cloud_read_thread is None
 
 
-def test_cloud_confirmation_uses_engineering_unit(application, monkeypatch):
+def test_cloud_write_sends_directly_without_confirmation(application, monkeypatch):
     window = CloudWindow()
     register = cloud_modbus_register("R02")
     window.apply_cloud_rows_to_main([cloud_row(55)])
-    confirmations, sent = [], []
-    monkeypatch.setattr(gui, "ask_yes_no", lambda _parent, _title, text, **kwargs: confirmations.append(text) or True)
+    sent = []
+    monkeypatch.setattr(gui, "ask_yes_no", lambda *args, **kwargs: pytest.fail("Normal writes need no second confirmation"))
     window.send_cloud_write = lambda code, value, **kwargs: sent.append((code, value))
     window.open_cloud_write_for_register(register, "52")
-    assert "52 °C" in confirmations[0]
     assert sent == [("R02", "52")]
 
 
@@ -276,13 +275,14 @@ def test_active_session_token_is_used_without_persistent_token_storage(applicati
     assert credentials == ("user", "password", "live-token", "selected-device")
 
 
-@pytest.mark.parametrize("code,unit", [("F23", "rpm"), ("P10", "%"), ("P08", "W"), ("P16", "bar"), ("D22", "m³/h")])
-def test_cloud_write_confirmation_uses_shared_unit(application, monkeypatch, code, unit):
+@pytest.mark.parametrize("code,value", [("F23", "850"), ("P10", "52"), ("P08", "80"), ("P16", "0.5"), ("D22", "1.2")])
+def test_direct_cloud_write_keeps_engineering_values(application, monkeypatch, code, value):
     window = CloudWindow()
-    confirmations = []
-    monkeypatch.setattr(gui, "ask_yes_no", lambda _parent, _title, text, **kwargs: confirmations.append(text) or False)
-    window.open_cloud_write_for_register(cloud_modbus_register(code), "52")
-    assert f"52 {unit}" in confirmations[0]
+    sent = []
+    monkeypatch.setattr(gui, "ask_yes_no", lambda *args, **kwargs: pytest.fail("No confirmation"))
+    window.send_cloud_write = lambda c, v, **kwargs: sent.append((c, v))
+    window.open_cloud_write_for_register(cloud_modbus_register(code), value)
+    assert sent == [(code, value)]
 
 
 def test_read_overlay_and_compare_use_live_unit(application):

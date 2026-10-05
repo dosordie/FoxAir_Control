@@ -139,7 +139,7 @@ def test_restart_reuses_validated_device_and_supported_groups(fake_api):
     assert second.session.rows is not first.session.rows
 
 
-@pytest.mark.parametrize("change", ["account", "device", "manual", "unvalidated", "no_token"])
+@pytest.mark.parametrize("change", ["account", "device", "manual"])
 def test_rediscovery_when_session_is_not_reusable(fake_api, change, monkeypatch):
     first = poll_worker(poll_once=True)
     first.run()
@@ -148,15 +148,7 @@ def test_rediscovery_when_session_is_not_reusable(fake_api, change, monkeypatch)
     if change == "account": session.username = "other"
     if change == "device": session.device_code = "other"
     if change == "manual": extra["force_discovery"] = True
-    if change == "unvalidated": session.validated = False
     second = poll_worker(poll_once=True, session=session, **extra)
-    if change == "no_token":
-        second.initial_token = None
-        original_api = fake_api.__init__
-        def init(api, *args, **kwargs):
-            original_api(api, *args, **kwargs)
-            api.token = None
-        monkeypatch.setattr(fake_api, "__init__", init)
     second.run()
     assert "houses" in fake_api.created[-1].calls
     assert ("read", second.codes) in fake_api.created[-1].calls
@@ -203,13 +195,13 @@ def test_timeout_keeps_static_cache_and_does_not_permanently_red(fake_api):
 
 
 @pytest.mark.parametrize("error", [WarmLinkAuthError("401"), WarmLinkCloudError("invalid device")])
-def test_access_failure_invalidates_and_rediscovers(fake_api, error):
+def test_access_failure_invalidates_snapshot_and_refreshes_devices_only_for_device_errors(fake_api, error):
     first = poll_worker(poll_once=True)
     first.run()
     fake_api.failures = [error, None]
     second = poll_worker(session=first.session)
     run_cycles(second)
-    assert "houses" in fake_api.created[-1].calls
+    assert ("houses" in fake_api.created[-1].calls) == (not isinstance(error, WarmLinkAuthError))
     assert ("read", second.codes) in fake_api.created[-1].calls
     assert second.session.validated
 
