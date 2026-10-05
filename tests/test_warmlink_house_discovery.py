@@ -45,9 +45,12 @@ def test_normalize_house_devices_reads_direct_and_room_lists_and_drops_secrets()
     assert [device["deviceCode"] for device in devices] == ["direct", "room-device"]
     assert devices[1]["roomId"] == "room"
     assert devices[1]["houseId"] == "200"
-    forbidden = {"deviceSecret", "dtuIccid", "dtuImeiMac", "lat", "lon", "address"}
+    forbidden = {"deviceSecret"}
     assert not forbidden.intersection(devices[0])
     assert not forbidden.intersection(devices[1])
+    assert devices[1]["dtuIccid"] == "no" and devices[1]["dtuImeiMac"] == "no"
+    assert devices[1]["lat"] == 1 and devices[1]["lon"] == 2
+    assert devices[1]["address"] == "no"
 
 
 def test_source_priority_is_device_list_then_house_then_manual():

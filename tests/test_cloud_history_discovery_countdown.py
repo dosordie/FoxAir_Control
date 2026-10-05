@@ -188,24 +188,23 @@ def test_device_merge_keeps_authoritative_zero_false_and_fills_only_gaps():
     assert merged[1] == {"deviceCode": "manual", "discoverySource": "manual"}
 
 
-def test_device_summary_details_missing_shared_fields_and_sensitive_whitelist(application):
+def test_full_device_table_keeps_unknown_fields_and_unmasked_ids(application):
     dialog = WarmLinkCloudDialog(DialogWindow())
     dialog._on_devices([{"deviceCode": "device", "deviceId": "short", "deviceName": "Shared",
         "isShared": True, "isFault": False, "houseName": "Zuhause", "roomId": "R", "areaId": "A",
-        "houseRoleType": "1", "productKey": "P", "faultState": 0,
-        "discoverySource": "deviceList + House", "deviceSecret": "do-not-show", "MAC": "do-not-show"}])
-    assert dialog.device_table.columnCount() == 9
-    assert dialog.device_table.item(0, 3).text() == "False"
-    assert dialog.device_table.item(0, 5).text() == "—"
-    details = {dialog.device_details_table.item(i, 0).text(): dialog.device_details_table.item(i, 1).text()
-               for i in range(dialog.device_details_table.rowCount())}
-    assert details["faultState"] == "0" and details["roomId"] == "R"
-    assert details["houseRoleType"] == "1" and details["productKey"] == "P"
-    assert "dtuSignalIntensity" not in details and "deviceSecret" not in details and "MAC" not in details
-    assert details["deviceId"] != "short"
-    dialog.ids_cb.setChecked(True)
-    assert any(dialog.device_details_table.item(i, 1).text() == "short"
-               for i in range(dialog.device_details_table.rowCount()))
+        "houseRoleType": "1", "productKey": "P", "faultState": 0, "dtuIccid": "123456", "sn": "SN123",
+        "discoverySource": "deviceList + House", "deviceSecret": "do-not-show", "MAC": "new-field"}])
+    columns = [dialog.device_table.horizontalHeaderItem(i).text() for i in range(dialog.device_table.columnCount())]
+    assert columns[:len(dialog.DEVICE_COLUMNS)] == dialog.DEVICE_COLUMNS
+    assert columns[len(dialog.DEVICE_COLUMNS):] == sorted(set(columns) - set(dialog.DEVICE_COLUMNS))
+    values = {key: dialog.device_table.item(0, i).text() for i, key in enumerate(columns)}
+    assert values["isFault"] == "False" and values["faultState"] == "0"
+    assert values["dtuSignalIntensity"] == "—"
+    assert values["deviceId"] == "short" and values["deviceCode"] == "device"
+    assert values["sn"] == "SN123" and values["dtuIccid"] == "123456"
+    assert values["houseRoleType"] == "1" and values["productKey"] == "P"
+    assert values["MAC"] == "new-field" and "deviceSecret" not in values
+    assert not hasattr(dialog, "device_details_table") and not hasattr(dialog, "ids_cb")
     assert device_table_value({"v": ""}, "v", set()) == ""
     assert device_table_value({"v": 0}, "v", set()) == "0"
     assert device_table_value({"v": False}, "v", set()) == "False"

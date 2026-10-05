@@ -36,6 +36,7 @@ from ui.theme import (
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
+from core.register_value_sources import register_value_sources
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
@@ -158,8 +159,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.3.0"
-BUILD_DATE = "2026-09-29"
+APP_VERSION = "0.3.1"
+BUILD_DATE = "2026-10-05"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -7304,6 +7305,18 @@ class MainWindow(QMainWindow):
         local_code = self._code_for_register(reg_no)
         return reg_no, local_code, ""
 
+    def register_value_sources(self, reg_no: int):
+        """Shared source accessor for dialogs; Cloud engineering values stay separate."""
+        return register_value_sources(self, int(reg_no))
+
+    def _notify_cloud_register_update(self, reg_no: int):
+        # New dialogs can opt in without changing the local register update path.
+        for attribute in ("parameter_dialog",):
+            dialog = getattr(self, attribute, None)
+            callback = getattr(dialog, "update_from_cloud_register", None)
+            if callback is not None:
+                callback(reg_no)
+
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
         """Cloud-Werte als Overlay in der Haupttabelle anzeigen.
 
@@ -7425,6 +7438,7 @@ class MainWindow(QMainWindow):
                         value_source="cloud",
                         cloud_value=translated.raw,
                     ), changed=False)
+                self._notify_cloud_register_update(reg_no)
                 for dialog in list(self.register_write_dialogs.values()):
                     if dialog.reg_no == reg_no:
                         dialog.update_from_cloud_value()
@@ -7469,6 +7483,7 @@ class MainWindow(QMainWindow):
         self.cloud_last_rows = []
         for reg_no in regs:
             self._refresh_cloud_cells_for_register(reg_no)
+            self._notify_cloud_register_update(reg_no)
         self._apply_cloud_only_visibility()
 
     def _refresh_cloud_cells_for_register(self, reg_no: int) -> None:
@@ -8779,6 +8794,17 @@ class MainWindow(QMainWindow):
         if self._is_firmware_capture_mode():
             self._log("Firmware-Capture aktiv – Senden gesperrt.")
             return
+        if not getattr(self, "connected", False):
+            if self.is_cloud_connected():
+                if self.warmlink_cloud_dialog is None:
+                    self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
+                    self.warmlink_cloud_dialog.finished.connect(
+                        lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
+                self._log("Alle bekannten Register lesen: vollständiger Cloud-Scan angefordert.")
+                self.warmlink_cloud_dialog.reload_all_values()
+            else:
+                self._log("Alle bekannten Register lesen: keine lokale oder gültige Cloud-Verbindung.")
+            return
         try:
             slave_addr = self._parse_int_text(self.write_bus_edit.text())
         except Exception:
@@ -8945,6 +8971,8 @@ class MainWindow(QMainWindow):
         self.cloud_session_authenticated = bool(authenticated)
         self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
         self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
+        if hasattr(self, "init_read_btn"):
+            self._update_init_read_button_state()
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
         # Register-Refresh sichtbar bzw. unsichtbar bleiben.
@@ -9162,18 +9190,6 @@ class MainWindow(QMainWindow):
                 "WarmLink Cloud",
                 "Cloud-Zugang fehlt. Bitte im Fenster 'WarmLink Cloud / LTE' Benutzername eintragen und das Passwort speichern.",
             )
-            return
-        name = code_display_name(cloud_code)
-        unit = code_unit(cloud_code, self.cloud_overlay_by_reg.get(int(reg_no), {}).get("metadata"))
-        device_txt = device_code if device_code else "automatisch: erstes Cloud-Gerät"
-        if not ask_yes_no(
-            self,
-            "Wert per Cloud schreiben",
-            f"Wirklich per WarmLink Cloud senden?\n\n"
-            f"Register: {reg_no}\nCloud-Code: {cloud_code} - {name}\nWert: {value} {unit}\nDevice: {device_txt}\n\n"
-            "Der Befehl wird über die Cloud an die Wärmepumpe gesendet.",
-            default_yes=False,
-        ):
             return
         self.send_cloud_write(cloud_code, value, device_code=device_code, label=f"Register {reg_no}")
 
@@ -10698,7 +10714,7 @@ class MainWindow(QMainWindow):
 
     def open_parameter_settings(self):
         # Parameteransicht kann alle Paketbereiche betreffen.
-        if not self._display_wait_for_param_blocks_before_popup("Parameter Einstellungen", [1001, 1091, 1181, 1271, 1361, 1451, 1541], self.open_parameter_settings):
+        if self.connected and not self._display_wait_for_param_blocks_before_popup("Parameter Einstellungen", [1001, 1091, 1181, 1271, 1361, 1451, 1541], self.open_parameter_settings):
             return
         if self.parameter_dialog is None or not self.parameter_dialog.isVisible():
             self.parameter_dialog = ParameterSettingsDialog(self)

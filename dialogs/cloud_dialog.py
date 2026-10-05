@@ -10,7 +10,7 @@ from typing import Any, Optional
 from PySide6.QtCore import QThread, QTimer, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
-    QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView, QInputDialog,
+    QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
     QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
 )
@@ -31,17 +31,13 @@ from cloud.warmlink_codes import (
 )
 from dialogs.cloud_table_helpers import (
     compare_source_rows, compare_table_values, data_table_values, device_combo_label,
-    device_table_value, filtered_cloud_rows, finder_cloud_row, finder_code_label,
+    filtered_cloud_rows, finder_cloud_row, finder_code_label,
     local_display_value, mask_cloud_value, try_float, value_finder_matches,
 )
 from workers.warmlink_cloud_worker import (
     WarmLinkCloudWorker, WarmLinkCloudCommandWorker, WarmLinkCloudDebugWorker,
-    WarmLinkKnownDeviceValidationWorker,
 )
-from cloud.known_devices import (
-    add_known_device_code, merge_discovered_and_known_devices, normalize_known_device_codes,
-    remove_known_device_code,
-)
+from cloud.device_metadata import cached_device_metadata
 from core.settings_manager import ensure_warmlink_cloud_defaults
 
 class WarmLinkCloudDialog(QDialog):
@@ -52,15 +48,9 @@ class WarmLinkCloudDialog(QDialog):
     """
 
     DEVICE_COLUMNS = [
-        "deviceNickName", "model", "custModel", "deviceStatus", "isFault", "is_fault",
-        "dtuSoftwareCode", "dtuSoftwareVer", "dtuSignalIntensity", "productId",
-        "productionCode", "deviceId", "deviceCode", "sn", "dtuIccid",
-        "wifiSoftwareCode", "wifiSoftwareVer",
-        "deviceName", "productKey", "faultState", "isShared", "houseId",
-        "houseName", "houseRoleType", "roomId", "areaId", "discoverySource",
+        "deviceNickName", "deviceName", "model", "custModel", "deviceStatus", "isFault",
+        "dtuSoftwareVer", "dtuSignalIntensity", "isShared", "houseName", "houseRoleType", "discoverySource",
     ]
-    SENSITIVE_DEVICE_FIELDS = {"deviceCode", "dtuIccid", "sn", "deviceId"}
-    DEVICE_SUMMARY_COLUMNS = ["Name", "Modell", "Status", "Fehler", "DTU-Version", "Signal", "Freigabe", "House", "Quelle"]
     DATA_COLUMNS = ["code", "name", "value", "dataType", "rangeStart", "rangeEnd", "letzter Abruf", "Status", "Mapping", "Mapping-Status", "Hinweis"]
     COMPARE_COLUMNS = ["Cloud-Code", "Reg", "Code", "Name", "Lokal", "Cloud", "Diff", "Einheit", "Confidence", "Status", "Hinweis"]
     FINDER_COLUMNS = ["Cloud-Code", "Cloud-Wert", "Reg", "Code", "Name", "Lokal", "Match", "Hinweis"]
@@ -77,8 +67,6 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.debug_thread: Optional[QThread] = None
         self.debug_worker: Optional[WarmLinkCloudDebugWorker] = None
-        self.validation_thread: Optional[QThread] = None
-        self.validation_worker: Optional[WarmLinkKnownDeviceValidationWorker] = None
         self.devices: list[dict[str, Any]] = []
         self.data_rows: list[dict[str, Any]] = []
         credentials = getattr(main_window, "cloud_credentials_cache", {})
@@ -121,7 +109,7 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window.cloud_session = session
 
     def _remember_credentials(self):
-        # Memory only: never include credentials or discovered metadata in JSON.
+        # Credentials stay in memory/keyring; device metadata has a separate safe cache.
         self.main_window.cloud_credentials_cache = {
             "token": self._cloud_token, "login_at": self._cloud_token_login_at,
             "token_user": self._cloud_token_username, "password": self._cached_password,
@@ -157,8 +145,6 @@ class WarmLinkCloudDialog(QDialog):
         self.interval_spin.setValue(30)
         self.interval_spin.setSuffix(" s")
         self.interval_spin.setToolTip("Livewerte alle 30 s; einstellbar von 10 bis 3600 s. Konfiguration wird separat geladen.")
-        self.ids_cb = QCheckBox("IDs anzeigen")
-        self.ids_cb.setToolTip("Sensible Felder wie deviceCode, deviceId, SN und ICCID im UI anzeigen.")
         self.overlay_cb = QCheckBox("Cloud im Hauptfenster anzeigen")
         self.overlay_cb.setToolTip("Gemappte Cloud-Werte als Zusatzspalten/Cloud-only-Zeilen in der Haupttabelle anzeigen.")
         self.auto_start_cb = QCheckBox("Cloud-Polling beim App-Start")
@@ -183,8 +169,6 @@ class WarmLinkCloudDialog(QDialog):
         self.device_combo = QComboBox()
         self.device_combo.setMinimumWidth(360)
         self.device_combo.setToolTip("Gerätewechsel nur bei gestopptem Cloud-Polling möglich.")
-        self.add_device_btn = QPushButton("Gerätecode hinzufügen")
-        self.remove_device_btn = QPushButton("Entfernen")
 
         login.addWidget(QLabel("Benutzername:"), 0, 0)
         login.addWidget(self.username_edit, 0, 1, 1, 3)
@@ -195,15 +179,13 @@ class WarmLinkCloudDialog(QDialog):
         login.addWidget(QLabel("Gerät:"), 2, 2)
         login.addWidget(self.device_combo, 2, 3)
         device_buttons = QHBoxLayout()
-        device_buttons.addWidget(self.add_device_btn)
-        device_buttons.addWidget(self.remove_device_btn)
         device_buttons.addWidget(self.rediscover_btn)
         device_buttons.addStretch(1)
         login.addLayout(device_buttons, 3, 3)
         login.addWidget(QLabel("Status:"), 3, 0)
         login.addWidget(self.status_label, 3, 1, 1, 2)
         btn_row = QHBoxLayout()
-        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.ids_cb, self.overlay_cb, self.auto_start_cb, self.login_fallbacks_cb, self.save_token_cb):
+        for b in (self.test_btn, self.save_btn, self.delete_btn, self.poll_once_btn, self.start_poll_btn, self.stop_poll_btn, self.overlay_cb, self.auto_start_cb, self.login_fallbacks_cb, self.save_token_cb):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
         login.addLayout(btn_row, 4, 0, 1, 4)
@@ -217,24 +199,12 @@ class WarmLinkCloudDialog(QDialog):
 
         dev_tab = QWidget()
         dev_layout = QVBoxLayout(dev_tab)
-        dev_layout.addWidget(QLabel("Manuell bekannte Geräte"))
-        self.known_device_table = QTableWidget(0, 3)
-        self.known_device_table.setHorizontalHeaderLabels(["Gerätecode", "Auswählen", "Entfernen"])
-        self.known_device_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.known_device_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        dev_layout.addWidget(self.known_device_table)
-        self.device_table = QTableWidget(0, len(self.DEVICE_SUMMARY_COLUMNS))
-        self.device_table.setHorizontalHeaderLabels(self.DEVICE_SUMMARY_COLUMNS)
+        self.device_table = QTableWidget(0, len(self.DEVICE_COLUMNS))
+        self.device_table.setHorizontalHeaderLabels(self.DEVICE_COLUMNS)
         self.device_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.device_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.device_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        dev_layout.addWidget(self.device_table)
-        self.device_details_table = QTableWidget(0, 2)
-        self.device_details_table.setHorizontalHeaderLabels(["Feld", "Wert"])
-        self.device_details_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.device_details_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        dev_layout.addWidget(QLabel("Details des ausgewählten Geräts (nur gelieferte Felder)"))
-        dev_layout.addWidget(self.device_details_table, 1)
+        dev_layout.addWidget(self.device_table, 1)
         self.device_table.itemSelectionChanged.connect(self._device_table_selection_changed)
         self.tabs.addTab(dev_tab, "Geräte")
 
@@ -414,14 +384,12 @@ class WarmLinkCloudDialog(QDialog):
         self.tabs.currentChanged.connect(self._tab_changed)
         self.save_btn.clicked.connect(self.save_credentials)
         self.delete_btn.clicked.connect(self.delete_credentials)
-        self.ids_cb.toggled.connect(lambda _=None: self.refresh_devices())
         self.auto_start_cb.toggled.connect(lambda _=None: self._save_settings())
         self.overlay_cb.toggled.connect(self._overlay_toggled)
         self.login_fallbacks_cb.toggled.connect(lambda _=None: self._save_settings())
         self.save_token_cb.toggled.connect(self._save_token_toggled)
+        self.username_edit.editingFinished.connect(self._save_settings)
         self.device_combo.currentIndexChanged.connect(self._device_selection_changed)
-        self.add_device_btn.clicked.connect(self.add_known_device)
-        self.remove_device_btn.clicked.connect(self.remove_selected_known_device)
         self.filter_edit.textChanged.connect(lambda _=None: self.refresh_data())
         self.unsupported_only_cb.toggled.connect(lambda _=None: self.refresh_data())
         self.mapping_issues_only_cb.toggled.connect(lambda _=None: self.refresh_data())
@@ -447,7 +415,6 @@ class WarmLinkCloudDialog(QDialog):
     def _load_settings(self):
         cfg = self._cloud_settings()
         signal_widgets = (
-            self.ids_cb,
             self.overlay_cb,
             self.auto_start_cb,
             self.login_fallbacks_cb,
@@ -460,21 +427,24 @@ class WarmLinkCloudDialog(QDialog):
         try:
             self.username_edit.setText(str(cfg.get("username", "")))
             self.interval_spin.setValue(min(3600, max(10, int(cfg.get("poll_interval_s", 30) or 30))))
-            self.ids_cb.setChecked(bool(cfg.get("show_ids", False)))
             self.overlay_cb.setChecked(bool(cfg.get("overlay_enabled", True)))
             self.auto_start_cb.setChecked(bool(cfg.get("auto_start_polling", False)))
             self.login_fallbacks_cb.setChecked(bool(cfg.get("login_fallbacks", False)))
             self.save_token_cb.setChecked(bool(cfg.get("save_token", True)))
             selected = str(cfg.get("selected_device_code", ""))
-            cached_devices = self.session.devices if self.session.username == self.username_edit.text().strip() else []
-            self.devices = merge_discovered_and_known_devices(cached_devices, cfg.get("known_device_codes", []))
-            if selected and not any(device.get("deviceCode") == selected for device in self.devices):
-                self.devices = merge_discovered_and_known_devices(self.devices, [selected])
-                self.devices[-1]["discoverySource"] = "stored-device-code"
-            if cached_devices:
+            user = self.username_edit.text().strip()
+            memory_cache = bool(user and self.session.username == user and self.session.devices)
+            if memory_cache:
+                self.session.devices_cached = True
+                self.devices = cached_device_metadata(self.session.devices)
                 self.data_rows = [dict(row) for row in self.session.rows.values()]
                 if self.session.candidates:
                     self.codes_edit.setPlainText("\n".join(self.session.candidates))
+            else:
+                self.devices = cached_device_metadata(cfg.get("cached_devices", [])) if user and cfg.get("cached_devices_username") == user else []
+                self.session = CloudSession(username=user, device_code=selected,
+                    devices=list(self.devices), devices_cached=bool(self.devices))
+            self._devices_username = user
             self.refresh_devices()
             if self.username_edit.text().strip():
                 self.status_label.setText(f"bereit, Keyring-Service: {KEYRING_SERVICE}")
@@ -487,9 +457,25 @@ class WarmLinkCloudDialog(QDialog):
         if getattr(self, "_loading_settings", False):
             return
         cfg = self._cloud_settings()
-        cfg["username"] = self.username_edit.text().strip()
+        user = self.username_edit.text().strip()
+        if user != self._devices_username:
+            self.devices = []
+            self.data_rows = []
+            self._pending_overlay.clear()
+            self._pending_data_rows.clear()
+            self._data_render_timer.stop()
+            self._devices_username = user
+            self.session = CloudSession(username=user)
+            cfg["cached_devices"] = []
+            cfg["cached_devices_username"] = user
+            cfg.pop("selected_device_code", None)
+            self.refresh_devices()
+            self.refresh_data()
+            self.main_window.set_cloud_connection_state(False)
+            if hasattr(self.main_window, "clear_cloud_device_values"):
+                self.main_window.clear_cloud_device_values()
+        cfg["username"] = user
         cfg["poll_interval_s"] = int(self.interval_spin.value())
-        cfg["show_ids"] = bool(self.ids_cb.isChecked())
         cfg["overlay_enabled"] = bool(self.overlay_cb.isChecked())
         cfg["auto_start_polling"] = bool(self.auto_start_cb.isChecked())
         cfg["show_cloud_only"] = True
@@ -569,9 +555,20 @@ class WarmLinkCloudDialog(QDialog):
         self.session = CloudSession()
         self.stop_worker()
         cfg = self._cloud_settings()
-        for key in ("username", "selected_device_code"):
+        for key in ("username", "selected_device_code", "cached_devices", "cached_devices_username"):
             cfg.pop(key, None)
         self.main_window._save_settings(sync_main_fields=False)
+        self.devices = []
+        self.data_rows = []
+        self._pending_overlay.clear()
+        self._pending_data_rows.clear()
+        self._data_render_timer.stop()
+        if hasattr(self.main_window, "clear_cloud_device_values"):
+            self.main_window.clear_cloud_device_values()
+        self.username_edit.clear()
+        self._devices_username = ""
+        self.refresh_devices()
+        self.refresh_data()
         self.password_edit.clear()
         self._cloud_token = None
         self._cloud_token_login_at = 0.0
@@ -589,7 +586,7 @@ class WarmLinkCloudDialog(QDialog):
     def _device_selection_changed(self, _index: int | None = None) -> None:
         if not self._loading_settings and self.session.device_code and self.session.device_code != self._selected_device_code():
             self.session = CloudSession(username=self.username_edit.text().strip(),
-                device_code=self._selected_device_code() or "", devices=list(self.devices))
+                device_code=self._selected_device_code() or "", devices=list(self.devices), devices_cached=bool(self.devices))
             self.data_rows = []
             self._pending_overlay.clear()
             self._pending_data_rows.clear()
@@ -601,7 +598,6 @@ class WarmLinkCloudDialog(QDialog):
             elif hasattr(self.main_window, "clear_cloud_overlay"):
                 self.main_window.clear_cloud_overlay()
         self._update_device_controls()
-        self._refresh_device_details()
         self._save_settings()
         if getattr(self.main_window, "cloud_session_authenticated", False):
             self.main_window.set_cloud_connection_state(True, self._selected_device_code())
@@ -612,12 +608,6 @@ class WarmLinkCloudDialog(QDialog):
         """Keep device mutation locked to a stopped cloud polling session."""
         running = self.cloud_thread is not None
         self.device_combo.setEnabled(not running)
-        self.add_device_btn.setEnabled(not running and self.validation_thread is None)
-        selected_is_known = (
-            str(self.device_combo.currentData() or "")
-            in normalize_known_device_codes(self._cloud_settings().get("known_device_codes", []))
-        )
-        self.remove_device_btn.setEnabled(not running and selected_is_known)
         self.rediscover_btn.setEnabled(not running)
         self.username_edit.setEnabled(not running)
         self.password_edit.setEnabled(not running)
@@ -625,12 +615,9 @@ class WarmLinkCloudDialog(QDialog):
         self.interval_spin.setEnabled(not running)
         self.reload_static_btn.setEnabled(bool(self.session.scanned and self.session.static_codes) and not self._stopping)
 
-    def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False, discovery_only=False):
+    def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False, discovery_only=False, full_scan=False):
         if self.cloud_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Cloud-Worker läuft bereits.")
-            return
-        if self.validation_thread is not None:
-            QMessageBox.information(self, "WarmLink Cloud", "Eine Geräteprüfung läuft bereits.")
             return
         user = self.username_edit.text().strip()
         pw = self._password()
@@ -641,14 +628,16 @@ class WarmLinkCloudDialog(QDialog):
         cfg = self._cloud_settings()
         credentials_changed = bool(self.password_edit.text() and self.password_edit.text() != self._session_password)
         if credentials_changed:
-            self.session = CloudSession()
+            self.session = CloudSession(username=user, device_code=self._selected_device_code() or "",
+                devices=list(self.devices), devices_cached=bool(self.devices))
         self._session_password = self.password_edit.text() or self._session_password
         self._remember_credentials()
         initial_token = None if credentials_changed else self._initial_token_for_user(user)
         initial_login_at = self._cloud_token_login_at if initial_token else 0.0
         if self.session.username != user or self.session.device_code != self._selected_device_code():
             self.session = CloudSession(username=user, device_code=self._selected_device_code() or "",
-                devices=list(self.devices) if self.session.username == user else [])
+                devices=list(self.devices) if self._devices_username == user else [],
+                devices_cached=bool(self.devices and self._devices_username == user))
             self.data_rows = []
             self._pending_overlay.clear()
             self._pending_data_rows.clear()
@@ -675,17 +664,16 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker = WarmLinkCloudWorker(
             username=user,
             password=pw,
-            codes=self._codes(),
+            codes=list(WARMLINK_644_DISCOVERY_CODES) if full_scan else self._codes(),
             interval_s=int(self.interval_spin.value()),
             device_code=self._selected_device_code(),
-            known_device_codes=normalize_known_device_codes(cfg.get("known_device_codes", [])),
             poll_once=bool(poll_once or just_login),
             preferred_login_method=preferred_login_method,
             login_fallbacks=login_fallbacks,
             initial_token=initial_token,
             initial_login_at=initial_login_at,
             session=self.session, force_discovery=force_discovery, reload_static=reload_static,
-            discovery_only=discovery_only,
+            discovery_only=discovery_only, full_scan=full_scan,
             load_credentials=True, use_saved_token=bool(cfg.get("save_token", True)) and not credentials_changed,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
@@ -794,11 +782,13 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(list)
     def _on_devices(self, devices: list):
-        self.devices = merge_discovered_and_known_devices(
-            [d for d in devices if isinstance(d, dict)],
-            self._cloud_settings().get("known_device_codes", []),
-        )
+        self.devices = cached_device_metadata(devices)
+        self._devices_username = self.username_edit.text().strip()
+        cfg = self._cloud_settings()
+        cfg["cached_devices_username"] = self._devices_username
+        cfg["cached_devices"] = list(self.devices)
         self.session.devices = list(self.devices)
+        self.session.devices_cached = bool(self.devices)
         self.refresh_devices()
         selected = self.device_combo.findData(self.session.device_code)
         if selected >= 0:
@@ -808,9 +798,9 @@ class WarmLinkCloudDialog(QDialog):
             blocked = self.device_table.blockSignals(True)
             self.device_table.selectRow(selected)
             self.device_table.blockSignals(blocked)
-        self._refresh_device_details()
         self._save_settings()
-        self.main_window.set_cloud_connection_state(True, self._selected_device_code())
+        if self.session.validated or getattr(self.main_window, "cloud_session_authenticated", False):
+            self.main_window.set_cloud_connection_state(True, self._selected_device_code())
 
     @Slot(object)
     def _on_session_updated(self, session):
@@ -868,6 +858,16 @@ class WarmLinkCloudDialog(QDialog):
         if not self._stopping:
             self.status_label.setText(labels.get(phase, phase))
 
+    def reload_all_values(self):
+        """Recheck all catalogue candidates through the existing polling worker."""
+        if self._stopping:
+            self.status_label.setText("Cloud-Worker wird beendet; bitte danach erneut lesen.")
+            return
+        if self.cloud_worker:
+            self.cloud_worker.request_full_scan(WARMLINK_644_DISCOVERY_CODES)
+        else:
+            self._start_worker(True, full_scan=True)
+
     def reload_static_values(self):
         if self.cloud_worker:
             self.cloud_worker.request_static_reload()
@@ -913,190 +913,49 @@ class WarmLinkCloudDialog(QDialog):
         self._tab_changed(self.tabs.currentIndex())
 
     def _mask(self, value: Any) -> str:
-        return mask_cloud_value(value, show_ids=self.ids_cb.isChecked())
+        return mask_cloud_value(value, show_ids=False)
 
     def refresh_devices(self):
         current = str(self.device_combo.currentData() or "")
-        self.device_combo.blockSignals(True)
+        self.devices = cached_device_metadata(self.devices)
+        blocked = self.device_combo.blockSignals(True)
         self.device_combo.clear()
         for dev in self.devices:
-            label, code = device_combo_label(dev, show_ids=self.ids_cb.isChecked())
+            label, code = device_combo_label(dev, show_ids=True)
             self.device_combo.addItem(label, code)
         idx = self.device_combo.findData(current)
         if idx < 0:
-            saved = str(self._cloud_settings().get("selected_device_code", ""))
-            idx = self.device_combo.findData(saved)
+            idx = self.device_combo.findData(str(self._cloud_settings().get("selected_device_code", "")))
         if idx >= 0:
             self.device_combo.setCurrentIndex(idx)
-        self.device_combo.blockSignals(False)
+        self.device_combo.blockSignals(blocked)
 
-        self.device_table.setRowCount(len(self.devices))
+        keys = set().union(*(device.keys() for device in self.devices))
+        self.device_columns = list(self.DEVICE_COLUMNS) + sorted(keys.difference(self.DEVICE_COLUMNS))
         blocked = self.device_table.blockSignals(True)
+        self.device_table.setColumnCount(len(self.device_columns))
+        self.device_table.setHorizontalHeaderLabels(self.device_columns)
+        self.device_table.setRowCount(len(self.devices))
         for row, dev in enumerate(self.devices):
-            groups = [("deviceNickName", "deviceName"), ("model", "custModel"), ("deviceStatus",),
-                      ("isFault", "is_fault", "faultState"), ("dtuSoftwareVer",),
-                      ("dtuSignalIntensity",), ("isShared",), ("houseName",), ("discoverySource",)]
-            for col, keys in enumerate(groups):
-                key = next((key for key in keys if key in dev and dev[key] not in (None, "")), keys[0])
-                val = device_table_value(dev, key, self.SENSITIVE_DEVICE_FIELDS, show_ids=self.ids_cb.isChecked())
-                self.device_table.setItem(row, col, QTableWidgetItem(val))
-        if idx >= 0:
-            self.device_table.selectRow(idx)
+            for col, key in enumerate(self.device_columns):
+                value = dev.get(key)
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value, ensure_ascii=False, sort_keys=True)
+                text = "—" if value is None or value == "" else str(value)
+                self.device_table.setItem(row, col, QTableWidgetItem(text))
+        self.device_table.selectRow(self.device_combo.currentIndex())
         self.device_table.blockSignals(blocked)
         self.device_table.resizeColumnsToContents()
-        self._refresh_device_details()
         if self.session.username == self.username_edit.text().strip():
             self.session.devices = list(self.devices)
-        self._refresh_known_device_table()
         self._update_device_controls()
 
     def _device_table_selection_changed(self):
         row = self.device_table.currentRow()
-        if 0 <= row < len(self.devices):
-            if self.cloud_thread is None:
-                index = self.device_combo.findData(self.devices[row].get("deviceCode"))
-                if index >= 0:
-                    self.device_combo.setCurrentIndex(index)
-            self._refresh_device_details(self.devices[row])
-
-    def _refresh_device_details(self, device=None):
-        if device is None:
-            device = next((d for d in self.devices if d.get("deviceCode") == self._selected_device_code()), {})
-        keys = [key for key in self.DEVICE_COLUMNS if key in device]
-        self.device_details_table.setRowCount(len(keys))
-        for row, key in enumerate(keys):
-            self.device_details_table.setItem(row, 0, QTableWidgetItem(key))
-            value = device_table_value(device, key, self.SENSITIVE_DEVICE_FIELDS, self.ids_cb.isChecked())
-            self.device_details_table.setItem(row, 1, QTableWidgetItem(value))
-
-    def _refresh_known_device_table(self) -> None:
-        known = normalize_known_device_codes(self._cloud_settings().get("known_device_codes", []))
-        self.known_device_table.setRowCount(len(known))
-        for row, code in enumerate(known):
-            self.known_device_table.setItem(row, 0, QTableWidgetItem(self._mask(code)))
-            select = QPushButton("Auswählen")
-            select.clicked.connect(lambda _checked=False, c=code: self._select_known_device(c))
-            remove = QPushButton("Entfernen")
-            remove.clicked.connect(lambda _checked=False, c=code: self._remove_known_device(c))
-            self.known_device_table.setCellWidget(row, 1, select)
-            self.known_device_table.setCellWidget(row, 2, remove)
-
-    def _select_known_device(self, code: str) -> None:
-        index = self.device_combo.findData(code)
-        if index >= 0:
-            self.device_combo.setCurrentIndex(index)
-            self.main_window._log(f"WarmLink Cloud: Gerät ausgewählt: {self._mask(code)}")
-
-    def _remove_known_device(self, code: str) -> None:
-        index = self.device_combo.findData(code)
-        if index >= 0:
-            self.device_combo.setCurrentIndex(index)
-        self.remove_selected_known_device()
-
-    def add_known_device(self) -> None:
-        if self.cloud_thread is not None:
-            return
-        code, accepted = QInputDialog.getText(self, "WarmLink-Gerät", "deviceCode:")
-        code = str(code or "").strip()
-        if not accepted:
-            return
-        if not code:
-            QMessageBox.warning(self, "WarmLink Cloud", "Der Gerätecode darf nicht leer sein.")
-            return
-        known = normalize_known_device_codes(self._cloud_settings().get("known_device_codes", []))
-        if code in known:
-            index = self.device_combo.findData(code)
+        if self.cloud_thread is None and 0 <= row < len(self.devices):
+            index = self.device_combo.findData(self.devices[row].get("deviceCode"))
             if index >= 0:
                 self.device_combo.setCurrentIndex(index)
-            QMessageBox.information(self, "WarmLink Cloud", "Dieser Gerätecode ist bereits gespeichert.")
-            return
-        if self.validation_thread is not None:
-            QMessageBox.information(self, "WarmLink Cloud", "Eine Geräteprüfung läuft bereits.")
-            return
-        user = self.username_edit.text().strip()
-        password = self._password()
-        if not user:
-            QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort fehlt.")
-            return
-        cfg = self._cloud_settings()
-        self.status_label.setText(f"prüfe Gerätecode {self._mask(code)} ...")
-        self.add_device_btn.setEnabled(False)
-        self.validation_thread = QThread(self)
-        self.validation_worker = WarmLinkKnownDeviceValidationWorker(
-            user, password, code,
-            initial_token=self._initial_token_for_user(user), load_credentials=True,
-            use_saved_token=bool(cfg.get("save_token", True)),
-            preferred_login_method=str(cfg.get("login_method") or "md5"),
-            login_fallbacks=bool(cfg.get("login_fallbacks", False)),
-        )
-        self.validation_worker.moveToThread(self.validation_thread)
-        self.validation_thread.started.connect(self.validation_worker.run)
-        self.validation_worker.validated.connect(self._known_device_validated)
-        self.validation_worker.error.connect(self._known_device_validation_error)
-        self.validation_worker.authentication_error.connect(self._known_device_authentication_error)
-        self.validation_worker.token_updated.connect(self._on_token_updated)
-        self.validation_worker.finished.connect(self.validation_thread.quit)
-        self.validation_worker.finished.connect(self.validation_worker.deleteLater)
-        self.validation_thread.finished.connect(self._known_device_validation_finished)
-        self.validation_thread.start()
-
-    def _known_device_validated(self, code: str, rows: list) -> None:
-        cfg = self._cloud_settings()
-        known = add_known_device_code(cfg.get("known_device_codes", []), code)
-        cfg["known_device_codes"] = known
-        cfg["selected_device_code"] = code
-        self.devices = merge_discovered_and_known_devices(self.devices, known)
-        self.refresh_devices()
-        index = self.device_combo.findData(code)
-        if index >= 0:
-            self.device_combo.setCurrentIndex(index)
-        self._save_settings()
-        self.status_label.setText("Gerätecode geprüft und gespeichert.")
-        self.main_window._log(f"WarmLink Cloud: manuellen Gerätecode {code} erfolgreich validiert")
-        self.main_window._log(f"WarmLink Cloud: Gerätecode hinzugefügt: {self._mask(code)}")
-
-    def _known_device_validation_error(self, detail: str) -> None:
-        self.status_label.setText("Gerätecode konnte nicht validiert werden.")
-        QMessageBox.warning(
-            self, "WarmLink Cloud",
-            "Gerätecode konnte nicht gelesen werden.\n"
-            "Der aktuelle WarmLink-Account besitzt möglicherweise keinen Zugriff auf dieses Gerät.\n\n"
-            f"Details: {detail}",
-        )
-
-    def _known_device_authentication_error(self, detail: str) -> None:
-        self._on_worker_error(detail)
-        QMessageBox.warning(self, "WarmLink Cloud", detail)
-
-    def _known_device_validation_finished(self) -> None:
-        if self.validation_thread is not None:
-            self.validation_thread.deleteLater()
-        self.validation_thread = None
-        self.validation_worker = None
-        self._update_device_controls()
-
-    def remove_selected_known_device(self) -> None:
-        if self.cloud_thread is not None:
-            return
-        code = self._selected_device_code() or ""
-        cfg = self._cloud_settings()
-        known = normalize_known_device_codes(cfg.get("known_device_codes", []))
-        if code not in known:
-            return
-        cfg["known_device_codes"] = remove_known_device_code(known, code)
-        self.devices = [
-            device for device in self.devices
-            if not (str(device.get("deviceCode") or "") == code
-                    and device.get("discoverySource") in {"manual", "stored-device-code"})
-        ]
-        self.refresh_devices()
-        selected = self._selected_device_code()
-        if selected:
-            cfg["selected_device_code"] = selected
-        else:
-            cfg.pop("selected_device_code", None)
-        self._save_settings()
-        self.main_window._log(f"WarmLink Cloud: Gerätecode entfernt: {self._mask(code)}")
 
     def refresh_data(self):
         rows = filtered_cloud_rows(

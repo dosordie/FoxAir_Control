@@ -41,6 +41,7 @@ class CloudSession:
     username: str = ""
     device_code: str = ""
     devices: list[dict[str, Any]] = field(default_factory=list)
+    devices_cached: bool = False
     validated: bool = False
     candidates: list[str] = field(default_factory=list)
     supported_codes: list[str] = field(default_factory=list)
@@ -51,8 +52,9 @@ class CloudSession:
     scanned: bool = False
 
     def reusable(self, username, device_code, token):
-        return bool(token and self.validated and self.devices and self.username == username
-                    and self.device_code == device_code)
+        account_matches = self.username == username and self.device_code == device_code
+        device_exists = any(device.get("deviceCode") == device_code for device in self.devices)
+        return bool(account_matches and device_exists and (self.devices_cached or (token and self.validated)))
 
     def merge(self, rows):
         for row in rows:
@@ -66,9 +68,11 @@ class CloudSession:
                 row = {**cached, **row}
             self.rows[code] = dict(row)
 
-    def classify(self, candidates):
+    def classify(self, candidates, fresh_rows=None):
         self.candidates = list(candidates)
-        self.supported_codes = [code for code in candidates if self.rows.get(code, {}).get("supported")]
+        # A full scan rechecks support; retained stale values are not evidence of support.
+        evidence = self.rows if fresh_rows is None else {row["code"]: row for row in fresh_rows}
+        self.supported_codes = [code for code in candidates if evidence.get(code, {}).get("supported")]
         groups = classify_cloud_codes(self.supported_codes)
         self.live_codes, self.static_codes, self.other_codes = (
             groups["live"], groups["static"], groups["other"])

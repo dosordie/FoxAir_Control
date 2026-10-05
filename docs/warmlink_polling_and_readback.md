@@ -136,21 +136,34 @@ GL9-Test; die Implementierung wurde hier mit API-/Worker-Mocks geprüft.
 
 ## Session und Bedienung
 
-`MainWindow.cloud_session` hält die Session unabhängig vom Dialog. Ein neu
+`MainWindow.cloud_session` hält den Pollingzustand unabhängig vom Dialog. Ein neu
 geöffneter Dialog übernimmt die entdeckten Geräte, die Auswahl, Code-Gruppen
 und gecachten Zeilen sofort. Das Öffnen löst weder Discovery noch Registerscan
-aus. Geräte-Metadaten und der zusätzliche Zugangsdaten-Cache bleiben nur im
-Arbeitsspeicher; es gibt keine neue Speicherung vollständiger Gerätedaten in
-JSON. Der asynchrone Keyring-Executor wird im Hauptfenster wiederverwendet.
+aus. Zusätzlich werden nur die vollständigen gemergten Geräte-Metadaten unter
+`warmlink_cloud.cached_devices` gespeichert, gebunden an
+`cached_devices_username`. Beim Programmneustart wird dieser Cache sofort
+angezeigt und die gespeicherte Auswahl wiederhergestellt. Werte, Code-Gruppen,
+Pollingzustand und Session-Validierung werden nicht persistiert.
 
-Eine erfolgreiche Geräteabfrage validiert die Session. Stop/Start mit gleichem
-Account, gültigem Token und validiertem Gerät verwendet die Device-Liste und
-den Code-Cache wieder. Token bleiben in der laufenden Session nutzbar, auch
-wenn keine Keyring-Speicherung aktiviert ist.
+Passwort und Token bleiben im bestehenden asynchronen Keyring-System;
+Authentifizierungsgeheimnisse werden auch aus verschachtelten Gerätefeldern
+entfernt. Der Zugangsdaten-Cache im Hauptfenster bleibt im Arbeitsspeicher.
+Ein Gerätecache bestätigt keine Anmeldung: Erst die normalen authentifizierten
+API-Aufrufe validieren die neue Session.
 
-Discovery findet beim ersten Start, Account-/Geräte-/Zugangsdatenwechsel,
-fehlender gültiger Session, Geräte-/Zugriffsfehler oder über **Geräte neu
-suchen** statt. Der Button verwendet `discovery_only=True`: nur Token/Login,
+Stop/Start mit gleichem Account verwendet die Device-Liste und den Wertcache
+weiter. Beim Neustart kann der Gerätecache auch ohne Token verwendet werden;
+der erste Werteabruf führt dann den regulären Login aus. Token bleiben in der
+laufenden Session nutzbar, auch ohne aktivierte Keyring-Speicherung.
+
+Discovery findet ohne passenden Gerätecache, nach Accountwechsel, bei einem
+echten Geräte-/Zugriffsfehler oder ausdrücklich über **Geräte neu suchen**
+statt. Gerätewahl aus dem Cache sowie Passwort-/Token-Erneuerung erfordern
+keine erneute Gerätesuche. Ein Accountwechsel verwirft die bisherige Auswahl,
+angezeigte Cloudwerte und den Gerätecache. Erfolgreiche neue Discovery ersetzt
+den persistenten Cache. Die manuelle Geräteverwaltung entfällt; alte
+`known_device_codes`-Settings bleiben lesbar, dienen der GUI aber nicht mehr
+als Gerätequelle. Der Button verwendet `discovery_only=True`: nur Token/Login,
 `get_devices`, `get_houses`, `get_house_devices`, Merge und Geräteauswahl.
 Es folgen weder `getDataByCode` noch Status oder Fault-History. Die bestehende
 Auswahl und ihr Cache bleiben erhalten, soweit das Gerät weiterhin verfügbar
@@ -219,25 +232,68 @@ Spalte ausschließlich zur lokalen Historie. **Cloud vorher** bleibt unabhängig
 davon verfügbar. Livepoll, statisches Nachladen, Einzelread und beide
 Cloud-Schreib-Readback-Pfade verwenden denselben Overlay-/Historiepfad.
 
-## Geräteübersicht und Details
+## Geräteübersicht
 
 `deviceList` bleibt führend; House-Datensätze ergänzen nur fehlende, `None`-
 oder leere Felder. Bestehendes `false` und `0` werden nicht überschrieben.
-Doppelte Geräte aus House-Area-/Room-Listen ergänzen sich ebenfalls. Manuelle
-Codes ergänzen ausschließlich fehlende Geräte. **Quelle** zeigt `deviceList`,
-`House`, `deviceList + House` oder `manual`.
+Doppelte Geräte aus House-Area-/Room-Listen ergänzen sich ebenfalls.
 
-Die Übersicht hat neun Spalten: Name, Modell, Status, Fehler, DTU-Version,
-Signal, Freigabe, House und Quelle. Die Detailtabelle zeigt nur tatsächlich
-gelieferte Whitelist-Felder, einschließlich `deviceName`, `productKey`,
-`faultState`, `isShared`, `houseId`, `houseName`, `houseRoleType`, `roomId` und
-`areaId`. Fehlende Shared-Felder erscheinen in der Übersicht als `—` und werden
-in den Details nicht erfunden. Geliefertes `false`, `0` und eine echte leere
-Zeichenfolge bleiben unterscheidbar.
+Es gibt eine einzige Tabelle mit einer Zeile pro Gerät. Vorne stehen
+`deviceNickName`, `deviceName`, `model`, `custModel`, `deviceStatus`, `isFault`,
+`dtuSoftwareVer`, `dtuSignalIntensity`, `isShared`, `houseName`, `houseRoleType`
+und `discoverySource`; danach folgen alle tatsächlich gelieferten übrigen Keys
+alphabetisch. Auch bisher unbekannte House-Gerätefelder bleiben erhalten.
+Fehlende oder leere Angaben erscheinen als `—`; `false` und `0` bleiben sichtbar.
 
-Device-Code, Device-ID, SN und ICCID bleiben maskiert, bis **IDs anzeigen**
-aktiviert wird. Geheimnisse, MAC- und Standortdaten gehören nicht zur
-UI-Whitelist.
+Device-Code, Device-ID, SN, ICCID, Produkt- und House-/Room-/Area-IDs werden
+vollständig angezeigt. Die separate Detailtabelle und **IDs anzeigen** entfallen.
+Passwort, Token und andere Authentifizierungsgeheimnisse werden weder angezeigt
+noch im Gerätecache gespeichert. Log-/Debug-Maskierung bleibt separat bestehen.
+
+## Parametereinstellungen und Cloud-Schreiben
+
+`MainWindow.register_value_sources()` liest die bestehenden lokalen Register,
+letzten lokalen Rohwerte und das Cloud-Overlay zentral und quellengetrennt.
+Die Parametertabelle zeigt lokale Werte einschließlich App-/Value-Mapping wie
+bisher; die zusätzliche Spalte **Cloud** zeigt den übersetzten Cloudwert.
+Ohne lokalen Wert steht der Cloudwert auch unter **aktueller Wert**, während
+**Rohwert (lokal)** leer (`--`) bleibt. Cloudwerte werden nicht zurück in
+Modbus-Rohwerte skaliert.
+
+`apply_cloud_rows_to_main()` benachrichtigt offene Parametereinstellungen über
+`update_from_cloud_register(reg_no)`. Initialscan, Livepoll, statisches Nachladen,
+Einzelread und Schreib-Readback aktualisieren die betroffene sichtbare Zeile
+sofort, auch bei sortierter Tabelle. WP-Steuerung, Timer und SG-Editor erhalten
+keine neue Cloud-Logik. Cloud-only öffnet die Parametertabelle ohne Display-
+Snapshot und sendet keine lokalen automatischen Blockreads.
+
+Normale **Cloud schreiben**-Aktionen senden nach der bestehenden Werteingabe/
+-auswahl direkt. Der zusätzliche Bestätigungsdialog entfällt. Allowlist,
+Wertevalidierung, Firmware-Capture-Sperre, Sperre paralleler Schreibbefehle,
+Fehlerbehandlung und automatischer Readback bleiben erhalten. Der separate
+Experten-/Dry-Run-Schreibtest behält seine eigenen Bestätigungen.
+
+## Alle bekannten Register lesen
+
+Der Hauptfenster-Button bevorzugt eine aktive lokale Verbindung: Standard-
+Modbus und Warmlink verwenden weiterhin ihre bisherigen Init-Controller;
+Modbus Display verwendet weiterhin den Display-Reboot-Fake-Snapshot.
+Auch bei gleichzeitig verbundenem Cloudgerät bleibt dieser lokale Pfad führend.
+
+Ohne lokale Verbindung, aber mit gültiger Cloud-Verbindung und ausgewähltem
+Gerät, fordert der Button alle `WARMLINK_644_DISCOVERY_CODES` an: Live, Static,
+Other, Raw-Fault-Wörter und bisher nicht unterstützte Kandidaten. Bei laufendem
+Polling wird derselbe Worker per `request_full_scan()` geweckt; bei gestopptem
+Polling startet ein einmaliger Vollscan mit derselben Session/API-Architektur.
+Es wird keine zusätzliche Discovery angefordert. Die Cloud-Leiste zeigt
+`INITIAL_SCAN` und Batch-Fortschritt; HTTP läuft weiter außerhalb der GUI.
+
+Der Vollscan klassifiziert anhand seiner frischen Antwort erneut. Ein zuvor
+gültiger, nun fehlender Wert bleibt als stale im Wertcache, gilt aber nicht
+weiterhin als aktuell unterstützt. Danach läuft Polling wieder mit den
+aktualisierten Gruppen. Unit-/Range-Prioritäten und Skalierungen bleiben
+unverändert. Ohne gültige Verbindung wird nur ein Status ins Log geschrieben;
+Firmware-Capture sperrt auch diesen aktiven Cloudscan.
 
 ## Countdown im Hauptfenster
 

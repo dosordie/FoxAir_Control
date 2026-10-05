@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from cloud.device_metadata import safe_device_metadata
+
 
 def normalize_known_device_codes(values: Any) -> list[str]:
     """Return unique, non-empty device codes while preserving their order."""
@@ -44,7 +46,7 @@ def merge_device_sources(
         for raw in devices:
             if not isinstance(raw, dict):
                 continue
-            device = dict(raw)
+            device = safe_device_metadata(raw)
             code = str(device.get("deviceCode") or "").strip()
             if not code:
                 continue
