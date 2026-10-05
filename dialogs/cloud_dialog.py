@@ -1220,7 +1220,7 @@ class WarmLinkCloudDialog(QDialog):
             code_display_name(code),
             row.get("value", ""),
             row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
-            code_unit(code) or hint.get("unit", ""),
+            code_unit(code, row),
             row.get("rangeStart", hint.get("rangeStart", "")),
             row.get("rangeEnd", hint.get("rangeEnd", "")),
             "1" if row.get("supported") else "0",

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from core.foxair_phnix_core import decode_contact_bits
+from cloud.metadata import resolve_cloud_unit
 
 
 @dataclass(frozen=True)
@@ -38,11 +39,13 @@ def translate_cloud_value(
     value: Any,
     register_definition: Mapping[str, Any] | None = None,
     cloud_hint: Mapping[str, Any] | None = None,
+    live_metadata: Mapping[str, Any] | None = None,
 ) -> TranslatedCloudValue:
     """Return a structured display value without duplicating register metadata."""
     definition = register_definition or {}
     hint = cloud_hint or {}
-    binary = str(hint.get("cloud_dataType") or hint.get("dataType") or "").upper() in {"BINARY", "BITWORD16"}
+    live = live_metadata or {}
+    binary = str(live.get("dataType") or live.get("dataTypeAi") or hint.get("cloud_dataType") or hint.get("dataType") or "").upper() in {"BINARY", "BITWORD16"}
     try:
         raw = parse_cloud_number(value, binary=binary)
     except (TypeError, ValueError):
@@ -80,5 +83,5 @@ def translate_cloud_value(
         display = hex_text + (" | " + "; ".join(parts) if parts else " | keine Bits aktiv")
         return TranslatedCloudValue(value, raw, display, hex_text, tuple(active))
 
-    unit = str(hint.get("unit") or definition.get("unit") or "").strip()
+    unit = resolve_cloud_unit(cloud_code, hint, live, register_definition)
     return TranslatedCloudValue(value, raw, f"{raw} {unit}".strip())

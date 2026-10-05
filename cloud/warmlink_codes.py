@@ -1102,7 +1102,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '10',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'm³/h',
          'write_allowed': True},
  'D23': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1113,7 +1113,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '10',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'min',
          'write_allowed': True},
  'D24': {'cloud_dataType': 'DIGI1',
          'confidence': 'confirmed',
@@ -1154,7 +1154,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '80',
          'rangeStart': '30',
-         'unit': '°C',
+         'unit': 'min',
          'write_allowed': True},
  'E01': {'allow_code_mismatch': True,
          'cloud_dataType': 'DIGI1',
@@ -1318,7 +1318,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '50',
          'rangeStart': '-10',
-         'unit': '°C',
+         'unit': 'N',
          'write_allowed': True},
  'E17': {'cloud_dataType': 'DIGI1',
          'confidence': 'confirmed',
@@ -1478,7 +1478,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '90',
          'rangeStart': '30',
-         'unit': '°C',
+         'unit': 'rpm',
          'write_allowed': True},
  'F25': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1489,7 +1489,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '50',
          'rangeStart': '-20',
-         'unit': '°C',
+         'unit': 'rpm',
          'write_allowed': True},
  'F26': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1500,7 +1500,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '30',
          'rangeStart': '1',
-         'unit': '°C',
+         'unit': 'rpm',
          'write_allowed': True},
  'F27': {'cloud_dataType': 'DIGI1',
          'confidence': 'confirmed',
@@ -1858,7 +1858,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'min',
          'write_allowed': True},
  'P03': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1868,7 +1868,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'min',
          'write_allowed': True},
  'P05': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1898,7 +1898,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'W',
          'write_allowed': True},
  'P09': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1909,7 +1909,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'days',
          'write_allowed': True},
  'P10': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1919,7 +1919,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': '%',
          'write_allowed': True},
  'P11': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
@@ -1951,7 +1951,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'days',
          'write_allowed': True},
  'P14': {'cloud_dataType': 'DIGI1',
          'confidence': 'confirmed',
@@ -1982,7 +1982,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                  'cleanup: cloud_code == local register code',
          'rangeEnd': '250',
          'rangeStart': '0',
-         'unit': '°C',
+         'unit': 'bar',
          'write_allowed': True},
  'Power': {'allow_code_mismatch': True,
             'confidence': 'confirmed',
@@ -3145,8 +3145,10 @@ def code_display_name(code: str) -> str:
     return code_name(code)
 
 
-def code_unit(code: str) -> str:
-    return str(cloud_hint(code).get("unit") or "")
+def code_unit(code: str, live_metadata=None) -> str:
+    from cloud.metadata import resolve_cloud_unit
+
+    return resolve_cloud_unit(code, cloud_hint(code), live_metadata)
 
 
 def code_confidence(code: str) -> str:

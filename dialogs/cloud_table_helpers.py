@@ -41,7 +41,7 @@ def binary_to_int(value: Any) -> Optional[int]:
 
 def local_display_value(latest_regs: dict, reg_no: int) -> tuple[str, Optional[float]]:
     reg = latest_regs.get(int(reg_no))
-    if reg is None:
+    if reg is None or getattr(reg, "value_source", "modbus") == "cloud":
         return "", None
     text = str(getattr(reg, "display_value", ""))
     # ersten numerischen Anteil fuer groben Diff extrahieren
@@ -127,13 +127,13 @@ def compare_table_values(
     latest_regs: dict,
     regmap: dict,
     display_parts_for_register: Callable[[int, str], tuple[Any, str, Any]],
-    cloud_display_text: Callable[[str, Any], str],
+    cloud_display_text: Callable[[str, Any, dict], str],
 ) -> tuple[list[Any], str]:
     code = str(row.get("code", ""))
     hint = cloud_hint(code)
     cloud_val = row.get("value", "")
-    unit = code_unit(code)
-    cloud_txt = cloud_display_text(code, cloud_val)
+    unit = code_unit(code, row)
+    cloud_txt = cloud_display_text(code, cloud_val, row)
     local_txt, local_num = ("", None)
     diff_txt = ""
     status = "cloud-only"

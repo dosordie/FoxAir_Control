@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from cloud.register_resolver import resolve_cloud_register
+from cloud.register_resolver import CONFIRMED_REGISTER_ALIASES, resolve_cloud_register
+from cloud.mapping_validation import register_code_from_definition
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
 
 try:
@@ -64,8 +65,15 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         return None
     best: tuple[int, str] | None = None
     rank = {"confirmed": 0}
+    definitions = _static_register_defs()
+    local_code = register_code_from_definition(definitions.get(str(target), {})).upper()
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
-        mapped = resolve_cloud_register(str(code), hint, _static_register_defs())
+        # A dialog refresh needs only this register. Avoid resolving the entire
+        # catalog (each resolution scans the map) on every UI update.
+        hinted_code = str(hint.get("local_code") or "").strip().upper()
+        if not (local_code and hinted_code == local_code) and CONFIRMED_REGISTER_ALIASES.get(str(code)) != target:
+            continue
+        mapped = resolve_cloud_register(str(code), hint, definitions)
         if mapped != target:
             continue
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):

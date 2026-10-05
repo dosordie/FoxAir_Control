@@ -61,16 +61,15 @@ from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
 )
-from cloud.token_store import get_password, get_token
+from cloud.token_store import get_password, get_token, set_token
 from cloud.register_resolver import resolve_cloud_register
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
     cloud_write_choice_options,
     cloud_write_value_from_label,
     cloud_write_values_for_code,
-    current_raw_text_for_cloud_write,
 )
-from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker, WarmLinkCloudWorker
+from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker, WarmLinkCloudReadWorker
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer, QSize
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
@@ -1359,12 +1358,14 @@ class RegisterQuickWriteDialog(QDialog):
         layout.addLayout(form)
         self.current_raw_label = QLabel("--")
         self.current_decoded_label = QLabel("--")
+        self.cloud_value_label = QLabel("--")
         self.write_value_edit = QLineEdit()
         scale_hint = self.main_window._write_scale_hint(self.reg_no)
         self.write_value_edit.setPlaceholderText("z.B. 1,5" if scale_hint else "z.B. 55")
         self.write_value_edit.textEdited.connect(self._write_value_text_edited)
         form.addRow("aktueller Rohwert:", self.current_raw_label)
         form.addRow("aktueller Wert:", self.current_decoded_label)
+        form.addRow("Cloud-Wert:", self.cloud_value_label)
 
         if self.value_map:
             self.value_combo = QComboBox()
@@ -1413,13 +1414,26 @@ class RegisterQuickWriteDialog(QDialog):
         self.read_btn.setEnabled(not cloud_only)
         self.write_btn.setEnabled(not cloud_only)
         self.cloud_read_btn.setVisible(bool(connected and self.main_window.cloud_code_for_register(self.reg_no)))
+        self.cloud_read_btn.setEnabled(getattr(self.main_window, "cloud_read_thread", None) is None)
         self.cloud_write_btn.setVisible(bool(
             connected and self.main_window.cloud_code_for_register(self.reg_no, require_write_allowed=True)
         ))
 
     def read_cloud_register(self):
+        self._cloud_read_pending = True
         self.status_label.setText("Lese Cloud-Wert ...")
-        self.main_window.read_cloud_register(self.reg_no)
+        error = self.main_window.read_cloud_register(self.reg_no)
+        if error:
+            self.cloud_read_completed(error=error)
+
+    def cloud_read_completed(self, error: str = ""):
+        self._cloud_read_pending = False
+        self.refresh_from_live()
+        self.status_label.setText("Cloud-Lesen fehlgeschlagen: " + error if error else
+                                  "Cloud-Wert gelesen: " + self.cloud_value_label.text())
+
+    def update_from_cloud_value(self):
+        self.refresh_from_live()
 
     def write_cloud_register(self):
         self.main_window.open_cloud_write_for_register(self.reg_no, self.write_value_edit.text())
@@ -1485,6 +1499,19 @@ class RegisterQuickWriteDialog(QDialog):
 
     def refresh_from_live(self):
         self.update_cloud_actions()
+        overlay = getattr(self.main_window, "cloud_overlay_by_reg", {}).get(self.reg_no, {})
+        self.cloud_value_label.setText(str(overlay.get("value", "--")))
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            # Cloud numbers are engineering values; they have no Modbus raw word.
+            self.current_raw_label.setText("--")
+            self.current_decoded_label.setText("--")
+            value = overlay.get("engineering_value")
+            reg = self.main_window.latest_regs.get(self.reg_no)
+            if value is None and reg is not None:
+                value = getattr(reg, "cloud_value", None)
+            if value is not None and not self.write_value_edit.isModified() and not self.write_value_edit.hasFocus():
+                self.write_value_edit.setText(str(value))
+            return
         old_raw = self._last_raw
         reg = self.main_window.latest_regs.get(self.reg_no)
         if reg is None:
@@ -4506,7 +4533,11 @@ class MainWindow(QMainWindow):
         self.cloud_write_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.cloud_write_code: str = ""
         self.cloud_read_thread: Optional[QThread] = None
-        self.cloud_read_worker: Optional[WarmLinkCloudWorker] = None
+        self.cloud_read_worker: Optional[WarmLinkCloudReadWorker] = None
+        self.cloud_read_reg_no: int | None = None
+        self.cloud_read_code = ""
+        self._cloud_read_token = None
+        self._cloud_read_token_username = ""
         self.cloud_session_authenticated = False
         self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
@@ -6741,7 +6772,7 @@ class MainWindow(QMainWindow):
                 elif int(reg.reg) == 2012:
                     display_hmi_frame_had_true_2012 = True
 
-            if changed or reg.reg not in self.table_rows:
+            if changed or reg.reg not in self.table_rows or self._is_cloud_only_register(reg.reg):
                 self._upsert_register_row(reg, changed)
 
             if reg.reg == 2034:
@@ -7063,6 +7094,9 @@ class MainWindow(QMainWindow):
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
         ]
+        if getattr(reg, "value_source", "modbus") == "cloud" and reg.dtype.upper() != "BITFIELD":
+            values[4] = "--"
+            values[6] = "--"
         cloud_info = self.cloud_overlay_by_reg.get(int(reg.reg), {})
         if cloud_info:
             values.extend([
@@ -7118,7 +7152,7 @@ class MainWindow(QMainWindow):
         except Exception:
             return 0, text
 
-    def _cloud_display_text(self, code: str, value: Any) -> str:
+    def _cloud_display_text(self, code: str, value: Any, live_metadata=None) -> str:
         """Cloud-Wert fuer die Haupttabelle wie lokale Werte anzeigen.
 
         Cloud-Werte kommen oft bereits skaliert (z.B. Temperaturen als 34.5),
@@ -7158,7 +7192,7 @@ class MainWindow(QMainWindow):
                 if str(raw_int) in mapping:
                     return f"{raw_int} = {mapping[str(raw_int)]}"
 
-        unit = code_unit(code)
+        unit = code_unit(code, live_metadata)
         return f"{text} {unit}".strip()
 
     def _cloud_only_enabled(self) -> bool:
@@ -7233,7 +7267,9 @@ class MainWindow(QMainWindow):
         """
         if rows is None:
             return
-        self.cloud_last_rows = [dict(r) for r in rows if isinstance(r, dict)]
+        cached_rows = {r.get("code"): dict(r) for r in self.cloud_last_rows}
+        cached_rows.update({r.get("code"): dict(r) for r in rows if isinstance(r, dict)})
+        self.cloud_last_rows = list(cached_rows.values())
         show_cloud_only = True
         changed_regs: list[int] = []
         seen_cloud_codes: set[str] = set()
@@ -7267,14 +7303,15 @@ class MainWindow(QMainWindow):
                 continue
             seen_registers.add(reg_no)
             has_local_register = self._has_local_register_entry(reg_no)
-            has_existing_row = reg_no in self.table_rows
             value = row.get("value", "")
-            translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint)
+            translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint, row)
             info = {
                 "code": code,
                 "value": translated.display,
                 "raw_value": value,
                 "raw": translated.raw,
+                "engineering_value": translated.raw,
+                "metadata": dict(row),
                 "active_bits": translated.active_bits,
                 "lastFetch": row.get("lastFetch", ""),
                 "confidence": code_confidence(code),
@@ -7289,7 +7326,7 @@ class MainWindow(QMainWindow):
             if reg_no == 2019 and not self._has_local_register_entry(reg_no):
                 if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
                     self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
-            if show_cloud_only and not has_local_register and not has_existing_row:
+            if show_cloud_only and not has_local_register:
                 reg_info = self.regmap.get(reg_no)
                 try:
                     raw_int = int(translated.raw)
@@ -7299,6 +7336,9 @@ class MainWindow(QMainWindow):
                 mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
                 name = str(hint.get("name") or mapped_name or f"Cloud {code}")
                 dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
+                # raw_value remains a legacy numeric carrier for existing
+                # projections/bit decoders. value_source marks it as Cloud;
+                # local_raw_value is None, cloud_value retains full precision.
                 disp = translated.display
                 try:
                     signed = s16(raw_int & 0xFFFF)
@@ -7315,7 +7355,12 @@ class MainWindow(QMainWindow):
                     name=name,
                     dtype=dtype,
                     timestamp=time.time(),
+                    value_source="cloud",
+                    cloud_value=translated.raw,
                 ), changed=False)
+            for dialog in list(self.register_write_dialogs.values()):
+                if dialog.reg_no == reg_no:
+                    dialog.update_from_cloud_value()
         self._apply_cloud_only_visibility()
         for reg_no in changed_regs:
             self._refresh_cloud_cells_for_register(reg_no)
@@ -8682,49 +8727,98 @@ class MainWindow(QMainWindow):
     def cloud_code_for_register(self, reg_no: int, require_write_allowed: bool = False) -> str | None:
         return cloud_code_for_register(reg_no, require_write_allowed=require_write_allowed)
 
-    def read_cloud_register(self, reg_no: int) -> None:
-        """Read one mapped cloud code asynchronously into the normal overlay path."""
+    def read_cloud_register(self, reg_no: int) -> str | None:
+        """Start a direct single read; return an immediate validation error."""
         code = self.cloud_code_for_register(reg_no)
-        if not self.is_cloud_connected() or not code:
-            return
+        if not self.is_cloud_connected():
+            return "Keine gültige Cloud-Verbindung oder kein Gerät ausgewählt."
+        if not code:
+            return "Kein bestätigter Cloud-Code für dieses Register."
         if self.cloud_read_thread is not None:
-            QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Lesebefehl.")
-            return
+            return "Es läuft bereits ein Cloud-Lesebefehl."
         user, pw, token, _saved_device = self._cloud_write_credentials()
         if not user or not (pw or token):
-            return
+            return "Cloud-Zugang fehlt."
+        self.cloud_read_reg_no = int(reg_no)
+        self.cloud_read_code = code
+        self._cloud_read_username = user
+        cfg = self.settings.get("warmlink_cloud", {})
         self.cloud_read_thread = QThread(self)
-        self.cloud_read_worker = WarmLinkCloudWorker(
-            username=user,
-            password=pw or "",
-            codes=[code],
-            device_code=self.cloud_session_device_code,
-            poll_once=True,
-            initial_token=token,
+        self.cloud_read_worker = WarmLinkCloudReadWorker(
+            username=user, password=pw or "", codes=[code],
+            device_code=self.cloud_session_device_code, initial_token=token,
+            preferred_login_method=str(cfg.get("login_method") or "md5"),
+            login_fallbacks=bool(cfg.get("login_fallbacks", False)),
         )
         worker = self.cloud_read_worker
         thread = self.cloud_read_thread
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.data.connect(lambda rows: self._on_cloud_read_data(code, rows))
+        worker.data.connect(self._on_cloud_read_rows)
         worker.error.connect(self._on_cloud_read_error)
+        worker.log.connect(self._log)
+        worker.token_updated.connect(self._on_cloud_read_token)
+        worker.login_method.connect(self._on_cloud_read_login_method)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
         thread.finished.connect(self._cloud_read_finished)
+        for dialog in list(self.register_write_dialogs.values()):
+            dialog.update_cloud_actions()
         thread.start()
+        return None
+
+    @Slot(list)
+    def _on_cloud_read_rows(self, rows: list[dict[str, Any]]) -> None:
+        self._on_cloud_read_data(self.cloud_read_code, rows)
 
     def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
         self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
-        value = next((row.get("value") for row in rows if row.get("code") == code and row.get("supported")), None)
-        self._log(f"WarmLink Cloud Readback: {code}={value if value is not None else 'kein Wert'}", level=2)
+        row = next((r for r in rows if r.get("code") == code and r.get("supported")), None)
+        error = "Cloud liefert keinen Wert für " + code if row is None else ""
+        display = self.cloud_overlay_by_reg.get(self.cloud_read_reg_no, {}).get("value", "kein Wert")
+        self._log(f"WarmLink Cloud Readback: {code}={display}", level=2)
+        self._complete_cloud_read_dialogs(error)
 
+    def _complete_cloud_read_dialogs(self, error: str = "") -> None:
+        for dialog in list(self.register_write_dialogs.values()):
+            if dialog.reg_no == self.cloud_read_reg_no:
+                dialog.cloud_read_completed(error=error)
+
+    @Slot(str)
+    def _on_cloud_read_token(self, token: str) -> None:
+        self._cloud_read_token = token
+        self._cloud_read_token_username = self._cloud_read_username
+        dlg = self.warmlink_cloud_dialog
+        if dlg is not None and dlg.username_edit.text().strip() == self._cloud_read_username:
+            dlg._on_token_updated(token)
+        elif self.settings.get("warmlink_cloud", {}).get("save_token", True):
+            try:
+                set_token(self._cloud_read_username, token)
+            except Exception as exc:
+                self._log("WarmLink Cloud: Token konnte nicht gespeichert werden: " + str(exc))
+
+    @Slot(str)
+    def _on_cloud_read_login_method(self, method: str) -> None:
+        self.settings.setdefault("warmlink_cloud", {})["login_method"] = method
+
+    @Slot()
     def _cloud_read_finished(self) -> None:
         self.cloud_read_thread = None
         self.cloud_read_worker = None
+        self.cloud_read_reg_no = None
+        self.cloud_read_code = ""
+        for dialog in list(self.register_write_dialogs.values()):
+            dialog.update_cloud_actions()
+            if getattr(dialog, "_cloud_read_pending", False):
+                dialog.cloud_read_completed(error="Cloud-Abfrage ohne Ergebnis beendet.")
+        if getattr(self, "_close_after_cloud_read", False):
+            self.close()
 
+    @Slot(str)
     def _on_cloud_read_error(self, text: str) -> None:
         self._log("WarmLink Cloud lesen: " + str(text))
+        self._complete_cloud_read_dialogs(str(text))
         lower = str(text).lower()
         if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
             self.set_cloud_connection_state(False)
@@ -8745,7 +8839,7 @@ class MainWindow(QMainWindow):
                 user = dlg.username_edit.text().strip() or user
                 device_code = dlg._selected_device_code() or device_code
                 use_token = bool(dlg.save_token_cb.isChecked())
-                if use_token and getattr(dlg, "_cloud_token_username", "") == user:
+                if getattr(dlg, "_cloud_token_username", "") == user:
                     token = getattr(dlg, "_cloud_token", None)
                 pw = dlg._password()
             except Exception:
@@ -8753,6 +8847,8 @@ class MainWindow(QMainWindow):
 
         if not user:
             return None, None, None, device_code or None
+        if not token and getattr(self, "_cloud_read_token_username", "") == user:
+            token = getattr(self, "_cloud_read_token", None)
         if use_token and not token:
             try:
                 token = get_token(user)
@@ -8778,7 +8874,14 @@ class MainWindow(QMainWindow):
 
     def _ask_cloud_value(self, reg_no: int, cloud_code: str) -> str | None:
         values = cloud_write_values_for_code(cloud_code)
-        current_raw = current_raw_text_for_cloud_write(self.latest_regs.get(int(reg_no)))
+        reg = self.latest_regs.get(int(reg_no))
+        if self._is_cloud_only_register(reg_no):
+            current_value = self.cloud_overlay_by_reg.get(int(reg_no), {}).get("engineering_value")
+            current_raw = "" if current_value is None else str(current_value)
+        elif reg is not None:
+            current_raw = self._display_write_input_for_register(reg_no, reg.raw_value)
+        else:
+            current_raw = ""
         options, current_index = cloud_write_choice_options(values, current_raw)
         if options:
             labels = [label for _value, label in options]
@@ -8797,7 +8900,7 @@ class MainWindow(QMainWindow):
         text, ok = QInputDialog.getText(
             self,
             "Wert per Cloud schreiben",
-            f"Register {reg_no} / Cloud-Code {cloud_code}:\nCloud-Wert eingeben:",
+            f"Register {reg_no} / Cloud-Code {cloud_code}:\nCloud-Wert eingeben ({code_unit(cloud_code, self.cloud_overlay_by_reg.get(int(reg_no), {}).get('metadata'))}):",
             text=current_raw,
         )
         if not ok:
@@ -8834,12 +8937,13 @@ class MainWindow(QMainWindow):
             )
             return
         name = code_display_name(cloud_code)
+        unit = code_unit(cloud_code, self.cloud_overlay_by_reg.get(int(reg_no), {}).get("metadata"))
         device_txt = device_code if device_code else "automatisch: erstes Cloud-Gerät"
         if not ask_yes_no(
             self,
             "Wert per Cloud schreiben",
             f"Wirklich per WarmLink Cloud senden?\n\n"
-            f"Register: {reg_no}\nCloud-Code: {cloud_code} - {name}\nWert: {value}\nDevice: {device_txt}\n\n"
+            f"Register: {reg_no}\nCloud-Code: {cloud_code} - {name}\nWert: {value} {unit}\nDevice: {device_txt}\n\n"
             "Der Befehl wird über die Cloud an die Wärmepumpe gesendet.",
             default_yes=False,
         ):
@@ -10782,6 +10886,10 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        if self.cloud_read_thread is not None:
+            self._close_after_cloud_read = True
+            event.ignore()
+            return
         self._update_main_window_settings()
         self._save_settings()
         if self.warmlink_cloud_dialog is not None:

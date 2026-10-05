@@ -760,6 +760,7 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
     for item in raw_items:
         if not isinstance(item, dict):
             continue
+        original_item = item
         code = str(item.get("code") or item.get("protocalCode") or item.get("protocolCode") or item.get("name") or "").strip()
         if not code and len(item) == 1:
             code = str(next(iter(item.keys())))
@@ -770,12 +771,13 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
         value = item.get("value", item.get("dataValue", item.get("val", item.get("currentValue"))))
         live_supported = value not in (None, "")
         rows.append({
+            **item,  # Preserve optional live metadata (unit, dataTypeAi, tmJson, ...).
             "code": code,
             "value": value,
             "dataType": item.get("dataType") or item.get("type") or "",
             "rangeStart": item.get("rangeStart", item.get("min")),
             "rangeEnd": item.get("rangeEnd", item.get("max")),
-            "raw": item,
+            "raw": original_item,
             "supported": live_supported,
             "cloud_supported": live_supported,
         })
