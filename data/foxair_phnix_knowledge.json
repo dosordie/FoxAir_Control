@@ -152,7 +152,16 @@
   "1034": {
     "default": "0",
     "description": "0 bis 20",
-    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
+    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1",
+    "range": {
+      "min": 0,
+      "max": 20,
+      "unit": "",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "ScreenRecording_06-13-2026_Parameterblock1",
+      "evidence": "0 bis 20"
+    }
   },
   "1035": {
     "default": "0",
@@ -168,7 +177,16 @@
   "1037": {
     "default": "-25 °C",
     "description": "-40.0 10.0°C,TEMP1",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": -40,
+      "max": 10,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "-40.0 10.0°C,TEMP1"
+    }
   },
   "1038": {
     "default": "4°C",
@@ -183,7 +201,16 @@
   "1040": {
     "default": "120 °C",
     "description": "60 bis 130°C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": 60,
+      "max": 130,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "60 bis 130°C"
+    }
   },
   "1041": {
     "default": "0",
@@ -199,12 +226,30 @@
   "1043": {
     "default": "5°C",
     "description": "-30 bis 20°C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": -30,
+      "max": 20,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "-30 bis 20°C"
+    }
   },
   "1044": {
     "default": "10℃",
     "description": "0 bis 30°C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": 0,
+      "max": 30,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "0 bis 30°C"
+    }
   },
   "1045": {
     "default": "120",
@@ -244,7 +289,16 @@
   "1051": {
     "default": "21",
     "description": "-30 bis 60°C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": -30,
+      "max": 60,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "-30 bis 60°C"
+    }
   },
   "1052": {
     "default": "0",
@@ -266,12 +320,30 @@
   "1055": {
     "default": "-3.5°C",
     "description": "-50 bis 30°C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": -50,
+      "max": 30,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "-50 bis 30°C"
+    }
   },
   "1056": {
     "default": "5C",
     "description": "-20 bis 20 °C",
-    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38"
+    "source_app_video": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+    "range": {
+      "min": -20,
+      "max": 20,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video A-Block ScreenRecording_06-13-2026 10-50-12; v38",
+      "evidence": "-20 bis 20 °C"
+    }
   },
   "1057": {
     "default": "7℃",
@@ -293,7 +365,16 @@
   "1060": {
     "default": "50℃",
     "description": "-15 bis 60°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -15,
+      "max": 60,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-15 bis 60°C"
+    }
   },
   "1061": {
     "default": "0",
@@ -304,7 +385,16 @@
   "1062": {
     "default": "10℃",
     "description": "-15 bis 60°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -15,
+      "max": 60,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-15 bis 60°C"
+    }
   },
   "1063": {
     "default": "30",
@@ -323,7 +413,16 @@
   "1066": {
     "default": "10℃",
     "description": "-15 bis 60°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -15,
+      "max": 60,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-15 bis 60°C"
+    }
   },
   "1067": {
     "default": "0",
@@ -332,7 +431,16 @@
   "1068": {
     "default": "20°C",
     "description": "-15 bis 60°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -15,
+      "max": 60,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-15 bis 60°C"
+    }
   },
   "1069": {
     "default": "None",
@@ -407,7 +515,16 @@
   "1081": {
     "default": "300г",
     "description": "10 bis 1300",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 10,
+      "max": 1300,
+      "unit": "rpm",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "10 bis 1300"
+    }
   },
   "1082": {
     "default": "150s",
@@ -417,7 +534,16 @@
   "1083": {
     "default": "300r",
     "description": "10 bis 1300",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 10,
+      "max": 1300,
+      "unit": "rpm",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "10 bis 1300"
+    }
   },
   "1084": {
     "default": "150s",
@@ -448,7 +574,16 @@
   "1089": {
     "default": "600г",
     "description": "10 bis 1300",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 10,
+      "max": 1300,
+      "unit": "rpm",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "10 bis 1300"
+    }
   },
   "1090": {
     "default": "2min",
@@ -509,128 +644,335 @@
     "default": "700г",
     "description": "10 bis 1300 F25 Einheit rpm.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 10,
+      "max": 1300,
+      "unit": "rpm",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "10 bis 1300 F25 Einheit rpm."
+    }
   },
   "1104": {
     "default": "700г",
     "description": "10 bis 1300 F26 Einheit rpm.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 10,
+      "max": 1300,
+      "unit": "rpm",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "10 bis 1300 F26 Einheit rpm."
+    }
   },
   "1105": {
     "default": "12.5°C",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1106": {
     "default": "26min",
     "description": "0 bis 120 min D02 Einheit Minuten.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 120 min D02 Einheit Minuten."
+    }
   },
   "1107": {
     "default": "45min",
     "description": "30 bis 90 min D03 Einheit Minuten.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 30,
+      "max": 90,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "30 bis 90 min D03 Einheit Minuten."
+    }
   },
   "1108": {
     "default": "110°C",
     "description": "0 bis 150°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 0,
+      "max": 150,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "0 bis 150°C"
+    }
   },
   "1109": {
     "default": "2.6bar",
     "description": "0 bis 45 Bar",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 0,
+      "max": 45,
+      "unit": "bar",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "0 bis 45 Bar"
+    }
   },
   "1110": {
     "default": "1.7bar",
     "description": "0 bis 45 Bar",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 0,
+      "max": 45,
+      "unit": "bar",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "0 bis 45 Bar"
+    }
   },
   "1111": {
     "default": "15min",
     "description": "0 bis 120 min",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "0 bis 120 min"
+    }
   },
   "1112": {
     "default": "6.1 C",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1113": {
     "default": "-4.1℃",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1114": {
     "default": "-26.1℃",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1115": {
     "default": "-28.1°C",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1116": {
     "default": "23°C",
     "description": "4 bis 65°C D11 Einheit °C.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 4,
+      "max": 65,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "4 bis 65°C D11 Einheit °C."
+    }
   },
   "1117": {
     "default": "2bar",
     "description": "0 bis 45 Bar D12 Einheit bar.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 45,
+      "unit": "bar",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 45 Bar D12 Einheit bar."
+    }
   },
   "1118": {
     "default": "120min",
     "description": "0 bis 240 min D13 Einheit Minuten.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 240,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 240 min D13 Einheit Minuten."
+    }
   },
   "1119": {
     "default": "1,3",
     "description": "0 bis 5.00 D14 Skalierung Wert / 100.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 5,
+      "unit": "",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 5.00 D14 Skalierung Wert / 100."
+    }
   },
   "1120": {
     "default": "1,5",
     "description": "0 bis 5.00 D15 Skalierung Wert / 100.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 5,
+      "unit": "",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 5.00 D15 Skalierung Wert / 100."
+    }
   },
   "1121": {
     "default": "200W",
     "description": "50-1000W D16 Einheit Watt.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 50,
+      "max": 1000,
+      "unit": "W",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "50-1000W D16 Einheit Watt."
+    }
   },
   "1122": {
     "default": "13℃",
     "description": "-37 bis 45°C | Hatte 23,5 jetzt 19 -> Testen",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C | Hatte 23,5 jetzt 19 -> Testen"
+    }
   },
   "1123": {
     "default": "33 °C",
     "description": "-37 bis 45°C",
-    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39"
+    "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+    "range": {
+      "min": -37,
+      "max": 45,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
+      "evidence": "-37 bis 45°C"
+    }
   },
   "1124": {
     "default": "8min",
     "description": "0 bis 20 min D19 Einheit Minuten.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 20,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 20 min D19 Einheit Minuten."
+    }
   },
   "1125": {
     "default": "70Hz",
     "description": "30 - 90 hz  | Hatte 80 jetzt 77 -> Testen D20 Einheit Hz.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 30,
+      "max": 90,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "30 - 90 hz  | Hatte 80 jetzt 77 -> Testen D20 Einheit Hz."
+    }
   },
   "1126": {
     "default": "1",
@@ -650,7 +992,16 @@
     "default": "120min",
     "description": "0 bis 240 min D23 Einheit Minuten.",
     "source_app_video": "App-Video F/D-Block ScreenRecording_06-13-2026 12-47-25; v39",
-    "source": "User correction 2026-06-19"
+    "source": "User correction 2026-06-19",
+    "range": {
+      "min": 0,
+      "max": 240,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "User correction 2026-06-19",
+      "evidence": "0 bis 240 min D23 Einheit Minuten."
+    }
   },
   "1129": {
     "default": "0",
@@ -702,7 +1053,16 @@
   "1138": {
     "default": "200",
     "description": "0 bis 500N",
-    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
+    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1",
+    "range": {
+      "min": 0,
+      "max": 500,
+      "unit": "N",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "ScreenRecording_06-13-2026_Parameterblock1",
+      "evidence": "0 bis 500N"
+    }
   },
   "1139": {
     "default": "1",
@@ -713,7 +1073,16 @@
   "1140": {
     "default": "350",
     "description": "0 bis 500N",
-    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
+    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1",
+    "range": {
+      "min": 0,
+      "max": 500,
+      "unit": "N",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "ScreenRecording_06-13-2026_Parameterblock1",
+      "evidence": "0 bis 500N"
+    }
   },
   "1141": {
     "default": "125",
@@ -728,11 +1097,29 @@
   "1143": {
     "default": "3",
     "description": "-20,0 bis 20,0 °C",
-    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1"
+    "source_app_video": "ScreenRecording_06-13-2026_Parameterblock1",
+    "range": {
+      "min": -20,
+      "max": 20,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "ScreenRecording_06-13-2026_Parameterblock1",
+      "evidence": "-20,0 bis 20,0 °C"
+    }
   },
   "1144": {
     "default": "100",
-    "description": "0 bis 500N"
+    "description": "0 bis 500N",
+    "range": {
+      "min": 0,
+      "max": 500,
+      "unit": "N",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "foxair_phnix_knowledge.json:1144.description",
+      "evidence": "0 bis 500N"
+    }
   },
   "1145": {
     "default": "0",
@@ -768,22 +1155,58 @@
   "1152": {
     "default": "63",
     "description": "60 bis 70 °C",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 60,
+      "max": 70,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "60 bis 70 °C"
+    }
   },
   "1153": {
     "default": "0",
     "description": "0 bis 60 min",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 60,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 60 min"
+    }
   },
   "1154": {
     "default": "1",
     "description": "0 bis 23 h",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 23,
+      "unit": "h",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 23 h"
+    }
   },
   "1155": {
     "default": "30",
     "description": "1 bis 30 Tage",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 1,
+      "max": 30,
+      "unit": "days",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "1 bis 30 Tage"
+    }
   },
   "1156": {
     "default": "1",
@@ -966,12 +1389,30 @@
   "1198": {
     "default": "30",
     "description": "0 bis 120 min",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 min"
+    }
   },
   "1199": {
     "default": "3",
     "description": "0 bis 30 min",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 30,
+      "unit": "min",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 30 min"
+    }
   },
   "1200": {
     "default": "250",
@@ -991,7 +1432,16 @@
   "1203": {
     "default": "0",
     "description": "0 bis 30 Tage",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 30,
+      "unit": "days",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 30 Tage"
+    }
   },
   "1204": {
     "default": "0",
@@ -1004,7 +1454,16 @@
     "description": "0 bis 100%",
     "knowledge": "P10 muss 0 sein, damit die automatische Pumpen-PWM-/Drehzahlregelung möglich ist. Wenn P10 fest auf einen Wert ungleich 0 gesetzt ist, arbeitet die Pumpe als feste Drehzahlvorgabe und die Regelung kann nicht aktiv werden.",
     "notes": "Wichtig für die Fehlersuche: Bei fehlender Pumpenregelung zuerst P10 prüfen.",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 100,
+      "unit": "%",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 100%"
+    }
   },
   "1206": {
     "default": "10",
@@ -1057,32 +1516,86 @@
   "1217": {
     "default": "66",
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1218": {
     "default": "10",
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1219": {
     "default": "30",
     "description": "20 bis 60 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 20,
+      "max": 60,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "20 bis 60 Hz"
+    }
   },
   "1220": {
     "default": "90",
     "description": "30 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 30,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "30 bis 120 Hz"
+    }
   },
   "1221": {
     "default": "0",
     "description": "0 bis 99",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 99,
+      "unit": "",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 99"
+    }
   },
   "1222": {
     "default": "50",
     "description": "0 bis 60 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 60,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 60 Hz"
+    }
   },
   "1223": {
     "default": "1",
@@ -1090,20 +1603,56 @@
   },
   "1224": {
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1225": {
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1226": {
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1227": {
     "default": "60",
     "description": "0 bis 120 Hz",
-    "source": "Warmlink-App Video + XLS"
+    "source": "Warmlink-App Video + XLS",
+    "range": {
+      "min": 0,
+      "max": 120,
+      "unit": "Hz",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video + XLS",
+      "evidence": "0 bis 120 Hz"
+    }
   },
   "1228": {
     "default": "55",
@@ -1689,7 +2238,16 @@
   "1432": {
     "default": "4.4",
     "description": "0,0 bis 10,0 °C",
-    "source": "Warmlink-App Video"
+    "source": "Warmlink-App Video",
+    "range": {
+      "min": 0,
+      "max": 10,
+      "unit": "°C",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video",
+      "evidence": "0,0 bis 10,0 °C"
+    }
   },
   "1433": {
     "default": "2",
@@ -1700,12 +2258,30 @@
   "1435": {
     "default": "30",
     "description": "0 bis 30 Tage",
-    "source": "Warmlink-App Video"
+    "source": "Warmlink-App Video",
+    "range": {
+      "min": 0,
+      "max": 30,
+      "unit": "days",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video",
+      "evidence": "0 bis 30 Tage"
+    }
   },
   "1436": {
     "default": "30",
     "description": "0 bis 300 s",
-    "source": "Warmlink-App Video"
+    "source": "Warmlink-App Video",
+    "range": {
+      "min": 0,
+      "max": 300,
+      "unit": "s",
+      "representation": "engineering",
+      "confidence": "confirmed",
+      "source": "Warmlink-App Video",
+      "evidence": "0 bis 300 s"
+    }
   },
   "1437": {
     "description": "D30 Gehaeusewannenheizung / Button Heater Delays OFF Time after Defrost. Einheit: Minuten.",

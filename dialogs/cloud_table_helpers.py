@@ -5,6 +5,7 @@ import re
 from typing import Any, Callable, Optional
 
 from core.foxair_phnix_core import numeric_value_by_type
+from cloud.metadata import resolve_cloud_range
 
 from cloud.warmlink_codes import (
     cloud_hint,
@@ -87,6 +88,7 @@ def filtered_cloud_rows(data_rows: list[dict[str, Any]], needle: str, unsupporte
 def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[list[Any], str]:
     code = str(row.get("code", ""))
     hint = cloud_hint(code)
+    bounds = resolve_cloud_range(code, hint, row)
     reg = cloud_modbus_register(code)
     mapping = str(reg) if reg is not None else str(hint.get("confidence") or "")
     status = "veraltet" if row.get("stale") else ("OK" if row.get("supported") else "leer/unsupported")
@@ -95,13 +97,13 @@ def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[li
         code_display_name(code),
         row.get("value", ""),
         row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
-        row.get("rangeStart", ""),
-        row.get("rangeEnd", ""),
+        bounds.minimum,
+        bounds.maximum,
         row.get("lastFetch", ""),
         status,
         mapping,
         mapping_status,
-        hint.get("note", ""),
+        "\n".join(str(part) for part in (hint.get("note", ""), bounds.description, hint.get("range_note", "")) if part),
     ]
     return vals, status
 

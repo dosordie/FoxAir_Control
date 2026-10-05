@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, translate_cloud_error_message,
 )
+from cloud.metadata import resolve_cloud_range
 from cloud.token_store import (
     KEYRING_SERVICE, delete_password, delete_token, get_password, get_token,
     set_password, set_token,
@@ -847,9 +848,12 @@ class WarmLinkCloudDialog(QDialog):
         self.data_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             vals, status = data_table_values(row, mapping_status=self._mapping_status(str(row.get("code", "")))["mapping_status"])
+            bounds = resolve_cloud_range(str(row.get("code", "")), cloud_hint(str(row.get("code", ""))), row)
             for c, val in enumerate(vals):
                 item = QTableWidgetItem(str(val))
-                if status != "OK":
+                if c in (4, 5):
+                    item.setToolTip(bounds.description)
+                elif status != "OK":
                     item.setToolTip(status)
                 self.data_table.setItem(r, c, item)
         self.data_table.resizeColumnsToContents()
@@ -1131,14 +1135,8 @@ class WarmLinkCloudDialog(QDialog):
             w.writerow(self.DATA_COLUMNS)
             for row in self.data_rows:
                 code = str(row.get("code", ""))
-                hint = cloud_hint(code)
-                reg = cloud_modbus_register(code)
-                w.writerow([
-                    code, code_display_name(code), row.get("value", ""), row.get("dataType") or hint.get("dataType", ""),
-                    row.get("rangeStart", ""), row.get("rangeEnd", ""), row.get("lastFetch", ""),
-                    "OK" if row.get("supported") else "leer/unsupported", str(reg) if reg is not None else hint.get("confidence", ""),
-                    self._mapping_status(code)["mapping_status"], hint.get("note", ""),
-                ])
+                values, _status = data_table_values(row, mapping_status=self._mapping_status(code)["mapping_status"])
+                w.writerow(values)
         self.main_window._log(f"WarmLink Cloud: CSV exportiert: {path}")
 
 
@@ -1215,14 +1213,15 @@ class WarmLinkCloudDialog(QDialog):
     def _mapping_candidate_cloud_values(self, row: dict[str, Any]) -> list[Any]:
         code = str(row.get("code", ""))
         hint = cloud_hint(code)
+        bounds = resolve_cloud_range(code, hint, row)
         return [
             code,
             code_display_name(code),
             row.get("value", ""),
             row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
             code_unit(code, row),
-            row.get("rangeStart", hint.get("rangeStart", "")),
-            row.get("rangeEnd", hint.get("rangeEnd", "")),
+            bounds.minimum,
+            bounds.maximum,
             "1" if row.get("supported") else "0",
             "1" if row.get("stale") else "0",
             row.get("lastFetch", ""),
@@ -1281,12 +1280,13 @@ class WarmLinkCloudDialog(QDialog):
                 code = str(row.get("code", ""))
                 hint = cloud_hint(code)
                 cloud_values = self._mapping_candidate_cloud_values(row)
+                metadata_note = data_table_values(row)[0][-1]
                 reg_no = cloud_modbus_register(code)
                 if reg_no is not None:
                     writer.writerow(
                         cloud_values
                         + self._mapping_candidate_local_values(reg_no, row.get("value", ""))
-                        + [code_confidence(code), hint.get("note", "")]
+                        + [code_confidence(code), metadata_note]
                     )
                     exported_rows += 1
                     continue
@@ -1294,7 +1294,7 @@ class WarmLinkCloudDialog(QDialog):
                 if matches:
                     for match in matches:
                         candidate_reg = int(match[2])
-                        note = str(hint.get("note", "") or "")
+                        note = str(metadata_note or "")
                         reason = str(match[6] or "")
                         if reason:
                             note = (note + "; " if note else "") + f"Wertefinder: {reason}"
@@ -1308,7 +1308,7 @@ class WarmLinkCloudDialog(QDialog):
                     writer.writerow(
                         cloud_values
                         + self._mapping_candidate_local_values(None, row.get("value", ""))
-                        + [code_confidence(code) or str(hint.get("confidence") or "unknown"), hint.get("note", "")]
+                        + [code_confidence(code) or str(hint.get("confidence") or "unknown"), metadata_note]
                     )
                     exported_rows += 1
         self.main_window._log(f"WarmLink Cloud: Mapping-Kandidaten CSV exportiert: {path} ({exported_rows} Zeilen)")
