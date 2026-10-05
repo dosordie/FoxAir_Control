@@ -79,6 +79,7 @@ class FakeWorker:
         self.session_updated = FakeSignal()
         self.credentials_loaded = FakeSignal()
         self.connection_state = FakeSignal()
+        self.timing_updated = FakeSignal()
         self.__class__.created.append(self)
 
     def moveToThread(self, thread):
@@ -185,6 +186,7 @@ def test_device_can_change_after_stop_and_next_worker_uses_new_code(monkeypatch)
 
 def test_validating_second_manual_device_preserves_first_and_updates_list():
     dialog = make_dialog()
+    dialog.ids_cb.setChecked(True)
     dialog._known_device_validated("C", [{"supported": True, "value": 1}])
     assert dialog._cloud_settings()["known_device_codes"] == ["B", "C"]
     assert [dialog.known_device_table.item(row, 0).text() for row in range(2)] == ["B", "C"]

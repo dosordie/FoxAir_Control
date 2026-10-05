@@ -64,6 +64,7 @@ from cloud.warmlink_api import (
 from cloud.token_store import AsyncKeyringStore, get_password, get_token, set_token
 from core.warmlink_request_scheduler import (WarmlinkRequestScheduler, WARMLINK_READ_TIMEOUT_S, WARMLINK_READBACK_DELAY_MS)
 from cloud.register_resolver import resolve_cloud_register
+from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
     cloud_write_choice_options,
@@ -122,7 +123,7 @@ from cloud.warmlink_codes import (
     code_display_name,
 )
 from cloud.register_resolver import resolve_cloud_projection_register
-from cloud.warmlink_value_translator import translate_cloud_value
+from cloud.warmlink_value_translator import translate_cloud_value, cloud_values_equal
 from core.settings_manager import ensure_defaults, load_settings, save_settings
 from core.udp_diagnostics import UdpDiagnosticSender, udp_diagnostic_defaults
 from core.update_checker import (
@@ -4552,6 +4553,11 @@ class MainWindow(QMainWindow):
         self.cloud_session_authenticated = False
         self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
+        self.cloud_previous_value_by_reg: dict[int, str] = {}
+        self.cloud_change_highlights: set[int] = set()
+        self.cloud_session = CloudSession()
+        self.cloud_credentials_cache = {}
+        self.cloud_timing_state = CloudTimingState()
         self.cloud_last_rows: list[dict[str, Any]] = []
         self.about_dialog: Optional[AboutDialog] = None
         self.update_thread: Optional[QThread] = None
@@ -4879,9 +4885,9 @@ class MainWindow(QMainWindow):
         upper = QSplitter(Qt.Horizontal)
         splitter.addWidget(upper)
 
-        self.register_table = QTableWidget(0, 14)
+        self.register_table = QTableWidget(0, 15)
         self.register_table.setHorizontalHeaderLabels([
-            "Reg", "Code", "Name", "Typ", "Rohwert", "Letzter Wert", "Signed", "Wert", "Frame", "Bus", "Zeit", "Cloud", "Cloud-Code", "Cloud-Zeit"
+            "Reg", "Code", "Name", "Typ", "Rohwert", "Letzter Wert", "Signed", "Wert", "Frame", "Bus", "Zeit", "Cloud Wert", "Cloud vorher", "Cloud Code", "Cloud Abruf"
         ])
         header = self.register_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Fixed)
@@ -4902,6 +4908,7 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(11, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(12, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(13, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(14, QHeaderView.ResizeToContents)
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
@@ -4963,6 +4970,14 @@ class MainWindow(QMainWindow):
         manual_layout.addWidget(self.init_read_btn, 0, 0)
         manual_layout.addWidget(self.init_progress_bar, 0, 1, 1, 3)
         manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
+        self.cloud_progress_bar = QProgressBar()
+        self.cloud_progress_bar.setStyleSheet(self.init_progress_bar.styleSheet())
+        self.cloud_progress_bar.setFixedHeight(20)
+        self.cloud_progress_bar.hide()
+        manual_layout.addWidget(self.cloud_progress_bar, 2, 0, 1, 4)
+        self.cloud_countdown_timer = QTimer(self)
+        self.cloud_countdown_timer.setInterval(250)
+        self.cloud_countdown_timer.timeout.connect(self._refresh_cloud_countdown)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5859,6 +5874,10 @@ class MainWindow(QMainWindow):
             self.last_values.clear()
             self.previous_value_texts.clear()
             self.register_change_highlights.clear()
+            self.cloud_previous_value_by_reg.clear()
+            self.cloud_change_highlights.clear()
+            self.register_flash_tokens.clear()
+            self.register_flash_colors.clear()
             self.cloud_overlay_by_reg.clear()
             self.last_contact_value = None
             self.last_load_output_value = None
@@ -7018,7 +7037,7 @@ class MainWindow(QMainWindow):
         # Tabellen-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
         if reg_no in self.value_search_matches or reg_no in self.name_search_matches:
             return self._register_search_color(dark)
-        if changed or self._register_change_highlight_active(reg_no):
+        if changed or self._register_change_highlight_active(reg_no) or reg_no in self.cloud_change_highlights:
             return self._register_changed_color(reg_no, dark)
 
         area = self._register_area_color(reg_no, dark)
@@ -7121,15 +7140,18 @@ class MainWindow(QMainWindow):
         if getattr(reg, "value_source", "modbus") == "cloud" and reg.dtype.upper() != "BITFIELD":
             values[4] = "--"
             values[6] = "--"
+        if getattr(reg, "value_source", "modbus") == "cloud":
+            values[5] = self.cloud_previous_value_by_reg.get(reg.reg, "--")
         cloud_info = self.cloud_overlay_by_reg.get(int(reg.reg), {})
         if cloud_info:
             values.extend([
                 str(cloud_info.get("value", "")),
+                self.cloud_previous_value_by_reg.get(reg.reg, "--"),
                 str(cloud_info.get("code", "")),
                 str(cloud_info.get("lastFetch", "")),
             ])
         else:
-            values.extend(["", "", ""])
+            values.extend(["", "", "", ""])
         is_block_row = is_block_dtype(reg.dtype)
         self.register_table.setRowHeight(row, 19 if is_block_row else 24)
         if changed:
@@ -7291,11 +7313,13 @@ class MainWindow(QMainWindow):
         """
         if rows is None:
             return
+        self.cloud_session.merge(rows)
         cached_rows = {r.get("code"): dict(r) for r in self.cloud_last_rows}
         cached_rows.update({r.get("code"): dict(r) for r in rows if isinstance(r, dict)})
         self.cloud_last_rows = list(cached_rows.values())
         show_cloud_only = True
         changed_regs: list[int] = []
+        value_changed_regs: list[int] = []
         new_cloud_row = False
         seen_cloud_codes: set[str] = set()
         seen_registers: set[int] = set()
@@ -7352,6 +7376,14 @@ class MainWindow(QMainWindow):
                 old_info = self.cloud_overlay_by_reg.get(reg_no, {})
                 if old_info == info:
                     continue
+                # Compare the Cloud payload (already in engineering units),
+                # independently of timestamps, types, units and stale flags.
+                value_changed = bool(old_info and not row.get("stale") and value is not None
+                                     and not cloud_values_equal(old_info.get("raw_value"), value))
+                if value_changed:
+                    self.cloud_previous_value_by_reg[reg_no] = str(old_info["value"])
+                    self.cloud_change_highlights.add(reg_no)
+                    value_changed_regs.append(reg_no)
                 self.cloud_overlay_by_reg[reg_no] = info
                 changed_regs.append(reg_no)
                 if reg_no == 2034 and not self._has_local_register_entry(reg_no):
@@ -7400,6 +7432,8 @@ class MainWindow(QMainWindow):
                 self._apply_cloud_only_visibility()
             for reg_no in changed_regs:
                 self._refresh_cloud_cells_for_register(reg_no)
+            for reg_no in value_changed_regs:
+                self.flash_register_row(reg_no)
             if changed_regs:
                 if any(reg == 2019 or 2081 <= reg <= 2090 for reg in changed_regs):
                     self._update_fault_decoder()
@@ -7430,6 +7464,8 @@ class MainWindow(QMainWindow):
     def clear_cloud_overlay(self) -> None:
         regs = list(self.cloud_overlay_by_reg.keys())
         self.cloud_overlay_by_reg.clear()
+        self.cloud_previous_value_by_reg.clear()
+        self.cloud_change_highlights.clear()
         self.cloud_last_rows = []
         for reg_no in regs:
             self._refresh_cloud_cells_for_register(reg_no)
@@ -7442,6 +7478,7 @@ class MainWindow(QMainWindow):
         cloud_info = self.cloud_overlay_by_reg.get(int(reg_no), {})
         vals = [
             str(cloud_info.get("value", "")) if cloud_info else "",
+            self.cloud_previous_value_by_reg.get(reg_no, "--") if cloud_info else "",
             str(cloud_info.get("code", "")) if cloud_info else "",
             str(cloud_info.get("lastFetch", "")) if cloud_info else "",
         ]
@@ -7455,6 +7492,10 @@ class MainWindow(QMainWindow):
                 item.setText(val)
             if cloud_info:
                 item.setToolTip(f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})")
+        if self._is_cloud_only_register(reg_no):
+            item = self.register_table.item(row, 5)
+            if item is not None:
+                item.setText(self.cloud_previous_value_by_reg.get(reg_no, "--"))
         self._apply_register_row_visual_state(int(reg_no))
 
     def _update_contact_table(self, value: Optional[int]):
@@ -8866,6 +8907,39 @@ class MainWindow(QMainWindow):
             lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
         button.setToolTip("\n".join(lines))
 
+    def set_cloud_timing_state(self, state: CloudTimingState) -> None:
+        """Render worker scheduling without initiating or rescheduling requests."""
+        self.cloud_timing_state = state
+        self._refresh_cloud_countdown()
+        if state.deadline is not None and state.phase in ("POLL_WAIT", "RETRY"):
+            self.cloud_countdown_timer.start()
+        else:
+            self.cloud_countdown_timer.stop()
+
+    def _refresh_cloud_countdown(self) -> None:
+        state = self.cloud_timing_state
+        bar = self.cloud_progress_bar
+        bar.setProperty("cloudPhase", state.phase)
+        bar.setVisible(state.phase != "IDLE")
+        if state.phase == "IDLE":
+            return
+        if state.phase in ("POLL_WAIT", "RETRY") and state.deadline is not None:
+            remaining = max(0.0, state.deadline - time.monotonic())
+            seconds = int(remaining) + (remaining > int(remaining))
+            bar.setRange(0, max(1, round(state.duration * 1000)))
+            bar.setValue(round(remaining * 1000))
+            label = "Retry" if state.phase == "RETRY" else "nächster Poll"
+            bar.setFormat(f"Cloud: {label} in {seconds // 60:02d}:{seconds % 60:02d}")
+        else:
+            labels = {"INITIAL_SCAN": "Initialscan", "STATIC_RELOAD": "Konfigurationswerte",
+                      "POLL_RUNNING": "Livewerte", "DISCOVERY": "Geräte werden gesucht ...",
+                      "CONNECTING": "Verbindung wird aufgebaut ...", "LOADING_TOKEN": "Token wird geladen ...",
+                      "ERROR": "Verbindungsfehler"}
+            bar.setRange(0, state.total if state.total else 0)
+            bar.setValue(state.done)
+            label = labels.get(state.phase, state.phase)
+            bar.setFormat("Cloud: " + label + (f" {state.done}/{state.total}" if state.total else ""))
+
     def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
         """Record a proven session, independently of whether polling is active."""
         self.cloud_session_authenticated = bool(authenticated)
@@ -8952,6 +9026,9 @@ class MainWindow(QMainWindow):
     def _on_cloud_read_token(self, token: str) -> None:
         self._cloud_read_token = token
         self._cloud_read_token_username = self._cloud_read_username
+        cache = getattr(self, "cloud_credentials_cache", {})
+        cache.update(token=token, token_user=self._cloud_read_username, login_at=time.time())
+        self.cloud_credentials_cache = cache
         dlg = self.warmlink_cloud_dialog
         if dlg is not None and dlg.username_edit.text().strip() == self._cloud_read_username:
             dlg._on_token_updated(token)
@@ -8997,6 +9074,11 @@ class MainWindow(QMainWindow):
         use_token = bool(cfg.get("save_token", True))
         pw: str | None = None
         token: str | None = None
+        credentials = getattr(self, "cloud_credentials_cache", {})
+        if credentials.get("token_user") == user:
+            token = credentials.get("token")
+        if credentials.get("password_user") == user:
+            pw = credentials.get("password")
 
         dlg = self.warmlink_cloud_dialog
         if dlg is not None:

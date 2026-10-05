@@ -37,25 +37,34 @@ def merge_device_sources(
     house_devices: Iterable[dict[str, Any]],
     known_device_codes: Any,
 ) -> list[dict[str, Any]]:
-    """Merge deviceList > House/Residence > manual, keyed by deviceCode."""
+    """Keep deviceList values; House fills gaps; manual adds missing devices."""
     result: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    by_code: dict[str, dict[str, Any]] = {}
     for source, devices in (("deviceList", discovered), ("house", house_devices)):
         for raw in devices:
             if not isinstance(raw, dict):
                 continue
             device = dict(raw)
             code = str(device.get("deviceCode") or "").strip()
-            if not code or code in seen:
+            if not code:
                 continue
-            seen.add(code)
+            if code in by_code:
+                existing = by_code[code]
+                for key, value in device.items():
+                    if key != "discoverySource" and (key not in existing or existing[key] is None or existing[key] == ""):
+                        existing[key] = value
+                if source == "house" and existing.get("discoverySource") == "deviceList":
+                    existing["discoverySource"] = "deviceList + House"
+                continue
             device["deviceCode"] = code
             device.setdefault("discoverySource", source)
             result.append(device)
+            by_code[code] = device
     for code in normalize_known_device_codes(known_device_codes):
-        if code not in seen:
-            result.append({"deviceCode": code, "discoverySource": "manual"})
-            seen.add(code)
+        if code not in by_code:
+            device = {"deviceCode": code, "discoverySource": "manual"}
+            result.append(device)
+            by_code[code] = device
     return result
 
 

@@ -34,6 +34,16 @@ def parse_cloud_number(value: Any, *, binary: bool = False) -> int | float:
     return int(number) if number.is_integer() else number
 
 
+def cloud_values_equal(left: Any, right: Any) -> bool:
+    """Compare observed payload values without units, types or other metadata."""
+    def key(value):
+        try:
+            return parse_cloud_number(value)
+        except (TypeError, ValueError):
+            return str(value)
+    return key(left) == key(right)
+
+
 def translate_cloud_value(
     cloud_code: str,
     value: Any,

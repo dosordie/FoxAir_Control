@@ -7,12 +7,13 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QEventLoop, QTimer
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QProgressBar
 
 import foxair_phnix_control as gui
 from cloud import warmlink_api
 from cloud.cloud_write_helpers import cloud_write_value_from_user_input
 from cloud.register_resolver import current_register_definitions
+from cloud.polling import CloudSession, CloudTimingState
 from cloud.warmlink_codes import cloud_modbus_register
 from core.foxair_phnix_core import DecodedRegister, RegisterMap
 from workers import warmlink_cloud_worker as workers
@@ -35,8 +36,18 @@ class CloudWindow(gui.MainWindow):
         self.previous_value_texts = {}
         self.table_rows = {}
         self.cloud_overlay_by_reg = {}
+        self.cloud_previous_value_by_reg = {}
+        self.cloud_change_highlights = set()
+        self.cloud_session = CloudSession()
+        self.cloud_timing_state = CloudTimingState()
+        self.cloud_progress_bar = QProgressBar(self)
+        self.cloud_countdown_timer = QTimer(self)
+        self.cloud_countdown_timer.timeout.connect(self._refresh_cloud_countdown)
+        self.register_change_highlights = set()
+        self.register_flash_tokens = {}
+        self.register_flash_colors = {}
         self.cloud_last_rows = []
-        self.register_table = QTableWidget(0, 14, self)
+        self.register_table = QTableWidget(0, 15, self)
         self.register_write_dialogs = {}
         self.contact_dialog = self.load_output_dialog = None
         self.warmlink_cloud_dialog = None
@@ -119,7 +130,7 @@ def test_existing_cloud_row_updates_without_duplicate_and_preserves_edits(applic
     assert window.register_table.rowCount() == 2
     assert window.register_table.item(row, 7).text() == "52 °C"
     assert window.register_table.item(row, 11).text() == "52 °C"
-    assert window.register_table.item(row, 13).text() == "52"
+    assert window.register_table.item(row, 14).text() == "52"
     assert window.latest_regs[register].timestamp >= old_timestamp
     assert window.latest_regs[register].cloud_value == 52
     assert window.latest_regs[register].raw_value == 52

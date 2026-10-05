@@ -8,6 +8,17 @@ from cloud.register_resolver import resolve_cloud_register
 from cloud.warmlink_codes import cloud_hint
 
 
+@dataclass(frozen=True)
+class CloudTimingState:
+    """Worker-owned monotonic schedule; the GUI only renders this snapshot."""
+    phase: str = "IDLE"
+    done: int = 0
+    total: int = 0
+    deadline: float | None = None
+    duration: float = 0.0
+    polling_active: bool = False
+
+
 # Reviewed cloud-live fault words, explicitly polled independently of the
 # candidate Modbus projection. This does not promote their mapping confidence.
 RAW_FAULT_LIVE_CODES = frozenset({

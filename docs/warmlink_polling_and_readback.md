@@ -1,6 +1,6 @@
 # WarmLink: responsives Cloud-Polling und Warmlink-FC03
 
-Ausgangspunkt ist der `work`-Stand nach PR #161 (`915da1b`). Die dortigen
+Ausgangspunkt ist der `work`-Stand nach PR #161 und #162 (`f5359e9`). Die dortigen
 Unit-/Range-Regeln, Cloud-Single-Reads und Cloud-/Modbus-Skalierungen bleiben
 bestehen.
 
@@ -82,6 +82,13 @@ Fault-History wird nicht automatisch bei jedem Poll angefordert.
 
 ## Session und Bedienung
 
+`MainWindow.cloud_session` hält die Session unabhängig vom Dialog. Ein neu
+geöffneter Dialog übernimmt die entdeckten Geräte, die Auswahl, Code-Gruppen
+und gecachten Zeilen sofort. Das Öffnen löst weder Discovery noch Registerscan
+aus. Geräte-Metadaten und der zusätzliche Zugangsdaten-Cache bleiben nur im
+Arbeitsspeicher; es gibt keine neue Speicherung vollständiger Gerätedaten in
+JSON. Der asynchrone Keyring-Executor wird im Hauptfenster wiederverwendet.
+
 Eine erfolgreiche Geräteabfrage validiert die Session. Stop/Start mit gleichem
 Account, gültigem Token und validiertem Gerät verwendet die Device-Liste und
 den Code-Cache wieder. Token bleiben in der laufenden Session nutzbar, auch
@@ -89,8 +96,17 @@ wenn keine Keyring-Speicherung aktiviert ist.
 
 Discovery findet beim ersten Start, Account-/Geräte-/Zugangsdatenwechsel,
 fehlender gültiger Session, Geräte-/Zugriffsfehler oder über **Geräte neu
-suchen** statt. Ein erneuerter Login invalidiert den Konfigurationssnapshot
-und löst erneut einen Initialscan aus. Ein vorübergehender Poll-Timeout
+suchen** statt. Der Button verwendet `discovery_only=True`: nur Token/Login,
+`get_devices`, `get_houses`, `get_house_devices`, Merge und Geräteauswahl.
+Es folgen weder `getDataByCode` noch Status oder Fault-History. Die bestehende
+Auswahl und ihr Cache bleiben erhalten, soweit das Gerät weiterhin verfügbar
+ist; bei einem neuen Gerät wird der alte Wertcache verworfen. Erst **Jetzt
+abrufen** oder **Polling starten** liest Werte. Gerätesuche bleibt bei
+laufendem Polling gesperrt.
+
+Ein erneuerter Login invalidiert den Konfigurationssnapshot; der nächste
+Werteabruf führt einen Initialscan aus. Discovery-only selbst liest dabei
+keine Register. Ein vorübergehender Poll-Timeout
 verwirft die Discovery nicht. Gerätedaten verschiedener Sessions werden nicht
 vermischt; alte Cloud-only-Zeilen werden beim Quellenwechsel entfernt, lokale
 Modbus-Werte bleiben erhalten.
@@ -126,6 +142,68 @@ nicht. Ein einzelner temporärer Poll-Timeout setzt CONNECTING/Retry; ein
 folgender Erfolg setzt wieder POLLING. Stop lässt eine gültige Verbindung
 als CONNECTED bestehen. Hauptfenster-Schließen wartet per Signal auf das
 Ende des Cloud-Pollworkers, ohne den GUI-Thread synchron zu blockieren.
+
+## Cloud-Historie in der Haupttabelle
+
+Die Spalten heißen **Cloud Wert**, **Cloud vorher**, **Cloud Code**, **Cloud
+Abruf**. `cloud_previous_value_by_reg` speichert den vorherigen formatierten
+Cloudwert, beispielsweise `55 °C`, ohne daraus einen Modbus-Rohwert `550` zu
+erzeugen. Die erste Beobachtung zeigt `--`; identische Werte erhalten die
+bisherige Historie. `cloud_values_equal()` vergleicht die gelieferten Werte
+unabhängig von Metadaten; auch `8.4` und `"8.40"` gelten als identisch.
+
+Nur eine tatsächliche Änderung nach der ersten Beobachtung ruft die vorhandene
+`flash_register_row()`-Animation auf. Zeitstempel, Stale-Status sowie Unit-,
+Range- und Typ-Metadaten lösen keinen Flash aus. Der dauerhafte Cloud-Change-State
+liegt separat in `cloud_change_highlights`; lokale
+`register_change_highlights`, `last_values` und `previous_value_texts` werden
+dadurch nicht verändert.
+
+Cloud-only-Zeilen verwenden zusätzlich **Letzter Wert** für denselben
+Cloud-Anzeigewert. Sobald ein echter lokaler Wert vorhanden ist, gehört diese
+Spalte ausschließlich zur lokalen Historie. **Cloud vorher** bleibt unabhängig
+davon verfügbar. Livepoll, statisches Nachladen, Einzelread und beide
+Cloud-Schreib-Readback-Pfade verwenden denselben Overlay-/Historiepfad.
+
+## Geräteübersicht und Details
+
+`deviceList` bleibt führend; House-Datensätze ergänzen nur fehlende, `None`-
+oder leere Felder. Bestehendes `false` und `0` werden nicht überschrieben.
+Doppelte Geräte aus House-Area-/Room-Listen ergänzen sich ebenfalls. Manuelle
+Codes ergänzen ausschließlich fehlende Geräte. **Quelle** zeigt `deviceList`,
+`House`, `deviceList + House` oder `manual`.
+
+Die Übersicht hat neun Spalten: Name, Modell, Status, Fehler, DTU-Version,
+Signal, Freigabe, House und Quelle. Die Detailtabelle zeigt nur tatsächlich
+gelieferte Whitelist-Felder, einschließlich `deviceName`, `productKey`,
+`faultState`, `isShared`, `houseId`, `houseName`, `houseRoleType`, `roomId` und
+`areaId`. Fehlende Shared-Felder erscheinen in der Übersicht als `—` und werden
+in den Details nicht erfunden. Geliefertes `false`, `0` und eine echte leere
+Zeichenfolge bleiben unterscheidbar.
+
+Device-Code, Device-ID, SN und ICCID bleiben maskiert, bis **IDs anzeigen**
+aktiviert wird. Geheimnisse, MAC- und Standortdaten gehören nicht zur
+UI-Whitelist.
+
+## Countdown im Hauptfenster
+
+`WarmLinkCloudWorker.timing_updated` liefert unveränderliche
+`CloudTimingState`-Snapshots. Zustände sind `INITIAL_SCAN`, `POLL_RUNNING`,
+`STATIC_RELOAD`, `DISCOVERY`, `POLL_WAIT`, `RETRY` und `IDLE`; dazu kommen die
+Startphasen. Ein Snapshot enthält Batch-Zähler, `polling_active` und für
+Wartezeiten eine monotone `deadline` mit `duration`.
+
+Nach Initial-/Livepoll einschließlich Statusabfrage beginnt das volle
+eingestellte Intervall, z. B. `next_poll_at = monotonic() + 30`. Ein statischer
+Reload weckt den Worker, ohne den zuvor geplanten Livepolltermin zu verschieben.
+Retry verwendet die tatsächliche Backoff-Deadline des Workers.
+
+Die schmale Hauptfenster-Leiste verwendet die Gestaltung der vorhandenen
+Init-Leseleiste. Ein 250-ms-Qt-Timer zeigt Restzeit und herunterlaufenden Balken;
+er führt keine Requests aus und verändert den Zeitplan nicht. HTTP-/House-
+Batches zeigen ihren Fortschritt, unbekannte Fortschritte laufen unbestimmt.
+Bei `IDLE` wird die Leiste ausgeblendet und der Anzeigetimer gestoppt. Der
+Cloudbutton behält seine bisherigen Verbindungszustände.
 
 ## Warmlink-FC03 und Quickwrite
 
@@ -181,6 +259,12 @@ Rediscovery, manuelles Nachladen, Token-Erneuerung, Batch-Fortschritt,
 Qt-Heartbeat bei langsamem Keyring, nicht modale Progresszustände, zentrale
 Buttonzustände, inkrementelle Items und Quellenwechsel.
 
+`tests/test_cloud_history_discovery_countdown.py` prüft getrennte Historien,
+Cloud-only- und lokale Zeilen, identische Werte/Metadaten, alle Readback-Pfade,
+tatsächliches Schließen und Neuöffnen des Dialogs, Discovery-only ohne Wert-/
+Statusaufrufe, Device-Merge, fehlende Shared-Felder, Maskierung, Worker-Deadlines,
+statisches Nachladen sowie Countdown ohne zusätzliche API-Aufrufe.
+
 `tests/test_warmlink_request_scheduler.py` verwendet echte FC03-/FC16-Frames,
 den echten `ReaderWorker`-Sendepfad und die normale Hauptfenster-Dekodierung.
 Prüffälle: zwei qty=1-Reads, richtige Adresszuordnung, Readback-Priorität,
@@ -204,6 +288,6 @@ Ein realer Windows-/Wärmepumpentest steht noch aus. Mock-/Protokolltests
 belegen die Read-/ACK-Zuordnung und Skalierung, nicht die tatsächliche
 Antwortlatenz eines konkreten LTE-Modems.
 
-Abschlussprüfung: `python -m pytest -q` — **389 bestanden**;
+Abschlussprüfung: `python -m pytest -q` — **412 bestanden**;
 `python -m compileall -q .` und `git diff --check` erfolgreich.
 Der Metadaten-Audit meldet weiterhin keine belegten Unit-/Range-Konflikte.

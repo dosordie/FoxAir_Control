@@ -58,7 +58,7 @@ def test_source_priority_is_device_list_then_house_then_manual():
     )
     assert [device["deviceCode"] for device in merged] == ["B", "C", "D"]
     assert merged[0]["deviceNickName"] == "Cloud DeviceList"
-    assert merged[0]["discoverySource"] == "deviceList"
+    assert merged[0]["discoverySource"] == "deviceList + House"
     assert merged[1]["deviceNickName"] == "House C"
     assert merged[1]["discoverySource"] == "house"
     assert merged[2] == {"deviceCode": "D", "discoverySource": "manual"}
