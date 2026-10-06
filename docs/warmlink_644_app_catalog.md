@@ -195,7 +195,77 @@ Ein zentraler Translator nutzt `value_map` und `bit_map` aus
 Anzeigetext und aktive Bits für `O01~023`, `S01~S10`, Fault-Wörter und normale
 ENUM-Werte. Unbekannte aktive Bits bleiben ausdrücklich sichtbar.
 
-`Fault1` bis `Fault10` dürfen für die read-only Anzeige anhand der stark
-abgeleiteten Family-644-Zuordnung projiziert werden. Ihre Modbus-Confidence bleibt
-`candidate` beziehungsweise `strongly-inferred-family-644`; daraus entstehen
-weder ein `confirmed`-Mapping noch Schreibrechte.
+`Fault1` bis `Fault10` sind seit dem GL9-Test vom 2026-10-06 zentral mit
+MAIN 2081 bis 2090 **bestätigt** und bleiben read-only. Die frühere
+Family-644-Kandidatenzuordnung ist ersetzt; Details und Kurvenzuordnungen stehen
+in [Polling und Readback](warmlink_polling_and_readback.md#v033-bestätigte-fault-reihenfolge-und-warmlink-305-kurve).
+
+## SG-Pfade und Negativbefunde aus WarmLink 3.0.5
+
+Der gemeinsame SG-Dialog verwendet bei `protocol == 773` die Codes `2119` und
+`Switch2168`. Der GL9-/416-/644-Pfad verwendet dagegen `SG Status` → MAIN 2133
+und `S01~S10` → MAIN 2034. Der vom Anwender bestätigte GL9-Livetest vom
+2026-10-06 ergab gleichzeitig:
+
+| Cloudcode | Antwort | Befund |
+| --- | --- | --- |
+| `S01~S10` | `0010110000000000` = `0x2C00` = 11264 | stimmt mit MAIN 2034 überein |
+| `SG Status` | `3` | bestätigtes Mapping nach MAIN 2133 |
+| `2119` | `DIGI1`, `0` | serverseitig akzeptiert, kein SG-Status-Alias für 644 |
+| `Switch2168` | Wert und Datentyp leer | tested unsupported auf dieser GL9/644 |
+
+`2119` darf insbesondere **nicht** auf MAIN 2119 projiziert werden:
+das lokale Register ist der High-Anteil des Heiz-Wärmemengenzählers. Beide
+773-Codes sind für Discovery dokumentiert und read-only, ohne `modbus_register`
+und ohne Projektionsfreigabe. Historischer Testsupport bestätigt weder ein
+Mapping noch den Support im aktuellen Scan. Unterstützte ungemappte Werte
+bleiben in der Cloudansicht; es entstehen keine virtuellen MAIN-Adressen.
+
+Die 14 CP-Codes und `Zone 2 Curve Offset` tragen explizites App-Wissen.
+`CP1-4`, alle CP2-Punkte und der Zone-2-Mittelpunkt bleiben bewusst ungemappt.
+`I28`, `H55`, `T100` und `T101` stammen aus `DeviceDetails923Activity` und
+gehören weder zum 644-Discovery-Katalog noch zu dessen zentralen Mappings.
+
+## Statischer Mapping-Audit und MAIN-Projektion
+
+```bash
+python tools/audit_cloud_mappings.py
+python tools/audit_cloud_mappings.py --rows current_scan_rows.json
+```
+
+Der zweite Aufruf nimmt eine JSON-Liste normalisierter Datensätze eines
+aktuellen Scans (`code`, `supported`, weitere Responsefelder optional).
+Ohne diese Liste bleibt Laufzeitsupport unbekannt (`null`); es werden keine
+Cloudanfragen ausgelöst. Der Bericht unterscheidet App-/Discovery-Wissen,
+Hints, bestätigte MAIN-Mappings, fehlende und bewusst nicht vorhandene
+Mappings. Nur fehlerhafte bestätigte Targets/Resolver führen zum Exitcode 1;
+unbekannte Zuordnungen und bekannte Aliasse werden getrennt gemeldet.
+
+Stand dieses Audits: **436 bekannte Discoverycodes**, davon 271 mit
+App-Wissen; **278 bestätigte Codes für 275 MAIN-Register**. Für 147 Codes fehlt
+eine bestätigte Zuordnung, 11 bleiben explizit bewusst ungemappt. Ohne aktuellen
+Gerätescan ist deren Laufzeitsupport unbekannt.
+
+Die parametrisierten GUI-Tests prüfen **jedes** bestätigte Mapping über
+`_validated_cloud_modbus_register()` und `apply_cloud_rows_to_main()` sowohl
+als Cloud-only-Zeile als auch als Overlay eines echten lokalen Registers.
+Alle 278 bestehen; kein Mapping fällt wegen eines Code-Mismatchs heraus.
+Lokaler Rawwert und Provenienz bleiben erhalten. Deshalb war kein Umbau des
+Hauptlistenpfads erforderlich. Fault-/CP1-Mappings waren bereits auf `work`
+vorhanden; CSV verwendet weiterhin zentral 51 Codes für 50 Registerplätze,
+einschließlich der zehn Fault-Wörter.
+
+Der Audit weist drei bestätigte Aliaspaare aus:
+
+| MAIN | Cloudcodes |
+| ---: | --- |
+| 1206 | `1206`, `E03-3` |
+| 1208 | `1208`, `E03-5` |
+| 2029 | `2029`, `InputCurrent1` |
+
+Alle Codes eines Paares sind gültig; pro MAIN entsteht eine Zeile. Im selben
+Batch verwendet die bestehende Hauptliste die erste unterstützte Antwort in
+Response-Reihenfolge. Ein späterer Einzelread des anderen Alias aktualisiert
+dieselbe Zeile. CSV übernimmt den ersten frischen verfügbaren Aliaswert.
+Kein Alias wird als Mappingfehler behandelt oder auf eine zweite Adresse
+umgebogen; eine zusätzliche bevorzugte Codezuordnung war nicht erforderlich.

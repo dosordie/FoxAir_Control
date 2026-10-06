@@ -8,6 +8,15 @@ Verzeichnis werden gespeichert; der Logger startet niemals automatisch.
 **Stop** oder das Schließen des Loggerdialogs beendet die Aufnahme und schließt
 die Datei. Die Geräteverbindung und normales Cloudpolling bleiben bestehen.
 
+Der Dialog übernimmt das Fenstericon und den Qt-Stil des Hauptfensters.
+**Aufzeichnung** enthält Dateipfad, Dateiauswahl, Intervall und den kurzen
+Wertehinweis. **Status** zeigt Quelle, Aufnahmezustand, letzten erfolgreichen
+Datensatz und Zeilenanzahl. **Start** und **Stop** stehen links in der
+Buttonleiste, **Schließen** rechts. Der Schließen-Button verwendet denselben
+`closeEvent()`-Pfad wie das Fenster-X: Aufnahme stoppen, den eigenen
+Snapshotauftrag abbrechen und Datei flushen/schließen. Eine bereits laufende
+normale Modbus-Abfrage oder das Cloudpolling bleibt bestehen.
+
 Eine aktive lokale Verbindung hat beim Start Vorrang. Standard-Modbus und
 Warmlink-Modbus verwenden den vorhandenen zentralen Readpfad für genau
 `2001/90`; es wird keine zweite Socket-/ser2net-Verbindung geöffnet. Ohne lokale
