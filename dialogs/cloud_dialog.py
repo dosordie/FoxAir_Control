@@ -691,6 +691,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.connection_state.connect(self._on_connection_state)
         self.cloud_worker.timing_updated.connect(self._on_timing_updated)
         self.cloud_worker.logger_snapshot.connect(self._on_logger_snapshot)
+        self.cloud_worker.targeted_snapshot.connect(self._on_targeted_snapshot)
         self.cloud_worker.finished.connect(self.cloud_thread.quit)
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
@@ -865,14 +866,26 @@ class WarmLinkCloudDialog(QDialog):
         if controller is not None:
             controller.cloud_response(cycle_id, rows, error)
 
-    def request_logger_snapshot(self, request):
+    @Slot(str, int, list, str)
+    def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
+        if purpose == "at_compensation":
+            dialog = getattr(self.main_window, "at_comp_dialog", None)
+            if dialog is not None:
+                dialog.cloud_read_finished(cycle_id, rows, error)
+
+    def request_snapshot(self, request):
         if self._stopping:
-            return "Cloud-Worker wird beendet; nächster Loggerzyklus versucht es erneut."
+            return "Cloud-Worker wird beendet; bitte danach erneut lesen."
+        if self.command_thread is not None or self.debug_thread is not None:
+            return "Ein Cloud-Schreib-/Debugbefehl läuft; bitte danach erneut lesen."
         if self.cloud_worker is not None:
             self.cloud_worker.request_logger_snapshot(request)
         else:
             self._start_worker(True, logger_request=request)
         return None
+
+    def request_logger_snapshot(self, request):
+        return self.request_snapshot(request)
 
     def reload_all_values(self):
         """Recheck all catalogue candidates through the existing polling worker."""

@@ -11,7 +11,8 @@ from cloud.warmlink_value_translator import translate_cloud_value
 from core.foxair_phnix_core import numeric_value_by_type
 
 LIVE_REGISTERS = tuple(range(2001, 2091))
-CSV_HEADER = ("timestamp", "source", "device", *(f"R{reg}" for reg in LIVE_REGISTERS))
+CSV_HEADER = ("timestamp", "source", "device", *(str(reg) for reg in LIVE_REGISTERS))
+LEGACY_CSV_HEADER = ("timestamp", "source", "device", *(f"R{reg}" for reg in LIVE_REGISTERS))
 
 
 def csv_number(value):
@@ -70,7 +71,7 @@ class CsvRegisterLogger:
         path = Path(path).expanduser()
         if path.exists() and path.stat().st_size:
             with path.open("r", encoding="utf-8-sig", newline="") as existing:
-                if next(csv.reader(existing, delimiter=";"), None) != list(CSV_HEADER):
+                if next(csv.reader(existing, delimiter=";"), None) not in (list(CSV_HEADER), list(LEGACY_CSV_HEADER)):
                     raise ValueError("CSV-Header passt nicht zum Liveblock 2001–2090. Bitte eine andere Datei wählen.")
             # A compatible last row without a newline must not concatenate the next row.
             with path.open("rb") as existing:

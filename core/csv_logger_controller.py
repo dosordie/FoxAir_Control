@@ -211,7 +211,7 @@ class CsvLoggerController(QObject):
         if check_source and not self._source_matches():
             self.source_changed()
             return
-        timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         count = len(self.snapshot)
         try:
             self.writer.append(timestamp, self.source, self.device, self.snapshot)

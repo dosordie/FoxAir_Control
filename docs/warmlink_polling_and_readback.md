@@ -437,3 +437,48 @@ Loggerwünsche mit einem Ergebnis statt sie unbegrenzt offen zu lassen; ein
 weiterlaufender Logger kann beim nächsten Intervall erneut den zentralen
 Worker verwenden. HTTP-Aufrufe laufen aus, Qt-Timer und CSV-Bedienung bleiben
 responsiv.
+
+## V0.3.3: bestätigte Fault-Reihenfolge und WarmLink-3.0.5-Kurve
+
+Die praktisch an derselben GL9 bestätigte Reihenfolge ersetzt die frühere
+verschobene Kandidaten-Zuordnung: **Fault1 → MAIN 2081, Fault2 → 2082, …,
+Fault10 → 2090**. Alle zehn Hints und Resolver-Aliasse sind `confirmed`, bleiben
+aber read-only. BINARY-Bitstrings und dezimale JSON-Zahlen werden als unsigned
+16-Bit-Fehlerwörter übersetzt. Der Cloud-CSV-Logger erhält dadurch zehn weitere
+Registerplätze (50 statt 40); fehlende/stale/cached Antworten bleiben leer.
+Die älteren Abschnitte zur Kandidaten-Zuordnung beschreiben den damaligen Stand.
+
+WarmLink Android **3.0.5 / Family 416 / Softwarecode 644** liest zusätzlich
+`CP1-1`…`CP1-7` und `CP2-1`…`CP2-7`. Die 14 Codes sind Bestandteil des
+Family-644-Fullscans. Für Zone 1 ist die Temperaturstruktur bestätigt:
+
+| AT °C | Cloudcode | MAIN |
+| ---: | --- | ---: |
+| -20 | `CP1-1` | 1250 |
+| -10 | `CP1-2` | 1251 |
+| -5 | `CP1-3` | 1252 |
+| 0 | `compensate_offset` | 1235 |
+| +5 | `CP1-5` | 1253 |
+| +10 | `CP1-6` | 1254 |
+| +20 | `CP1-7` | 1255 |
+
+`CP1-4` wird abgefragt, ist aber nicht der Mittelpunkt und bekommt keine
+lokale Projektion. Zone 2 nutzt `Zone 2 Curve Offset` als 0-°C-Punkt;
+`CP2-4` und alle weiteren CP2-Punkte bleiben ohne unbestätigte MAIN-Zuordnung.
+Bestehende lineare Codes H36, compensate_slope/offset und R10/R11 bleiben erhalten.
+
+Der AT-Dialog liest gezielt über dieselbe abbrechbare Snapshot-Queue wie CSV,
+mit separatem Zweck und Antwortsignal. Ein Request enthält nur die benötigten
+14 Codes; kein Discovery-/Initialscan und kein zusätzlicher Dauerworker.
+Der bestehende API-/Token-/Keyringpfad und der normale Polltermin bleiben erhalten.
+Das gezielte Lesen nutzt den vorhandenen Heartbeat-/Settlepfad, damit die mit
+abgefragten T04/2014-Livewerte frisch angefordert werden. `protocalCodes` und
+der dedizierte Heartbeat ohne `appId` bleiben unverändert.
+
+`register_value_sources()` stellt zusätzlich den bereits übersetzten numerischen
+Cloud-Engineeringwert bereit. Der AT-Dialog bevorzugt echte lokale Werte;
+Cloud-only-Tabellenzeilen behalten ihre Cloud-Provenienz und werden nicht als
+lokale Wörter ausgewertet. Neue Cloud-Overlays aktualisieren den offenen Dialog.
+Cloud-only sind sämtliche AT-Schreibbuttons deaktiviert; auch direkte Aufrufe
+der Schreibhandler können keinen lokalen Write auslösen. Lokale Schreibpläne,
+Interpolation, Display-Lesewege und bestehende Parameter-Cloud-Writes bleiben erhalten.

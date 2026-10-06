@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject
 
 from cloud.register_resolver import current_register_definitions
 from core.csv_register_logger import (
-    CSV_HEADER, LIVE_REGISTERS, CsvRegisterLogger, cloud_engineering_snapshot,
+    CSV_HEADER, LEGACY_CSV_HEADER, LIVE_REGISTERS, CsvRegisterLogger, cloud_engineering_snapshot,
     csv_number, local_engineering_value, logger_cloud_mappings,
 )
 from core.csv_logger_controller import CsvLoggerController
@@ -30,14 +30,14 @@ def reg(number, raw=453, dtype="TEMP1", timestamp=None):
                            time.time() if timestamp is None else timestamp)
 
 
-@pytest.mark.parametrize("initial", ["new", "empty", "compatible"])
+@pytest.mark.parametrize("initial", ["new", "empty", "compatible", "legacy"])
 def test_header_once_append_utf8_and_ninety_numeric_columns(tmp_path, initial):
     path = tmp_path / "values.csv"
     if initial == "empty":
         path.touch()
-    elif initial == "compatible":
+    elif initial in ("compatible", "legacy"):
         with path.open("w", encoding="utf-8", newline="") as file:
-            csv.writer(file, delimiter=";").writerow(CSV_HEADER)
+            csv.writer(file, delimiter=";").writerow(LEGACY_CSV_HEADER if initial == "legacy" else CSV_HEADER)
     writer = CsvRegisterLogger()
     writer.open(path)
     writer.append("first", "cloud", "Gerät Küche", {2048: 45.3, 2034: 4096, 2001: 0})
@@ -46,14 +46,14 @@ def test_header_once_append_utf8_and_ninety_numeric_columns(tmp_path, initial):
     writer.append("second", "standard_modbus", "GL9", {2090: 17})
     writer.close()
     rows = read_csv(path)
-    assert rows[0] == list(CSV_HEADER)
-    assert rows[0][3:] == [f"R{n}" for n in range(2001, 2091)]
+    assert rows[0] == list(LEGACY_CSV_HEADER if initial == "legacy" else CSV_HEADER)
+    assert rows[0][3:] == [f"R{n}" if initial == "legacy" else str(n) for n in range(2001, 2091)]
     assert len(rows) == 3 and all(len(row) == 93 for row in rows)
     assert rows[1][2] == "Gerät Küche" and rows[1][3] == "0"
-    assert rows[1][rows[0].index("R2048")] == "45.3"
-    assert rows[1][rows[0].index("R2034")] == "4096"
-    assert rows[1][rows[0].index("R2078")] == ""
-    assert rows[2][-1] == "17" and rows[2][rows[0].index("R2048")] == ""
+    assert rows[1][3 + 2048 - 2001] == "45.3"
+    assert rows[1][3 + 2034 - 2001] == "4096"
+    assert rows[1][3 + 2078 - 2001] == ""
+    assert rows[2][-1] == "17" and rows[2][3 + 2048 - 2001] == ""
     assert "°C" not in path.read_text(encoding="utf-8-sig")
 
 
@@ -90,16 +90,16 @@ def test_local_engineering_uses_existing_decoder_and_unsigned_bit_words():
     assert local_engineering_value(reg(2048, 1234, "DIGI5"), regmap) == 123.4
 
 
-def test_only_current_confirmed_catalogue_cloud_codes_and_no_guessed_faults():
+def test_only_current_confirmed_catalogue_cloud_codes_including_reviewed_faults():
     mappings = logger_cloud_mappings()
     assert mappings["T04"] == 2048 and mappings["S01~S10"] == 2034
     assert mappings["2014"] == 2014  # actual reviewed alias, not generated from addresses
     assert all(2001 <= n <= 2090 for n in mappings.values())
     assert "2078" not in mappings and "R02" not in mappings and "F23" not in mappings
-    assert not {f"Fault{n}" for n in range(1, 11)}.intersection(mappings)
-    assert not set(range(2081, 2091)).intersection(mappings.values())
+    assert {code: mappings[code] for code in (f"Fault{n}" for n in range(1, 11))} == {f"Fault{n}": 2080 + n for n in range(1, 11)}
+    assert len(set(mappings.values())) == 50
     custom = {"2078": {"code": "T04"}, "2081": {"code": "Fault1"}}
-    assert logger_cloud_mappings(custom) == {"T04": 2078}
+    assert logger_cloud_mappings(custom) == {"T04": 2078, "Fault1": 2081}
 
 
 def test_cloud_snapshot_uses_only_fresh_response_and_keeps_engineering_scale():
@@ -116,7 +116,7 @@ def test_cloud_snapshot_uses_only_fresh_response_and_keeps_engineering_scale():
         {"code": "Fault1", "value": 17, "supported": True},
     ]
     snapshot = cloud_engineering_snapshot(rows, mappings, definitions)
-    assert snapshot == {2048: 45.3, 2034: 32768}
+    assert snapshot == {2048: 45.3, 2034: 32768, 2081: 17}
 
 
 class LoggerOwner(QObject):
@@ -182,8 +182,8 @@ def test_partial_timeout_excludes_old_generation_and_cached_values(application, 
     assert logger.snapshot == {2034: 4096} and len(read_csv(path)) == 1
     logger.cycle_timeout()
     rows = read_csv(path)
-    assert rows[1][rows[0].index("R2034")] == "4096"
-    assert rows[1][rows[0].index("R2048")] == "" and not logger.last_success
+    assert rows[1][rows[0].index("2034")] == "4096"
+    assert rows[1][rows[0].index("2048")] == "" and not logger.last_success
     logger.interval_timer.timeout.emit()
     logger.cycle_timeout()
     assert all(value == "" for value in read_csv(path)[2][3:])
@@ -240,8 +240,8 @@ def test_cloud_source_and_own_interval_use_only_response_of_matching_cycle(appli
     logger.cloud_response(request.cycle_id, [{"code": "T04", "supported": True, "value": 99}])
     logger.cloud_response(owner.cloud_calls[-1].cycle_id, [{"code": "T04", "supported": False, "value": None}])
     rows = read_csv(path)
-    assert rows[1][rows[0].index("R2048")] == "45.3"
-    assert rows[2][rows[0].index("R2048")] == ""
+    assert rows[1][rows[0].index("2048")] == "45.3"
+    assert rows[2][rows[0].index("2048")] == ""
     logger.stop()
     assert owner.cloud and owner.cloud_calls[-1].cancelled.is_set()
 

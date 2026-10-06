@@ -30,11 +30,11 @@ def test_candidate_and_ambiguous_codes_do_not_resolve():
     assert resolve_cloud_register("R02", {"confidence": "confirmed", "local_code": "R02"}, {"1": {"code": "R02"}, "2": {"code": "R02"}}) is None
 
 
-def test_fault_projection_does_not_promote_modbus_mapping_or_writes():
+def test_confirmed_fault_projection_does_not_grant_writes():
     hint = cloud_hint("Fault8")
-    assert resolve_cloud_register("Fault8", hint) is None
-    assert resolve_cloud_projection_register("Fault8", hint) == 2082
-    assert hint["confidence"] == "candidate"
+    assert resolve_cloud_register("Fault8", hint) == 2088
+    assert resolve_cloud_projection_register("Fault8", hint) == 2088
+    assert hint["confidence"] == "confirmed"
     assert hint["write_allowed"] is False
 
 

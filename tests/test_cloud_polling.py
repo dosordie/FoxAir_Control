@@ -321,12 +321,13 @@ def test_cloud_start_has_heartbeat_and_stop_during_slow_keyring(application, mon
     dialog.close()
 
 
-def test_raw_fault_live_exception_does_not_promote_candidate_mapping():
+def test_confirmed_raw_fault_words_remain_in_the_live_group():
     from cloud.warmlink_codes import cloud_hint
     from cloud.register_resolver import resolve_cloud_register
     codes = [f"Fault{i}" for i in range(1, 11)]
     assert classify_cloud_codes(codes)["live"] == codes
-    assert all(resolve_cloud_register(code, cloud_hint(code)) is None for code in codes)
+    assert [resolve_cloud_register(code, cloud_hint(code)) for code in codes] == list(range(2081, 2091))
+    assert all(cloud_hint(code)["confidence"] == "confirmed" and not cloud_hint(code)["write_allowed"] for code in codes)
     assert classify_cloud_codes(["Fault11", "T_unknown"])["other"] == ["Fault11", "T_unknown"]
 
 

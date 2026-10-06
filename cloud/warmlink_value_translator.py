@@ -28,7 +28,10 @@ class TranslatedCloudValue:
 def parse_cloud_number(value: Any, *, binary: bool = False) -> int | float:
     """Parse API numbers, including 16-character BINARY bit words."""
     text = str(value).strip()
-    if binary or (len(text) == 16 and set(text) <= {"0", "1"}):
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        # JSON numbers are decimal, even for BINARY registers.
+        return int(value) if isinstance(value, float) and value.is_integer() else value
+    if text and set(text) <= {"0", "1"} and (binary or len(text) == 16):
         return int(text, 2)
     number = float(text.replace(",", "."))
     return int(number) if number.is_integer() else number
@@ -60,6 +63,9 @@ def translate_cloud_value(
         raw = parse_cloud_number(value, binary=binary)
     except (TypeError, ValueError):
         return TranslatedCloudValue(value, str(value), str(value))
+
+    if isinstance(raw, int) and str(hint.get("dataType") or "").upper() == "BITWORD16":
+        raw &= 0xFFFF
 
     maps = (hint.get("write_values"), hint.get("value_map"), definition.get("value_map"))
     for values in maps:

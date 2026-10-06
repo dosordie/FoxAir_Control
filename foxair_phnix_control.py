@@ -38,6 +38,7 @@ from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
 from core.register_value_sources import register_value_sources
 from core.csv_logger_controller import CsvLoggerController
+from cloud.snapshot_request import CloudSnapshotRequest
 from dialogs.csv_logger_dialog import CsvLoggerDialog
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
@@ -50,6 +51,7 @@ from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
 from core.at_compensation import (
     AT_LIVE_REGISTERS,
+    AT_CLOUD_READ_CODES,
     AT_MODE_VALUES,
     AT_READ_BLOCKS,
     AT_SEVEN_POINT_REGISTERS,
@@ -161,7 +163,7 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.3.2"
+APP_VERSION = "0.3.3"
 BUILD_DATE = "2026-10-06"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
@@ -4156,25 +4158,29 @@ class ATCompensationDialog(QDialog):
         self.main_window = main_window
         self.setWindowTitle("AT-Kompensation")
         self.setMinimumWidth(820)
+        self.cloud_request = None
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
         self.auto_refresh_timer = QTimer(self)
         self.auto_refresh_timer.timeout.connect(self.read_from_wp)
         self._build_ui()
         self.refresh_from_live()
-        QTimer.singleShot(250, self.read_from_wp)
+        self.initial_read_timer = QTimer(self)
+        self.initial_read_timer.setSingleShot(True)
+        self.initial_read_timer.timeout.connect(self.read_from_wp)
+        self.initial_read_timer.start(250)
 
-    def _raw(self, reg_no: int, default: Optional[int] = None) -> Optional[int]:
-        try:
-            if reg_no in self.main_window.latest_regs:
-                return int(self.main_window.latest_regs[reg_no].raw_value) & 0xFFFF
-            if reg_no in self.main_window.last_values:
-                return int(self.main_window.last_values[reg_no]) & 0xFFFF
-        except Exception:
-            pass
-        return default
+    def _value(self, reg_no: int, dtype: str):
+        sources = self.main_window.register_value_sources(reg_no)
+        if sources.local_raw is not None:
+            return numeric_value_by_type(sources.local_raw, dtype)
+        # Cloud numbers already use engineering units; never encode/redecode
+        # them as local words or parse a rendered value with units.
+        return sources.cloud_engineering
 
     def _temp(self, reg_no: int) -> Optional[float]:
-        raw = self._raw(reg_no)
-        return None if raw is None else numeric_value_by_type(raw, "TEMP1")
+        return self._value(reg_no, "TEMP1")
 
     @staticmethod
     def _temp_raw(value: float) -> int:
@@ -4294,10 +4300,32 @@ class ATCompensationDialog(QDialog):
         mode = int(self.mode_combo.currentData())
         self.linear_box.setVisible(mode == 1)
         self.seven_box.setVisible(mode == 2)
-        self.write_linear_btn.setEnabled(mode == 1)
-        self.write_seven_btn.setEnabled(mode == 2)
+        self._update_write_actions()
         self.curve_canvas.set_editable(mode == 2)
         self.update_curve_table()
+
+    def _update_write_actions(self):
+        local = self.main_window._active_io_worker() is not None
+        mode = int(self.mode_combo.currentData())
+        for button, applicable in ((self.write_mode_btn, True), (self.write_linear_btn, mode == 1), (self.write_seven_btn, mode == 2)):
+            button.setEnabled(local and applicable)
+            button.setToolTip("" if local else "Schreiben der AT-Kurve ist derzeit nur lokal über Modbus verfügbar.")
+
+    def _cloud_identity_matches(self):
+        request = self.cloud_request
+        return request is not None and self.main_window.is_cloud_connected() and (
+            request.username == str(self.main_window.settings.get("warmlink_cloud", {}).get("username") or "").strip()
+            and request.device_code == self.main_window.cloud_session_device_code)
+
+    def connection_changed(self):
+        self._update_write_actions()
+        if self.cloud_request is not None and not self._cloud_identity_matches():
+            self._cancel_cloud_read()
+            self.status_label.setText("Cloud-Verbindung oder Geräteauswahl geändert; bitte erneut lesen.")
+
+    def update_from_cloud_register(self, reg_no):
+        if int(reg_no) in self.LIVE_REGISTERS:
+            self.refresh_from_live()
 
     def _curve_point_dragged(self, index: int, value: float) -> None:
         spins = self._seven_spins()
@@ -4318,16 +4346,16 @@ class ATCompensationDialog(QDialog):
             self.refresh_from_live()
 
     def refresh_from_live(self):
-        mode = self._raw(1236)
+        mode = self._value(1236, "DIGI1")
         if mode in AT_MODE_VALUES:
             index = self.mode_combo.findData(mode)
             self.mode_combo.setCurrentIndex(index)
-        slope = self._raw(1234)
+        slope = self._value(1234, "DIGI5")
         if slope is not None:
-            self.slope_spin.setValue(numeric_value_by_type(slope, "DIGI5"))
-        offset = self._raw(1235)
+            self.slope_spin.setValue(slope)
+        offset = self._temp(1235)
         if offset is not None:
-            self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
+            self.offset_spin.setValue(offset)
         self._update_target_editor_limits()
         for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
             value = self._temp(register)
@@ -4339,6 +4367,7 @@ class ATCompensationDialog(QDialog):
         minimum, maximum = self._temp(1164), self._temp(1165)
         self.limit_label.setText("R10/R11: --" if minimum is None or maximum is None else f"R10/R11: {minimum:.1f} … {maximum:.1f} °C")
         self.curve_canvas.set_runtime_point(None if current_at is None or target is None else (current_at, target))
+        self._update_write_actions()
         self.update_curve_table()
 
     def update_curve_table(self):
@@ -4369,6 +4398,10 @@ class ATCompensationDialog(QDialog):
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title: str, text: str) -> bool:
+        if self.main_window._active_io_worker() is None:
+            self._update_write_actions()
+            self.status_label.setText("Schreiben der AT-Kurve ist derzeit nur lokal über Modbus verfügbar.")
+            return False
         return ask_yes_no(self, title, text, default_yes=False)
 
     def write_mode(self):
@@ -4396,11 +4429,63 @@ class ATCompensationDialog(QDialog):
             self.status_label.setText("7-Punkt-AT-Kurve Schreiben gesendet.")
 
     def read_from_wp(self):
+        if self.main_window._active_io_worker() is None:
+            if not self.main_window.is_cloud_connected():
+                self.status_label.setText("Keine lokale oder gültige Cloud-Verbindung verfügbar.")
+                self.connection_changed()
+                return
+            if self.cloud_request is not None:
+                return  # Manual reads/autorefresh never build a request backlog.
+            owner = self.main_window
+            owner._at_cloud_generation = getattr(owner, "_at_cloud_generation", 0) + 1
+            self.cloud_request = CloudSnapshotRequest(owner._at_cloud_generation, AT_CLOUD_READ_CODES,
+                time.monotonic() + 60, str(owner.settings.get("warmlink_cloud", {}).get("username") or "").strip(),
+                owner.cloud_session_device_code, purpose="at_compensation")
+            self.cloud_read_timer.start(60000)
+            self.status_label.setText("Lese AT-Kompensation über Cloud ...")
+            error = owner.request_cloud_snapshot(self.cloud_request)
+            if error:
+                self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+            return
         self.status_label.setText("Lese AT-Kompensation ...")
         for addr, qty in AT_READ_BLOCKS:
             self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=f"AT-Kompensation {addr}", delay_ms=250)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
+
+    def _cancel_cloud_read(self):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def _cloud_read_timeout(self):
+        self._cancel_cloud_read()
+        self.status_label.setText("AT-Kompensation Cloud-Timeout / keine frische Antwort.")
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self._cloud_identity_matches():
+            self.connection_changed()
+            return
+        if request.expired():
+            self._cloud_read_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and not any(row.get(flag) for flag in ("cached", "stale", "currentEmpty")) and row.get("value") is not None]
+        self._cancel_cloud_read()
+        if not error:
+            self.main_window.apply_cloud_rows_to_main(fresh)
+            self.refresh_from_live()
+        self.status_label.setText(f"AT-Kompensation Cloud: {len(fresh)}/{len(request.codes)} Werte" + (f" · {error}" if error else ""))
+
+    def closeEvent(self, event):
+        self.initial_read_timer.stop()
+        self.auto_refresh_timer.stop()
+        self._cancel_cloud_read()
+        super().closeEvent(event)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -4984,7 +5069,6 @@ class MainWindow(QMainWindow):
         self.cloud_countdown_timer = QTimer(self)
         self.cloud_countdown_timer.setInterval(250)
         self.cloud_countdown_timer.timeout.connect(self._refresh_cloud_countdown)
-        manual_layout.addWidget(self.csv_logger_btn, 3, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5118,6 +5202,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.bus_popup_btn, 11, 0, 1, 2)
         special_layout.addWidget(self.dual_logger_btn, 12, 0, 1, 2)
         special_layout.addWidget(self.warmlink_capture_btn, 13, 0, 1, 2)
+        special_layout.addWidget(self.csv_logger_btn, 14, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -6363,6 +6448,9 @@ class MainWindow(QMainWindow):
         controller = getattr(self, "csv_logger_controller", None)
         if controller is not None:
             controller.source_changed()
+        at_dialog = getattr(self, "at_comp_dialog", None)
+        if at_dialog is not None:
+            at_dialog.connection_changed()
 
     @Slot()
     def on_disconnected(self):
@@ -6403,6 +6491,9 @@ class MainWindow(QMainWindow):
         controller = getattr(self, "csv_logger_controller", None)
         if controller is not None:
             controller.source_changed()
+        at_dialog = getattr(self, "at_comp_dialog", None)
+        if at_dialog is not None:
+            at_dialog.connection_changed()
 
     @Slot(str)
     def on_error(self, text: str):
@@ -7324,7 +7415,7 @@ class MainWindow(QMainWindow):
 
     def _notify_cloud_register_update(self, reg_no: int):
         # New dialogs can opt in without changing the local register update path.
-        for attribute in ("parameter_dialog",):
+        for attribute in ("parameter_dialog", "at_comp_dialog"):
             dialog = getattr(self, attribute, None)
             callback = getattr(dialog, "update_from_cloud_register", None)
             if callback is not None:
@@ -7635,14 +7726,19 @@ class MainWindow(QMainWindow):
         self.csv_logger_dialog.activateWindow()
 
     def request_csv_cloud_snapshot(self, request):
-        if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code:
+        return self.request_cloud_snapshot(request)
+
+    def request_cloud_snapshot(self, request):
+        if self._is_firmware_capture_mode():
+            return "Firmware-Capture aktiv – aktive Cloud-Abfragen sind gesperrt."
+        if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code or request.username != str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip():
             return "Keine gültige Cloud-Verbindung mit ausgewähltem Gerät."
         if self.cloud_read_thread is not None or self.cloud_write_thread is not None:
-            return "Ein Cloud-Einzelread oder Schreibbefehl läuft; nächster Loggerzyklus versucht es erneut."
+            return "Ein Cloud-Einzelread oder Schreibbefehl läuft; bitte danach erneut lesen."
         if self.warmlink_cloud_dialog is None:
             self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
             self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        return self.warmlink_cloud_dialog.request_logger_snapshot(request)
+        return self.warmlink_cloud_dialog.request_snapshot(request)
 
     def open_dual_logger_dialog(self):
         if self.dual_logger_dialog is None or not self.dual_logger_dialog.isVisible():
@@ -9015,6 +9111,9 @@ class MainWindow(QMainWindow):
         controller = getattr(self, "csv_logger_controller", None)
         if controller is not None:
             controller.source_changed()
+        at_dialog = getattr(self, "at_comp_dialog", None)
+        if at_dialog is not None:
+            at_dialog.connection_changed()
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
         # Register-Refresh sichtbar bzw. unsichtbar bleiben.
@@ -10743,7 +10842,7 @@ class MainWindow(QMainWindow):
 
     def open_at_compensation(self):
         # AT-Kompensation liegt im Paket 1181ff (1234-1236).
-        if not self._display_wait_for_param_blocks_before_popup("AT-Kompensation", [1181], self.open_at_compensation):
+        if self._active_io_worker() is not None and not self._display_wait_for_param_blocks_before_popup("AT-Kompensation", [1181], self.open_at_compensation):
             return
         if self.at_comp_dialog is None or not self.at_comp_dialog.isVisible():
             self.at_comp_dialog = ATCompensationDialog(self)
