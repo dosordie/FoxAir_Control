@@ -3035,33 +3035,53 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
           'unit': 'A',
           'write_allowed': False}}
 
-# Family 644 / FW3.4 live cloud test: all ten codes were returned as BINARY
-# current raw fault words. The register addresses below are a strong family
-# mapping inference, not a same-device live Modbus comparison; keeping
-# confidence=candidate prevents the resolver from treating them as confirmed
-# Cloud-to-Modbus mappings.
-_FAULT_WORD_REGISTER_CANDIDATES = {
-    "Fault1": 2085, "Fault2": 2086, "Fault3": 2087, "Fault4": 2088,
-    "Fault5": 2089, "Fault6": 2090, "Fault7": 2081, "Fault8": 2082,
-    "Fault9": 2083, "Fault10": 2084,
+# Same-device GL9 tests confirmed this exact order; it replaces the earlier
+# inferred rotation. Cloud Fault numbers are independent of local ERR labels.
+_CONFIRMED_FAULT_WORD_REGISTERS = {
+    "Fault1": 2081, "Fault2": 2082, "Fault3": 2083, "Fault4": 2084,
+    "Fault5": 2085, "Fault6": 2086, "Fault7": 2087, "Fault8": 2088,
+    "Fault9": 2089, "Fault10": 2090,
 }
-for _fault_code, _fault_register in _FAULT_WORD_REGISTER_CANDIDATES.items():
+for _fault_code, _fault_register in _CONFIRMED_FAULT_WORD_REGISTERS.items():
     WARMLINK_CLOUD_CODE_HINTS[_fault_code] = {
         "cloud_dataType": "BINARY",
         "dataType": "bitword16",
-        "confidence": "candidate",
+        "confidence": "confirmed",
+        "allow_code_mismatch": True,
         "cloud_live_confirmed": True,
         "cloud_confidence": "confirmed",
         "modbus_register": _fault_register,
-        "modbus_mapping_confidence": "strongly-inferred-family-644",
+        "modbus_mapping_confidence": "confirmed",
         "cloud_projection_allowed": True,
         "name": f"Raw fault word {_fault_code.removeprefix('Fault')}",
         "note": (
-            "Family 644 / FW3.4 cloud-live-confirmed as BINARY; local fault-word "
-            f"register {_fault_register} is strongly inferred, not same-device Modbus-confirmed"
+            f"GL9 practically confirmed 2026-10-06: {_fault_code} -> MAIN:{_fault_register}; unsigned raw 16-bit fault word"
         ),
         "write_allowed": False,
     }
+
+
+# WarmLink Android 3.0.5, family 416 / software code 644. CP1-4 is fetched by
+# the app but the actual 0 C point is the existing compensate_offset alias.
+WARMLINK_305_CURVE_CODES = tuple(f"CP{zone}-{point}" for zone in (1, 2) for point in range(1, 8))
+_ZONE1_CURVE_POINTS = {
+    "CP1-1": (1250, -20), "CP1-2": (1251, -10), "CP1-3": (1252, -5),
+    "CP1-5": (1253, 5), "CP1-6": (1254, 10), "CP1-7": (1255, 20),
+}
+for _curve_code in WARMLINK_305_CURVE_CODES:
+    _point = _ZONE1_CURVE_POINTS.get(_curve_code)
+    WARMLINK_CLOUD_CODE_HINTS[_curve_code] = {
+        "cloud_dataType": "TEMP", "unit": "°C", "write_allowed": False,
+        "confidence": "confirmed" if _point else "unknown",
+        "name": f"7-Punkt-AT-Kurve {_curve_code}",
+        "note": "WarmLink 3.0.5 / Family 416/644: read-only curve code; CP1-4/CP2-4 are not the 0 C point; Zone-2 MAIN mapping remains unconfirmed",
+        **({"modbus_register": _point[0], "allow_code_mismatch": True,
+            "note": f"WarmLink 3.0.5 app structure and confirmed GL9 firmware: {_point[1]:+d} C point -> MAIN:{_point[0]}"} if _point else {}),
+    }
+WARMLINK_CLOUD_CODE_HINTS["Zone 2 Curve Offset"] = {
+    "cloud_dataType": "TEMP", "unit": "°C", "confidence": "unknown", "write_allowed": False,
+    "name": "Zone 2 Curve Offset", "note": "WarmLink 3.0.5: actual Zone-2 0 C point; MAIN mapping remains unconfirmed",
+}
 
 
 def cloud_hint(code: str) -> dict[str, object]:
@@ -3105,6 +3125,7 @@ def merged_cloud_metadata(code: str) -> dict[str, object]:
 WARMLINK_644_DISCOVERY_CODES: list[str] = list(dict.fromkeys([
     *ALL_WARMLINK_CLOUD_CODES,
     *known_644_codes(cloud_spelling=True),
+    *WARMLINK_305_CURVE_CODES,
 ]))
 
 

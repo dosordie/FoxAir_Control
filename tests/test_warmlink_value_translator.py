@@ -16,14 +16,14 @@ def test_output_bitword_uses_register_bit_map():
 
 
 def test_unknown_fault_bit_remains_visible():
-    value = translate_cloud_value("Fault8", "0000001000000000", DEFS["2082"], cloud_hint("Fault8"))
+    value = translate_cloud_value("Fault8", "0000001000000000", DEFS["2088"], cloud_hint("Fault8"))
     assert value.raw == 0x0200
     assert "Bit 9 aktiv" in value.display
     assert "unbekannt" in value.display
 
 
 def test_known_fault_bit_uses_existing_register_text():
-    value = translate_cloud_value("Fault4", "0000000010000000", DEFS["2088"], cloud_hint("Fault4"))
+    value = translate_cloud_value("Fault8", "0000000010000000", DEFS["2088"], cloud_hint("Fault8"))
     assert value.raw == 0x0080
     assert "Externer Außentemperaturfühler Fehler" in value.display
 

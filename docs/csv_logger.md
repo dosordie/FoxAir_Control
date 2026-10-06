@@ -1,6 +1,7 @@
 # CSV Logger: PHNIX-Liveblock 2001–2090
 
-Im Hauptfenster unter **Lesen / Schreiben → CSV Logger ...** eine Datei wählen,
+Im Hauptfenster unter **Funktionen → CSV Logger ...** (direkt unter
+**Langzeit-Capture ...**) eine Datei wählen,
 das Intervall einstellen und **Start** drücken. Das Intervall reicht von 5 bis
 3600 Sekunden, Standard ist 30 Sekunden. Intervall und zuletzt verwendetes
 Verzeichnis werden gespeichert; der Logger startet niemals automatisch.
@@ -26,10 +27,11 @@ Die Datei verwendet **UTF-8** (neue Dateien mit BOM für deutsches Excel),
 Semikolon als Trennzeichen und einen stabilen Header mit genau 90 Registerspalten:
 
 ```text
-timestamp;source;device;R2001;R2002;...;R2090
+timestamp;source;device;2001;2002;...;2090
 ```
 
-`timestamp` enthält den Abschlusszeitpunkt mit Zeitzonenoffset. `source` ist
+`timestamp` enthält den lokalen Abschlusszeitpunkt als `YYYY-MM-DD HH:MM:SS`,
+ohne `T` und ohne Zeitzonenoffset. `source` ist
 `standard_modbus`, `warmlink_raw` oder `cloud`; `device` nennt das Modell bzw.
 den Cloud-Gerätenamen. Engineering-Zahlen werden ohne Einheiten gespeichert:
 beispielsweise Modbus `TEMP1 raw=453` als `45.3`. Cloudwerte werden mit der
@@ -38,8 +40,10 @@ Bit-/Statuswörter können als numerische Rohwerte erscheinen, z. B. `4096`.
 Fehlende oder nicht frisch verfügbare Werte bleiben **leer**, niemals ersatzweise
 `0`. Der Zahlenwert `0` bleibt als tatsächliche Messung erhalten.
 
-Neue/leere Dateien erhalten einmalig den Header. Bestehende Dateien mit exakt
-passendem Header werden ergänzt; ein inkompatibler Header wird mit einer
+Neue/leere Dateien erhalten einmalig den Header ohne `R`. Bestehende Dateien
+mit exakt passendem neuen Header oder dem alten `R2001`…`R2090`-Header aus
+Version 0.3.2 werden ergänzt. Der vorhandene Header und alte ISO-Zeitstempel
+werden nicht umgeschrieben; ein inkompatibler Header wird mit einer
 Fehlermeldung abgelehnt. Jede Zeile wird geflusht. Schreibfehler stoppen die
 Aufnahme und erscheinen im Dialog. Die Zeilenanzahl zählt die aktuelle Aufnahme.
 
@@ -65,12 +69,14 @@ der gerade im Hauptfenster läuft, lässt den CSV-Zyklus mit einer entsprechende
 Meldung aussetzen statt einen weiteren Request zu starten.
 
 Verwendet werden ausschließlich bereits bekannte Cloudcodes mit **bestätigtem**
-Mapping nach 2001–2090. Aktuell sind das 41 Codes für 40 Registerplätze; bestätigte
+Mapping nach 2001–2090. Aktuell sind das 51 Codes für 50 Registerplätze; bestätigte
 Aliasse können dasselbe Register betreffen, wobei der erste frisch verfügbare
-Wert verwendet wird. Die zehn `Fault1`–`Fault10`-Modbuszuordnungen sind weiterhin
-nur Kandidaten und werden im CSV-Logger nicht als bestätigt behandelt. Ihr
-bestehendes normales Cloudpolling bleibt unverändert. Ungemappte Register,
-beispielsweise 2078 und die Fault-Register 2081–2090, bleiben im Cloudbetrieb leer.
+Wert verwendet wird. Seit Version 0.3.3 ist `Fault1`…`Fault10` → MAIN 2081…2090
+praktisch an der GL9 bestätigt und wird auch im CSV genutzt. Faults bleiben
+unsigned rohe 16-Bit-Wörter ohne TEMP-/DIGI-Skalierung: `Fault8=512` ergibt
+CSV-Spalte `2088=512`. Fehlende/stale/cached Fault-Werte bleiben leer, echte
+Nullwerte werden als `0` geschrieben. Ungemappte Register, beispielsweise 2078,
+bleiben im Cloudbetrieb leer.
 Kein numerischer Cloudcode wird aus einer Registeradresse erfunden.
 
 Nur die **ungecachte Antwort dieses Zyklus** wird in die CSV übernommen; ein

@@ -33,6 +33,22 @@ CONFIRMED_REGISTER_ALIASES: dict[str, int] = {
     "compensate_offset": 1235,
     "code_version": 2104,
     "MainBoard Version": 2105,
+    "Fault1": 2081,
+    "Fault2": 2082,
+    "Fault3": 2083,
+    "Fault4": 2084,
+    "Fault5": 2085,
+    "Fault6": 2086,
+    "Fault7": 2087,
+    "Fault8": 2088,
+    "Fault9": 2089,
+    "Fault10": 2090,
+    "CP1-1": 1250,
+    "CP1-2": 1251,
+    "CP1-3": 1252,
+    "CP1-5": 1253,
+    "CP1-6": 1254,
+    "CP1-7": 1255,
 }
 
 

@@ -66,15 +66,15 @@ def test_catalog_spellings_product_id_and_fault_namespace_are_separate():
     assert WARMLINK_644_APP_PARAMETERS["F01"]["app_label"] == "Fan Motor Type"
 
 
-def test_fault9_fault10_are_cloud_live_and_modbus_mapping_stays_inferred():
-    for code, register in (("Fault9", 2083), ("Fault10", 2084)):
+def test_all_fault_words_have_practically_confirmed_modbus_order():
+    for code, register in ((f"Fault{n}", 2080 + n) for n in range(1, 11)):
         hint = WARMLINK_CLOUD_CODE_HINTS[code]
         assert code in WARMLINK_644_DISCOVERY_CODES
         assert hint["cloud_live_confirmed"] is True
         assert hint["cloud_dataType"] == "BINARY"
         assert hint["modbus_register"] == register
-        assert hint["modbus_mapping_confidence"] == "strongly-inferred-family-644"
-        assert hint["confidence"] == "candidate"
+        assert hint["modbus_mapping_confidence"] == "confirmed"
+        assert hint["confidence"] == "confirmed"
         assert hint["write_allowed"] is False
 
 

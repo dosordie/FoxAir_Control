@@ -11,6 +11,11 @@ AT_SEVEN_POINT_REGISTERS = (
 )
 
 AT_MODE_VALUES = (0, 1, 2)
+AT_CLOUD_READ_CODES = (
+    "H36", "compensate_slope", "compensate_offset",
+    "CP1-1", "CP1-2", "CP1-3", "CP1-5", "CP1-6", "CP1-7",
+    "R10", "R11", "T04", "2014", "2146",
+)
 AT_READ_BLOCKS = (
     (1234, 3),
     (1250, 6),

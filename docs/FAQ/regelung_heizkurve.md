@@ -100,6 +100,42 @@ Nach der Kurvenberechnung wird das Ergebnis durch **R10 (Register 1164, minimale
 
 Die aktuell für die Kurve verwendete Außentemperatur steht in **Register 2048**, die daraus resultierende kompensierte Solltemperatur in **Register 2014**. Diese beiden Werte sind Laufzeitwerte und werden in FoxAir Control nur angezeigt, nicht als Kurvenparameter geschrieben.
 
+### WarmLink 3.0.5: 7-Punkt-Kurve über Cloud lesen
+
+Die WarmLink-Android-App **3.0.5 / Family 416, Softwarecode 644** bestätigt
+dieselben festen Stützstellen wie die GL9-Mainboard-Firmware:
+**-20 / -10 / -5 / 0 / +5 / +10 / +20 °C**.
+
+| AT | Zone-1-Cloudcode | MAIN-Register |
+| ---: | --- | ---: |
+| -20 °C | `CP1-1` | 1250 |
+| -10 °C | `CP1-2` | 1251 |
+| -5 °C | `CP1-3` | 1252 |
+| 0 °C | `compensate_offset` | 1235 |
+| +5 °C | `CP1-5` | 1253 |
+| +10 °C | `CP1-6` | 1254 |
+| +20 °C | `CP1-7` | 1255 |
+
+**`CP1-4` wird von der App abgefragt, aber nicht als 0-°C-Punkt verwendet.**
+Es erhält keine lokale Projektion auf 1235 oder ein anderes Register. Für Zone 2
+fragt die App analog `CP2-1`…`CP2-7` ab; der tatsächliche Mittelpunkt stammt
+aus **`Zone 2 Curve Offset`**, ebenfalls nicht aus `CP2-4`. Alle CP-Codes stehen
+im Cloudkatalog und sind read-only verfügbar. Die lokalen Zone-2-Register bleiben
+unbestätigt und werden nicht geraten.
+
+Ab FoxAir Control **0.3.3** funktioniert **AT-Kompensation → von WP lesen**
+auch Cloud-only. Der vorhandene Worker liest gezielt H36, Steigung/Offset,
+die sechs CP1-Stützwerte, R10/R11, T04, 2014 und 2146 über
+`app/device/getDataByCode` (`protocalCodes`), ohne Fullscan. Die Abfrage wird
+mit normalem Polling und CSV seriell ausgeführt. Bereits gelesene Cloudwerte
+erscheinen sofort im offenen Dialog; Engineering-Werte werden nicht erneut
+als Modbus skaliert. Lokale Werte haben Vorrang und bleiben getrennt von Cloud.
+
+**Schreiben der AT-Kurve bleibt lokal.** Im Cloud-only-Betrieb sind H36-/Linear-/
+7-Punkt-Schreibbuttons gesperrt. Die CP1-Codes bekommen keine Cloud-Schreibfreigabe.
+Cloud-Schreiben erfordert einen späteren separaten PR mit bestätigtem Endpoint,
+Payload, Reihenfolge und Readback am realen Gerät.
+
 ## Warum startet die Wärmepumpe manchmal nicht?
 
 Wenn die WP trotz vermeintlicher Heizanforderung nicht startet, zuerst prüfen:

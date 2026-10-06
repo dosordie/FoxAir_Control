@@ -81,6 +81,7 @@ class FakeWorker:
         self.connection_state = FakeSignal()
         self.timing_updated = FakeSignal()
         self.logger_snapshot = FakeSignal()
+        self.targeted_snapshot = FakeSignal()
         self.__class__.created.append(self)
 
     def moveToThread(self, thread):

@@ -304,7 +304,7 @@ def test_read_overlay_and_compare_use_live_unit(application):
 def test_cloud_fault_word_remains_an_unscaled_bit_word(application):
     window = CloudWindow()
     window.apply_cloud_rows_to_main([cloud_row("0000001000000000", "Fault8", dataType="BINARY", dataTypeAi="binary")])
-    register = 2082
+    register = 2088
     assert window.latest_regs[register].raw_value == 0x0200
     assert window.cloud_overlay_by_reg[register]["raw"] == 0x0200
     assert "512" in window.register_table.item(window.table_rows[register], 4).text()

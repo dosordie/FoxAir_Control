@@ -301,6 +301,7 @@ class WarmLinkCloudWorker(QObject):
     connection_state = Signal(str)
     timing_updated = Signal(object)
     logger_snapshot = Signal(int, list, str)
+    targeted_snapshot = Signal(str, int, list, str)
 
     def __init__(
         self,
@@ -373,27 +374,33 @@ class WarmLinkCloudWorker(QObject):
         self._logger_requests.put(request)
         self._wake_event.set()
 
+    def _emit_requested_snapshot(self, request, rows, error):
+        if request.purpose == "csv_logger":
+            self.logger_snapshot.emit(request.cycle_id, rows, error)
+        else:
+            self.targeted_snapshot.emit(request.purpose, request.cycle_id, rows, error)
+
     def _read_logger_snapshot(self, api, request):
         """One fresh response using this worker's API, without a discovery/full scan."""
         rows, error = [], ""
         try:
             if request.expired() or self._stop_event.is_set():
-                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+                raise WarmLinkCloudError("Cloud-Snapshot abgebrochen / Timeout")
             if request.username != self.username or request.device_code != self.device_code:
                 raise WarmLinkCloudError("Cloud-Gerät oder Account wurde gewechselt")
             token_before = api.token
             if not self._prepare_live_refresh(api) or request.expired():
-                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+                raise WarmLinkCloudError("Cloud-Snapshot abgebrochen / Timeout")
             response = api.get_data_by_code_batched(self.device_code, list(request.codes),
                 cancelled=lambda: self._stop_event.is_set() or request.expired())
             if self._stop_event.is_set() or request.expired():
-                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+                raise WarmLinkCloudError("Cloud-Snapshot abgebrochen / Timeout")
             rows = normalize_data_values(response, list(request.codes))
             now = time.strftime("%Y-%m-%d %H:%M:%S")
             for row in rows:
                 row.update(lastFetch=now, stale=False)
             # Deliver unmerged response rows: retained stale cache entries are not measurements.
-            self.logger_snapshot.emit(request.cycle_id, rows, "")
+            self._emit_requested_snapshot(request, rows, "")
             self.session.merge(rows)
             self.session.validated = True
             if api.token and api.token != token_before:
@@ -413,7 +420,7 @@ class WarmLinkCloudWorker(QObject):
                 self._publish_session()
                 self.connection_state.emit("ERROR")
                 self.error.emit(error)
-        self.logger_snapshot.emit(request.cycle_id, [], error)
+        self._emit_requested_snapshot(request, [], error)
 
     def _sleep_interruptible(self, seconds: float) -> bool:
         self._wake_event.wait(max(0.1, seconds))
@@ -676,7 +683,7 @@ class WarmLinkCloudWorker(QObject):
         finally:
             while not self._logger_requests.empty():
                 request = self._logger_requests.get_nowait()
-                self.logger_snapshot.emit(request.cycle_id, [], "Cloud-Worker beendet")
+                self._emit_requested_snapshot(request, [], "Cloud-Worker beendet")
             self.timing_updated.emit(CloudTimingState())
             self.finished.emit()
 

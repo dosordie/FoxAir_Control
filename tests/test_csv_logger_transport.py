@@ -57,8 +57,8 @@ def test_logger_uses_real_central_request_mapping_and_decoder_on_existing_io(win
     window.on_frame_decoded(block_frame(window, words))
     rows = read_csv(path)
     assert len(rows) == 2 and rows[1][1] == backend
-    assert rows[1][rows[0].index("R2048")] == "45.3"
-    assert rows[1][rows[0].index("R2034")] == "65535"
+    assert rows[1][rows[0].index("2048")] == "45.3"
+    assert rows[1][rows[0].index("2034")] == "65535"
     assert window.worker is io_worker and window.connected
     assert "DEBUG Pending-Read" not in window.log_text.toPlainText()
     assert "Datensatz 1 geschrieben" not in window.log_text.toPlainText()
@@ -262,8 +262,8 @@ def test_main_window_cloud_dialog_routes_logger_on_existing_worker_and_keeps_pol
             assert dialog.cloud_worker is existing_worker
         wait_for(lambda: controller.writer.rows_written == 1)
         rows = read_csv(path)
-        assert rows[1][1] == "cloud" and rows[1][rows[0].index("R2048")] != ""
-        assert rows[1][rows[0].index("R2078")] == ""
+        assert rows[1][1] == "cloud" and rows[1][rows[0].index("2048")] != ""
+        assert rows[1][rows[0].index("2078")] == ""
         controller.stop()
         assert window.is_cloud_connected()
         if polling:

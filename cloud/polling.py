@@ -19,8 +19,8 @@ class CloudTimingState:
     polling_active: bool = False
 
 
-# Reviewed cloud-live fault words, explicitly polled independently of the
-# candidate Modbus projection. This does not promote their mapping confidence.
+# Reviewed cloud-live fault words. Their exact Modbus order is now confirmed;
+# retaining this explicit live group preserves polling for custom definitions.
 RAW_FAULT_LIVE_CODES = frozenset({
     "Fault1", "Fault2", "Fault3", "Fault4", "Fault5",
     "Fault6", "Fault7", "Fault8", "Fault9", "Fault10",
