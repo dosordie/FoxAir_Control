@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QDialog, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPushButton, QSpinBox, QVBoxLayout,
 )
 
@@ -16,14 +16,14 @@ class CsvLoggerDialog(QDialog):
         self.main_window = main_window
         self.controller = main_window.csv_logger_controller
         self.setWindowTitle("CSV Logger")
+        self.setWindowIcon(main_window.windowIcon())
         self.setAttribute(Qt.WA_DeleteOnClose)
-        self.resize(660, 300)
+        self.resize(660, 360)
+        self.setMinimumSize(520, 320)
         layout = QVBoxLayout(self)
-        hint = QLabel("Register 2001–2090 · Engineering-Werte ohne Einheiten · fehlende/frisch nicht verfügbare Werte bleiben leer.")
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
-        form = QFormLayout()
-        layout.addLayout(form)
+        recording_group = QGroupBox("Aufzeichnung")
+        layout.addWidget(recording_group)
+        form = QFormLayout(recording_group)
         self.path_edit = QLineEdit()
         self.choose_button = QPushButton("Datei wählen ...")
         file_row = QHBoxLayout()
@@ -36,6 +36,12 @@ class CsvLoggerDialog(QDialog):
         self.interval_spin.setSuffix(" s")
         self.interval_spin.setValue(int(cfg.get("interval_s", 30)))
         form.addRow("Intervall:", self.interval_spin)
+        hint = QLabel("Register 2001–2090 · Engineering-Werte ohne Einheiten · fehlende/frisch nicht verfügbare Werte bleiben leer.")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+        status_group = QGroupBox("Status")
+        layout.addWidget(status_group)
+        status_form = QFormLayout(status_group)
         self.source_label = QLabel()
         self.status_label = QLabel()
         self.status_label.setWordWrap(True)
@@ -43,16 +49,19 @@ class CsvLoggerDialog(QDialog):
         self.rows_label = QLabel()
         for label, widget in (("Quelle:", self.source_label), ("Status:", self.status_label),
                               ("Letzter erfolgreicher Datensatz:", self.last_label), ("Geschriebene Zeilen:", self.rows_label)):
-            form.addRow(label, widget)
+            status_form.addRow(label, widget)
         buttons = QHBoxLayout()
         self.start_button, self.stop_button = QPushButton("Start"), QPushButton("Stop")
         buttons.addWidget(self.start_button)
         buttons.addWidget(self.stop_button)
         buttons.addStretch(1)
+        self.close_button = QPushButton("Schließen")
+        buttons.addWidget(self.close_button)
         layout.addLayout(buttons)
         self.choose_button.clicked.connect(self.choose_file)
         self.start_button.clicked.connect(self.start_logger)
         self.stop_button.clicked.connect(lambda: self.controller.stop())
+        self.close_button.clicked.connect(self.close)
         self.interval_spin.valueChanged.connect(self.save_settings)
         self.controller.changed.connect(self.refresh)
         self.refresh()

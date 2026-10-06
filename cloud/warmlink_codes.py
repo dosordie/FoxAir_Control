@@ -439,6 +439,7 @@ WARMLINK_GL9_TESTED_UNSUPPORTED_CODES: tuple[str, ...] = (
     "State_power", "State_mode", "Set_Temp",
     "H02", "H03", "H04", "H06", "H09", "P04",
     "Prog_Version", "Material_Code",
+    "Switch2168",  # GL9/644: empty value and dataType, tested 2026-10-06
 )
 
 WARMLINK_PRODUCT_IDS: list[str] = [
@@ -2326,15 +2327,15 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
              'local_code': 'S01~S10',
              'modbus_register': 2034,
              'name': 'Schalter-/Eingangsstatus S01~S10',
-             'note': 'Auto-confirmed by mapping export: name/code match and value diff=0; status bitword, not '
-                     'write-enabled',
+             'note': 'GL9/644 live-confirmed 2026-10-06: 0010110000000000 = 0x2C00 = 11264 matches MAIN 2034; '
+                     'read-only status bitword',
              'write_allowed': False},
  'SG Status': {'cloud_dataType': 'DIGI1',
                'confidence': 'confirmed',
                'local_code': 'SGstatus',
                'modbus_register': 2133,
                'name': 'SG Status',
-               'note': 'Register 2133 = SG Status. Im klassischen Pfad gelten die Modi 0..4; bei SG01=7 sind 1..3 als Low PV, Neutral und High PV bestätigt. Die Semantik bei SG01=5/6 bleibt offen.',
+               'note': 'Register 2133 = SG Status; GL9/644 live test 2026-10-06 returned 3 while cloud code 2119 returned 0. Im klassischen Pfad gelten die Modi 0..4; bei SG01=7 sind 1..3 als Low PV, Neutral und High PV bestätigt. Die Semantik bei SG01=5/6 bleibt offen.',
                'rangeEnd': '4',
                'rangeStart': '0',
                'write_allowed': False},
@@ -3071,6 +3072,8 @@ _ZONE1_CURVE_POINTS = {
 for _curve_code in WARMLINK_305_CURVE_CODES:
     _point = _ZONE1_CURVE_POINTS.get(_curve_code)
     WARMLINK_CLOUD_CODE_HINTS[_curve_code] = {
+        "app_known": True, "app_family": "416/644", "app_version": "3.0.5",
+        "mapping_intentionally_absent": not bool(_point),
         "cloud_dataType": "TEMP", "unit": "°C", "write_allowed": False,
         "confidence": "confirmed" if _point else "unknown",
         "name": f"7-Punkt-AT-Kurve {_curve_code}",
@@ -3079,8 +3082,28 @@ for _curve_code in WARMLINK_305_CURVE_CODES:
             "note": f"WarmLink 3.0.5 app structure and confirmed GL9 firmware: {_point[1]:+d} C point -> MAIN:{_point[0]}"} if _point else {}),
     }
 WARMLINK_CLOUD_CODE_HINTS["Zone 2 Curve Offset"] = {
+    "app_known": True, "app_family": "416/644", "app_version": "3.0.5",
+    "mapping_intentionally_absent": True,
     "cloud_dataType": "TEMP", "unit": "°C", "confidence": "unknown", "write_allowed": False,
     "name": "Zone 2 Curve Offset", "note": "WarmLink 3.0.5: actual Zone-2 0 C point; MAIN mapping remains unconfirmed",
+}
+
+# Shared SG dialog: these codes belong to its protocol-773 branch. The server
+# also accepted 2119 on GL9/644, but that does not identify a MAIN register.
+WARMLINK_305_SG_CODES = ("2119", "Switch2168")
+WARMLINK_CLOUD_CODE_HINTS["2119"] = {
+    "app_known": True, "app_version": "3.0.5", "app_protocol": "773",
+    "confidence": "unknown", "write_allowed": False,
+    "mapping_intentionally_absent": True, "gl9_tested_supported": True,
+    "cloud_dataType": "DIGI1", "name": "SG mode (protocol 773)",
+    "note": "GL9/644 live test 2026-10-06: DIGI1=0 while SG Status=3; not an alias of SG Status or MAIN 2119 (heating energy counter high); no confirmed MAIN projection",
+}
+WARMLINK_CLOUD_CODE_HINTS["Switch2168"] = {
+    "app_known": True, "app_version": "3.0.5", "app_protocol": "773",
+    "confidence": "unknown", "write_allowed": False,
+    "mapping_intentionally_absent": True, "gl9_tested_supported": False,
+    "name": "SG switches (protocol 773)",
+    "note": "GL9/644 live test 2026-10-06: empty value and dataType; tested unsupported; no confirmed MAIN projection",
 }
 
 
@@ -3126,6 +3149,7 @@ WARMLINK_644_DISCOVERY_CODES: list[str] = list(dict.fromkeys([
     *ALL_WARMLINK_CLOUD_CODES,
     *known_644_codes(cloud_spelling=True),
     *WARMLINK_305_CURVE_CODES,
+    *WARMLINK_305_SG_CODES,
 ]))
 
 
