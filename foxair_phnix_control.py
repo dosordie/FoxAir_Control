@@ -37,6 +37,8 @@ from dialogs.cloud_dialog import WarmLinkCloudDialog
 from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
 from core.register_value_sources import register_value_sources
+from core.csv_logger_controller import CsvLoggerController
+from dialogs.csv_logger_dialog import CsvLoggerDialog
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
@@ -159,8 +161,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.3.1"
-BUILD_DATE = "2026-10-05"
+APP_VERSION = "0.3.2"
+BUILD_DATE = "2026-10-06"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -4560,6 +4562,8 @@ class MainWindow(QMainWindow):
         self.cloud_credentials_cache = {}
         self.cloud_timing_state = CloudTimingState()
         self.cloud_last_rows: list[dict[str, Any]] = []
+        self.csv_logger_controller = CsvLoggerController(self)
+        self.csv_logger_dialog = None
         self.about_dialog: Optional[AboutDialog] = None
         self.update_thread: Optional[QThread] = None
         self.update_worker: Optional[UpdateCheckWorker] = None
@@ -4947,6 +4951,7 @@ class MainWindow(QMainWindow):
         self.read_count_spin.setValue(1)
         self.read_btn = QPushButton("FC03 lesen")
         self.manual_register_btn = QPushButton("Register lesen/schreiben ...")
+        self.csv_logger_btn = QPushButton("CSV Logger ...")
         self.init_read_btn = QPushButton("Alle bekannten Register lesen")
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
@@ -4979,6 +4984,7 @@ class MainWindow(QMainWindow):
         self.cloud_countdown_timer = QTimer(self)
         self.cloud_countdown_timer.setInterval(250)
         self.cloud_countdown_timer.timeout.connect(self._refresh_cloud_countdown)
+        manual_layout.addWidget(self.csv_logger_btn, 3, 0, 1, 4)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5179,6 +5185,7 @@ class MainWindow(QMainWindow):
         self.timer_editor_btn.clicked.connect(self.open_timer_editor)
         self.onoff_timer_btn.clicked.connect(self.open_onoff_timer_editor)
         self.init_read_btn.clicked.connect(self.send_init_reads)
+        self.csv_logger_btn.clicked.connect(self.open_csv_logger)
         self.search_value_btn.clicked.connect(self.search_value_now)
         self.clear_search_btn.clicked.connect(self.clear_value_search)
         self.search_value_edit.returnPressed.connect(self.search_value_now)
@@ -6353,6 +6360,9 @@ class MainWindow(QMainWindow):
         if bool(self.settings.get("auto_read_init_on_startup", False)) and not passive:
             QTimer.singleShot(800, self.send_init_reads)
         self._apply_live_poll_timer_state()
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
 
     @Slot()
     def on_disconnected(self):
@@ -6390,6 +6400,9 @@ class MainWindow(QMainWindow):
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         self._stop_warmlink_capture("gestoppt")
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
 
     @Slot(str)
     def on_error(self, text: str):
@@ -7613,6 +7626,24 @@ class MainWindow(QMainWindow):
             self.offline_dialog.raise_()
             self.offline_dialog.activateWindow()
 
+    def open_csv_logger(self):
+        if self.csv_logger_dialog is None:
+            self.csv_logger_dialog = CsvLoggerDialog(self)
+            self.csv_logger_dialog.finished.connect(lambda _=None: setattr(self, "csv_logger_dialog", None))
+        self.csv_logger_dialog.show()
+        self.csv_logger_dialog.raise_()
+        self.csv_logger_dialog.activateWindow()
+
+    def request_csv_cloud_snapshot(self, request):
+        if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code:
+            return "Keine gültige Cloud-Verbindung mit ausgewähltem Gerät."
+        if self.cloud_read_thread is not None or self.cloud_write_thread is not None:
+            return "Ein Cloud-Einzelread oder Schreibbefehl läuft; nächster Loggerzyklus versucht es erneut."
+        if self.warmlink_cloud_dialog is None:
+            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
+            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
+        return self.warmlink_cloud_dialog.request_logger_snapshot(request)
+
     def open_dual_logger_dialog(self):
         if self.dual_logger_dialog is None or not self.dual_logger_dialog.isVisible():
             self.dual_logger_dialog = DualBusLoggerDialog(self)
@@ -8463,7 +8494,8 @@ class MainWindow(QMainWindow):
         if frame.mode != "read-response":
             return False
         if self.pending_read_requests:
-            self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=True)
+            logger_only = all(str(req.get("label", "")).startswith("CSV Logger ") for req in self.pending_read_requests)
+            self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=not logger_only)
         self._check_pending_read_timeouts()
         requests = list(self.pending_read_requests)
         if self.current_backend_key() == "warmlink_raw" and getattr(self, "warmlink_read_scheduler", None):
@@ -8528,19 +8560,23 @@ class MainWindow(QMainWindow):
                             f"{int(req.get('addr', start_addr))}/0x{int(req.get('addr', start_addr)):04X} -> "
                             f"{start_addr}/0x{start_addr:04X}"
                         )
+            controller = getattr(self, "csv_logger_controller", None)
+            if controller is not None and frame.crc_ok:
+                controller.local_response(req, frame.registers, time.monotonic())
             self._check_endblock_signature(frame, start_addr)
             self.pending_read_requests.remove(req)
             if req.get("scheduler"):
                 self.warmlink_read_scheduler.complete(req)
             label = f" ({req.get('label')})" if req.get("label") else ""
-            self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register")
+            logger_level = 7 if req_label.startswith("CSV Logger ") else None
+            self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register", level=logger_level)
             if frame.registers:
                 value_lines = []
                 for reg in frame.registers[:12]:
                     name = f" {reg.name}" if reg.name else ""
                     value_lines.append(f"{reg.reg}={reg.raw_value}/0x{reg.raw_value:04X} ({reg.display_value}){name}")
                 more = "" if len(frame.registers) <= 12 else f" ... (+{len(frame.registers) - 12})"
-                self._log("READ Werte: " + "; ".join(value_lines) + more)
+                self._log("READ Werte: " + "; ".join(value_lines) + more, level=logger_level)
             if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
             if req_label in {
@@ -8693,7 +8729,8 @@ class MainWindow(QMainWindow):
         self._log(
             f"{action} [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
             f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
-            f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}"
+            f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}",
+            level=7 if str(label).startswith("CSV Logger ") else None,
         )
         io_worker = self._active_io_worker()
         if io_worker is None:
@@ -8764,7 +8801,7 @@ class MainWindow(QMainWindow):
                         force=True,
                     )
                     return
-            self.pending_read_requests.append({
+            read_request = {
                 "slave_addr": wire_slave,
                 "addr": addr,
                 "wire_addr": wire_addr,
@@ -8774,11 +8811,12 @@ class MainWindow(QMainWindow):
                 "rx_count_at_send": int(getattr(io_worker, "total_rx_bytes", 0)),
                 "restbuffer_at_send": bool(getattr(io_worker, "buf", None)),
                 "restbuffer_len_at_send": len(getattr(io_worker, "buf", b"") or b""),
-            })
+            }
+            self.pending_read_requests.append(read_request)
             self._log(
                 f"DEBUG Pending-Read offen: bus=0x{int(wire_slave):02X}, "
                 f"addr={int(addr)}/0x{int(addr):04X}, qty={int(quantity)}, label={label or '-'}",
-                level=7, force=True,
+                level=7, force=not str(label).startswith("CSV Logger "),
             )
             if getattr(io_worker, "buf", None):
                 self._log(
@@ -8787,6 +8825,7 @@ class MainWindow(QMainWindow):
                     level=7, force=True,
                 )
         io_worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
+        return read_request if not routed_to_aux_display else None
 
     # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
 
@@ -8973,6 +9012,9 @@ class MainWindow(QMainWindow):
         self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
         if hasattr(self, "init_read_btn"):
             self._update_init_read_button_state()
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
         # Register-Refresh sichtbar bzw. unsichtbar bleiben.
@@ -11136,6 +11178,7 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        self.csv_logger_controller.stop()
         cloud_dialog = self.warmlink_cloud_dialog
         if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
             if not getattr(self, "_close_after_cloud_poll", False):

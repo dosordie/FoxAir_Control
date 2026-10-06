@@ -61,6 +61,14 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
         settings["warmlink_raw_capture"] = capture
     capture.setdefault("mode", "normal")
     capture.setdefault("prevent_standby", True)
+    csv_logger = settings.setdefault("csv_logger", {})
+    if not isinstance(csv_logger, dict):
+        csv_logger = settings["csv_logger"] = {}
+    try:
+        csv_logger["interval_s"] = min(3600, max(5, int(csv_logger.get("interval_s", 30))))
+    except (TypeError, ValueError):
+        csv_logger["interval_s"] = 30
+    csv_logger.setdefault("last_directory", "")
     settings.setdefault("manual_register_dialog", {})
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)

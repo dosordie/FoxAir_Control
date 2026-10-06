@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import queue
 import threading
 import time
 from typing import Any
@@ -299,6 +300,7 @@ class WarmLinkCloudWorker(QObject):
     credentials_loaded = Signal(str, str)
     connection_state = Signal(str)
     timing_updated = Signal(object)
+    logger_snapshot = Signal(int, list, str)
 
     def __init__(
         self,
@@ -319,6 +321,7 @@ class WarmLinkCloudWorker(QObject):
         discovery_only: bool = False,
         reload_static: bool = False,
         full_scan: bool = False,
+        logger_request=None,
         load_credentials: bool = False,
         use_saved_token: bool = True,
     ) -> None:
@@ -347,6 +350,10 @@ class WarmLinkCloudWorker(QObject):
         self._full_scan_codes = None
         self._wake_event = threading.Event()
         self._stop_event = threading.Event()
+        self._logger_requests = queue.Queue()
+        self._logger_only = logger_request is not None and self.poll_once
+        if logger_request is not None:
+            self.request_logger_snapshot(logger_request)
 
     @Slot()
     def stop(self) -> None:
@@ -361,6 +368,52 @@ class WarmLinkCloudWorker(QObject):
         self._full_scan_codes = tuple(codes) if codes is not None else None
         self._full_scan_event.set()
         self._wake_event.set()
+
+    def request_logger_snapshot(self, request) -> None:
+        self._logger_requests.put(request)
+        self._wake_event.set()
+
+    def _read_logger_snapshot(self, api, request):
+        """One fresh response using this worker's API, without a discovery/full scan."""
+        rows, error = [], ""
+        try:
+            if request.expired() or self._stop_event.is_set():
+                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+            if request.username != self.username or request.device_code != self.device_code:
+                raise WarmLinkCloudError("Cloud-Gerät oder Account wurde gewechselt")
+            token_before = api.token
+            if not self._prepare_live_refresh(api) or request.expired():
+                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+            response = api.get_data_by_code_batched(self.device_code, list(request.codes),
+                cancelled=lambda: self._stop_event.is_set() or request.expired())
+            if self._stop_event.is_set() or request.expired():
+                raise WarmLinkCloudError("Logger-Snapshot abgebrochen / Timeout")
+            rows = normalize_data_values(response, list(request.codes))
+            now = time.strftime("%Y-%m-%d %H:%M:%S")
+            for row in rows:
+                row.update(lastFetch=now, stale=False)
+            # Deliver unmerged response rows: retained stale cache entries are not measurements.
+            self.logger_snapshot.emit(request.cycle_id, rows, "")
+            self.session.merge(rows)
+            self.session.validated = True
+            if api.token and api.token != token_before:
+                self.session.scanned = False
+            self._publish_session()
+            self.data.emit(rows)
+            self.connection_state.emit("CONNECTED" if self.poll_once else "POLLING")
+            if api.token:
+                self.token_updated.emit(api.token)
+            if api.last_login_method:
+                self.login_method.emit(api.last_login_method)
+            return
+        except Exception as exc:
+            error = translate_cloud_error_message(str(exc))
+            if isinstance(exc, WarmLinkAuthError) or any(marker in str(exc).lower() for marker in ("invalid device", "device not found", "no permission", "access denied")):
+                self.session.validated = self.session.scanned = False
+                self._publish_session()
+                self.connection_state.emit("ERROR")
+                self.error.emit(error)
+        self.logger_snapshot.emit(request.cycle_id, [], error)
 
     def _sleep_interruptible(self, seconds: float) -> bool:
         self._wake_event.wait(max(0.1, seconds))
@@ -454,7 +507,12 @@ class WarmLinkCloudWorker(QObject):
             api.use_login_fallbacks = self.login_fallbacks
             reuse = (not self.force_discovery and not self.discovery_only and self.session.reusable(
                 self.username, self.device_code, api.token))
-            if not reuse:
+            if self._logger_only:
+                # The GUI has already selected/proven this device; no logger discovery.
+                if not self.device_code:
+                    raise WarmLinkCloudError("Kein Cloud-Gerät ausgewählt")
+                self.session.username, self.session.device_code = self.username, self.device_code
+            elif not reuse:
                 if not self._discover(api):
                     return
             else:
@@ -479,6 +537,23 @@ class WarmLinkCloudWorker(QObject):
             if api.last_login_method:
                 self.login_method.emit(api.last_login_method)
             while not self._stop_event.is_set():
+                try:
+                    logger_request = self._logger_requests.get_nowait()
+                except queue.Empty:
+                    logger_request = None
+                if logger_request is not None:
+                    self._read_logger_snapshot(api, logger_request)
+                    if self._logger_only and self._logger_requests.empty():
+                        if not (self.full_scan or self._full_scan_event.is_set() or self.reload_static or self._reload_event.is_set()):
+                            break
+                        self._logger_only = False
+                    # A logger wake keeps the normal live deadline, like a static reload.
+                    pending_reload = self.reload_static or self._reload_event.is_set() or self.full_scan or self._full_scan_event.is_set()
+                    if next_poll_at is not None and not pending_reload and self.session.scanned:
+                        self._emit_wait("POLL_WAIT", next_poll_at, self.interval_s)
+                        if self._sleep_interruptible(max(0.0, next_poll_at - time.monotonic())):
+                            break
+                    continue
                 if needs_discovery:
                     if not self._discover(api):
                         break
@@ -549,7 +624,7 @@ class WarmLinkCloudWorker(QObject):
                             self.log.emit("WarmLink Cloud: Statusabfrage übersprungen: " + str(exc))
                     backoff_s = 5.0
                     self.progress.emit("CONNECTED" if self.poll_once else "POLLING", 0, 0)
-                    if self.poll_once and not self._full_scan_event.is_set():
+                    if self.poll_once and not self._full_scan_event.is_set() and self._logger_requests.empty():
                         break
                     if not self.session.scanned:
                         continue  # A renewed login invalidates the configuration snapshot.
@@ -599,6 +674,9 @@ class WarmLinkCloudWorker(QObject):
                 self._emit_progress("ERROR", 0, 0)
                 self.error.emit(translate_cloud_error_message(str(exc)))
         finally:
+            while not self._logger_requests.empty():
+                request = self._logger_requests.get_nowait()
+                self.logger_snapshot.emit(request.cycle_id, [], "Cloud-Worker beendet")
             self.timing_updated.emit(CloudTimingState())
             self.finished.emit()
 

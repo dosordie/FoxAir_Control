@@ -1,4 +1,9 @@
-# FoxAir / Phnix Control PUBLIC V0.3.1
+# FoxAir / Phnix Control PUBLIC V0.3.2
+
+**CSV Logger:** Register **2001–2090** periodisch als UTF-8-CSV aufzeichnen,
+über die bestehende lokale Modbusverbindung oder ausschließlich über WarmLink
+Cloud. Lokale Verbindung hat beim Start Vorrang; fehlende frische Werte bleiben
+leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
