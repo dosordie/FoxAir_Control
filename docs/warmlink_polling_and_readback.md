@@ -411,3 +411,29 @@ Im ersten Gesamtlauf fiel ein unveränderter FC03-Timertest an seiner
 530-ms-Wartegrenze aus; er bestand isoliert und der zweite vollständige Lauf
 war grün. Scheduler und seine Tests wurden für den Heartbeat nicht geändert.
 Der Metadaten-Audit meldet weiterhin keine belegten Unit-/Range-Konflikte.
+
+## CSV Logger für Register 2001–2090
+
+Der [CSV Logger](csv_logger.md) verwendet denselben `WarmLinkCloudWorker`.
+`request_logger_snapshot()` stellt einen zyklusgebundenen, abbrechbaren Wunsch
+in dessen Queue. Der Worker verarbeitet ihn seriell mit dem vorhandenen
+API-Objekt: App-Heartbeat `23205`, bestehende interruptible Settle-Zeit und
+`getDataByCode` für bestätigte Mappings des Liveblocks. Ein Logger-Wake erhält
+den bestehenden normalen Polltermin. Er startet weder eine parallele
+HTTP-Schleife noch Discovery oder einen 420-Code-Initialscan. Ohne laufenden
+Worker verwendet der Cloud-Dialog einen einmaligen Auftrag desselben Workers,
+mit der vorhandenen Session-/Token-/Keyring-Logik.
+
+`logger_snapshot(cycle_id, rows, error)` liefert die **frische, ungemergte**
+Antwort. Der CSV-Controller verwendet diese vor jedem Cache-Merge; der normale
+Cloud-Dialog darf anschließend denselben Abruf ins Overlay übernehmen.
+Zurückgehaltene stale Werte, Single-Reads und reguläre Pollantworten werden
+nicht als neue CSV-Messung verwendet. Nur die aktuell laufende Generation
+wird angenommen; verspätete/abgebrochene Aufträge werden verworfen.
+
+Logger-Stop setzt nur das Cancel-Event dieses Wunsches. Normales Polling und
+die Hauptverbindung bleiben bestehen. Stop des Cloudworkers beendet anstehende
+Loggerwünsche mit einem Ergebnis statt sie unbegrenzt offen zu lassen; ein
+weiterlaufender Logger kann beim nächsten Intervall erneut den zentralen
+Worker verwenden. HTTP-Aufrufe laufen aus, Qt-Timer und CSV-Bedienung bleiben
+responsiv.

@@ -615,7 +615,7 @@ class WarmLinkCloudDialog(QDialog):
         self.interval_spin.setEnabled(not running)
         self.reload_static_btn.setEnabled(bool(self.session.scanned and self.session.static_codes) and not self._stopping)
 
-    def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False, discovery_only=False, full_scan=False):
+    def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False, discovery_only=False, full_scan=False, logger_request=None):
         if self.cloud_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Cloud-Worker läuft bereits.")
             return
@@ -673,7 +673,7 @@ class WarmLinkCloudDialog(QDialog):
             initial_token=initial_token,
             initial_login_at=initial_login_at,
             session=self.session, force_discovery=force_discovery, reload_static=reload_static,
-            discovery_only=discovery_only, full_scan=full_scan,
+            discovery_only=discovery_only, full_scan=full_scan, logger_request=logger_request,
             load_credentials=True, use_saved_token=bool(cfg.get("save_token", True)) and not credentials_changed,
         )
         self.cloud_worker.moveToThread(self.cloud_thread)
@@ -690,6 +690,7 @@ class WarmLinkCloudDialog(QDialog):
         self.cloud_worker.credentials_loaded.connect(self._on_credentials_loaded)
         self.cloud_worker.connection_state.connect(self._on_connection_state)
         self.cloud_worker.timing_updated.connect(self._on_timing_updated)
+        self.cloud_worker.logger_snapshot.connect(self._on_logger_snapshot)
         self.cloud_worker.finished.connect(self.cloud_thread.quit)
         self.cloud_worker.finished.connect(self.cloud_worker.deleteLater)
         self.cloud_thread.finished.connect(self._worker_finished)
@@ -857,6 +858,21 @@ class WarmLinkCloudDialog(QDialog):
         self.progress_bar.setFormat(labels.get(phase, phase) + (f" {done}/{total}" if total else count))
         if not self._stopping:
             self.status_label.setText(labels.get(phase, phase))
+
+    @Slot(int, list, str)
+    def _on_logger_snapshot(self, cycle_id, rows, error):
+        controller = getattr(self.main_window, "csv_logger_controller", None)
+        if controller is not None:
+            controller.cloud_response(cycle_id, rows, error)
+
+    def request_logger_snapshot(self, request):
+        if self._stopping:
+            return "Cloud-Worker wird beendet; nächster Loggerzyklus versucht es erneut."
+        if self.cloud_worker is not None:
+            self.cloud_worker.request_logger_snapshot(request)
+        else:
+            self._start_worker(True, logger_request=request)
+        return None
 
     def reload_all_values(self):
         """Recheck all catalogue candidates through the existing polling worker."""
