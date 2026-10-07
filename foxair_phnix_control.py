@@ -6100,6 +6100,7 @@ class MainWindow(QMainWindow):
             self.register_flash_tokens.clear()
             self.register_flash_colors.clear()
             self.cloud_overlay_by_reg.clear()
+            self.cloud_last_rows.clear()
             self.last_contact_value = None
             self.last_load_output_value = None
             self._update_contact_table(None)
@@ -6113,8 +6114,6 @@ class MainWindow(QMainWindow):
             self.reg_count_label.setText("0")
         finally:
             self.register_table.setUpdatesEnabled(True)
-        if self._cloud_only_enabled() and self.cloud_last_rows:
-            self.apply_cloud_rows_to_main(self.cloud_last_rows, show_cloud_only=True)
         self._log(f"Hauptfenster geleert: {old_count} Registerwert(e) entfernt. Log und Verbindung unverändert.")
 
     def _parse_int_text(self, text: str) -> int:
