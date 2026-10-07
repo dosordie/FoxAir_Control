@@ -2401,7 +2401,7 @@
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2146": {
-    "description": "System-/I/O-Statuswort, kein Temperaturwert. V3.3/V3.4 Basis 0x002C; V3.5 Basis 0x022C durch zusätzlich festes Bit9. Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung MAIN:1464/1465; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/I/O-Qualifizierung aus ENG:A:5036 und sperrt diesen Pfad während der Qualifizierung. Bits 2/3/5 sind feste Basisbits.",
+    "description": "System-/I/O-Statuswort, kein Temperaturwert. V3.3/V3.4 Basis 0x002C; V3.5 Basis 0x022C durch zusätzlich festes Bit9. Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung MAIN:1464/1465; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/Engineering-Qualifizierung aus ENG:A:5036; sie sperrt H07=2/S10 und verzweigt im Abtaupfad in einen Sonder-Handshake über ENG:A:5035. Bits 2/3/5 sind feste Basisbits.",
     "source": "V3.5 Disassembly 0x0806CD68ff / 0x08088054; KASKADENBETRIEB-MASTER-SLAVE.md"
   },
   "2139": {
