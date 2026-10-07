@@ -5849,7 +5849,7 @@
     "mode": "read",
     "type": "BITFIELD",
     "name": "System-/I/O-Statuswort / Capability-Bitfeld",
-    "note": "Kein Temperaturwert. V3.3/V3.4 Basis 0x002C (Bits 2,3,5 fest), V3.5 Basis 0x022C (zusätzlich Bit9 fest). Dynamisch: Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/I/O-Qualifizierung aus ENG:A:5036, die H07=2/S10 während der Qualifizierung sperrt.",
+    "note": "Kein Temperaturwert. V3.3/V3.4 Basis 0x002C (Bits 2,3,5 fest), V3.5 Basis 0x022C (zusätzlich Bit9 fest). Dynamisch: Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/Engineering-Qualifizierung aus ENG:A:5036, die H07=2/S10 während der Qualifizierung sperrt.",
     "description": "Zusammengefasstes Mainboard-System-/I/O-Statuswort mit Bezug zu optionalem Hydraulikmodul, Heiz-/Sommerabschaltung und H07=2/S10-Hardwaresteuerung. Für die normale UI sind vor allem Bit4 sowie bei H07=2 Bit6/Bit8 praktisch relevant.",
     "bit_map": {
       "1": "HYD61:2049 Bit1 (H30=3; Herstellersemantik offen)",
@@ -5858,7 +5858,7 @@
       "4": "Heiz-/Sommerabschaltung aktiv (MAIN:1464/1465)",
       "5": "Basis-/Capability-Bit, fest gesetzt",
       "6": "H07=2 / S10-Hardwaresteuerpfad aktiv/freigegeben",
-      "8": "Service-/I/O-Qualifizierung aktiv (ENG:A:5036; sperrt H07=2/S10)",
+      "8": "Service-/Engineering-Qualifizierung aktiv (ENG:A:5036; sperrt H07=2/S10 und beeinflusst den Abtau-Sonderpfad)",
       "9": "V3.5 Capability-/Signaturbit, fest gesetzt"
     },
     "baseline": "0x002C",
