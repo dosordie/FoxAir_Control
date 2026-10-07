@@ -5848,24 +5848,29 @@
     "function": "03",
     "mode": "read",
     "type": "BITFIELD",
-    "name": "Capability-/Statusbitfeld",
-    "note": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
+    "name": "System-/I/O-Statuswort / Capability-Bitfeld",
+    "note": "Kein Temperaturwert. V3.3/V3.4 Basis 0x002C (Bits 2,3,5 fest), V3.5 Basis 0x022C (zusätzlich Bit9 fest). Dynamisch: Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/I/O-Qualifizierung aus ENG:A:5036, die H07=2/S10 während der Qualifizierung sperrt.",
+    "description": "Zusammengefasstes Mainboard-System-/I/O-Statuswort mit Bezug zu optionalem Hydraulikmodul, Heiz-/Sommerabschaltung und H07=2/S10-Hardwaresteuerung. Für die normale UI sind vor allem Bit4 sowie bei H07=2 Bit6/Bit8 praktisch relevant.",
     "bit_map": {
-      "1": "Zugehörige zentrale Strukturquelle (Semantik offen)",
-      "2": "Baseline, fest gesetzt",
-      "3": "Baseline, fest gesetzt",
-      "4": "Heiz-/Sommerabschaltung aktiv",
-      "5": "Baseline, fest gesetzt",
-      "6": "Variabel, Bedeutung offen"
+      "1": "HYD61:2049 Bit1 (H30=3; Herstellersemantik offen)",
+      "2": "Basis-/Capability-Bit, fest gesetzt",
+      "3": "Basis-/Capability-Bit, fest gesetzt",
+      "4": "Heiz-/Sommerabschaltung aktiv (MAIN:1464/1465)",
+      "5": "Basis-/Capability-Bit, fest gesetzt",
+      "6": "H07=2 / S10-Hardwaresteuerpfad aktiv/freigegeben",
+      "8": "Service-/I/O-Qualifizierung aktiv (ENG:A:5036; sperrt H07=2/S10)",
+      "9": "V3.5 Capability-/Signaturbit, fest gesetzt"
     },
-    "baseline": "0x002C"
+    "baseline": "0x002C",
+    "baseline_v35": "0x022C",
+    "practical_status_bits": [4, 6, 8]
   },
   "2147": {
     "function": "03",
     "mode": "read",
-    "type": "RAW",
-    "name": "Interner Strukturwert zu MAIN:2146 Bit1 (Semantik offen)",
-    "note": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
+    "type": "INT16",
+    "name": "HYD61-Unterwert / MAIN:2146-Nachbarwert",
+    "note": "V3.5/H30=3: signed Pass-through aus HYD61:2050 (Unit 0x61 FC03). Direktes Nachbarpaar zu MAIN:2146 Bit1 = HYD61:2049 Bit1. Hersteller-Klartextname und physikalische Semantik sind noch offen; keine Einheit erfinden.",
     "signed": true
   },
   "2148": {
