@@ -806,6 +806,38 @@ def decode_contact_bits(value: int) -> List[Tuple[int, int, str, str, str]]:
     return rows
 
 
+def decode_system_io_status_2146(value: int) -> Dict[str, Any]:
+    """Decode practical runtime states exported through MAIN:2146.
+
+    Fixed capability/baseline bits remain available in the raw value and the
+    register map. This helper intentionally focuses on states that are useful
+    to an operator or for diagnostics.
+    """
+    raw = int(value) & 0xFFFF
+    summer_shutdown = bool(raw & 0x0010)
+    s10_control_active = bool(raw & 0x0040)
+    io_qualification_inhibit = bool(raw & 0x0100)
+    hyd61_status_bit1 = bool(raw & 0x0002)
+    v35_capability_bit = bool(raw & 0x0200)
+
+    if io_qualification_inhibit:
+        s10_state = "Qualifizierung / Inhibit – S10-Steuerpfad gesperrt"
+    elif s10_control_active:
+        s10_state = "S10-Hardwaresteuerung aktiv / freigegeben"
+    else:
+        s10_state = "S10-Hardwaresteuerung nicht aktiv"
+
+    return {
+        "raw": raw,
+        "summer_shutdown": summer_shutdown,
+        "s10_control_active": s10_control_active,
+        "io_qualification_inhibit": io_qualification_inhibit,
+        "hyd61_status_bit1": hyd61_status_bit1,
+        "v35_capability_bit": v35_capability_bit,
+        "s10_state": s10_state,
+    }
+
+
 def guess_device_name(slave_addr: int, crc_ok: bool = True) -> str:
     """Kurze, gut lesbare Rollen der bisher beobachteten Bus-Adressen.
 
