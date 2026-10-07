@@ -206,6 +206,7 @@ class WarmLinkCloudDialog(QDialog):
         self.device_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         dev_layout.addWidget(self.device_table, 1)
         self.device_table.itemSelectionChanged.connect(self._device_table_selection_changed)
+        self.device_table.cellDoubleClicked.connect(self._device_table_double_clicked)
         self.tabs.addTab(dev_tab, "Geräte")
 
         data_tab = QWidget()
@@ -584,7 +585,13 @@ class WarmLinkCloudDialog(QDialog):
         return str(data).strip() if data else None
 
     def _device_selection_changed(self, _index: int | None = None) -> None:
-        if not self._loading_settings and self.session.device_code and self.session.device_code != self._selected_device_code():
+        if self.cloud_thread is not None and self._selected_device_code() != self.session.device_code:
+            blocked = self.device_combo.blockSignals(True)
+            self.device_combo.setCurrentIndex(self.device_combo.findData(self.session.device_code))
+            self.device_combo.blockSignals(blocked)
+            self.status_label.setText("Gerätewechsel erst nach Stoppen des Pollings möglich.")
+            return
+        if not self._loading_settings and self.session.device_code != self._selected_device_code():
             self.session = CloudSession(username=self.username_edit.text().strip(),
                 device_code=self._selected_device_code() or "", devices=list(self.devices), devices_cached=bool(self.devices))
             self.data_rows = []
@@ -868,8 +875,9 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str, int, list, str)
     def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
-        if purpose == "at_compensation":
-            dialog = getattr(self.main_window, "at_comp_dialog", None)
+        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog"}.get(purpose)
+        if name is not None:
+            dialog = getattr(self.main_window, name, None)
             if dialog is not None:
                 dialog.cloud_read_finished(cycle_id, rows, error)
 
@@ -981,10 +989,48 @@ class WarmLinkCloudDialog(QDialog):
 
     def _device_table_selection_changed(self):
         row = self.device_table.currentRow()
+        if self.cloud_thread is not None:
+            self._restore_active_device_row()
+            return
         if self.cloud_thread is None and 0 <= row < len(self.devices):
             index = self.device_combo.findData(self.devices[row].get("deviceCode"))
             if index >= 0:
                 self.device_combo.setCurrentIndex(index)
+
+    def _restore_active_device_row(self):
+        row = next((index for index, device in enumerate(self.devices)
+                    if device.get("deviceCode") == self.session.device_code), -1)
+        blocked = self.device_table.blockSignals(True)
+        self.device_table.clearSelection()
+        if row >= 0:
+            self.device_table.selectRow(row)
+        self.device_table.blockSignals(blocked)
+
+    def _device_table_double_clicked(self, row, _column):
+        if not 0 <= row < len(self.devices):
+            return
+        device = self.devices[row]
+        code = device.get("deviceCode")
+        if self.cloud_thread is not None:
+            self._restore_active_device_row()
+            self.status_label.setText("Polling für dieses Gerät läuft bereits." if code == self.session.device_code
+                                      else "Gerätewechsel erst nach Stoppen des Pollings möglich.")
+            return
+        index = self.device_combo.findData(code)
+        if index < 0:
+            return
+        if index == self.device_combo.currentIndex():
+            self._device_selection_changed()
+        else:
+            self.device_combo.setCurrentIndex(index)
+        name = device.get("deviceNickName") or device.get("deviceName") or device.get("model") or "dieses Gerät"
+        username = self.username_edit.text().strip()
+        answer = QMessageBox.question(self, "WarmLink Cloud", f"Polling für „{name}“ starten?",
+                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        # The confirmation runs a nested event loop: recheck the selection.
+        if (answer == QMessageBox.Yes and self.cloud_thread is None and self._selected_device_code() == code
+                and self.username_edit.text().strip() == username):
+            self._start_worker(poll_once=False, just_login=False)
 
     def refresh_data(self):
         rows = filtered_cloud_rows(
@@ -1185,11 +1231,16 @@ class WarmLinkCloudDialog(QDialog):
         self.write_code_combo.setEnabled(enabled)
         self.write_value_combo.setEnabled(enabled)
         self.write_endpoint_edit.setEnabled(enabled)
-        self.write_btn.setEnabled(enabled and self.command_thread is None)
+        busy = getattr(self.main_window, "_control_cloud_busy", None)
+        self.write_btn.setEnabled(enabled and self.command_thread is None and not (busy and busy(write=True)))
 
     def run_write_test(self):
         if self.command_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Schreibtest läuft bereits.")
+            return
+        busy = getattr(self.main_window, "_control_cloud_busy", None)
+        if busy is not None and busy(write=True):
+            self.status_label.setText("Ein Cloudauftrag läuft; bitte danach erneut versuchen.")
             return
         if not self.write_enable_cb.isChecked():
             return
@@ -1230,6 +1281,9 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker.finished.connect(self.command_worker.deleteLater)
         self.command_thread.finished.connect(self._command_finished)
         self.command_thread.start()
+        notify = getattr(self.main_window, "_notify_control_connection_changed", None)
+        if notify is not None:
+            notify()
 
     def _on_command_log(self, text: str):
         text = str(text)
@@ -1255,6 +1309,9 @@ class WarmLinkCloudDialog(QDialog):
         self.command_thread = None
         self.command_worker = None
         self._update_write_controls()
+        notify = getattr(self.main_window, "_notify_control_connection_changed", None)
+        if notify is not None:
+            notify()
 
     def run_debug_request(self):
         if self.debug_thread is not None:

@@ -352,6 +352,7 @@ class WarmLinkCloudWorker(QObject):
         self._wake_event = threading.Event()
         self._stop_event = threading.Event()
         self._logger_requests = queue.Queue()
+        self._snapshot_active = threading.Event()
         self._logger_only = logger_request is not None and self.poll_once
         if logger_request is not None:
             self.request_logger_snapshot(logger_request)
@@ -374,6 +375,9 @@ class WarmLinkCloudWorker(QObject):
         self._logger_requests.put(request)
         self._wake_event.set()
 
+    def has_pending_snapshots(self):
+        return self._snapshot_active.is_set() or not self._logger_requests.empty()
+
     def _emit_requested_snapshot(self, request, rows, error):
         if request.purpose == "csv_logger":
             self.logger_snapshot.emit(request.cycle_id, rows, error)
@@ -381,6 +385,13 @@ class WarmLinkCloudWorker(QObject):
             self.targeted_snapshot.emit(request.purpose, request.cycle_id, rows, error)
 
     def _read_logger_snapshot(self, api, request):
+        self._snapshot_active.set()
+        try:
+            self._perform_logger_snapshot(api, request)
+        finally:
+            self._snapshot_active.clear()
+
+    def _perform_logger_snapshot(self, api, request):
         """One fresh response using this worker's API, without a discovery/full scan."""
         rows, error = [], ""
         try:
@@ -400,6 +411,7 @@ class WarmLinkCloudWorker(QObject):
             for row in rows:
                 row.update(lastFetch=now, stale=False)
             # Deliver unmerged response rows: retained stale cache entries are not measurements.
+            self._snapshot_active.clear()
             self._emit_requested_snapshot(request, rows, "")
             self.session.merge(rows)
             self.session.validated = True
@@ -420,6 +432,7 @@ class WarmLinkCloudWorker(QObject):
                 self._publish_session()
                 self.connection_state.emit("ERROR")
                 self.error.emit(error)
+        self._snapshot_active.clear()
         self._emit_requested_snapshot(request, [], error)
 
     def _sleep_interruptible(self, seconds: float) -> bool:
@@ -706,6 +719,7 @@ class WarmLinkCloudCommandWorker(QObject):
         timeout_s: float = 15.0,
         initial_token: str | None = None,
         load_credentials: bool = False, use_saved_token: bool = True,
+        write_guard=None, commands=None,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -719,10 +733,13 @@ class WarmLinkCloudCommandWorker(QObject):
         self.load_credentials = load_credentials
         self.use_saved_token = use_saved_token
         self.initial_token = str(initial_token or "").strip() or None
+        self.write_guard = write_guard
+        self.commands = tuple(commands) if commands is not None else ((self.code, self.value),)
 
     @Slot()
     def run(self) -> None:
         try:
+            self._check_write_guard()
             if self.load_credentials:
                 self.password, self.initial_token = load_cloud_credentials(
                     self.username, self.password, self.initial_token,
@@ -745,37 +762,48 @@ class WarmLinkCloudCommandWorker(QObject):
                 nick = str(devs[0].get("deviceNickName") or devs[0].get("deviceName") or "").strip()
                 self.log.emit(f"WarmLink Cloud schreiben: kein gespeichertes Gerät, nutze erstes Gerät {nick or self.device_code}")
 
-            self.log.emit(
-                f"WarmLink Cloud schreiben: {'DRY-RUN ' if self.dry_run else ''}{self.code}={self.value} via {self.endpoint}"
-            )
-            data = api.write_test_code(
-                device_code=self.device_code,
-                code=self.code,
-                value=self.value,
-                endpoint=self.endpoint,
-                dry_run=self.dry_run,
-            )
+            for code, value in self.commands:
+                self.log.emit(
+                    f"WarmLink Cloud schreiben: {'DRY-RUN ' if self.dry_run else ''}{code}={value} via {self.endpoint}"
+                )
+                self._check_write_guard()
+                data = api.write_test_code(
+                    device_code=self.device_code,
+                    code=code,
+                    value=value,
+                    endpoint=self.endpoint,
+                    dry_run=self.dry_run,
+                )
 
-            if (not self.dry_run) and api.success(data):
-                # Kurzer Readback: App/Cloud braucht oft einen Moment, bis der neue
-                # Wert wieder in getDataByCode auftaucht. Fehler hier macht den
-                # eigentlichen Schreib-Erfolg nicht kaputt.
-                time.sleep(2.0)
-                try:
-                    rb_response = api.get_data_by_code(self.device_code, [self.code])
-                    rb_rows = normalize_data_values(rb_response, [self.code])
-                    rb = rb_rows[0] if rb_rows else {"code": self.code, "supported": False}
-                    data["readback"] = rb
-                    if rb.get("supported"):
-                        self.log.emit(f"WarmLink Cloud schreiben: Readback {self.code}={rb.get('value')}")
-                    else:
-                        self.log.emit(f"WarmLink Cloud schreiben: Readback {self.code} leer/unsupported")
-                except Exception as rb_exc:
-                    data["readback_error"] = str(rb_exc)
-                    self.log.emit(f"WarmLink Cloud schreiben: Readback übersprungen: {rb_exc}")
+                data = dict(data)
+                data["command_code"] = code
+                if (not self.dry_run) and api.success(data):
+                    # Kurzer Readback: App/Cloud braucht oft einen Moment, bis der neue
+                    # Wert wieder in getDataByCode auftaucht. Fehler hier macht den
+                    # eigentlichen Schreib-Erfolg nicht kaputt.
+                    time.sleep(2.0)
+                    self._check_write_guard()
+                    try:
+                        rb_response = api.get_data_by_code(self.device_code, [code])
+                        rb_rows = normalize_data_values(rb_response, [code])
+                        rb = rb_rows[0] if rb_rows else {"code": code, "supported": False}
+                        data["readback"] = rb
+                        if rb.get("supported"):
+                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code}={rb.get('value')}")
+                        else:
+                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code} leer/unsupported")
+                    except Exception as rb_exc:
+                        data["readback_error"] = str(rb_exc)
+                        self.log.emit(f"WarmLink Cloud schreiben: Readback übersprungen: {rb_exc}")
 
-            self.result.emit(data)
+                self.result.emit(data)
+                if not api.success(data):
+                    break  # A failed command must not send the rest of a sequence.
         except Exception as exc:
             self.error.emit(translate_cloud_error_message(str(exc)))
         finally:
             self.finished.emit()
+
+    def _check_write_guard(self):
+        if self.write_guard is not None and not self.write_guard():
+            raise WarmLinkCloudError("Steuerverbindung oder Cloud-Geräteauswahl geändert; Schreiben abgebrochen.")

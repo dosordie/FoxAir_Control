@@ -479,6 +479,74 @@ der dedizierte Heartbeat ohne `appId` bleiben unverändert.
 Cloud-Engineeringwert bereit. Der AT-Dialog bevorzugt echte lokale Werte;
 Cloud-only-Tabellenzeilen behalten ihre Cloud-Provenienz und werden nicht als
 lokale Wörter ausgewertet. Neue Cloud-Overlays aktualisieren den offenen Dialog.
-Cloud-only sind sämtliche AT-Schreibbuttons deaktiviert; auch direkte Aufrufe
+Cloud-only bleiben die Kurven-Schreibbuttons deaktiviert; das zentral bestätigte
+H36-Schreiben ist über den gemeinsamen Steuertransport verfügbar. Direkte Aufrufe
 der Schreibhandler können keinen lokalen Write auslösen. Lokale Schreibpläne,
 Interpolation, Display-Lesewege und bestehende Parameter-Cloud-Writes bleiben erhalten.
+
+## Gemeinsamer Steuertransport für WP und AT
+
+Normale Bedienfenster verwenden einen Schreibbutton pro Aktion. Die reine
+Entscheidung in `core/control_transport.py` gibt aktiver lokaler Verbindung
+**immer Vorrang**: Standard-Modbus, Warmlink-Modbus oder Display-Modbus →
+sonst WarmLink Cloud → sonst nicht verfügbar. Ein fehlender/ungeeigneter
+lokaler Pfad führt zu einer Meldung, niemals zu einem Cloud-Fallback.
+Auch ein übernehmender DisplayWorker gilt als aktiver lokaler Transport.
+
+`MainWindow.control_context()`, `control_can_read/write()`,
+`control_write_register(s)()`, `control_read_blocks()` und
+`control_request_snapshot()` verbinden diese Regel mit den vorhandenen
+I/O-Pfaden. Lokal bleiben `send_read_request()`/`send_register_write()` und
+deren Scheduler, Validierung und Displaylogik erhalten. Cloud verwendet
+weiterhin die zentralen bestätigten Codes, `WarmLinkCloudCommandWorker` und
+die bestehende `CloudSnapshotRequest`-Queue. Es gibt keine zusätzliche
+Login-/Pollingarchitektur. Spätere Steuerdialoge sollen diese Dispatcher
+ebenfalls verwenden; Timer-/SG-/Silent-Timer-Editoren sind hier nicht umgestellt.
+
+Cloud-Schreibbarkeit wird **pro Register und Aktion** geprüft:
+
+| Aktion | Cloud-only |
+| --- | --- |
+| WP Ein/Aus (1011 / Power), Modus (1012 / Mode) | bestätigt schreibbar |
+| WP WW-/Heiz-/Kühlsollwert (1157–1159 / R01–R03) | bestätigt schreibbar; Engineeringtemperatur |
+| Silent (1016 Bit 1) | nur lokal; kein bestätigter Cloudcode |
+| AT H36-Modus (1236) | bestätigt schreibbar |
+| AT Linear (1234 und 1235) | gesperrt; compensate_slope/offset read-only |
+| AT 7-Punkt-Kurve | gesperrt; CP1-Punkte/Offset read-only |
+
+Mehrregisteraktionen werden vor dem Senden vollständig auf Schreibfreigaben
+und gültige Werte geprüft. Vier schreibbare von sieben Punkten reichen nicht.
+Falls später alle benötigten Codes bestätigt freigegeben werden, sendet ein
+einziger bestehender CommandWorker die Sequenz seriell mit Readback; bei
+Fehler oder Identitätswechsel endet sie. Dieser PR erweitert keine Schreibrechte.
+
+WP liest gezielt Power, Mode, ModeState, R01/R02/R03, H36, 2014,
+T01/T02/T08/T04 und T39. AT behält seinen bisherigen gezielten Read mit
+14 Codes. Beide nutzen denselben Worker-/Heartbeatpfad wie die bestehenden
+Snapshots, mit getrenntem Zweck `wp_control`/`at_compensation`. Autorefresh
+stellt höchstens einen eigenen Auftrag gleichzeitig ein; kein Fullscan und
+kein Backlog. Neue Cloudwerte aktualisieren offene Dialoge über
+`register_value_sources()` und `_notify_cloud_register_update()`.
+
+Echte lokale Werte haben Vorrang. Cloudzahlen werden nicht nochmals als
+Modbuswörter skaliert: raw 420 entspricht Cloud `42.0`. WP zeigt cloud-only
+Ein/Aus explizit aus Power/1011, ohne ein Mapping für 2011 zu erfinden. 2013
+bleibt unbekannt; 2014 und die R01–R03-Sollwerte bleiben getrennt.
+
+Die vorhandene Bestätigung nennt den fest gewählten Transport. Die Aktion
+ist an dessen Worker bzw. Account/Gerät gebunden; Änderungen während der
+Bestätigung brechen sie ab. Der CommandWorker prüft die Cloudidentität vor
+dem Senden erneut, auch nach Credential-Laden/Login. Veraltete Antworten
+werden nicht ins neue Gerät übernommen. Laufende inkompatible Cloudaufträge
+und Firmware-Capture sperren die Aktion. Der kleine Transporthinweis und
+die Buttonfreigaben reagieren auf Verbindungsänderungen; Gerätewechsel
+löscht die alten Cloudwerte und bricht gezielte Reads ab.
+
+Ein Doppelklick auf ein Gerät wählt es zunächst über den bestehenden
+Auswahlpfad und fragt anschließend nach dem Pollingstart. **Ja** verwendet
+denselben `_start_worker(poll_once=False, just_login=False)`-Pfad wie der
+Startbutton, mit vorhandenem Token, Gerätecache und Initial-/Static-/Live-
+Logik. **Nein** lässt das Gerät ausgewählt. Während ein Worker läuft,
+ändern weder einfacher Tabellenklick noch Doppelklick oder ComboBox die
+aktive Session; ein zweiter Start wird verhindert. Ein anderes Gerät kann
+erst nach Stoppen des Pollings ausgewählt werden.
