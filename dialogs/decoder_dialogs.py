@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout,
 )
 
-from core.foxair_phnix_core import DEFAULT_BUS_ADDR, decode_contact_bits
+from core.foxair_phnix_core import DEFAULT_BUS_ADDR, decode_contact_bits, decode_system_io_status_2146, s16
 from ui.paths import resource_path
 from ui.theme import APP_ICON_FILE
 
@@ -274,6 +274,185 @@ class LoadOutputDecoderDialog(QDialog):
                 item.setText(val)
                 item.setToolTip(val)
                 item.setBackground(QColor(220, 255, 220) if bit_value and value is not None else QColor(245, 245, 245))
+
+
+class SystemIOStatusDecoderDialog(QDialog):
+    """Practical decoder for MAIN:2146 plus its adjacent HYD61 value 2147."""
+
+    READ_LABEL = "System-/I/O-Status 2146-2147"
+
+    def __init__(self, parent: "MainWindow"):
+        super().__init__(parent)
+        self.main_window = parent
+        self._value_2146: Optional[int] = None
+        self._value_2147: Optional[int] = None
+        self.setWindowTitle("System-/I/O-Status Register 2146 / 2147")
+        self.setWindowIcon(app_icon())
+        self.resize(1040, 470)
+        layout = QVBoxLayout(self)
+
+        top = QHBoxLayout()
+        self.value_label = QLabel("2146: --")
+        self.status_label = QLabel("Bereit.")
+        self.status_label.setStyleSheet("color: #666;")
+        self.poll_cb = QCheckBox("poll aktiv")
+        self.poll_interval_spin = QSpinBox()
+        self.poll_interval_spin.setRange(1, 3600)
+        self.poll_interval_spin.setValue(5)
+        self.poll_interval_spin.setSuffix(" s")
+        self.read_now_btn = QPushButton("jetzt lesen")
+        top.addWidget(self.value_label, 1)
+        top.addWidget(self.status_label)
+        top.addWidget(self.poll_cb)
+        top.addWidget(QLabel("Intervall:"))
+        top.addWidget(self.poll_interval_spin)
+        top.addWidget(self.read_now_btn)
+        layout.addLayout(top)
+
+        self.info_label = QLabel(
+            "2146 ist ein System-/I/O-Statuswort, kein Temperaturwert. "
+            "Die praktische Ansicht blendet feste Basisbits aus; der volle Rohwert bleibt oben sichtbar."
+        )
+        self.info_label.setWordWrap(True)
+        layout.addWidget(self.info_label)
+
+        self.table = QTableWidget(6, 4)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(28)
+        self.table.setHorizontalHeaderLabels(["Status", "Quelle", "Zustand", "Bedeutung"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        layout.addWidget(self.table, 1)
+
+        self.poll_timer = QTimer(self)
+        self.poll_timer.timeout.connect(self.poll_once)
+        self.poll_cb.stateChanged.connect(lambda _=None: self._apply_poll_state())
+        self.poll_interval_spin.valueChanged.connect(lambda _=None: self._apply_poll_state())
+        self.read_now_btn.clicked.connect(self.poll_once)
+
+        close_btn = QPushButton("Schließen")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+
+        self.set_values(
+            self.main_window.last_values.get(2146),
+            self.main_window.last_values.get(2147),
+            status_text="Vorhandene Live-Werte geladen.",
+        )
+
+    def _apply_poll_state(self):
+        if self.poll_cb.isChecked():
+            self.poll_timer.start(int(self.poll_interval_spin.value()) * 1000)
+        else:
+            self.poll_timer.stop()
+
+    def poll_once(self):
+        self.status_label.setText("Lese Register 2146-2147 ...")
+        try:
+            slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
+        except Exception:
+            slave_addr = DEFAULT_BUS_ADDR
+        self.main_window.send_read_request(2146, 2, slave_addr=slave_addr, label=self.READ_LABEL)
+
+    def show_read_timeout(self):
+        self.status_label.setText("Timeout / keine Antwort.")
+
+    def update_from_live_register(self, reg):
+        reg_no = int(reg.reg)
+        if reg_no == 2146:
+            self._value_2146 = int(reg.raw_value) & 0xFFFF
+        elif reg_no == 2147:
+            self._value_2147 = s16(int(reg.raw_value) & 0xFFFF)
+        else:
+            return
+        self.set_values(self._value_2146, self._value_2147, status_text="Live-Wert aktualisiert.")
+
+    def set_values(self, value_2146: Optional[int], value_2147: Optional[int], status_text: Optional[str] = None):
+        if value_2146 is not None:
+            self._value_2146 = int(value_2146) & 0xFFFF
+        elif self._value_2146 is None:
+            self._value_2146 = None
+
+        if value_2147 is not None:
+            self._value_2147 = s16(int(value_2147) & 0xFFFF)
+        elif self._value_2147 is None:
+            self._value_2147 = None
+
+        if status_text:
+            self.status_label.setText(status_text)
+
+        if self._value_2146 is None:
+            self.value_label.setText("2146: --")
+            decoded = decode_system_io_status_2146(0)
+            known = False
+        else:
+            raw = self._value_2146
+            self.value_label.setText(f"2146: {raw} / 0x{raw:04X} / bin={raw:016b}")
+            decoded = decode_system_io_status_2146(raw)
+            known = True
+
+        def bit_state(bit: int, on_text: str = "AKTIV", off_text: str = "aus") -> str:
+            if not known:
+                return "--"
+            return on_text if (int(decoded["raw"]) & (1 << bit)) else off_text
+
+        s10_state = "--" if not known else str(decoded["s10_state"])
+        hyd2050 = "--" if self._value_2147 is None else str(self._value_2147)
+        rows = [
+            (
+                "Heiz-/Sommerabschaltung",
+                "2146 Bit 4",
+                bit_state(4),
+                "Runtime-State aus MAIN:1464/1465; für den normalen Betrieb direkt nutzbar.",
+            ),
+            (
+                "S10-Hardwaresteuerung",
+                "2146 Bit 6",
+                s10_state,
+                "H07=2 / S10 'Heizen/Kühlen AN/AUS'; nicht mit allgemeinem Heizbetrieb verwechseln.",
+            ),
+            (
+                "Service-/I/O-Qualifizierung",
+                "2146 Bit 8",
+                bit_state(8, "AKTIV – S10 gesperrt", "frei"),
+                "ENG:A:5036-Qualifizierung; 120 Scheduler-Ticks = 60 s. Währenddessen ist der S10-Pfad gehemmt.",
+            ),
+            (
+                "HYD61 Statusbit",
+                "2146 Bit 1 / HYD61:2049 Bit1",
+                bit_state(1, "1", "0"),
+                "Bei H30=3 externes Hydraulikmodul-Bit; Hersteller-Klartextname noch offen.",
+            ),
+            (
+                "HYD61 Nachbarwert",
+                "2147 / HYD61:2050",
+                hyd2050,
+                "Signed Rohwert aus Unit 0x61; physikalische Semantik/Einheit noch offen.",
+            ),
+            (
+                "V3.5 Capability-Kennbit",
+                "2146 Bit 9",
+                bit_state(9, "gesetzt", "nicht gesetzt"),
+                "In V3.5 fest gesetzt; nur Signaturhinweis, keine alleinige Firmware-Versionserkennung.",
+            ),
+        ]
+
+        for row, vals in enumerate(rows):
+            active = known and row in (0, 1, 2) and (
+                (row == 0 and bool(decoded["summer_shutdown"]))
+                or (row == 1 and bool(decoded["s10_control_active"]))
+                or (row == 2 and bool(decoded["io_qualification_inhibit"]))
+            )
+            for col, val in enumerate(vals):
+                item = self.table.item(row, col)
+                if item is None:
+                    item = QTableWidgetItem()
+                    self.table.setItem(row, col, item)
+                item.setText(str(val))
+                item.setToolTip(str(val))
+                item.setBackground(QColor(220, 255, 220) if active else QColor(245, 245, 245))
 
 
 class FaultDecoderDialog(QDialog):
