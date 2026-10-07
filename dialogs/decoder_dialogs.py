@@ -414,10 +414,10 @@ class SystemIOStatusDecoderDialog(QDialog):
                 "H07=2 / S10 'Heizen/Kühlen AN/AUS'; nicht mit allgemeinem Heizbetrieb verwechseln.",
             ),
             (
-                "Service-/I/O-Qualifizierung",
+                "Service-/Engineering-Qualifizierung",
                 "2146 Bit 8",
                 bit_state(8, "AKTIV – S10 gesperrt", "frei"),
-                "ENG:A:5036-Qualifizierung; 120 Scheduler-Ticks = 60 s. Währenddessen ist der S10-Pfad gehemmt.",
+                "ENG:A:5036-Qualifizierung; 120 Scheduler-Ticks = 60 s. Währenddessen ist S10 gesperrt; zusätzlich nutzt die Firmware einen Abtau-Sonderpfad mit ENG:A:5035-Handshake.",
             ),
             (
                 "HYD61 Statusbit",
