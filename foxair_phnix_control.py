@@ -36,7 +36,7 @@ from ui.theme import (
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
-from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog
+from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog, SystemIOStatusDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
 from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
@@ -2605,6 +2605,8 @@ class DualBusLoggerDialog(QDialog):
                     mw._update_fault_decoder()
                 if reg_no in (2081, 2082, 2083, 2085, 2086, 2087, 2088, 2089, 2090):
                     mw._update_fault_decoder()
+                if reg_no in (2146, 2147) and mw.system_io_dialog is not None and mw.system_io_dialog.isVisible():
+                    mw.system_io_dialog.update_from_live_register(reg)
                 # offene Dialoge ebenfalls mitziehen, wie beim normalen Live-Update
                 for dlg in (mw.timer_dialog, mw.onoff_timer_dialog, mw.silent_timer_dialog, mw.sg_dialog, mw.parameter_dialog):
                     if dlg is not None and dlg.isVisible():
@@ -4450,6 +4452,7 @@ class MainWindow(QMainWindow):
         self.name_search_matches: set[int] = set()
         self.contact_dialog: Optional[ContactDecoderDialog] = None
         self.load_output_dialog: Optional[LoadOutputDecoderDialog] = None
+        self.system_io_dialog: Optional[SystemIOStatusDecoderDialog] = None
         self.fault_dialog: Optional[FaultDecoderDialog] = None
         self.timer_dialog: Optional[TimerEditorDialog] = None
         self.onoff_timer_dialog: Optional[OnOffTimerEditorDialog] = None
@@ -4983,6 +4986,7 @@ class MainWindow(QMainWindow):
         self.contact_value_label = QLabel("2034: --")
         self.contact_popup_btn = QPushButton("Kontaktdecoder ...")
         self.load_output_popup_btn = QPushButton("Lastausgangdecoder ...")
+        self.system_io_popup_btn = QPushButton("System-/I/O-Status ...")
         self.fault_popup_btn = QPushButton("Störungen / Fehler ...")
         self.sg_popup_btn = QPushButton("SG Ready Editor ...")
         self.timer_editor_btn = QPushButton("Betriebsart Timer 1-6 ...")
@@ -5006,12 +5010,13 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.sg_popup_btn, 5, 0, 1, 2)
         special_layout.addWidget(self.contact_popup_btn, 6, 0, 1, 2)
         special_layout.addWidget(self.load_output_popup_btn, 7, 0, 1, 2)
-        special_layout.addWidget(self.fault_popup_btn, 8, 0, 1, 2)
-        special_layout.addWidget(self.backup_restore_btn, 9, 0, 1, 2)
-        special_layout.addWidget(self.offline_browser_btn, 10, 0, 1, 2)
-        special_layout.addWidget(self.bus_popup_btn, 11, 0, 1, 2)
-        special_layout.addWidget(self.dual_logger_btn, 12, 0, 1, 2)
-        special_layout.addWidget(self.warmlink_capture_btn, 13, 0, 1, 2)
+        special_layout.addWidget(self.system_io_popup_btn, 8, 0, 1, 2)
+        special_layout.addWidget(self.fault_popup_btn, 9, 0, 1, 2)
+        special_layout.addWidget(self.backup_restore_btn, 10, 0, 1, 2)
+        special_layout.addWidget(self.offline_browser_btn, 11, 0, 1, 2)
+        special_layout.addWidget(self.bus_popup_btn, 12, 0, 1, 2)
+        special_layout.addWidget(self.dual_logger_btn, 13, 0, 1, 2)
+        special_layout.addWidget(self.warmlink_capture_btn, 14, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -5093,6 +5098,7 @@ class MainWindow(QMainWindow):
         self.clear_main_btn.clicked.connect(self.clear_main_window_values)
         self.contact_popup_btn.clicked.connect(self.open_contact_decoder)
         self.load_output_popup_btn.clicked.connect(self.open_load_output_decoder)
+        self.system_io_popup_btn.clicked.connect(self.open_system_io_decoder)
         self.fault_popup_btn.clicked.connect(self.open_fault_decoder)
         self.sg_popup_btn.clicked.connect(self.open_sg_editor)
         self.wp_control_btn.clicked.connect(self.open_wp_control)
@@ -5777,6 +5783,8 @@ class MainWindow(QMainWindow):
             self.last_load_output_value = None
             self._update_contact_table(None)
             self._update_load_output_decoder(None)
+            if self.system_io_dialog is not None and self.system_io_dialog.isVisible():
+                self.system_io_dialog.set_values(None, None, status_text="Hauptfenster geleert.")
             self._update_fault_button_style()
             if self.value_search_target is not None:
                 self.value_search_matches = []
@@ -6708,6 +6716,8 @@ class MainWindow(QMainWindow):
                 self._update_fault_decoder()
             if reg.reg in (2081, 2082, 2083, 2085, 2086, 2087, 2088, 2089, 2090):
                 self._update_fault_decoder()
+            if reg.reg in (2146, 2147) and self.system_io_dialog is not None and self.system_io_dialog.isVisible():
+                self.system_io_dialog.update_from_live_register(reg)
 
             if self.timer_dialog is not None and self.timer_dialog.isVisible():
                 self.timer_dialog.update_from_live_register(reg)
@@ -7426,6 +7436,15 @@ class MainWindow(QMainWindow):
         else:
             self.load_output_dialog.raise_()
             self.load_output_dialog.activateWindow()
+
+    def open_system_io_decoder(self):
+        if self.system_io_dialog is None or not self.system_io_dialog.isVisible():
+            self.system_io_dialog = SystemIOStatusDecoderDialog(self)
+            self.system_io_dialog.finished.connect(lambda _=None: setattr(self, "system_io_dialog", None))
+            self.system_io_dialog.show()
+        else:
+            self.system_io_dialog.raise_()
+            self.system_io_dialog.activateWindow()
 
     def open_fault_decoder(self):
         if self.fault_dialog is None or not self.fault_dialog.isVisible():
@@ -8208,6 +8227,10 @@ class MainWindow(QMainWindow):
                 load_dialog = getattr(self, "load_output_dialog", None)
                 if load_dialog is not None and load_dialog.isVisible():
                     load_dialog.show_read_timeout()
+            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
+                system_io_dialog = getattr(self, "system_io_dialog", None)
+                if system_io_dialog is not None and system_io_dialog.isVisible():
+                    system_io_dialog.show_read_timeout()
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -8328,6 +8351,12 @@ class MainWindow(QMainWindow):
                         if int(reg.reg) == 2019:
                             load_dialog.set_value(int(reg.raw_value) & 0xFFFF, status_text="Lastausgänge erfolgreich gelesen.")
                             break
+            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
+                system_io_dialog = getattr(self, "system_io_dialog", None)
+                if system_io_dialog is not None and system_io_dialog.isVisible():
+                    for reg in frame.registers:
+                        system_io_dialog.update_from_live_register(reg)
+                    system_io_dialog.status_label.setText("System-/I/O-Status erfolgreich gelesen.")
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
