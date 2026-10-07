@@ -1,6 +1,7 @@
 """Cloud history, session lifetime, discovery isolation and worker-owned timing."""
 import time
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 from PySide6.QtCore import QEventLoop, QTimer
@@ -16,6 +17,68 @@ from dialogs.cloud_table_helpers import device_table_value
 from workers import warmlink_cloud_worker as workers
 from test_cloud_single_read_and_values import CloudWindow, application, cloud_row
 from test_cloud_polling import DialogWindow, fake_api, poll_worker, run_cycles, success
+from test_warmlink_request_scheduler import window
+
+
+def test_clear_main_window_drops_cloud_display_cache_without_stopping_polling(window, monkeypatch):
+    window.settings["warmlink_cloud"]["username"] = "user"
+    window.set_cloud_connection_state(True, "device")
+    session = window.cloud_session
+    session.username, session.device_code = "user", "device"
+    session.devices = [{"deviceCode": "device", "deviceName": "GL9"}]
+    session.scanned = session.validated = session.devices_cached = True
+    local = DecodedRegister(0x63, 1158, 0, 3, 350, 350, "35 °C", "R02", "TEMP1", time.time())
+    window.last_values[1158] = 350
+    window.previous_value_texts[1158] = "340 / 0x0154"
+    window.register_change_highlights.add(1158)
+    window._upsert_register_row(local, changed=False)
+    window.apply_cloud_rows_to_main([cloud_row(42, "R02"), cloud_row(8.4, "T04")])
+    window.apply_cloud_rows_to_main([cloud_row(8.7, "T04")])
+    assert window._is_cloud_only_register(2048)
+    assert window.cloud_last_rows and window.cloud_previous_value_by_reg and window.cloud_change_highlights
+    cached_session = deepcopy(session)
+    cached_rows = session.rows
+    local_worker = window.worker
+    def unexpected_stop(*args, **kwargs):
+        pytest.fail("Clearing the main table must not stop Cloud polling")
+    cloud_worker = SimpleNamespace(stop=unexpected_stop)
+    polling = SimpleNamespace(cloud_worker=cloud_worker, cloud_thread=object(), stop_worker=unexpected_stop)
+    window.warmlink_cloud_dialog = polling
+    window.set_cloud_ui_state("POLLING")
+    window.set_cloud_timing_state(CloudTimingState("POLL_WAIT", deadline=time.monotonic() + 30, duration=30))
+    timing = window.cloud_timing_state
+    updates = []
+    apply_rows = window.apply_cloud_rows_to_main
+    def record_rows(rows, **kwargs):
+        updates.append(rows)
+        return apply_rows(rows, **kwargs)
+    monkeypatch.setattr(window, "apply_cloud_rows_to_main", record_rows)
+    try:
+        window.clear_main_window_values()
+        assert window.register_table.rowCount() == 0
+        assert window.table_rows == window.latest_regs == window.last_values == {}
+        assert window.previous_value_texts == {} and window.register_change_highlights == set()
+        assert window.cloud_last_rows == [] and window.cloud_overlay_by_reg == {}
+        assert window.cloud_previous_value_by_reg == {} and window.cloud_change_highlights == set()
+        assert updates == []
+        assert window.cloud_session is session and session.rows is cached_rows and session == cached_session
+        assert window.connected and window.worker is local_worker and local_worker.running
+        assert window.is_cloud_connected() and window.cloud_session_device_code == "device"
+        assert window.warmlink_cloud_dialog is polling and polling.cloud_worker is cloud_worker
+        assert window.cloud_ui_state == "POLLING" and window.cloud_btn.animation_timer.isActive()
+        assert window.cloud_timing_state is timing and window.cloud_countdown_timer.isActive()
+
+        # Only the next fresh poll repopulates the table; cached R02 stays in the session.
+        fresh = [cloud_row(8.9, "T04")]
+        window.apply_cloud_rows_to_main(fresh)
+        assert updates == [fresh]
+        assert window.register_table.rowCount() == 1 and set(window.table_rows) == {2048}
+        assert window.cloud_overlay_by_reg[2048]["engineering_value"] == 8.9
+        assert window.cloud_previous_value_by_reg == {} and window.cloud_change_highlights == set()
+        assert session.rows["R02"] == cached_session.rows["R02"]
+    finally:
+        window.warmlink_cloud_dialog = None
+        window.cloud_countdown_timer.stop()
 
 
 def test_cloud_only_history_uses_engineering_values_and_shared_flash(application, monkeypatch):
