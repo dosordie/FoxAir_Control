@@ -2969,16 +2969,16 @@
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2147": {
-    "description": "int16 aus derselben zentralen Struktur wie MAIN:2146 Bit1. Ein funktioneller Zusammenhang ist wahrscheinlich; konkrete Semantik offen.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "V3.5/H30=3: signed Pass-through aus HYD61:2050 (Unit 0x61 FC03). Direkter Nachbar zu MAIN:2146 Bit1 = HYD61:2049 Bit1. Hersteller-Klartextname und physikalische Semantik sind noch offen.",
+    "source": "V3.5 Disassembly 0x0806CD68ff + Unit-0x61-FC03-Datenpfad"
   },
   "2166": {
     "description": "Interner Zone-2-Regel-/Control-State; kein physikalischer Messwert bestätigt. Konkrete Semantik weiterhin offen. Live 2026-09-12 RAW 1 beobachtet.",
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2146": {
-    "description": "Grundwert 0x002C: Bits 2, 3 und 5 sind fest gesetzt. Bit4 ist nur aktiv, wenn Sollmodus MAIN:1012 Heizen enthält (1 oder 3); Sperrwirkung im tatsächlichen Heizbetrieb MAIN:2012=1. Bit6 ist variabel, seine Bedeutung bleibt offen. Andere Bits bleiben offen.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "System-/I/O-Statuswort, kein Temperaturwert. V3.3/V3.4 Basis 0x002C; V3.5 Basis 0x022C durch zusätzlich festes Bit9. Bit1 = HYD61:2049 Bit1 bei H30=3; Bit4 = Heiz-/Sommerabschaltung MAIN:1464/1465; Bit6 = H07=2/S10-Hardwaresteuerpfad aktiv; Bit8 = 60-s-Service-/Engineering-Qualifizierung aus ENG:A:5036; sie sperrt H07=2/S10 und verzweigt im Abtaupfad in einen Sonder-Handshake über ENG:A:5035. Bits 2/3/5 sind feste Basisbits.",
+    "source": "V3.5 Disassembly 0x0806CD68ff / 0x08088054; KASKADENBETRIEB-MASTER-SLAVE.md"
   },
   "2139": {
     "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
