@@ -201,7 +201,7 @@ def test_issue_register_mappings_and_diag_bitmaps():
     assert main["2146"]["practical_status_bits"] == [4, 6, 8]
     assert "Heiz-/Sommerabschaltung aktiv" in main["2146"]["bit_map"]["4"]
     assert "S10-Hardwaresteuerpfad aktiv" in main["2146"]["bit_map"]["6"]
-    assert "60-s-Service-/I/O-Qualifizierung" in main["2146"]["note"]
+    assert "60-s-Service-/Engineering-Qualifizierung" in main["2146"]["note"]
     assert "ENG:A:5036" in main["2146"]["bit_map"]["8"]
     assert "V3.5 Capability" in main["2146"]["bit_map"]["9"]
     assert main["2147"]["type"] == "INT16"
