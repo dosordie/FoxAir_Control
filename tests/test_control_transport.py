@@ -103,12 +103,67 @@ def test_wp_targeted_read_has_no_backlog_and_routes_live_values(window, monkeypa
     local = DecodedRegister(0x63, 2014, 0, 3, 430, 430, "43 °C", "target", "TEMP1", time.time())
     window.latest_regs[2014] = local
     window.apply_cloud_rows_to_main([cloud_row(39, "2014")])
-    assert wp._value(2014) == 43
+    assert wp._value(2014) == 39
+    assert window.latest_regs[2014] is local
     local_target = DecodedRegister(0x63, 1158, 0, 3, 430, 430, "43 °C", "R02", "TEMP1", time.time())
     window.latest_regs[1158] = local_target
     window.apply_cloud_rows_to_main([cloud_row(39, "R02")])
-    assert wp.target_spin.value() == 43
+    assert wp.target_spin.value() == 39
+    assert window.latest_regs[1158] is local_target
     wp.close()
+
+
+@pytest.mark.parametrize("backend", ["standard_modbus", "warmlink_raw", "display_modbus"])
+@pytest.mark.parametrize("cache", ["latest_regs", "last_values"])
+@pytest.mark.parametrize("dialog_kind", ["wp", "at"])
+def test_dialog_values_follow_disconnect_and_reconnect_with_local_cache_retained(window, backend, cache, dialog_kind):
+    worker = window.worker
+    cloud_only(window)
+    window.worker = worker
+    window.backend_combo.blockSignals(True)
+    window.backend_combo.setCurrentIndex(window.backend_combo.findData(backend))
+    window.backend_combo.blockSignals(False)
+    register, code = (1158, "R02") if dialog_kind == "wp" else (1250, "CP1-1")
+    window.apply_cloud_rows_to_main([cloud_row(1, "Mode"), cloud_row(2, "H36"), cloud_row(40, code)])
+    local = DecodedRegister(0x63, register, 0, 3, 350, 350, "35 °C", code, "TEMP1", time.time())
+    if cache == "latest_regs":
+        window.latest_regs[register] = local
+    else:
+        # Exercise the raw-cache fallback without a decoded register carrier.
+        window.latest_regs.pop(register)
+    window.last_values[register] = 350
+    window.on_connected()
+    dialog = open_wp(window) if dialog_kind == "wp" else open_at(window)
+    spin = dialog.target_spin if dialog_kind == "wp" else dialog._seven_spins()[0]
+
+    def assert_display(expected, cloud=False):
+        assert spin.value() == expected
+        value = dialog._value(register) if dialog_kind == "wp" else dialog._temp(register)
+        assert value == expected
+        if dialog_kind == "wp":
+            display = (window.cloud_overlay_by_reg[register]["value"] if cloud else
+                       gui.format_value_by_type(int(expected * 10), "TEMP1"))
+            assert dialog._fmt(register) == display
+
+    assert window.control_transport() == backend
+    assert_display(35)
+
+    window.on_disconnected()
+    assert window.control_transport() == "cloud"
+    assert window.register_value_sources(register).local_raw == 350
+    assert window.last_values[register] == 350
+    if cache == "latest_regs":
+        assert window.latest_regs[register] is local
+    assert_display(40, cloud=True)
+
+    window.last_values[register] = 360
+    if cache == "latest_regs":
+        local.raw_value = local.signed_value = 360
+        local.display_value = "36 °C"
+    window.on_connected()
+    assert window.control_transport() == backend
+    assert_display(36)
+    dialog.close()
 
 
 @pytest.mark.parametrize("register,code,value", [(1011, "Power", 1), (1012, "Mode", 2),

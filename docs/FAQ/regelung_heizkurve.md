@@ -129,7 +129,9 @@ die sechs CP1-Stützwerte, R10/R11, T04, 2014 und 2146 über
 `app/device/getDataByCode` (`protocalCodes`), ohne Fullscan. Die Abfrage wird
 mit normalem Polling und CSV seriell ausgeführt. Bereits gelesene Cloudwerte
 erscheinen sofort im offenen Dialog; Engineering-Werte werden nicht erneut
-als Modbus skaliert. Lokale Werte haben Vorrang und bleiben getrennt von Cloud.
+als Modbus skaliert. Lokale Werte haben bei aktivem lokalem Transport Vorrang
+und bleiben getrennt von Cloud. Nach lokalem Disconnect zeigt AT Cloudwerte,
+auch wenn alte lokale Werte im Cache bleiben; nach Reconnect gewinnt lokal wieder.
 
 **Schreiben der AT-Kurve bleibt lokal.** Im Cloud-only-Betrieb sind H36-/Linear-/
 7-Punkt-Schreibbuttons gesperrt. Die CP1-Codes bekommen keine Cloud-Schreibfreigabe.

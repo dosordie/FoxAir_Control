@@ -528,7 +528,11 @@ stellt höchstens einen eigenen Auftrag gleichzeitig ein; kein Fullscan und
 kein Backlog. Neue Cloudwerte aktualisieren offene Dialoge über
 `register_value_sources()` und `_notify_cloud_register_update()`.
 
-Echte lokale Werte haben Vorrang. Cloudzahlen werden nicht nochmals als
+Echte lokale Werte haben in WP und AT nur bei einem aktuell aktiven lokalen
+`control_transport()` Vorrang. Nach lokalem Disconnect verwenden die Dialoge
+Cloudwerte, auch wenn `latest_regs`/`last_values` noch lokale Werte enthalten.
+Die Caches bleiben erhalten; nach Reconnect haben lokale Werte wieder Vorrang.
+Cloudzahlen werden nicht nochmals als
 Modbuswörter skaliert: raw 420 entspricht Cloud `42.0`. WP zeigt cloud-only
 Ein/Aus explizit aus Power/1011, ohne ein Mapping für 2011 zu erfinden. 2013
 bleibt unbekannt; 2014 und die R01–R03-Sollwerte bleiben getrennt.

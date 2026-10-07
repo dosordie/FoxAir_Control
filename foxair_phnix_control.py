@@ -3740,7 +3740,7 @@ class WPControlDialog(QDialog):
 
     def _value(self, reg_no):
         sources = self.main_window.register_value_sources(reg_no)
-        if sources.local_raw is not None:
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
             return numeric_value_by_type(sources.local_raw, self.main_window.regmap.get(reg_no).dtype)
         return sources.cloud_engineering if self.main_window.is_cloud_connected() else None
 
@@ -3750,7 +3750,7 @@ class WPControlDialog(QDialog):
 
     def _fmt(self, reg_no, _raw=None):
         sources = self.main_window.register_value_sources(reg_no)
-        if sources.local_raw is not None:
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
             return format_value_by_type(sources.local_raw, self.main_window.regmap.get(reg_no).dtype)
         return sources.cloud_display if self.main_window.is_cloud_connected() and sources.cloud_display is not None else "--"
 
@@ -4286,7 +4286,7 @@ class ATCompensationDialog(QDialog):
 
     def _value(self, reg_no: int, dtype: str):
         sources = self.main_window.register_value_sources(reg_no)
-        if sources.local_raw is not None:
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
             return numeric_value_by_type(sources.local_raw, dtype)
         # Cloud numbers already use engineering units; never encode/redecode
         # them as local words or parse a rendered value with units.
