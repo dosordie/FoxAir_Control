@@ -10,8 +10,8 @@ Wichtig: Der externe Fühler ersetzt den eingebauten Außentemperaturfühler **n
 
 Der Anschluss wurde praktisch getestet und ist bestätigt:
 
-- **Klemme 4** = Sensorsignal
-- **Klemme 3** = GND
+- **Klemme 3** = Sensorsignal (DIN2)
+- **Klemme 4** = GND
 - verwendet wird das Klemmenpaar der bisherigen **DIN2 / Remote Heat-Cool**-Funktion
 
 ## Fühlertyp
