@@ -26,8 +26,9 @@ Wiederholte unveränderte Token werden nicht erneut gespeichert.
 Teilupdates ändern vorhandene Items, lassen statische Zeilen und deren
 Zeitstempel stehen und bauen keine vollständige Tabelle neu auf. Größere
 Daten-/Overlay-Updates werden in Batches von maximal 40 Zeilen mit Qt-Timern
-verarbeitet. Haupttabelle und Datenansicht messen Spalten nur bei
-Strukturänderungen aus. Der Poll speichert keine Settings mehr.
+verarbeitet. Die Datenansicht misst Spalten nur bei Strukturänderungen aus;
+die Haupttabelle verwendet gespeicherte manuelle Breiten. Der Poll speichert
+keine Settings mehr.
 Compare/Finder werden als dirty markiert und erst bei sichtbarem Tab bzw.
 expliziter Aktion aktualisiert. Compare-Items werden ebenfalls wiederverwendet.
 
@@ -211,6 +212,17 @@ als CONNECTED bestehen. Hauptfenster-Schließen wartet per Signal auf das
 Ende des Cloud-Pollworkers, ohne den GUI-Thread synchron zu blockieren.
 
 ## Cloud-Historie in der Haupttabelle
+
+Alle 15 Haupttabellenspalten lassen sich am Header mit der Maus verbreitern
+oder verkleinern; die Reihenfolge bleibt fest. Ihre Breiten werden unter
+`main_table_column_widths` nach Headernamen in `foxair_phnix_settings.json`
+gespeichert, 400 ms nach der letzten Änderung und beim normalen Schließen.
+Ungültige oder fehlende Breiten verwenden Defaults; die Mindestbreite beträgt
+40 px. **Name** startet mit 280 px, **Cloud Wert** mit 150 px, **Cloud vorher**
+mit 130 px, **Cloud Code** mit 110 px und **Cloud Abruf** mit 130 px.
+Liveupdates verändern keine Spaltenbreiten. Lange Texte werden rechts gekürzt;
+die Cloudwert- und Historienzellen enthalten den vollständigen Text im Tooltip.
+Zeilen bleiben ohne Word-Wrap in ihrer bisherigen kompakten Höhe.
 
 Die Spalten heißen **Cloud Wert**, **Cloud vorher**, **Cloud Code**, **Cloud
 Abruf**. `cloud_previous_value_by_reg` speichert den vorherigen formatierten

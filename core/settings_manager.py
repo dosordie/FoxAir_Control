@@ -86,6 +86,8 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         main_window["height"] = 900
     main_window["maximized"] = bool(main_window.get("maximized", False))
+    if not isinstance(settings.get("main_table_column_widths"), dict):
+        settings["main_table_column_widths"] = {}
     ensure_warmlink_cloud_defaults(settings)
     return settings
 

@@ -6,12 +6,13 @@ from copy import deepcopy
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PySide6.QtCore import QEventLoop, QThread, QTimer
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication
 
 from cloud.polling import CloudSession, classify_cloud_codes
 from cloud.warmlink_api import WarmLinkCloudApi, WarmLinkCloudError, WarmLinkAuthError
 from cloud.token_store import AsyncKeyringStore
 from dialogs.cloud_dialog import WarmLinkCloudDialog
+from ui.status_button import CloudStatusButton
 from workers import warmlink_cloud_worker as workers
 from test_cloud_single_read_and_values import CloudWindow, cloud_row
 
@@ -222,7 +223,7 @@ class DialogWindow(CloudWindow):
     def __init__(self):
         super().__init__()
         self.settings = {"warmlink_cloud": {"username": "user", "save_token": False, "selected_device_code": "device"}}
-        self.cloud_btn = QPushButton()
+        self.cloud_btn = CloudStatusButton(self)
         self.user_data_dir = "."
     def _save_settings(self, **kwargs): pass
 
@@ -261,6 +262,7 @@ def test_cloud_button_distinct_states_and_safe_tooltip(application, state):
     window.set_cloud_ui_state(state, device_name="FoxAir GL9", last_success_at=100000)
     assert window.cloud_btn.property("cloudState") == state
     assert window.cloud_btn.property("pollingActive") == (state == "POLLING")
+    assert window.cloud_btn.animation_timer.isActive() == (state == "POLLING")
     assert "FoxAir GL9" in window.cloud_btn.toolTip()
     assert "device" not in window.cloud_btn.toolTip()
     assert window.cloud_btn.styleSheet()

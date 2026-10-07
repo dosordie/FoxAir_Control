@@ -25,6 +25,8 @@ from warmlink_raw_capture import (
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
+from ui.table_helpers import MAIN_TABLE_COLUMN_WIDTHS, PersistentTableColumnWidths
+from ui.status_button import CloudStatusButton
 from ui.theme import (
     APP_ICON_FILE,
     PUBLIC_WARNING_TEXT,
@@ -5042,7 +5044,7 @@ class MainWindow(QMainWindow):
         self.display_translate_cb.setChecked(False)
         self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
-        self.cloud_btn = QPushButton("WarmLink Cloud / LTE ...")
+        self.cloud_btn = CloudStatusButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
@@ -5118,26 +5120,12 @@ class MainWindow(QMainWindow):
         self.register_table.setHorizontalHeaderLabels([
             "Reg", "Code", "Name", "Typ", "Rohwert", "Letzter Wert", "Signed", "Wert", "Frame", "Bus", "Zeit", "Cloud Wert", "Cloud vorher", "Cloud Code", "Cloud Abruf"
         ])
-        header = self.register_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(0, 58)
-        header.setSectionResizeMode(1, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(1, 68)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(6, 76)
-        header.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(7, 130)
-        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(10, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(11, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(12, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(13, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(14, QHeaderView.ResizeToContents)
+        self.main_table_columns = PersistentTableColumnWidths(
+            self.register_table, self.settings, MAIN_TABLE_COLUMN_WIDTHS,
+            lambda: self._save_settings(sync_main_fields=False),
+        )
+        self.register_table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.register_table.setWordWrap(False)
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
@@ -5480,6 +5468,7 @@ class MainWindow(QMainWindow):
             "log_level": int(self.settings.get("log_level", 2)),
             "udp_diagnostic": self.settings.get("udp_diagnostic", {}),
             "main_window": self.settings.get("main_window", {}),
+            "main_table_column_widths": self.settings.get("main_table_column_widths", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
             "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
         }
@@ -7188,9 +7177,7 @@ class MainWindow(QMainWindow):
         self.reg_count_label.setText(str(len(self.last_values)))
 
     def _resize_name_column(self):
-        self.register_table.resizeColumnToContents(2)
-        if self.register_table.columnWidth(2) > 360:
-            self.register_table.setColumnWidth(2, 360)
+        """Keep the persistent interactive Name width unchanged during live updates."""
 
     def _sorted_row_for_reg(self, reg_no: int) -> int:
         # Neue Register werden nach Registernummer einsortiert, auch wenn sie
@@ -7413,6 +7400,8 @@ class MainWindow(QMainWindow):
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if col == 2 and value:
                 item.setToolTip(reg.name)
+            elif col in (11, 12):
+                item.setToolTip(value)
             apply_block_header_item_style(self.register_table, item, is_block_row)
 
         # PRIVATE fix51: Hintergrund nach dem kompletten Text-/Font-Update setzen,
@@ -7851,8 +7840,8 @@ class MainWindow(QMainWindow):
                 self.register_table.setItem(row, col, item)
             if item.text() != val:
                 item.setText(val)
-            if cloud_info:
-                item.setToolTip(f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})")
+            context = f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})" if cloud_info else ""
+            item.setToolTip(f"{val}\n{context}" if cloud_info and col in (11, 12) else context)
         if self._is_cloud_only_register(reg_no):
             item = self.register_table.item(row, 5)
             if item is not None:
@@ -9291,16 +9280,17 @@ class MainWindow(QMainWindow):
             return
         button.setProperty("cloudState", state)
         button.setProperty("pollingActive", state == "POLLING")
+        button.setPollingActive(state == "POLLING")
         styles = {
             "DISCONNECTED": "border-left: 4px solid #808080;",
             "CONNECTING": "border-left: 4px solid #d69b23;",
             "CONNECTED": "border-left: 4px solid #38965b;",
-            "POLLING": "border-left: 4px solid #38965b; border-bottom: 2px solid #38965b;",
+            "POLLING": "border-left: 4px solid #38965b;",
             "ERROR": "border-left: 4px solid #c84b4b;",
         }
         button.setStyleSheet(styles.get(state, styles["DISCONNECTED"]))
         text = {"DISCONNECTED": "Nicht verbunden", "CONNECTING": "Verbindung wird aufgebaut / erneuert",
-                "CONNECTED": "Verbunden", "POLLING": "Verbunden\nPolling aktiv", "ERROR": "Verbindung unterbrochen"}
+                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen"}
         lines = ["WarmLink Cloud", text.get(state, state)]
         name = getattr(self, "cloud_ui_device_name", "")
         if name:
@@ -11587,7 +11577,9 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self._update_main_window_settings()
+        self.main_table_columns.stop_pending_save()
         self._save_settings()
+        self.cloud_btn.setPollingActive(False)
         if self.warmlink_cloud_dialog is not None:
             try:
                 setattr(self.warmlink_cloud_dialog, "_force_close", True)
