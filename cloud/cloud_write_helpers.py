@@ -145,3 +145,20 @@ def cloud_write_value_from_user_input(
         # The quick-write field already contains the engineering value expected by Cloud.
         return text.replace(",", ".")
     return str(raw)
+
+
+def cloud_write_value_from_register_value(cloud_code, raw_value, register, engineering_value=None):
+    """Prepare a normal control value using the same conversion as quick-write.
+
+    Decode a local word only when the caller has no engineering value. Never
+    treat the raw carrier of a Cloud-only row as a local value.
+    """
+    from core.foxair_phnix_core import numeric_value_by_type
+    import math
+
+    if engineering_value is None:
+        engineering_value = numeric_value_by_type(int(raw_value), register.dtype)
+    if not math.isfinite(float(engineering_value)):
+        raise ValueError("Der Cloud-Schreibwert muss eine endliche Zahl sein.")
+    text = str(engineering_value)
+    return cloud_write_value_from_user_input(cloud_code, text, register, lambda _text: int(raw_value))

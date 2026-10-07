@@ -126,18 +126,20 @@ def test_cloud_connection_state_refreshes_open_quickwrite_dialogs():
         cloud_session_authenticated=False,
         cloud_session_device_code="",
         set_cloud_ui_state=lambda state: None,
+        _notify_control_connection_changed=lambda: calls.append("control_updated"),
+        clear_cloud_device_values=lambda: calls.append("cloud_cleared"),
         register_write_dialogs={(0x63, 1011): dialog},
     )
 
     app_module.MainWindow.set_cloud_connection_state(window, True, "device-1")
     assert window.cloud_session_authenticated is True
     assert window.cloud_session_device_code == "device-1"
-    assert calls == ["updated"]
+    assert calls == ["control_updated", "updated"]
 
     app_module.MainWindow.set_cloud_connection_state(window, False)
     assert window.cloud_session_authenticated is False
     assert window.cloud_session_device_code == ""
-    assert calls == ["updated", "updated"]
+    assert calls == ["control_updated", "updated", "cloud_cleared", "control_updated", "updated"]
 
 
 def test_cloud_dialog_accepts_confirmed_explicit_alias_without_local_code():

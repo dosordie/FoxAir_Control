@@ -159,15 +159,16 @@ def test_at_local_values_and_transport_keep_priority_and_local_writes(window, mo
     dialog.close()
 
 
-def test_at_cloud_only_guard_blocks_all_local_writes_and_updates_on_disconnect(window, monkeypatch):
+def test_at_cloud_only_guard_blocks_unconfirmed_curve_writes_and_updates_on_disconnect(window, monkeypatch):
     cloud_only(window)
     dialog = open_at(window)
     monkeypatch.setattr(window, "send_register_write", lambda *a, **kw: pytest.fail("Cloud-only must never write locally"))
     monkeypatch.setattr("foxair_phnix_control.ask_yes_no", lambda *a, **kw: pytest.fail("No unavailable write confirmation"))
     for mode in (0, 1, 2):
         dialog.mode_combo.setCurrentIndex(dialog.mode_combo.findData(mode))
-        assert not any(btn.isEnabled() for btn in (dialog.write_mode_btn, dialog.write_linear_btn, dialog.write_seven_btn))
-        dialog.write_mode(); dialog.write_linear_params(); dialog.write_seven_points()
+        assert dialog.write_mode_btn.isEnabled()  # H36 is centrally confirmed writable.
+        assert not any(btn.isEnabled() for btn in (dialog.write_linear_btn, dialog.write_seven_btn))
+        dialog.write_linear_params(); dialog.write_seven_points()
     window.set_cloud_connection_state(False)
     assert not dialog.write_mode_btn.isEnabled()
     dialog.close()

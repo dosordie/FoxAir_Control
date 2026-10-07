@@ -8,7 +8,10 @@ leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
 V0.3.3 ergänzt bestätigte `Fault1`…`Fault10`-Mappings, CSV-Altdateikompatibilität
 und gezielte Cloud-Reads der 7-Punkt-AT-Kurve. Der CSV-Button steht in
 **Funktionen** direkt unter **Langzeit-Capture**. Im Cloud-only-Betrieb ist die
-AT-Kurve lesbar; Schreiben bleibt lokal. Details: [Heizkurve](docs/FAQ/regelung_heizkurve.md).
+AT-Kurve lesbar; die Kurvenpunkte bleiben nur lokal schreibbar. WP Power/Modus/
+Sollwerte und AT H36 nutzen einen gemeinsamen Steuertransport mit **Modbus vor
+Cloud**. Details: [Steuertransport](docs/warmlink_polling_and_readback.md#gemeinsamer-steuertransport-für-wp-und-at)
+und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
