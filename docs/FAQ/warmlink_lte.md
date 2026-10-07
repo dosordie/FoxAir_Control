@@ -171,6 +171,10 @@ und die Restzeit bis zum nächsten Poll oder Retry. Nach dem Abruf beginnt
 das eingestellte Intervall; bei gestopptem Polling wird die Leiste ausgeblendet.
 Der Cloudbutton im Hauptfenster zeigt grau für getrennt, orange für
 Verbindungsaufbau, grün für verbunden und rot für einen Verbindungsfehler.
-Aktives Polling hat einen zusätzlichen Indikator; der Tooltip nennt den
-letzten erfolgreichen Abruf. Beim Ausblenden des Cloud-Dialogs läuft Polling
+Verbundenes, gestopptes Polling hat eine statische grüne Kennzeichnung;
+aktives Polling einen grünen Rahmen mit umlaufenden helleren Abschnitten.
+Der Tooltip unterscheidet **Polling gestoppt** und **Polling aktiv** und nennt
+den letzten erfolgreichen Abruf. Die Animation wird mit QPainter und einem
+75-ms-Timer innerhalb des Buttons gezeichnet; sie beeinflusst keine Cloudabfrage.
+Beim Ausblenden des Cloud-Dialogs läuft Polling
 weiter. Zum Beenden **Polling stoppen** verwenden.
