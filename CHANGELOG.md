@@ -1,8 +1,14 @@
 ## Unreleased
 
-- Register 1388 und 1389 als Taupunkt-Sicherheitsabstand beziehungsweise Raum-/T04-ΔT-Schaltschwelle korrekt benannt und als Kelvin-Differenzen formatiert.
-- Register 1402 als Mindest-Abtauzeit in Minuten dokumentiert und mit der ausdrücklich projektinternen, fiktiven Kennung D100 versehen.
-- Beschreibungen und Wissensdatenbank um die bestätigten V3.5-Regelpfade, Defaults, Hysteresen und Abtau-Ausnahmen ergänzt.
+## 0.3.4
+
+- WP- und AT-Steuerung nutzen einen gemeinsamen Steuertransport mit **Modbus vor Cloud**.
+- Cloud-only: WP Ein/Aus, Modus und Solltemperaturen sowie AT-H36 können über bestätigte WarmLink-Codes gesteuert werden.
+- Cloud-Geräte lassen sich per Doppelklick auswählen und das Polling direkt starten.
+- Haupttabelle verbessert: Spaltenbreiten sind einstellbar und werden gespeichert; lange Cloud-Werte bleiben kompakt.
+- Cloud-Button zeigt aktives Polling mit einem animierten grünen Rahmen.
+- **Hauptfenster leeren** entfernt jetzt auch Cloud-Werte, ohne Verbindung oder Polling zu beenden.
+- Neuer System-/I/O-Statusdecoder für MAIN 2146/2147; Registerwissen und FAQ aktualisiert.
 
 ## 0.2.67
 

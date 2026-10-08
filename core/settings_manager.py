@@ -6,6 +6,8 @@ import os
 from typing import Any
 
 from core.udp_diagnostics import udp_diagnostic_defaults
+from cloud.known_devices import normalize_known_device_codes
+from cloud.device_metadata import cached_device_metadata
 
 
 def engineering_parameter_is_visible(data: dict[str, Any], settings: dict[str, Any]) -> bool:
@@ -20,15 +22,20 @@ def ensure_warmlink_cloud_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(cfg, dict):
         cfg = {}
         settings["warmlink_cloud"] = cfg
-    cfg.setdefault("show_cloud_only", True)
+    # Compatibility key retained, but overlay now always includes projectable rows.
+    cfg["show_cloud_only"] = True
     cfg.setdefault("login_method", "md5")
     cfg.setdefault("login_fallbacks", False)
     cfg.setdefault("save_token", True)
     cfg.setdefault("overlay_enabled", True)
+    if "known_device_codes" in cfg:  # Legacy data remains loadable, but is not a GUI device source.
+        cfg["known_device_codes"] = normalize_known_device_codes(cfg["known_device_codes"])
+    cfg.setdefault("cached_devices_username", "")
+    cfg["cached_devices"] = cached_device_metadata(cfg.get("cached_devices", []))
     try:
-        cfg["poll_interval_s"] = max(60, int(cfg.get("poll_interval_s", 60) or 60))
+        cfg["poll_interval_s"] = min(3600, max(10, int(cfg.get("poll_interval_s", 30) or 30)))
     except Exception:
-        cfg["poll_interval_s"] = 60
+        cfg["poll_interval_s"] = 30
     return cfg
 
 
@@ -54,6 +61,14 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
         settings["warmlink_raw_capture"] = capture
     capture.setdefault("mode", "normal")
     capture.setdefault("prevent_standby", True)
+    csv_logger = settings.setdefault("csv_logger", {})
+    if not isinstance(csv_logger, dict):
+        csv_logger = settings["csv_logger"] = {}
+    try:
+        csv_logger["interval_s"] = min(3600, max(5, int(csv_logger.get("interval_s", 30))))
+    except (TypeError, ValueError):
+        csv_logger["interval_s"] = 30
+    csv_logger.setdefault("last_directory", "")
     settings.setdefault("manual_register_dialog", {})
     settings.setdefault("show_dual_logger_button_display", False)
     settings.setdefault("log_level", 2)
@@ -71,6 +86,8 @@ def ensure_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         main_window["height"] = 900
     main_window["maximized"] = bool(main_window.get("maximized", False))
+    if not isinstance(settings.get("main_table_column_widths"), dict):
+        settings["main_table_column_widths"] = {}
     ensure_warmlink_cloud_defaults(settings)
     return settings
 

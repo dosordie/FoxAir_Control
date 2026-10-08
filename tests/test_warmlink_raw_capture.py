@@ -526,6 +526,8 @@ def test_main_window_does_not_start_capture_for_non_warmlink_backend(monkeypatch
     monkeypatch.setattr(app, "WarmlinkRawCapture", FakeCapture)
     fake = FakeMain()
 
+    fake._is_warmlink_backend_key = app.MainWindow._is_warmlink_backend_key.__get__(fake)
+    fake._capture_settings = app.MainWindow._capture_settings.__get__(fake)
     app.MainWindow._start_warmlink_capture_if_enabled(fake)
 
     assert starts == []
@@ -560,6 +562,9 @@ def test_main_window_starts_capture_for_warmlink_backend(monkeypatch, tmp_path):
     monkeypatch.setattr(app, "WarmlinkRawCapture", FakeCapture)
     fake = FakeMain()
 
+    fake._is_warmlink_backend_key = app.MainWindow._is_warmlink_backend_key.__get__(fake)
+    fake._capture_settings = app.MainWindow._capture_settings.__get__(fake)
+    fake._set_capture_power_inhibit = lambda _active: None
     app.MainWindow._start_warmlink_capture_if_enabled(fake)
 
     assert [entry[0] for entry in starts] == ["init", "start"]

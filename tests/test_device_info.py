@@ -78,7 +78,8 @@ def test_register_four_trigger_is_not_a_pending_read_source():
     source = open("foxair_phnix_control.py", encoding="utf-8").read()
     body = source.split("def start_device_info_cycle", 1)[1].split("\n    def ", 1)[0]
     assert "pending_read_requests.append" not in body
-    assert "enqueue_read(4, 1" in body
+    assert "send_read_request(4, 1" in body
+    assert "expect_response=False" in body
 
 
 def test_direct_device_info_read_uses_documented_fc03_requests():

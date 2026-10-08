@@ -1,4 +1,16 @@
-# FoxAir / Phnix Control PUBLIC V0.3.0
+# FoxAir / Phnix Control PUBLIC V0.3.4
+
+**CSV Logger:** Register **2001–2090** periodisch als UTF-8-CSV aufzeichnen,
+über die bestehende lokale Modbusverbindung oder ausschließlich über WarmLink
+Cloud. Lokale Verbindung hat beim Start Vorrang; fehlende frische Werte bleiben
+leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
+
+V0.3.4 erweitert die Cloud-Steuerung für WP und AT mit **Modbus vor Cloud**,
+verbessert Geräteauswahl und Polling sowie die Darstellung der Haupttabelle.
+Spaltenbreiten werden gespeichert, aktives Cloud-Polling ist am animierten
+Cloud-Button erkennbar und **Hauptfenster leeren** entfernt jetzt auch Cloud-Werte.
+Details: [Steuertransport](docs/warmlink_polling_and_readback.md#gemeinsamer-steuertransport-für-wp-und-at)
+und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
@@ -48,7 +60,8 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Cloud-Wertefinder
 - Cloud-Schreibtest mit bestätigtem Endpunkt `app/device/control?lang=en`
 - Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
-- **Cloud-only Zeilen** gibt es nur im WarmLink-Cloud-Fenster; dort ist der Schalter standardmäßig aktiviert
+- Cloudwerte können als Overlay im Hauptfenster erscheinen; optionale **Cloud-only Zeilen** zeigen bestätigte Mappings auch ohne zuvor gelesenen lokalen Wert
+- Der Doppelklickdialog bietet bei aktiver Cloud-Verbindung **Cloud lesen** und – nur für ausdrücklich freigegebene Schreibcodes – **Cloud schreiben**
 - Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames bleibt aktiv
 - Runtime-Code ist in `core/`, `workers/`, `cloud/`, `dialogs/`, `ui/` und `data/` gegliedert
 

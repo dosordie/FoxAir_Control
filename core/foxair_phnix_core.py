@@ -242,6 +242,13 @@ class DecodedRegister:
     name: str
     dtype: str
     timestamp: float
+    value_source: str = "modbus"
+    cloud_value: Any = None
+
+    @property
+    def local_raw_value(self) -> int | None:
+        """A cloud projection's legacy numeric carrier is not a local raw word."""
+        return self.raw_value if self.value_source == "modbus" else None
 
 
 @dataclass

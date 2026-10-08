@@ -548,6 +548,8 @@ class FaultDecoderDialog(QDialog):
         for reg_no in self.FAULT_REGS:
             raw = self.main_window.last_values.get(reg_no)
             if raw is None:
+                raw = self.main_window.cloud_overlay_by_reg.get(reg_no, {}).get("raw")
+            if raw is None:
                 continue
             raw_i = int(raw) & 0xFFFF
             if raw_i == 0:
@@ -571,6 +573,8 @@ class FaultDecoderDialog(QDialog):
         if update_status:
             self.read_status_label.setText("Live-Wert aktualisiert.")
         load_raw = self.main_window.last_values.get(2019)
+        if load_raw is None:
+            load_raw = self.main_window.cloud_overlay_by_reg.get(2019, {}).get("raw")
         alarm_active = bool((int(load_raw) & (1 << 10))) if load_raw is not None else False
         if load_raw is None:
             self.status_label.setText("Sammelstörung: unbekannt (2019 noch nicht gelesen)")
@@ -602,4 +606,3 @@ class FaultDecoderDialog(QDialog):
                 item.setToolTip(val)
                 item.setBackground(QColor(255, 230, 230))
                 self.table.setItem(row, col, item)
-

@@ -25,6 +25,8 @@ from warmlink_raw_capture import (
 
 from ui.paths import app_program_dir as _app_program_dir, app_resource_dir as _app_resource_dir, resource_path as _resource_path
 from ui.context_menu_helpers import RegisterContextAction, exec_register_context_menu
+from ui.table_helpers import MAIN_TABLE_COLUMN_WIDTHS, PersistentTableColumnWidths
+from ui.status_button import CloudStatusButton
 from ui.theme import (
     APP_ICON_FILE,
     PUBLIC_WARNING_TEXT,
@@ -36,6 +38,14 @@ from ui.theme import (
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
+from core.register_value_sources import register_value_sources
+from core.control_transport import (
+    ControlContext, LOCAL_TRANSPORTS, TRANSPORT_NAMES,
+    register_control_capability, select_control_transport,
+)
+from core.csv_logger_controller import CsvLoggerController
+from cloud.snapshot_request import CloudSnapshotRequest
+from dialogs.csv_logger_dialog import CsvLoggerDialog
 from dialogs.decoder_dialogs import ContactDecoderDialog, FaultDecoderDialog, LoadOutputDecoderDialog, SystemIOStatusDecoderDialog
 from dialogs.bus_address_dialog import BusAddressDialog
 from dialogs.manual_register_dialog import ManualRegisterDialog
@@ -47,6 +57,7 @@ from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
 from core.at_compensation import (
     AT_LIVE_REGISTERS,
+    AT_CLOUD_READ_CODES,
     AT_MODE_VALUES,
     AT_READ_BLOCKS,
     AT_SEVEN_POINT_REGISTERS,
@@ -61,16 +72,18 @@ from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
     translate_cloud_error_message,
 )
-from cloud.token_store import get_password, get_token
-from cloud.mapping_validation import cloud_hint_matches_local_code
+from cloud.token_store import AsyncKeyringStore, get_password, get_token, set_token
+from core.warmlink_request_scheduler import (WarmlinkRequestScheduler, WARMLINK_READ_TIMEOUT_S, WARMLINK_READBACK_DELAY_MS)
+from cloud.register_resolver import resolve_cloud_register
+from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
     cloud_code_for_register,
     cloud_write_choice_options,
     cloud_write_value_from_label,
     cloud_write_values_for_code,
-    current_raw_text_for_cloud_write,
+    cloud_write_value_from_register_value,
 )
-from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker
+from workers.warmlink_cloud_worker import WarmLinkCloudCommandWorker, WarmLinkCloudReadWorker
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot, QTimer, QSize
 from PySide6.QtGui import QAction, QBrush, QColor, QIcon, QPixmap, QPainter, QPen
@@ -121,6 +134,8 @@ from cloud.warmlink_codes import (
     WARMLINK_CLOUD_CREDIT,
     code_display_name,
 )
+from cloud.register_resolver import resolve_cloud_projection_register
+from cloud.warmlink_value_translator import translate_cloud_value, cloud_values_equal
 from core.settings_manager import ensure_defaults, load_settings, save_settings
 from core.udp_diagnostics import UdpDiagnosticSender, udp_diagnostic_defaults
 from core.update_checker import (
@@ -155,8 +170,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.3.0"
-BUILD_DATE = "2026-09-29"
+APP_VERSION = "0.3.4"
+BUILD_DATE = "2026-10-07"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -567,6 +582,8 @@ class ReaderWorker(QObject):
     frame_decoded = Signal(object)
     raw_chunk = Signal(bytes)
     tx_chunk = Signal(bytes)
+    read_sent = Signal(int, int, int)
+    read_failed = Signal(int, int, int, str)
     tx_blocked_attempt = Signal(str, int, int, int)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
@@ -806,6 +823,8 @@ class ReaderWorker(QObject):
 
                 if not self.client or not self.client.is_connected():
                     self.error.emit("Nicht verbunden, kann nicht senden.")
+                    if kind == "read":
+                        self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), "Nicht verbunden")
                     continue
                 # Last safety barrier immediately before both TX accounting and send.
                 if self.tx_blocked:
@@ -814,6 +833,8 @@ class ReaderWorker(QObject):
                     continue
                 self.tx_chunk.emit(frame)
                 self.client.send(frame)
+                if kind == "read":
+                    self.read_sent.emit(int(addr), int(value_or_quantity), int(slave_addr))
                 self.last_send_monotonic = time.monotonic()
                 self.last_send_desc = action
                 self.rx_after_last_send = False
@@ -824,6 +845,8 @@ class ReaderWorker(QObject):
                     return
             except Exception as exc:
                 self.error.emit(str(exc))
+                if kind == "read":
+                    self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), str(exc))
 
     def _check_rx_timeout(self):
         if self.transport != "serial":
@@ -1357,12 +1380,14 @@ class RegisterQuickWriteDialog(QDialog):
         layout.addLayout(form)
         self.current_raw_label = QLabel("--")
         self.current_decoded_label = QLabel("--")
+        self.cloud_value_label = QLabel("--")
         self.write_value_edit = QLineEdit()
         scale_hint = self.main_window._write_scale_hint(self.reg_no)
         self.write_value_edit.setPlaceholderText("z.B. 1,5" if scale_hint else "z.B. 55")
         self.write_value_edit.textEdited.connect(self._write_value_text_edited)
         form.addRow("aktueller Rohwert:", self.current_raw_label)
         form.addRow("aktueller Wert:", self.current_decoded_label)
+        form.addRow("Cloud-Wert:", self.cloud_value_label)
 
         if self.value_map:
             self.value_combo = QComboBox()
@@ -1391,9 +1416,49 @@ class RegisterQuickWriteDialog(QDialog):
         self.close_btn.clicked.connect(self.close)
         buttons.addWidget(self.read_btn)
         buttons.addWidget(self.write_btn)
+        self.cloud_read_btn = QPushButton("Cloud lesen")
+        self.cloud_write_btn = QPushButton("Cloud schreiben")
+        self.cloud_read_btn.clicked.connect(self.read_cloud_register)
+        self.cloud_write_btn.clicked.connect(self.write_cloud_register)
+        buttons.addWidget(self.cloud_read_btn)
+        buttons.addWidget(self.cloud_write_btn)
         buttons.addStretch(1)
         buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            self.read_btn.setEnabled(False)
+            self.write_btn.setEnabled(False)
+        self.update_cloud_actions()
+
+    def update_cloud_actions(self):
+        connected = self.main_window.is_cloud_connected()
+        cloud_only = self.main_window._is_cloud_only_register(self.reg_no)
+        self.read_btn.setEnabled(not cloud_only)
+        self.write_btn.setEnabled(not cloud_only)
+        self.cloud_read_btn.setVisible(bool(connected and self.main_window.cloud_code_for_register(self.reg_no)))
+        self.cloud_read_btn.setEnabled(getattr(self.main_window, "cloud_read_thread", None) is None)
+        self.cloud_write_btn.setVisible(bool(
+            connected and self.main_window.cloud_code_for_register(self.reg_no, require_write_allowed=True)
+        ))
+
+    def read_cloud_register(self):
+        self._cloud_read_pending = True
+        self.status_label.setText("Lese Cloud-Wert ...")
+        error = self.main_window.read_cloud_register(self.reg_no)
+        if error:
+            self.cloud_read_completed(error=error)
+
+    def cloud_read_completed(self, error: str = ""):
+        self._cloud_read_pending = False
+        self.refresh_from_live()
+        self.status_label.setText("Cloud-Lesen fehlgeschlagen: " + error if error else
+                                  "Cloud-Wert gelesen: " + self.cloud_value_label.text())
+
+    def update_from_cloud_value(self):
+        self.refresh_from_live()
+
+    def write_cloud_register(self):
+        self.main_window.open_cloud_write_for_register(self.reg_no, self.write_value_edit.text())
 
     def _parse_bus(self) -> int:
         return int(self.slave_addr)
@@ -1455,6 +1520,20 @@ class RegisterQuickWriteDialog(QDialog):
         QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def refresh_from_live(self):
+        self.update_cloud_actions()
+        overlay = getattr(self.main_window, "cloud_overlay_by_reg", {}).get(self.reg_no, {})
+        self.cloud_value_label.setText(str(overlay.get("value", "--")))
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            # Cloud numbers are engineering values; they have no Modbus raw word.
+            self.current_raw_label.setText("--")
+            self.current_decoded_label.setText("--")
+            value = overlay.get("engineering_value")
+            reg = self.main_window.latest_regs.get(self.reg_no)
+            if value is None and reg is not None:
+                value = getattr(reg, "cloud_value", None)
+            if value is not None and not self.write_value_edit.isModified() and not self.write_value_edit.hasFocus():
+                self.write_value_edit.setText(str(value))
+            return
         old_raw = self._last_raw
         reg = self.main_window.latest_regs.get(self.reg_no)
         if reg is None:
@@ -1483,14 +1562,19 @@ class RegisterQuickWriteDialog(QDialog):
             self.refresh_from_live()
             self.status_label.setText("Gelesener Rohwert aktualisiert.")
 
-    def read_register(self):
+    def read_register(self, *, readback=False):
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            return
         try:
             self.status_label.setText("Lese Register ...")
-            self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}")
+            self.main_window.send_read_request(self.reg_no, 1, slave_addr=self._parse_bus(), label=f"Popup Register {self.reg_no}", priority="readback" if readback else "manual",
+                start_delay_ms=WARMLINK_READBACK_DELAY_MS if readback and self.main_window.current_backend_key() == "warmlink_raw" else 0)
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
     def write_register(self):
+        if self.main_window._is_cloud_only_register(self.reg_no):
+            return
         try:
             value = self.main_window.parse_register_write_value(self.reg_no, self.write_value_edit.text()) & 0xFFFF
             self.status_label.setText("Schreibe Register ...")
@@ -1506,7 +1590,7 @@ class RegisterQuickWriteDialog(QDialog):
             f"(wire 0x{int(wire_addr):04X}) = {int(value) & 0xFFFF} / 0x{int(value) & 0xFFFF:04X}. Lese Wert erneut ..."
         )
         try:
-            self.read_register()
+            self.read_register(readback=True)
         except Exception:
             # ACK ist bereits der Schreiberfolg; ein ausbleibender Readback darf das nicht als Fehler darstellen.
             self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen konnte nicht gestartet werden.")
@@ -3635,39 +3719,52 @@ class WPControlDialog(QDialog):
         (2014, "Solltemp. AT-Komp."),
     ]
 
+    CLOUD_READ_REGISTERS = (1011, 1012, 2012, 1157, 1158, 1159, 1236, 2014, 2045, 2046, 2047, 2048, 2077)
+    READ_BLOCKS = ((1011, 6), (1157, 3), (1236, 1), (2011, 4), (2045, 4), (2077, 1))
+
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
         self.main_window = main_window
+        self._control_identity = main_window.control_context()
         self.setWindowTitle("WP-Steuerung")
         self.setMinimumWidth(760)
+        self.setWindowIcon(main_window.windowIcon())
+        self.cloud_request = None
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
         self.auto_refresh_timer = QTimer(self)
         self.auto_refresh_timer.timeout.connect(self.read_from_wp)
         self._build_ui()
         self.refresh_from_live()
-        QTimer.singleShot(250, self.read_from_wp)
+        self.initial_read_timer = QTimer(self)
+        self.initial_read_timer.setSingleShot(True)
+        self.initial_read_timer.timeout.connect(self.read_from_wp)
+        self.initial_read_timer.start(250)
 
-    def _raw(self, reg_no: int, default: Optional[int] = None) -> Optional[int]:
-        try:
-            if reg_no in self.main_window.latest_regs:
-                return int(self.main_window.latest_regs[reg_no].raw_value) & 0xFFFF
-            if reg_no in self.main_window.last_values:
-                return int(self.main_window.last_values[reg_no]) & 0xFFFF
-        except Exception:
-            pass
-        return default
+    def _value(self, reg_no):
+        sources = self.main_window.register_value_sources(reg_no)
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
+            return numeric_value_by_type(sources.local_raw, self.main_window.regmap.get(reg_no).dtype)
+        return sources.cloud_engineering if self.main_window.is_cloud_connected() else None
 
-    def _fmt(self, reg_no: int, raw: Optional[int]) -> str:
-        if raw is None:
-            return "--"
-        info = self.main_window.regmap.get(int(reg_no))
-        dtype = info.dtype if info and info.dtype else "RAW"
-        return format_value_by_type(int(raw), dtype)
+    def _raw(self, reg_no, default=None):
+        value = self._value(reg_no)
+        return int(value) if value is not None else default
+
+    def _fmt(self, reg_no, _raw=None):
+        sources = self.main_window.register_value_sources(reg_no)
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
+            return format_value_by_type(sources.local_raw, self.main_window.regmap.get(reg_no).dtype)
+        return sources.cloud_display if self.main_window.is_cloud_connected() and sources.cloud_display is not None else "--"
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
         hint = QLabel("Einfache Steuerung wie in der App. Schreibbefehle werden erst nach Bestätigung gesendet.")
         hint.setWordWrap(True)
         layout.addWidget(hint)
+        self.transport_label = QLabel()
+        layout.addWidget(self.transport_label)
         self.status_label = QLabel("Bereit.")
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #555; padding: 2px;")
@@ -3680,7 +3777,8 @@ class WPControlDialog(QDialog):
         self.set_mode_label = QLabel("--")
         self.run_mode_label = QLabel("--")
         self.silent_state_label = QLabel("--")
-        status.addWidget(QLabel("Ein/Aus Status (2011):"), 0, 0)
+        self.power_state_caption = QLabel("Ein/Aus Status (2011):")
+        status.addWidget(self.power_state_caption, 0, 0)
         status.addWidget(self.power_state_label, 0, 1)
         status.addWidget(QLabel("Eingestellter Modus (1012):"), 1, 0)
         status.addWidget(self.set_mode_label, 1, 1)
@@ -3773,7 +3871,7 @@ class WPControlDialog(QDialog):
 
         self.power_write_btn.clicked.connect(self.write_power)
         self.mode_write_btn.clicked.connect(self.write_mode)
-        self.mode_combo.currentIndexChanged.connect(lambda _=None: self._update_ww_target_visibility())
+        self.mode_combo.currentIndexChanged.connect(lambda _=None: (self._update_ww_target_visibility(), self._update_control_actions()))
         self.target_write_btn.clicked.connect(self.write_target)
         self.ww_target_write_btn.clicked.connect(self.write_ww_target)
         self.silent_write_btn.clicked.connect(self.write_silent)
@@ -3794,11 +3892,19 @@ class WPControlDialog(QDialog):
         self.status_label.setText("Timeout / keine Antwort.")
 
     def update_from_live_register(self, reg):
-        if int(getattr(reg, "reg", -1)) in {1011, 1012, 1016, 2011, 2012, 2013, 2014, 2045, 2046, 2047, 2048, 2077, 1157, 1158, 1159}:
+        if int(getattr(reg, "reg", -1)) in {1011, 1012, 1016, 1236, 2011, 2012, 2013, 2014, 2045, 2046, 2047, 2048, 2077, 1157, 1158, 1159}:
+            self.refresh_from_live()
+
+    def update_from_cloud_register(self, reg_no):
+        if int(reg_no) in self.CLOUD_READ_REGISTERS:
             self.refresh_from_live()
 
     def refresh_from_live(self):
         power = self._raw(2011)
+        cloud_power = self.main_window.control_transport() == "cloud" and power is None
+        if cloud_power:
+            power = self._raw(1011)
+        self.power_state_caption.setText("Ein/Aus / Cloud Power (1011):" if cloud_power else "Ein/Aus Status (2011):")
         self.power_state_label.setText("Ein" if power == 1 else "Aus" if power == 0 else "--")
         pset = self._raw(1011, power)
         if pset is not None:
@@ -3822,26 +3928,28 @@ class WPControlDialog(QDialog):
 
         vals = []
         for reg_no, label in self.TEMP_REGS:
-            raw = self._raw(reg_no)
-            text = self._fmt(reg_no, raw)
+            value = self._value(reg_no)
+            text = self._fmt(reg_no)
             self.temp_labels[reg_no].setText(text)
-            if reg_no in (2013, 2014) and raw is not None:
+            if reg_no in (2013, 2014) and value is not None:
                 vals.append(text)
         self.target_label.setText(" / ".join(vals) if vals else "--")
-        active_target = self._raw(2014) if self._raw(1236, 0) == 1 else self._raw(2013)
+        active_target = self._value(2014) if self._raw(1236, 0) == 1 else self._value(2013)
         if active_target is None:
-            active_target = self._raw(2013) or self._raw(2014)
-        if active_target is not None:
-            self.target_spin.setValue(numeric_value_by_type(active_target, "TEMP1"))
-
-        ww_raw = self._raw(1157)
-        if ww_raw is not None:
-            ww_val = numeric_value_by_type(ww_raw, "TEMP1")
-            self.ww_target_label.setText(f"{ww_val:.1f} °C")
-            self.ww_target_spin.setValue(ww_val)
-        else:
-            self.ww_target_label.setText("--")
+            active_target = self._value(2014)
+        if active_target is None:
+            target_register, _label = self.TARGET_REG_BY_SET_MODE.get(set_mode, (1158, ""))
+            active_target = self._value(target_register)
+        if self.main_window.control_transport() == "cloud":
+            # R01/R02/R03 remain separate from the compensated target 2014.
+            target_register, _label = self._target_register()
+            active_target = self._value(target_register)
+        self.target_spin.setValue(active_target if active_target is not None else 0)
+        ww_value = self._value(1157)
+        self.ww_target_label.setText("--" if ww_value is None else f"{ww_value:.1f} °C")
+        self.ww_target_spin.setValue(ww_value if ww_value is not None else 0)
         self._update_ww_target_visibility()
+        self._update_control_actions()
 
     def _update_ww_target_visibility(self):
         mode = self._raw(1012)
@@ -3858,63 +3966,145 @@ class WPControlDialog(QDialog):
         else:
             self.auto_refresh_timer.stop()
 
-    def _confirm_write(self, title: str, text: str) -> bool:
+    def _target_register(self):
+        mode = self._raw(1012)
+        return self.TARGET_REG_BY_SET_MODE.get(mode if mode is not None else int(self.mode_combo.currentData()), (1158, "Heizungssolltemperatur"))
+
+    def _update_control_actions(self):
+        owner = self.main_window
+        self.transport_label.setText(f"Steuerung über: {TRANSPORT_NAMES[owner.control_transport()]}")
+        register, _label = self._target_register()
+        for button, registers in ((self.power_write_btn, (1011,)), (self.mode_write_btn, (1012,)),
+                                  (self.target_write_btn, (register,)), (self.ww_target_write_btn, (1157,)),
+                                  (self.silent_write_btn, (1016,))):
+            capability = owner.control_can_write(*registers)
+            button.setEnabled(bool(capability))
+            button.setToolTip(capability.reason)
+        if owner.control_transport() == "cloud":
+            self.silent_write_btn.setToolTip("Cloud-Schreiben für Silent ist noch nicht bestätigt.")
+        read = owner.control_can_read(*self.CLOUD_READ_REGISTERS)
+        self.read_btn.setEnabled(bool(read))
+        self.read_btn.setToolTip(read.reason)
+
+    def _cloud_identity_matches(self):
+        context = self.main_window.control_context()
+        request = self.cloud_request
+        return request is not None and context.transport == "cloud" and (request.username, request.device_code) == (context.username, context.device_code)
+
+    def connection_changed(self):
+        context = self.main_window.control_context()
+        if (context.username, context.device_code) != (self._control_identity.username, self._control_identity.device_code):
+            self.power_combo.setCurrentIndex(0)
+            self.mode_combo.setCurrentIndex(0)
+            self.silent_combo.setCurrentIndex(0)
+        self._control_identity = context
+        if self.cloud_request is not None and not self._cloud_identity_matches():
+            self._cancel_cloud_read()
+            self.status_label.setText("Steuerverbindung oder Geräteauswahl geändert; bitte erneut lesen.")
+        self.refresh_from_live()
+
+    def _confirm_write(self, title, text):
         return ask_yes_no(self, title, text, default_yes=False)
+
+    def _write(self, register, raw, value, label, title, text):
+        owner = self.main_window
+        context = owner.control_context()
+        capability = owner.control_can_write(register)
+        if not capability:
+            self.status_label.setText(capability.reason)
+            self._update_control_actions()
+            return
+        if self._confirm_write(title, f"{text}\nTransport: {TRANSPORT_NAMES[context.transport]}"):
+            error = owner.control_write_register(register, raw, value, label=f"WP-Steuerung {label}", expected_context=context)
+            self.status_label.setText(error or "WP-Steuerung Schreiben gesendet.")
+            self._update_control_actions()
 
     def write_power(self):
         value = int(self.power_combo.currentData())
-        if self._confirm_write("Ein/Aus schreiben", f"Register 1011 wirklich auf {value} ({'Ein' if value else 'Aus'}) schreiben?"):
-            self.status_label.setText("Schreibe WP-Steuerung ...")
-            self.main_window.send_register_write(1011, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Ein/Aus")
-            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
+        self._write(1011, value, value, "Ein/Aus", "Ein/Aus schreiben",
+                    f"Wärmepumpe wirklich {'ein' if value else 'aus'}schalten?")
 
     def write_mode(self):
         value = int(self.mode_combo.currentData())
-        if self._confirm_write("Modus schreiben", f"Register 1012 wirklich auf {value} ({self.SET_MODE_MAP.get(value)}) schreiben?"):
-            self.status_label.setText("Schreibe WP-Steuerung ...")
-            self.main_window.send_register_write(1012, value, DEFAULT_BUS_ADDR, label="WP-Steuerung Modus")
-            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
+        self._write(1012, value, value, "Modus", "Modus schreiben",
+                    f"Modus wirklich auf {self.SET_MODE_MAP.get(value)} setzen?")
 
     def write_target(self):
-        mode = self._raw(1012)
-        reg_no, label = self.TARGET_REG_BY_SET_MODE.get(mode if mode is not None else int(self.mode_combo.currentData()), (1158, "Heizungssolltemperatur"))
-        raw = int(round(float(self.target_spin.value()) * 10.0)) & 0xFFFF
-        text = f"{label}: Register {reg_no} wirklich auf {self.target_spin.value():.1f} °C (raw {raw}) schreiben?"
-        if self._confirm_write("Solltemperatur schreiben", text):
-            self.status_label.setText("Schreibe WP-Steuerung ...")
-            self.main_window.send_register_write(reg_no, raw, DEFAULT_BUS_ADDR, label=f"WP-Steuerung {label}")
-            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
+        register, label = self._target_register()
+        value = float(self.target_spin.value())
+        self._write(register, encode_temp1(value), value, label, "Solltemperatur schreiben",
+                    f"{label} wirklich auf {value:.1f} °C schreiben?")
 
     def write_ww_target(self):
-        raw = int(round(float(self.ww_target_spin.value()) * 10.0)) & 0xFFFF
-        text = f"Warmwasser-Solltemperatur: Register 1157 wirklich auf {self.ww_target_spin.value():.1f} °C (raw {raw}) schreiben?"
-        if self._confirm_write("WW-Solltemperatur schreiben", text):
-            self.status_label.setText("Schreibe WP-Steuerung ...")
-            self.main_window.send_register_write(1157, raw, DEFAULT_BUS_ADDR, label="WP-Steuerung Warmwasser-Solltemperatur")
-            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
+        value = float(self.ww_target_spin.value())
+        self._write(1157, encode_temp1(value), value, "Warmwasser-Solltemperatur", "WW-Solltemperatur schreiben",
+                    f"Warmwasser-Solltemperatur wirklich auf {value:.1f} °C schreiben?")
 
     def write_silent(self):
         current = self._raw(1016, 0) or 0
         bit = int(self.silent_combo.currentData())
-        new_value = (current | 0x0002) if bit else (current & ~0x0002)
-        text = f"Register 1016 Bit 1 wirklich {'setzen' if bit else 'löschen'}?\nAktuell: {current}/0x{current:04X}\nNeu: {new_value}/0x{new_value:04X}"
-        if self._confirm_write("Silent schreiben", text):
-            self.status_label.setText("Schreibe WP-Steuerung ...")
-            self.main_window.send_register_write(1016, new_value, DEFAULT_BUS_ADDR, label="WP-Steuerung Silent Bit 1")
-            self.status_label.setText("WP-Steuerung Schreiben gesendet.")
+        value = current | 2 if bit else current & ~2
+        self._write(1016, value, value, "Silent Bit 1", "Silent schreiben",
+                    f"Silent wirklich {'ein' if bit else 'aus'}schalten?")
 
     def read_from_wp(self):
-        self.status_label.setText("Lese WP-Steuerung ...")
-        for addr, qty, label in [
-            (1011, 6, "WP-Steuerung Soll/Flags 1011-1016"),
-            (1157, 3, "WP-Steuerung Solltemperaturen R01-R03"),
-            (2011, 4, "WP-Steuerung Status 2011-2014"),
-            (2045, 4, "WP-Steuerung Temperaturen 2045-2048"),
-            (2077, 1, "WP-Steuerung Durchfluss 2077"),
-        ]:
-            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=label, delay_ms=250)
+        owner = self.main_window
+        context = owner.control_context()
+        capability = owner.control_can_read(*self.CLOUD_READ_REGISTERS)
+        if not capability:
+            self.status_label.setText(capability.reason)
+            self._update_control_actions()
+            return
+        if context.transport == "cloud":
+            if self.cloud_request is not None:
+                return
+            owner._wp_cloud_generation = getattr(owner, "_wp_cloud_generation", 0) + 1
+            codes = tuple(cloud_code_for_register(register) for register in self.CLOUD_READ_REGISTERS)
+            self.cloud_request = CloudSnapshotRequest(owner._wp_cloud_generation, codes, time.monotonic() + 60,
+                context.username, context.device_code, purpose="wp_control")
+            self.cloud_read_timer.start(60000)
+            self.status_label.setText("Lese WP-Steuerung über Cloud ...")
+            error = owner.control_request_snapshot(self.cloud_request)
+            if error:
+                self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+            return
+        error = owner.control_read_blocks(self.READ_BLOCKS, "WP-Steuerung", expected_context=context)
+        self.status_label.setText(error or "Lese WP-Steuerung ...")
         self.refresh_from_live()
-        QTimer.singleShot(1500, self.refresh_from_live)
+
+    def _cancel_cloud_read(self):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def _cloud_read_timeout(self):
+        self._cancel_cloud_read()
+        self.status_label.setText("WP-Steuerung Cloud-Timeout / keine frische Antwort.")
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self._cloud_identity_matches():
+            self.connection_changed()
+            return
+        if request.expired():
+            self._cloud_read_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and not any(row.get(flag) for flag in ("cached", "stale", "currentEmpty")) and row.get("value") is not None]
+        self._cancel_cloud_read()
+        if not error:
+            self.main_window.apply_cloud_rows_to_main(fresh)
+        self.refresh_from_live()
+        self.status_label.setText(f"WP-Steuerung Cloud: {len(fresh)}/{len(request.codes)} Werte" + (f" · {error}" if error else ""))
+
+    def closeEvent(self, event):
+        self.initial_read_timer.stop()
+        self.auto_refresh_timer.stop()
+        self._cancel_cloud_read()
+        super().closeEvent(event)
 
 
 class CurveCanvas(QWidget):
@@ -4081,27 +4271,33 @@ class ATCompensationDialog(QDialog):
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
         self.main_window = main_window
+        self._control_identity = main_window.control_context()
         self.setWindowTitle("AT-Kompensation")
         self.setMinimumWidth(820)
+        self.setWindowIcon(main_window.windowIcon())
+        self.cloud_request = None
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
         self.auto_refresh_timer = QTimer(self)
         self.auto_refresh_timer.timeout.connect(self.read_from_wp)
         self._build_ui()
         self.refresh_from_live()
-        QTimer.singleShot(250, self.read_from_wp)
+        self.initial_read_timer = QTimer(self)
+        self.initial_read_timer.setSingleShot(True)
+        self.initial_read_timer.timeout.connect(self.read_from_wp)
+        self.initial_read_timer.start(250)
 
-    def _raw(self, reg_no: int, default: Optional[int] = None) -> Optional[int]:
-        try:
-            if reg_no in self.main_window.latest_regs:
-                return int(self.main_window.latest_regs[reg_no].raw_value) & 0xFFFF
-            if reg_no in self.main_window.last_values:
-                return int(self.main_window.last_values[reg_no]) & 0xFFFF
-        except Exception:
-            pass
-        return default
+    def _value(self, reg_no: int, dtype: str):
+        sources = self.main_window.register_value_sources(reg_no)
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS and sources.local_raw is not None:
+            return numeric_value_by_type(sources.local_raw, dtype)
+        # Cloud numbers already use engineering units; never encode/redecode
+        # them as local words or parse a rendered value with units.
+        return sources.cloud_engineering if self.main_window.is_cloud_connected() else None
 
     def _temp(self, reg_no: int) -> Optional[float]:
-        raw = self._raw(reg_no)
-        return None if raw is None else numeric_value_by_type(raw, "TEMP1")
+        return self._value(reg_no, "TEMP1")
 
     @staticmethod
     def _temp_raw(value: float) -> int:
@@ -4109,6 +4305,8 @@ class ATCompensationDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+        self.transport_label = QLabel()
+        layout.addWidget(self.transport_label)
         self.status_label = QLabel("Bereit.")
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #555; padding: 2px;")
@@ -4221,10 +4419,49 @@ class ATCompensationDialog(QDialog):
         mode = int(self.mode_combo.currentData())
         self.linear_box.setVisible(mode == 1)
         self.seven_box.setVisible(mode == 2)
-        self.write_linear_btn.setEnabled(mode == 1)
-        self.write_seven_btn.setEnabled(mode == 2)
+        self._update_write_actions()
         self.curve_canvas.set_editable(mode == 2)
         self.update_curve_table()
+
+    def _update_write_actions(self):
+        owner = self.main_window
+        self.transport_label.setText(f"Steuerung über: {TRANSPORT_NAMES[owner.control_transport()]}")
+        mode = int(self.mode_combo.currentData())
+        for button, applicable, registers in (
+            (self.write_mode_btn, True, (1236,)),
+            (self.write_linear_btn, mode == 1, (1234, 1235)),
+            (self.write_seven_btn, mode == 2, tuple(register for _at, register in AT_SEVEN_POINT_REGISTERS)),
+        ):
+            capability = owner.control_can_write(*registers)
+            button.setEnabled(bool(capability) and applicable)
+            button.setToolTip(capability.reason or ("" if applicable else "Schreibaktion nur im passenden AT-Modus verfügbar."))
+        capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
+        self.read_btn.setEnabled(bool(capability))
+        self.read_btn.setToolTip(capability.reason)
+
+    def _cloud_identity_matches(self):
+        request = self.cloud_request
+        return request is not None and self.main_window.control_transport() == "cloud" and (
+            request.username == str(self.main_window.settings.get("warmlink_cloud", {}).get("username") or "").strip()
+            and request.device_code == self.main_window.cloud_session_device_code)
+
+    def connection_changed(self):
+        context = self.main_window.control_context()
+        if (context.username, context.device_code) != (self._control_identity.username, self._control_identity.device_code):
+            self.mode_combo.setCurrentIndex(0)
+            self.slope_spin.setValue(0)
+            self.offset_spin.setValue(0)
+            for spin in self._seven_spins():
+                spin.setValue(spin.minimum())
+        self._control_identity = context
+        self.refresh_from_live()
+        if self.cloud_request is not None and not self._cloud_identity_matches():
+            self._cancel_cloud_read()
+            self.status_label.setText("Cloud-Verbindung oder Geräteauswahl geändert; bitte erneut lesen.")
+
+    def update_from_cloud_register(self, reg_no):
+        if int(reg_no) in self.LIVE_REGISTERS:
+            self.refresh_from_live()
 
     def _curve_point_dragged(self, index: int, value: float) -> None:
         spins = self._seven_spins()
@@ -4245,16 +4482,16 @@ class ATCompensationDialog(QDialog):
             self.refresh_from_live()
 
     def refresh_from_live(self):
-        mode = self._raw(1236)
+        mode = self._value(1236, "DIGI1")
         if mode in AT_MODE_VALUES:
             index = self.mode_combo.findData(mode)
             self.mode_combo.setCurrentIndex(index)
-        slope = self._raw(1234)
+        slope = self._value(1234, "DIGI5")
         if slope is not None:
-            self.slope_spin.setValue(numeric_value_by_type(slope, "DIGI5"))
-        offset = self._raw(1235)
+            self.slope_spin.setValue(slope)
+        offset = self._temp(1235)
         if offset is not None:
-            self.offset_spin.setValue(numeric_value_by_type(offset, "TEMP1"))
+            self.offset_spin.setValue(offset)
         self._update_target_editor_limits()
         for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
             value = self._temp(register)
@@ -4266,6 +4503,7 @@ class ATCompensationDialog(QDialog):
         minimum, maximum = self._temp(1164), self._temp(1165)
         self.limit_label.setText("R10/R11: --" if minimum is None or maximum is None else f"R10/R11: {minimum:.1f} … {maximum:.1f} °C")
         self.curve_canvas.set_runtime_point(None if current_at is None or target is None else (current_at, target))
+        self._update_write_actions()
         self.update_curve_table()
 
     def update_curve_table(self):
@@ -4295,39 +4533,102 @@ class ATCompensationDialog(QDialog):
         else:
             self.auto_refresh_timer.stop()
 
-    def _confirm_write(self, title: str, text: str) -> bool:
+    def _confirm_write(self, title, text):
         return ask_yes_no(self, title, text, default_yes=False)
+
+    def _write(self, writes, title, text, label):
+        owner = self.main_window
+        context = owner.control_context()
+        capability = owner.control_can_write(*(register for register, _raw, _value in writes))
+        if not capability:
+            self._update_write_actions()
+            self.status_label.setText(capability.reason)
+            return
+        if self._confirm_write(title, f"{text}\nTransport: {TRANSPORT_NAMES[context.transport]}"):
+            error = owner.control_write_registers(writes, label, expected_context=context)
+            self.status_label.setText(error or "AT-Kompensation Schreiben gesendet.")
+            self._update_write_actions()
 
     def write_mode(self):
         value = int(self.mode_combo.currentData())
-        label = self.mode_combo.currentText()
-        if self._confirm_write("AT-Kompensation schreiben", f"Nur Register 1236 / H36 auf {value} ({label}) schreiben?"):
-            self.main_window.send_register_write(1236, value, DEFAULT_BUS_ADDR, label="AT-Kompensation H36-Modus")
-            self.status_label.setText("AT-Kompensationsmodus Schreiben gesendet.")
+        self._write(((1236, value, value),), "AT-Kompensation schreiben",
+                    f"H36-Modus wirklich auf {self.mode_combo.currentText()} setzen?", "AT-Kompensation H36-Modus")
 
     def write_linear_params(self):
-        writes = linear_write_plan(self.slope_spin.value(), self.offset_spin.value())
-        slope_raw, offset_raw = writes[0][1], writes[1][1]
-        text = f"Steigung 1234 = {self.slope_spin.value():.1f} (raw {slope_raw})\nOffset 1235 = {self.offset_spin.value():.1f} °C (raw {offset_raw})\n\nWirklich schreiben?"
-        if self._confirm_write("Lineare AT-Kurve schreiben", text):
-            for index, (register, raw_value) in enumerate(writes):
-                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation linear {register}", delay_ms=index * 350)
-            self.status_label.setText("Lineare AT-Kurve Schreiben gesendet.")
+        plan = linear_write_plan(self.slope_spin.value(), self.offset_spin.value())
+        values = (self.slope_spin.value(), self.offset_spin.value())
+        writes = tuple((register, raw, value) for (register, raw), value in zip(plan, values))
+        text = f"Steigung 1234 = {values[0]:.1f}\nOffset 1235 = {values[1]:.1f} °C\n\nWirklich schreiben?"
+        self._write(writes, "Lineare AT-Kurve schreiben", text, "AT-Kompensation linear")
 
     def write_seven_points(self):
         values = self._seven_targets()
         lines = [f"{at:+g} °C → {values[register]:.1f} °C (Register {register})" for at, register in AT_SEVEN_POINT_REGISTERS]
-        if self._confirm_write("7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines)):
-            for index, (register, raw_value) in enumerate(seven_point_write_plan(values)):
-                self.main_window.send_register_write(register, raw_value, DEFAULT_BUS_ADDR, label=f"AT-Kompensation 7-Punkt {register}", delay_ms=index * 350)
-            self.status_label.setText("7-Punkt-AT-Kurve Schreiben gesendet.")
+        writes = tuple((register, raw, values[register]) for register, raw in seven_point_write_plan(values))
+        self._write(writes, "7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines), "AT-Kompensation 7-Punkt")
 
     def read_from_wp(self):
+        owner = self.main_window
+        context = owner.control_context()
+        capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
+        if not capability:
+            self.status_label.setText(capability.reason)
+            self._update_write_actions()
+            return
+        if context.transport == "cloud":
+            if self.cloud_request is not None:
+                return  # Manual reads/autorefresh never build a request backlog.
+            owner = self.main_window
+            owner._at_cloud_generation = getattr(owner, "_at_cloud_generation", 0) + 1
+            self.cloud_request = CloudSnapshotRequest(owner._at_cloud_generation, AT_CLOUD_READ_CODES,
+                time.monotonic() + 60, context.username,
+                context.device_code, purpose="at_compensation")
+            self.cloud_read_timer.start(60000)
+            self.status_label.setText("Lese AT-Kompensation über Cloud ...")
+            error = owner.control_request_snapshot(self.cloud_request)
+            if error:
+                self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+            return
         self.status_label.setText("Lese AT-Kompensation ...")
-        for addr, qty in AT_READ_BLOCKS:
-            self.main_window.send_read_request(addr, qty, slave_addr=DEFAULT_BUS_ADDR, label=f"AT-Kompensation {addr}", delay_ms=250)
+        error = owner.control_read_blocks(AT_READ_BLOCKS, "AT-Kompensation", expected_context=context)
+        if error:
+            self.status_label.setText(error)
         self.refresh_from_live()
         QTimer.singleShot(1500, self.refresh_from_live)
+
+    def _cancel_cloud_read(self):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def _cloud_read_timeout(self):
+        self._cancel_cloud_read()
+        self.status_label.setText("AT-Kompensation Cloud-Timeout / keine frische Antwort.")
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self._cloud_identity_matches():
+            self.connection_changed()
+            return
+        if request.expired():
+            self._cloud_read_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and not any(row.get(flag) for flag in ("cached", "stale", "currentEmpty")) and row.get("value") is not None]
+        self._cancel_cloud_read()
+        if not error:
+            self.main_window.apply_cloud_rows_to_main(fresh)
+            self.refresh_from_live()
+        self.status_label.setText(f"AT-Kompensation Cloud: {len(fresh)}/{len(request.codes)} Werte" + (f" · {error}" if error else ""))
+
+    def closeEvent(self, event):
+        self.initial_read_timer.stop()
+        self.auto_refresh_timer.stop()
+        self._cancel_cloud_read()
+        super().closeEvent(event)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -4397,6 +4698,7 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
+        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
         self.pending_write_requests: list[dict[str, Any]] = []
         self.device_info_tracker = DeviceInfoTracker()
         self.device_info_dialog: Optional[DeviceInfoDialog] = None
@@ -4474,8 +4776,23 @@ class MainWindow(QMainWindow):
         self.cloud_write_thread: Optional[QThread] = None
         self.cloud_write_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.cloud_write_code: str = ""
+        self.cloud_read_thread: Optional[QThread] = None
+        self.cloud_read_worker: Optional[WarmLinkCloudReadWorker] = None
+        self.cloud_read_reg_no: int | None = None
+        self.cloud_read_code = ""
+        self._cloud_read_token = None
+        self._cloud_read_token_username = ""
+        self.cloud_session_authenticated = False
+        self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
+        self.cloud_previous_value_by_reg: dict[int, str] = {}
+        self.cloud_change_highlights: set[int] = set()
+        self.cloud_session = CloudSession()
+        self.cloud_credentials_cache = {}
+        self.cloud_timing_state = CloudTimingState()
         self.cloud_last_rows: list[dict[str, Any]] = []
+        self.csv_logger_controller = CsvLoggerController(self)
+        self.csv_logger_dialog = None
         self.about_dialog: Optional[AboutDialog] = None
         self.update_thread: Optional[QThread] = None
         self.update_worker: Optional[UpdateCheckWorker] = None
@@ -4567,7 +4884,10 @@ class MainWindow(QMainWindow):
             return
         self.device_info_tracker.start()
         self._log("Sonderfunktion Update Anfrage Cloud: LTE-Modem sendet Geräteinformationen per MQTT an die Cloud.")
-        worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
+        if self.current_backend_key() == "warmlink_raw":
+            self.send_read_request(4, 1, slave_addr=0x63, label="Geräte-Info Cloud-Anfrage", expect_response=False)
+        else:
+            worker.enqueue_read(4, 1, slave_addr=0x63, post_delay_ms=0)
         if self.device_info_dialog is not None:
             self.device_info_dialog.refresh()
 
@@ -4727,7 +5047,7 @@ class MainWindow(QMainWindow):
         self.display_translate_cb.setChecked(False)
         self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
-        self.cloud_btn = QPushButton("WarmLink Cloud / LTE ...")
+        self.cloud_btn = CloudStatusButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
@@ -4773,6 +5093,7 @@ class MainWindow(QMainWindow):
         apply_button_icon(self.clear_main_btn, "assets/icons/clear_main.svg", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", "Hauptfenster leeren", "Registertabelle und Hauptwerte leeren; Verbindung und Log bleiben unverändert.", show_text=True)
 
         top.addWidget(self.comm_settings_btn)
+        self.set_cloud_ui_state("DISCONNECTED")
         top.addWidget(self.cloud_btn)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
@@ -4798,29 +5119,16 @@ class MainWindow(QMainWindow):
         upper = QSplitter(Qt.Horizontal)
         splitter.addWidget(upper)
 
-        self.register_table = QTableWidget(0, 14)
+        self.register_table = QTableWidget(0, 15)
         self.register_table.setHorizontalHeaderLabels([
-            "Reg", "Code", "Name", "Typ", "Rohwert", "Letzter Wert", "Signed", "Wert", "Frame", "Bus", "Zeit", "Cloud", "Cloud-Code", "Cloud-Zeit"
+            "Reg", "Code", "Name", "Typ", "Rohwert", "Letzter Wert", "Signed", "Wert", "Frame", "Bus", "Zeit", "Cloud Wert", "Cloud vorher", "Cloud Code", "Cloud Abruf"
         ])
-        header = self.register_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(0, 58)
-        header.setSectionResizeMode(1, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(1, 68)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(6, 76)
-        header.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.register_table.setColumnWidth(7, 130)
-        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(10, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(11, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(12, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(13, QHeaderView.ResizeToContents)
+        self.main_table_columns = PersistentTableColumnWidths(
+            self.register_table, self.settings, MAIN_TABLE_COLUMN_WIDTHS,
+            lambda: self._save_settings(sync_main_fields=False),
+        )
+        self.register_table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.register_table.setWordWrap(False)
         self.register_table.setSortingEnabled(False)  # wichtig: sonst werden row-Indizes beim Live-Update falsch
         self.register_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.register_table.setAlternatingRowColors(False)
@@ -4858,6 +5166,7 @@ class MainWindow(QMainWindow):
         self.read_count_spin.setValue(1)
         self.read_btn = QPushButton("FC03 lesen")
         self.manual_register_btn = QPushButton("Register lesen/schreiben ...")
+        self.csv_logger_btn = QPushButton("CSV Logger ...")
         self.init_read_btn = QPushButton("Alle bekannten Register lesen")
         self.init_pause_spin = QSpinBox()
         self.init_pause_spin.setRange(100, 5000)
@@ -4882,6 +5191,14 @@ class MainWindow(QMainWindow):
         manual_layout.addWidget(self.init_read_btn, 0, 0)
         manual_layout.addWidget(self.init_progress_bar, 0, 1, 1, 3)
         manual_layout.addWidget(self.manual_register_btn, 1, 0, 1, 4)
+        self.cloud_progress_bar = QProgressBar()
+        self.cloud_progress_bar.setStyleSheet(self.init_progress_bar.styleSheet())
+        self.cloud_progress_bar.setFixedHeight(20)
+        self.cloud_progress_bar.hide()
+        manual_layout.addWidget(self.cloud_progress_bar, 2, 0, 1, 4)
+        self.cloud_countdown_timer = QTimer(self)
+        self.cloud_countdown_timer.setInterval(250)
+        self.cloud_countdown_timer.timeout.connect(self._refresh_cloud_countdown)
         manual_layout.setColumnStretch(3, 1)
 
         display_exp_box = QGroupBox("Display-Experimente PRIVATE")
@@ -5017,6 +5334,7 @@ class MainWindow(QMainWindow):
         special_layout.addWidget(self.bus_popup_btn, 12, 0, 1, 2)
         special_layout.addWidget(self.dual_logger_btn, 13, 0, 1, 2)
         special_layout.addWidget(self.warmlink_capture_btn, 14, 0, 1, 2)
+        special_layout.addWidget(self.csv_logger_btn, 14, 0, 1, 2)
         self._update_contact_table(None)
         self._update_fault_button_style()
 
@@ -5084,6 +5402,7 @@ class MainWindow(QMainWindow):
         self.timer_editor_btn.clicked.connect(self.open_timer_editor)
         self.onoff_timer_btn.clicked.connect(self.open_onoff_timer_editor)
         self.init_read_btn.clicked.connect(self.send_init_reads)
+        self.csv_logger_btn.clicked.connect(self.open_csv_logger)
         self.search_value_btn.clicked.connect(self.search_value_now)
         self.clear_search_btn.clicked.connect(self.clear_value_search)
         self.search_value_edit.returnPressed.connect(self.search_value_now)
@@ -5155,6 +5474,7 @@ class MainWindow(QMainWindow):
             "log_level": int(self.settings.get("log_level", 2)),
             "udp_diagnostic": self.settings.get("udp_diagnostic", {}),
             "main_window": self.settings.get("main_window", {}),
+            "main_table_column_widths": self.settings.get("main_table_column_widths", {}),
             "warmlink_cloud": self.settings.get("warmlink_cloud", {}),
             "warmlink_raw_capture": self.settings.get("warmlink_raw_capture", {}),
         }
@@ -5435,6 +5755,9 @@ class MainWindow(QMainWindow):
         )
 
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
+        if int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D:
+            # getDataByCode already returns an engineering value.
+            return str(reg.display_value)
         if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
@@ -5778,7 +6101,12 @@ class MainWindow(QMainWindow):
             self.last_values.clear()
             self.previous_value_texts.clear()
             self.register_change_highlights.clear()
+            self.cloud_previous_value_by_reg.clear()
+            self.cloud_change_highlights.clear()
+            self.register_flash_tokens.clear()
+            self.register_flash_colors.clear()
             self.cloud_overlay_by_reg.clear()
+            self.cloud_last_rows.clear()
             self.last_contact_value = None
             self.last_load_output_value = None
             self._update_contact_table(None)
@@ -6182,6 +6510,8 @@ class MainWindow(QMainWindow):
         self.worker.error.connect(self.on_error)
         self.worker.log.connect(self._log)
         self.worker.frame_decoded.connect(self.on_frame_decoded)
+        self.worker.read_sent.connect(self._on_warmlink_read_sent)
+        self.worker.read_failed.connect(self._on_warmlink_read_failed)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
         self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.tx_blocked_attempt.connect(self._on_passive_tx_blocked)
@@ -6250,9 +6580,17 @@ class MainWindow(QMainWindow):
         if bool(self.settings.get("auto_read_init_on_startup", False)) and not passive:
             QTimer.singleShot(800, self.send_init_reads)
         self._apply_live_poll_timer_state()
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
+        self._notify_control_connection_changed()
 
     @Slot()
     def on_disconnected(self):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.cancel()
+            self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
         # Beim Backend "Modbus Display" wird fuer "Alle bekannten Register lesen"
         # absichtlich der robuste DisplayWorker-Pfad benutzt. Dadurch trennt die
         # urspruengliche Hauptverbindung auf Port 2002 (EOF), waehrend der
@@ -6283,6 +6621,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, "live_poll_timer"):
             self.live_poll_timer.stop()
         self._stop_warmlink_capture("gestoppt")
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
+        self._notify_control_connection_changed()
 
     @Slot(str)
     def on_error(self, text: str):
@@ -6362,6 +6704,9 @@ class MainWindow(QMainWindow):
             controller = getattr(self, "warmlink_init_controller", None)
             if controller is not None and getattr(controller, "active", False): controller.cancel()
             self.pending_read_requests = []
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if scheduler:
+                scheduler.cancel()
             if hasattr(self, "write_send_btn"): self.write_send_btn.setEnabled(False)
             if hasattr(self, "init_read_btn"): self.init_read_btn.setEnabled(False)
             self._log(f"Firmware-Capture: TX-Sperre AKTIV – streng passiv; {dropped} Queue-Einträge verworfen.")
@@ -6370,6 +6715,7 @@ class MainWindow(QMainWindow):
                 self.write_send_btn.setEnabled(bool(self.connected))
             self._update_init_read_button_state()
             self._apply_live_poll_timer_state()
+        self._notify_control_connection_changed()
 
     @Slot(str, int, int, int)
     def _on_passive_tx_blocked(self, kind: str, slave: int, addr: int, size: int) -> None:
@@ -6706,7 +7052,7 @@ class MainWindow(QMainWindow):
                 elif int(reg.reg) == 2012:
                     display_hmi_frame_had_true_2012 = True
 
-            if changed or reg.reg not in self.table_rows:
+            if changed or reg.reg not in self.table_rows or self._is_cloud_only_register(reg.reg):
                 self._upsert_register_row(reg, changed)
 
             if reg.reg == 2034:
@@ -6840,9 +7186,7 @@ class MainWindow(QMainWindow):
         self.reg_count_label.setText(str(len(self.last_values)))
 
     def _resize_name_column(self):
-        self.register_table.resizeColumnToContents(2)
-        if self.register_table.columnWidth(2) > 360:
-            self.register_table.setColumnWidth(2, 360)
+        """Keep the persistent interactive Name width unchanged during live updates."""
 
     def _sorted_row_for_reg(self, reg_no: int) -> int:
         # Neue Register werden nach Registernummer einsortiert, auch wenn sie
@@ -6930,7 +7274,7 @@ class MainWindow(QMainWindow):
         # Tabellen-/Such-Refresh wieder auf die normale Bereichsfarbe gesetzt.
         if reg_no in self.value_search_matches or reg_no in self.name_search_matches:
             return self._register_search_color(dark)
-        if changed or self._register_change_highlight_active(reg_no):
+        if changed or self._register_change_highlight_active(reg_no) or reg_no in self.cloud_change_highlights:
             return self._register_changed_color(reg_no, dark)
 
         area = self._register_area_color(reg_no, dark)
@@ -7030,15 +7374,21 @@ class MainWindow(QMainWindow):
             f"0x{getattr(reg, 'slave_addr', DEFAULT_BUS_ADDR):02X}",
             time.strftime("%H:%M:%S", time.localtime(reg.timestamp)),
         ]
+        if getattr(reg, "value_source", "modbus") == "cloud" and reg.dtype.upper() != "BITFIELD":
+            values[4] = "--"
+            values[6] = "--"
+        if getattr(reg, "value_source", "modbus") == "cloud":
+            values[5] = self.cloud_previous_value_by_reg.get(reg.reg, "--")
         cloud_info = self.cloud_overlay_by_reg.get(int(reg.reg), {})
         if cloud_info:
             values.extend([
                 str(cloud_info.get("value", "")),
+                self.cloud_previous_value_by_reg.get(reg.reg, "--"),
                 str(cloud_info.get("code", "")),
                 str(cloud_info.get("lastFetch", "")),
             ])
         else:
-            values.extend(["", "", ""])
+            values.extend(["", "", "", ""])
         is_block_row = is_block_dtype(reg.dtype)
         self.register_table.setRowHeight(row, 19 if is_block_row else 24)
         if changed:
@@ -7059,6 +7409,8 @@ class MainWindow(QMainWindow):
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if col == 2 and value:
                 item.setToolTip(reg.name)
+            elif col in (11, 12):
+                item.setToolTip(value)
             apply_block_header_item_style(self.register_table, item, is_block_row)
 
         # PRIVATE fix51: Hintergrund nach dem kompletten Text-/Font-Update setzen,
@@ -7085,7 +7437,7 @@ class MainWindow(QMainWindow):
         except Exception:
             return 0, text
 
-    def _cloud_display_text(self, code: str, value: Any) -> str:
+    def _cloud_display_text(self, code: str, value: Any, live_metadata=None) -> str:
         """Cloud-Wert fuer die Haupttabelle wie lokale Werte anzeigen.
 
         Cloud-Werte kommen oft bereits skaliert (z.B. Temperaturen als 34.5),
@@ -7125,14 +7477,11 @@ class MainWindow(QMainWindow):
                 if str(raw_int) in mapping:
                     return f"{raw_int} = {mapping[str(raw_int)]}"
 
-        unit = code_unit(code)
+        unit = code_unit(code, live_metadata)
         return f"{text} {unit}".strip()
 
     def _cloud_only_enabled(self) -> bool:
-        cfg = self.settings.get("warmlink_cloud", {})
-        if not isinstance(cfg, dict):
-            return True
-        return bool(cfg.get("show_cloud_only", True))
+        return True
 
     def _is_cloud_only_register(self, reg_no: int) -> bool:
         reg = self.latest_regs.get(int(reg_no))
@@ -7174,12 +7523,6 @@ class MainWindow(QMainWindow):
             self._apply_cloud_only_visibility()
         self._log(f"Cloud-only Zeilen: {'ein' if self._cloud_only_enabled() else 'aus'}", level=2)
 
-    def _is_safe_cloud_local_mapping(
-        self, cloud_code: str, local_code: str, hint: dict[str, Any] | None = None
-    ) -> bool:
-        """Return True only for fachlich passende Cloud-/Lokal-Code-Mappings."""
-        return cloud_hint_matches_local_code(cloud_code, hint or cloud_hint(cloud_code), local_code)
-
     def _validated_cloud_modbus_register(self, cloud_code: str, hint: dict[str, Any] | None = None) -> tuple[int | None, str, str]:
         """Validate a Cloud hint against the static local register map.
 
@@ -7188,7 +7531,7 @@ class MainWindow(QMainWindow):
         rows.
         """
         hint = hint or cloud_hint(cloud_code)
-        reg_no = cloud_modbus_register(cloud_code)
+        reg_no = resolve_cloud_projection_register(cloud_code, hint, self.register_defs)
         if reg_no is None:
             return None, "", "no_register"
         try:
@@ -7198,9 +7541,124 @@ class MainWindow(QMainWindow):
         if reg_no not in getattr(self.regmap, "items", {}):
             return None, "", "unknown_register"
         local_code = self._code_for_register(reg_no)
-        if not self._is_safe_cloud_local_mapping(cloud_code, local_code, hint):
-            return None, local_code, "code_mismatch"
         return reg_no, local_code, ""
+
+    def register_value_sources(self, reg_no: int):
+        """Shared source accessor for dialogs; Cloud engineering values stay separate."""
+        return register_value_sources(self, int(reg_no))
+
+    def control_context(self):
+        local = bool(getattr(self, "connected", False))
+        worker = self._active_io_worker()
+        transport = select_control_transport(local or worker is not None,
+                                             self.current_backend_key(), self.is_cloud_connected())
+        if transport == "cloud":
+            return ControlContext(transport, username=str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip(),
+                                  device_code=self.cloud_session_device_code)
+        return ControlContext(transport, local_worker=worker)
+
+    def control_transport(self):
+        return self.control_context().transport
+
+    def _control_cloud_busy(self, *, write=False):
+        dialog = getattr(self, "warmlink_cloud_dialog", None)
+        busy = (getattr(self, "cloud_read_thread", None) is not None or
+                getattr(self, "cloud_write_thread", None) is not None or
+                getattr(dialog, "command_thread", None) is not None or
+                getattr(dialog, "debug_thread", None) is not None)
+        if write:
+            busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
+                              for name in ("at_comp_dialog", "wp_control_dialog", "csv_logger_controller"))
+            pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
+            busy = busy or bool(pending and pending())
+        return busy
+
+    def _control_capability(self, registers, *, write=False):
+        return register_control_capability(self.control_context(), registers, cloud_code_for_register,
+            write=write, capture=self._is_firmware_capture_mode(), busy=self._control_cloud_busy(write=write))
+
+    def control_can_read(self, *registers):
+        return self._control_capability(registers)
+
+    def control_can_write(self, *registers):
+        return self._control_capability(registers, write=True)
+
+    def control_write_register(self, register, raw_value, engineering_value=None, label="", *, expected_context=None):
+        return self.control_write_registers(((register, raw_value, engineering_value),), label,
+                                            expected_context=expected_context)
+
+    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350):
+        """Preflight the whole action, then use one fixed existing I/O path."""
+        context = expected_context or self.control_context()
+        if context != self.control_context():
+            return "Steuerverbindung oder Geräteauswahl geändert; Schreiben abgebrochen."
+        writes = tuple(writes)
+        capability = self.control_can_write(*(register for register, _raw, _value in writes))
+        if not capability:
+            return capability.reason
+        try:
+            validated = [(register, validate_register_write_value(int(raw), self.regmap.get(register)) & 0xFFFF, value)
+                         for register, raw, value in writes]
+            if context.transport == "cloud":
+                commands = tuple((cloud_code_for_register(register, require_write_allowed=True),
+                                  cloud_write_value_from_register_value(
+                                      cloud_code_for_register(register, require_write_allowed=True), raw,
+                                      self.regmap.get(register), value)) for register, raw, value in validated)
+                if commands:
+                    return self.send_cloud_write(*commands[0], device_code=context.device_code, label=label,
+                        control_context=context, commands=commands if len(commands) > 1 else None)
+            else:
+                for index, (register, raw, _value) in enumerate(validated):
+                    self.send_register_write(register, raw, DEFAULT_BUS_ADDR, label=label,
+                                             delay_ms=index * delay_ms)
+        except (ValueError, RuntimeError) as exc:
+            return str(exc)
+        return None
+
+    def control_read_blocks(self, blocks, label, *, expected_context=None):
+        context = expected_context or self.control_context()
+        if context != self.control_context():
+            return "Steuerverbindung geändert; Lesen abgebrochen."
+        capability = self.control_can_read()
+        if not capability:
+            return capability.reason
+        if context.transport not in LOCAL_TRANSPORTS:
+            return "Lokaler Leseweg ist nicht verfügbar."
+        try:
+            for address, quantity in blocks:
+                self.send_read_request(address, quantity, slave_addr=DEFAULT_BUS_ADDR,
+                                       label=f"{label} {address}", delay_ms=250)
+        except (ValueError, RuntimeError) as exc:
+            return str(exc)
+        return None
+
+    def control_request_snapshot(self, request):
+        context = self.control_context()
+        if context.transport != "cloud":
+            return "Cloud-Abfrage über den aktuellen Steuertransport nicht verfügbar."
+        if (request.username, request.device_code) != (context.username, context.device_code):
+            return "Cloud-Geräteauswahl geändert; Lesen abgebrochen."
+        return self.request_cloud_snapshot(request)
+
+    def _notify_control_connection_changed(self):
+        context = getattr(self, "_control_cloud_write_context", None)
+        if context is not None and (context != self.control_context() or self._is_firmware_capture_mode()):
+            self._control_cloud_write_cancelled.set()
+        for name in ("wp_control_dialog", "at_comp_dialog"):
+            dialog = getattr(self, name, None)
+            if dialog is not None:
+                dialog.connection_changed()
+        update = getattr(getattr(self, "warmlink_cloud_dialog", None), "_update_write_controls", None)
+        if update is not None:
+            update()
+
+    def _notify_cloud_register_update(self, reg_no: int):
+        # New dialogs can opt in without changing the local register update path.
+        for attribute in ("parameter_dialog", "at_comp_dialog", "wp_control_dialog"):
+            dialog = getattr(self, attribute, None)
+            callback = getattr(dialog, "update_from_cloud_register", None)
+            if callback is not None:
+                callback(reg_no)
 
     def apply_cloud_rows_to_main(self, rows: list[dict[str, Any]], show_cloud_only: bool = True) -> None:
         """Cloud-Werte als Overlay in der Haupttabelle anzeigen.
@@ -7211,88 +7669,165 @@ class MainWindow(QMainWindow):
         """
         if rows is None:
             return
-        self.cloud_last_rows = [dict(r) for r in rows if isinstance(r, dict)]
-        show_cloud_only = bool(show_cloud_only and self._cloud_only_enabled())
+        self.cloud_session.merge(rows)
+        cached_rows = {r.get("code"): dict(r) for r in self.cloud_last_rows}
+        cached_rows.update({r.get("code"): dict(r) for r in rows if isinstance(r, dict)})
+        self.cloud_last_rows = list(cached_rows.values())
+        show_cloud_only = True
         changed_regs: list[int] = []
+        value_changed_regs: list[int] = []
+        new_cloud_row = False
         seen_cloud_codes: set[str] = set()
         seen_registers: set[int] = set()
-        for row in rows:
-            if not isinstance(row, dict) or not row.get("supported"):
+        old_updates = self.register_table.updatesEnabled()
+        old_suppress = getattr(self, "_suppress_name_resize", False)
+        old_count = self.register_table.rowCount()
+        self.register_table.setUpdatesEnabled(False)
+        self._suppress_name_resize = True
+        try:
+            for row in rows:
+                if not isinstance(row, dict) or not row.get("supported"):
+                    continue
+                code = str(row.get("code", "")).strip()
+                if not code or code in seen_cloud_codes:
+                    continue
+                seen_cloud_codes.add(code)
+                hint = cloud_hint(code)
+                reg_no, local_code, validation_error = self._validated_cloud_modbus_register(code, hint)
+                raw_reg_no = cloud_modbus_register(code)
+                if reg_no is None:
+                    try:
+                        stale_reg = int(raw_reg_no) if raw_reg_no is not None else None
+                    except Exception:
+                        stale_reg = None
+                    if stale_reg is not None and stale_reg in self.cloud_overlay_by_reg:
+                        self.cloud_overlay_by_reg.pop(stale_reg, None)
+                        changed_regs.append(stale_reg)
+                    if validation_error == "code_mismatch":
+                        self._log(
+                            f"Cloud mapping skipped: code mismatch cloud={code} "
+                            f"local={local_code or '?'} reg={raw_reg_no}",
+                            level=2,
+                        )
+                    continue
+                if reg_no in seen_registers:
+                    continue
+                seen_registers.add(reg_no)
+                has_local_register = self._has_local_register_entry(reg_no)
+                value = row.get("value", "")
+                translated = translate_cloud_value(code, value, self.register_defs.get(str(reg_no), {}), hint, row)
+                info = {
+                    "code": code,
+                    "value": translated.display,
+                    "raw_value": value,
+                    "raw": translated.raw,
+                    "engineering_value": translated.raw,
+                    "metadata": dict(row),
+                    "active_bits": translated.active_bits,
+                    "lastFetch": row.get("lastFetch", ""),
+                    "confidence": code_confidence(code),
+                    "source": "warmlink-cloud",
+                    "dataType": row.get("dataType", ""),
+                }
+                old_info = self.cloud_overlay_by_reg.get(reg_no, {})
+                if old_info == info:
+                    continue
+                # Compare the Cloud payload (already in engineering units),
+                # independently of timestamps, types, units and stale flags.
+                value_changed = bool(old_info and not row.get("stale") and value is not None
+                                     and not cloud_values_equal(old_info.get("raw_value"), value))
+                if value_changed:
+                    self.cloud_previous_value_by_reg[reg_no] = str(old_info["value"])
+                    self.cloud_change_highlights.add(reg_no)
+                    value_changed_regs.append(reg_no)
+                self.cloud_overlay_by_reg[reg_no] = info
+                changed_regs.append(reg_no)
+                if reg_no == 2034 and not self._has_local_register_entry(reg_no):
+                    if self.contact_dialog is not None and self.contact_dialog.isVisible():
+                        self.contact_dialog.set_value(int(translated.raw))
+                if reg_no == 2019 and not self._has_local_register_entry(reg_no):
+                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+                        self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
+                if show_cloud_only and not has_local_register and (old_info.get("value") != info["value"] or reg_no not in self.table_rows):
+                    new_cloud_row = new_cloud_row or reg_no not in self.table_rows
+                    reg_info = self.regmap.get(reg_no)
+                    try:
+                        raw_int = int(translated.raw)
+                    except (TypeError, ValueError):
+                        raw_int, _display_text = self._parse_cloud_numeric_value(value)
+                    mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
+                    mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
+                    name = str(hint.get("name") or mapped_name or f"Cloud {code}")
+                    dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
+                    # raw_value remains a legacy numeric carrier for existing
+                    # projections/bit decoders. value_source marks it as Cloud;
+                    # local_raw_value is None, cloud_value retains full precision.
+                    disp = translated.display
+                    try:
+                        signed = s16(raw_int & 0xFFFF)
+                    except Exception:
+                        signed = raw_int
+                    self._upsert_register_row(DecodedRegister(
+                        slave_addr=0xC1,
+                        reg=int(reg_no),
+                        index=0,
+                        frame_type=0xC10D,
+                        raw_value=raw_int & 0xFFFF,
+                        signed_value=signed,
+                        display_value=disp,
+                        name=name,
+                        dtype=dtype,
+                        timestamp=time.time(),
+                        value_source="cloud",
+                        cloud_value=translated.raw,
+                    ), changed=False)
+                self._notify_cloud_register_update(reg_no)
+                for dialog in list(self.register_write_dialogs.values()):
+                    if dialog.reg_no == reg_no:
+                        dialog.update_from_cloud_value()
+            if new_cloud_row:
+                self._apply_cloud_only_visibility()
+            for reg_no in changed_regs:
+                self._refresh_cloud_cells_for_register(reg_no)
+            for reg_no in value_changed_regs:
+                self.flash_register_row(reg_no)
+            if changed_regs:
+                if any(reg == 2019 or 2081 <= reg <= 2090 for reg in changed_regs):
+                    self._update_fault_decoder()
+                self.register_table.viewport().update()
+        finally:
+            self._suppress_name_resize = old_suppress
+            self.register_table.setUpdatesEnabled(old_updates)
+        if old_count != self.register_table.rowCount() and not old_suppress:
+            self._resize_name_column()
+
+    def clear_cloud_device_values(self):
+        """Discard values of the previous cloud device, retaining local registers."""
+        self.clear_cloud_overlay()
+        for reg_no in list(self.latest_regs):
+            if not self._is_cloud_only_register(reg_no):
                 continue
-            code = str(row.get("code", "")).strip()
-            if not code or code in seen_cloud_codes:
-                continue
-            seen_cloud_codes.add(code)
-            hint = cloud_hint(code)
-            reg_no, local_code, validation_error = self._validated_cloud_modbus_register(code, hint)
-            raw_reg_no = cloud_modbus_register(code)
-            if reg_no is None:
-                try:
-                    stale_reg = int(raw_reg_no) if raw_reg_no is not None else None
-                except Exception:
-                    stale_reg = None
-                if stale_reg is not None and stale_reg in self.cloud_overlay_by_reg:
-                    self.cloud_overlay_by_reg.pop(stale_reg, None)
-                    changed_regs.append(stale_reg)
-                if validation_error == "code_mismatch":
-                    self._log(
-                        f"Cloud mapping skipped: code mismatch cloud={code} "
-                        f"local={local_code or '?'} reg={raw_reg_no}",
-                        level=2,
-                    )
-                continue
-            if reg_no in seen_registers:
-                continue
-            seen_registers.add(reg_no)
-            has_local_register = self._has_local_register_entry(reg_no)
-            has_existing_row = reg_no in self.table_rows
-            value = row.get("value", "")
-            info = {
-                "code": code,
-                "value": self._cloud_display_text(code, value),
-                "raw_value": value,
-                "lastFetch": row.get("lastFetch", ""),
-                "confidence": code_confidence(code),
-                "dataType": row.get("dataType", ""),
-            }
-            self.cloud_overlay_by_reg[reg_no] = info
-            changed_regs.append(reg_no)
-            if show_cloud_only and not has_local_register and not has_existing_row:
-                reg_info = self.regmap.get(reg_no)
-                raw_int, display_text = self._parse_cloud_numeric_value(value)
-                mapped_name = getattr(reg_info, "name", "") if reg_info is not None else ""
-                mapped_dtype = getattr(reg_info, "dtype", "") if reg_info is not None else ""
-                name = str(hint.get("name") or mapped_name or f"Cloud {code}")
-                dtype = str(mapped_dtype or row.get("dataType") or "CLOUD")
-                disp = self._cloud_display_text(code, value)
-                try:
-                    signed = s16(raw_int & 0xFFFF)
-                except Exception:
-                    signed = raw_int
-                self._upsert_register_row(DecodedRegister(
-                    slave_addr=0xC1,
-                    reg=int(reg_no),
-                    index=0,
-                    frame_type=0xC10D,
-                    raw_value=raw_int & 0xFFFF,
-                    signed_value=signed,
-                    display_value=disp,
-                    name=name,
-                    dtype=dtype,
-                    timestamp=time.time(),
-                ), changed=False)
-        self._apply_cloud_only_visibility()
-        for reg_no in changed_regs:
-            self._refresh_cloud_cells_for_register(reg_no)
-        if changed_regs:
-            self.register_table.viewport().update()
+            self.latest_regs.pop(reg_no, None)
+            row = self.table_rows.pop(reg_no, None)
+            if row is not None:
+                self.register_table.removeRow(row)
+                for key in self.table_rows:
+                    if self.table_rows[key] > row:
+                        self.table_rows[key] -= 1
+        for dialog in self.register_write_dialogs.values():
+            dialog.refresh_from_live()
+        self._update_fault_decoder()
+        self._notify_control_connection_changed()
 
     def clear_cloud_overlay(self) -> None:
         regs = list(self.cloud_overlay_by_reg.keys())
         self.cloud_overlay_by_reg.clear()
+        self.cloud_previous_value_by_reg.clear()
+        self.cloud_change_highlights.clear()
         self.cloud_last_rows = []
         for reg_no in regs:
             self._refresh_cloud_cells_for_register(reg_no)
+            self._notify_cloud_register_update(reg_no)
         self._apply_cloud_only_visibility()
 
     def _refresh_cloud_cells_for_register(self, reg_no: int) -> None:
@@ -7302,6 +7837,7 @@ class MainWindow(QMainWindow):
         cloud_info = self.cloud_overlay_by_reg.get(int(reg_no), {})
         vals = [
             str(cloud_info.get("value", "")) if cloud_info else "",
+            self.cloud_previous_value_by_reg.get(reg_no, "--") if cloud_info else "",
             str(cloud_info.get("code", "")) if cloud_info else "",
             str(cloud_info.get("lastFetch", "")) if cloud_info else "",
         ]
@@ -7311,9 +7847,14 @@ class MainWindow(QMainWindow):
             if item is None:
                 item = QTableWidgetItem()
                 self.register_table.setItem(row, col, item)
-            item.setText(val)
-            if cloud_info:
-                item.setToolTip(f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})")
+            if item.text() != val:
+                item.setText(val)
+            context = f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})" if cloud_info else ""
+            item.setToolTip(f"{val}\n{context}" if cloud_info and col in (11, 12) else context)
+        if self._is_cloud_only_register(reg_no):
+            item = self.register_table.item(row, 5)
+            if item is not None:
+                item.setText(self.cloud_previous_value_by_reg.get(reg_no, "--"))
         self._apply_register_row_visual_state(int(reg_no))
 
     def _update_contact_table(self, value: Optional[int]):
@@ -7333,7 +7874,9 @@ class MainWindow(QMainWindow):
             self.load_output_dialog.set_value(value)
 
     def _fault_alarm_active(self) -> bool:
-        value = self.last_values.get(2019, self.last_load_output_value)
+        value = self.last_values.get(2019)
+        if value is None:
+            value = self.cloud_overlay_by_reg.get(2019, {}).get("raw")
         try:
             return bool(int(value) & (1 << 10)) if value is not None else False
         except Exception:
@@ -7341,9 +7884,13 @@ class MainWindow(QMainWindow):
 
     def _active_fault_count(self) -> int:
         count = 0
-        for reg_no in (2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083):
+        from dialogs.decoder_dialogs import FaultDecoderDialog
+        for reg_no in FaultDecoderDialog.FAULT_REGS:
             try:
-                raw = int(self.last_values.get(reg_no, 0)) & 0xFFFF
+                value = self.last_values.get(reg_no)
+                if value is None:
+                    value = self.cloud_overlay_by_reg.get(reg_no, {}).get("raw", 0)
+                raw = int(value) & 0xFFFF
             except Exception:
                 raw = 0
             count += raw.bit_count()
@@ -7410,6 +7957,29 @@ class MainWindow(QMainWindow):
             self.offline_dialog.raise_()
             self.offline_dialog.activateWindow()
 
+    def open_csv_logger(self):
+        if self.csv_logger_dialog is None:
+            self.csv_logger_dialog = CsvLoggerDialog(self)
+            self.csv_logger_dialog.finished.connect(lambda _=None: setattr(self, "csv_logger_dialog", None))
+        self.csv_logger_dialog.show()
+        self.csv_logger_dialog.raise_()
+        self.csv_logger_dialog.activateWindow()
+
+    def request_csv_cloud_snapshot(self, request):
+        return self.request_cloud_snapshot(request)
+
+    def request_cloud_snapshot(self, request):
+        if self._is_firmware_capture_mode():
+            return "Firmware-Capture aktiv – aktive Cloud-Abfragen sind gesperrt."
+        if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code or request.username != str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip():
+            return "Keine gültige Cloud-Verbindung mit ausgewähltem Gerät."
+        if self.cloud_read_thread is not None or self.cloud_write_thread is not None:
+            return "Ein Cloud-Einzelread oder Schreibbefehl läuft; bitte danach erneut lesen."
+        if self.warmlink_cloud_dialog is None:
+            self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
+            self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
+        return self.warmlink_cloud_dialog.request_snapshot(request)
+
     def open_dual_logger_dialog(self):
         if self.dual_logger_dialog is None or not self.dual_logger_dialog.isVisible():
             self.dual_logger_dialog = DualBusLoggerDialog(self)
@@ -7421,7 +7991,10 @@ class MainWindow(QMainWindow):
 
     def open_contact_decoder(self):
         if self.contact_dialog is None or not self.contact_dialog.isVisible():
-            self.contact_dialog = ContactDecoderDialog(self, self.last_contact_value)
+            value = self.last_values.get(2034)
+            if value is None:
+                value = self.cloud_overlay_by_reg.get(2034, {}).get("raw")
+            self.contact_dialog = ContactDecoderDialog(self, value)
             self.contact_dialog.finished.connect(lambda _=None: setattr(self, "contact_dialog", None))
             self.contact_dialog.show()
         else:
@@ -7430,7 +8003,10 @@ class MainWindow(QMainWindow):
 
     def open_load_output_decoder(self):
         if self.load_output_dialog is None or not self.load_output_dialog.isVisible():
-            self.load_output_dialog = LoadOutputDecoderDialog(self, self.last_load_output_value if self.last_load_output_value is not None else self.last_values.get(2019))
+            value = self.last_values.get(2019)
+            if value is None:
+                value = self.cloud_overlay_by_reg.get(2019, {}).get("raw")
+            self.load_output_dialog = LoadOutputDecoderDialog(self, value)
             self.load_output_dialog.finished.connect(lambda _=None: setattr(self, "load_output_dialog", None))
             self.load_output_dialog.show()
         else:
@@ -8130,6 +8706,8 @@ class MainWindow(QMainWindow):
         return False
 
     def _pending_read_timeout_s(self, req: dict[str, Any]) -> float:
+        if req.get("scheduler"):
+            return WARMLINK_READ_TIMEOUT_S
         label = str(req.get("label", ""))
         if label.startswith("manuell") or label.startswith("manuelles Popup"):
             return 5.0
@@ -8146,9 +8724,12 @@ class MainWindow(QMainWindow):
 
     def remove_pending_read_requests_by_label(self, labels: set[str], log_prefix: str = "READ") -> int:
         labels = {str(label) for label in labels}
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.cancel_labels(labels)
         removed = 0
         for req in list(getattr(self, "pending_read_requests", []) or []):
-            if str(req.get("label", "")) not in labels:
+            if str(req.get("label", "")) not in labels or req.get("scheduler"):
                 continue
             try:
                 self.pending_read_requests.remove(req)
@@ -8168,6 +8749,8 @@ class MainWindow(QMainWindow):
     def _check_pending_read_timeouts(self) -> None:
         now = time.time()
         for req in list(getattr(self, "pending_read_requests", []) or []):
+            if req.get("scheduler") and req.get("time") is None:
+                continue
             timeout_s = self._pending_read_timeout_s(req)
             if now - float(req.get("time", now)) < timeout_s:
                 continue
@@ -8175,6 +8758,9 @@ class MainWindow(QMainWindow):
                 self.pending_read_requests.remove(req)
             except ValueError:
                 continue
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if req.get("scheduler") and scheduler:
+                scheduler.complete(req, timeout=True)
             addr = int(req.get("addr", req.get("wire_addr", 0)))
             qty = int(req.get("quantity", 1))
             label = f" ({req.get('label')})" if req.get("label") else ""
@@ -8231,6 +8817,12 @@ class MainWindow(QMainWindow):
                 system_io_dialog = getattr(self, "system_io_dialog", None)
                 if system_io_dialog is not None and system_io_dialog.isVisible():
                     system_io_dialog.show_read_timeout()
+            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
+                system_io_dialog = getattr(self, "system_io_dialog", None)
+                if system_io_dialog is not None and system_io_dialog.isVisible():
+                    for reg in frame.registers:
+                        system_io_dialog.update_from_live_register(reg)
+                    system_io_dialog.status_label.setText("System-/I/O-Status erfolgreich gelesen.")
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -8257,9 +8849,16 @@ class MainWindow(QMainWindow):
         if frame.mode != "read-response":
             return False
         if self.pending_read_requests:
-            self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=True)
+            logger_only = all(str(req.get("label", "")).startswith("CSV Logger ") for req in self.pending_read_requests)
+            self._log(f"DEBUG Pending-Read-Pruefung: {len(self.pending_read_requests)} offen fuer RX read-response bus=0x{int(frame.slave_addr):02X}, bytes={len(frame.payload)}", level=7, force=not logger_only)
         self._check_pending_read_timeouts()
-        for req in list(self.pending_read_requests):
+        requests = list(self.pending_read_requests)
+        if self.current_backend_key() == "warmlink_raw" and getattr(self, "warmlink_read_scheduler", None):
+            active = self.warmlink_read_scheduler.matching(int(frame.slave_addr), len(frame.payload))
+            requests = [active] if active is not None else []
+            if active is None:
+                self.warmlink_read_scheduler.unmatched_response()
+        for req in requests:
             if int(req["slave_addr"]) != int(frame.slave_addr):
                 continue
             quantity = int(req["quantity"])
@@ -8316,17 +8915,23 @@ class MainWindow(QMainWindow):
                             f"{int(req.get('addr', start_addr))}/0x{int(req.get('addr', start_addr)):04X} -> "
                             f"{start_addr}/0x{start_addr:04X}"
                         )
+            controller = getattr(self, "csv_logger_controller", None)
+            if controller is not None and frame.crc_ok:
+                controller.local_response(req, frame.registers, time.monotonic())
             self._check_endblock_signature(frame, start_addr)
             self.pending_read_requests.remove(req)
+            if req.get("scheduler"):
+                self.warmlink_read_scheduler.complete(req)
             label = f" ({req.get('label')})" if req.get("label") else ""
-            self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register")
+            logger_level = 7 if req_label.startswith("CSV Logger ") else None
+            self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register", level=logger_level)
             if frame.registers:
                 value_lines = []
                 for reg in frame.registers[:12]:
                     name = f" {reg.name}" if reg.name else ""
                     value_lines.append(f"{reg.reg}={reg.raw_value}/0x{reg.raw_value:04X} ({reg.display_value}){name}")
                 more = "" if len(frame.registers) <= 12 else f" ... (+{len(frame.registers) - 12})"
-                self._log("READ Werte: " + "; ".join(value_lines) + more)
+                self._log("READ Werte: " + "; ".join(value_lines) + more, level=logger_level)
             if str(req.get("label", "")).startswith("manuelles Popup") and self.manual_register_dialog is not None and self.manual_register_dialog.isVisible():
                 self.manual_register_dialog.show_read_response(start_addr, quantity, frame.registers)
             if req_label in {
@@ -8351,12 +8956,6 @@ class MainWindow(QMainWindow):
                         if int(reg.reg) == 2019:
                             load_dialog.set_value(int(reg.raw_value) & 0xFFFF, status_text="Lastausgänge erfolgreich gelesen.")
                             break
-            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
-                system_io_dialog = getattr(self, "system_io_dialog", None)
-                if system_io_dialog is not None and system_io_dialog.isVisible():
-                    for reg in frame.registers:
-                        system_io_dialog.update_from_live_register(reg)
-                    system_io_dialog.status_label.setText("System-/I/O-Status erfolgreich gelesen.")
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -8425,7 +9024,46 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
-    def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+    def _warmlink_queue_log(self, text):
+        self._log(text, level=7)
+
+    def _send_warmlink_read(self, request):
+        worker = self._active_io_worker()
+        if worker is None or self._is_firmware_capture_mode():
+            self.warmlink_read_scheduler.cancel()
+            self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
+            return
+        # Stale legacy pending entries may not suppress or steal a scheduled read.
+        self.pending_read_requests = [r for r in self.pending_read_requests if not (
+            int(r.get("slave_addr", -1)) == request["slave_addr"]
+            and int(r.get("wire_addr", r.get("addr", -1))) == request["wire_addr"]
+            and int(r.get("quantity", -1)) == request["quantity"])]
+        request.update(rx_count_at_send=int(getattr(worker, "total_rx_bytes", 0)),
+                       restbuffer_at_send=bool(getattr(worker, "buf", None)),
+                       restbuffer_len_at_send=len(getattr(worker, "buf", b"")))
+        if request.get("expect_response", True):
+            self.pending_read_requests.append(request)
+        worker.enqueue_read(request["wire_addr"], request["quantity"],
+            slave_addr=request["slave_addr"], post_delay_ms=request.get("delay_ms", 0))
+
+    @Slot(int, int, int)
+    def _on_warmlink_read_sent(self, addr, quantity, slave):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler:
+            scheduler.sent(addr, quantity, slave)
+
+    @Slot(int, int, int, str)
+    def _on_warmlink_read_failed(self, addr, quantity, slave, error):
+        scheduler = getattr(self, "warmlink_read_scheduler", None)
+        if scheduler and scheduler.active and scheduler.key(scheduler.active) == (slave, addr, quantity):
+            self._warmlink_queue_log("WARMLINK READ send failed: " + error)
+            self._warmlink_read_timeout(scheduler.active)
+
+    def _warmlink_read_timeout(self, request):
+        request["time"] = time.time() - WARMLINK_READ_TIMEOUT_S - 0.01
+        self._check_pending_read_timeouts()
+
+    def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0, *, priority=None, start_delay_ms=0, expect_response=True):
         # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
         # normale FC03-Reads absetzen. Stattdessen den bewährten Reboot-Snapshot
         # anstoßen. Manuelle FC03-Reads bleiben absichtlich direkt möglich, damit
@@ -8442,15 +9080,28 @@ class MainWindow(QMainWindow):
         note_text = f", {note}" if note else ""
         if self.current_backend_key() == "display_modbus" and int(slave_addr) != int(wire_slave):
             note_text += f", Display-Unit aus Einstellungen verwendet: Eingabe 0x{int(slave_addr):02X} -> TX 0x{wire_slave:02X}"
+        action = "READ angefordert" if self.current_backend_key() == "warmlink_raw" else "READ wird GESENDET"
         self._log(
-            f"READ wird GESENDET [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
+            f"{action} [{self.current_backend_label()}]: bus=0x{wire_slave:02X}, "
             f"addr={addr}/0x{addr:04X} -> wire={wire_addr}/0x{wire_addr:04X}, "
-            f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}"
+            f"anzahl={quantity}, TX={hexdump(frame, -1)}{note_text}",
+            level=7 if str(label).startswith("CSV Logger ") else None,
         )
         io_worker = self._active_io_worker()
         if io_worker is None:
             self._log("READ nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
             return
+
+        if self.current_backend_key() == "warmlink_raw":
+            if self._is_firmware_capture_mode():
+                self._log("Firmware-Capture aktiv – Senden gesperrt.")
+                return
+            scheduler = getattr(self, "warmlink_read_scheduler", None)
+            if scheduler is None:
+                scheduler = self.warmlink_read_scheduler = WarmlinkRequestScheduler(self,
+                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+            return scheduler.submit({"slave_addr": wire_slave, "addr": addr, "wire_addr": wire_addr,
+                "quantity": quantity, "label": label, "delay_ms": delay_ms, "expect_response": expect_response}, priority, start_delay_ms)
 
         # Wenn der DisplayWorker den Bus übernommen hat, landen die Antworten im
         # DualBusLoggerDialog und nicht mehr im normalen MainWindow-Framepfad.
@@ -8505,7 +9156,7 @@ class MainWindow(QMainWindow):
                         force=True,
                     )
                     return
-            self.pending_read_requests.append({
+            read_request = {
                 "slave_addr": wire_slave,
                 "addr": addr,
                 "wire_addr": wire_addr,
@@ -8515,11 +9166,12 @@ class MainWindow(QMainWindow):
                 "rx_count_at_send": int(getattr(io_worker, "total_rx_bytes", 0)),
                 "restbuffer_at_send": bool(getattr(io_worker, "buf", None)),
                 "restbuffer_len_at_send": len(getattr(io_worker, "buf", b"") or b""),
-            })
+            }
+            self.pending_read_requests.append(read_request)
             self._log(
                 f"DEBUG Pending-Read offen: bus=0x{int(wire_slave):02X}, "
                 f"addr={int(addr)}/0x{int(addr):04X}, qty={int(quantity)}, label={label or '-'}",
-                level=7, force=True,
+                level=7, force=not str(label).startswith("CSV Logger "),
             )
             if getattr(io_worker, "buf", None):
                 self._log(
@@ -8528,12 +9180,24 @@ class MainWindow(QMainWindow):
                     level=7, force=True,
                 )
         io_worker.enqueue_read(wire_addr, quantity, slave_addr=wire_slave, post_delay_ms=delay_ms)
+        return read_request if not routed_to_aux_display else None
 
     # V0.2.38: alter GUI-interner Display-Init-Pfad entfernt. Display-Init läuft nur noch über DisplayKnownReadController.
 
     def send_init_reads(self):
         if self._is_firmware_capture_mode():
             self._log("Firmware-Capture aktiv – Senden gesperrt.")
+            return
+        if not getattr(self, "connected", False):
+            if self.is_cloud_connected():
+                if self.warmlink_cloud_dialog is None:
+                    self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
+                    self.warmlink_cloud_dialog.finished.connect(
+                        lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
+                self._log("Alle bekannten Register lesen: vollständiger Cloud-Scan angefordert.")
+                self.warmlink_cloud_dialog.reload_all_values()
+            else:
+                self._log("Alle bekannten Register lesen: keine lokale oder gültige Cloud-Verbindung.")
             return
         try:
             slave_addr = self._parse_int_text(self.write_bus_edit.text())
@@ -8633,6 +9297,204 @@ class MainWindow(QMainWindow):
             self._open_manual_register_dialog_for_register(reg_no, row_slave_addr)
 
 
+    def set_cloud_ui_state(self, state, *, device_name=None, last_success_at=None):
+        self.cloud_ui_state = state
+        if device_name is not None:
+            self.cloud_ui_device_name = device_name
+        if last_success_at is not None:
+            self.cloud_last_success_at = last_success_at
+        button = getattr(self, "cloud_btn", None)
+        if button is None:
+            return
+        button.setProperty("cloudState", state)
+        button.setProperty("pollingActive", state == "POLLING")
+        button.setPollingActive(state == "POLLING")
+        styles = {
+            "DISCONNECTED": "border-left: 4px solid #808080;",
+            "CONNECTING": "border-left: 4px solid #d69b23;",
+            "CONNECTED": "border-left: 4px solid #38965b;",
+            "POLLING": "border-left: 4px solid #38965b;",
+            "ERROR": "border-left: 4px solid #c84b4b;",
+        }
+        button.setStyleSheet(styles.get(state, styles["DISCONNECTED"]))
+        text = {"DISCONNECTED": "Nicht verbunden", "CONNECTING": "Verbindung wird aufgebaut / erneuert",
+                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen"}
+        lines = ["WarmLink Cloud", text.get(state, state)]
+        name = getattr(self, "cloud_ui_device_name", "")
+        if name:
+            lines.append("Gerät: " + name)
+        last = getattr(self, "cloud_last_success_at", None)
+        if last:
+            lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
+        button.setToolTip("\n".join(lines))
+
+    def set_cloud_timing_state(self, state: CloudTimingState) -> None:
+        """Render worker scheduling without initiating or rescheduling requests."""
+        self.cloud_timing_state = state
+        self._refresh_cloud_countdown()
+        if state.deadline is not None and state.phase in ("POLL_WAIT", "RETRY"):
+            self.cloud_countdown_timer.start()
+        else:
+            self.cloud_countdown_timer.stop()
+
+    def _refresh_cloud_countdown(self) -> None:
+        state = self.cloud_timing_state
+        bar = self.cloud_progress_bar
+        bar.setProperty("cloudPhase", state.phase)
+        bar.setVisible(state.phase != "IDLE")
+        if state.phase == "IDLE":
+            return
+        if state.phase in ("POLL_WAIT", "RETRY") and state.deadline is not None:
+            remaining = max(0.0, state.deadline - time.monotonic())
+            seconds = int(remaining) + (remaining > int(remaining))
+            bar.setRange(0, max(1, round(state.duration * 1000)))
+            bar.setValue(round(remaining * 1000))
+            label = "Retry" if state.phase == "RETRY" else "nächster Poll"
+            bar.setFormat(f"Cloud: {label} in {seconds // 60:02d}:{seconds % 60:02d}")
+        else:
+            labels = {"INITIAL_SCAN": "Initialscan", "STATIC_RELOAD": "Konfigurationswerte",
+                      "POLL_RUNNING": "Livewerte", "DISCOVERY": "Geräte werden gesucht ...",
+                      "CONNECTING": "Verbindung wird aufgebaut ...", "LOADING_TOKEN": "Token wird geladen ...",
+                      "ERROR": "Verbindungsfehler"}
+            bar.setRange(0, state.total if state.total else 0)
+            bar.setValue(state.done)
+            label = labels.get(state.phase, state.phase)
+            bar.setFormat("Cloud: " + label + (f" {state.done}/{state.total}" if state.total else ""))
+
+    def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
+        """Record a proven session, independently of whether polling is active."""
+        previous_device = self.cloud_session_device_code
+        self.cloud_session_authenticated = bool(authenticated)
+        self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
+        self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
+        if previous_device and previous_device != self.cloud_session_device_code:
+            self.clear_cloud_device_values()
+        if hasattr(self, "init_read_btn"):
+            self._update_init_read_button_state()
+        controller = getattr(self, "csv_logger_controller", None)
+        if controller is not None:
+            controller.source_changed()
+        self._notify_control_connection_changed()
+        # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
+        # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
+        # Register-Refresh sichtbar bzw. unsichtbar bleiben.
+        for dialog in list(getattr(self, "register_write_dialogs", {}).values()):
+            try:
+                if dialog is not None and dialog.isVisible():
+                    dialog.update_cloud_actions()
+            except Exception:
+                pass
+
+    def is_cloud_connected(self) -> bool:
+        return bool(self.cloud_session_authenticated and self.cloud_session_device_code)
+
+    def cloud_code_for_register(self, reg_no: int, require_write_allowed: bool = False) -> str | None:
+        return cloud_code_for_register(reg_no, require_write_allowed=require_write_allowed)
+
+    def read_cloud_register(self, reg_no: int) -> str | None:
+        """Start a direct single read; return an immediate validation error."""
+        code = self.cloud_code_for_register(reg_no)
+        if not self.is_cloud_connected():
+            return "Keine gültige Cloud-Verbindung oder kein Gerät ausgewählt."
+        if not code:
+            return "Kein bestätigter Cloud-Code für dieses Register."
+        if self.cloud_read_thread is not None:
+            return "Es läuft bereits ein Cloud-Lesebefehl."
+        user, pw, token, _saved_device = self._cloud_write_credentials()
+        if not user:
+            return "Cloud-Zugang fehlt."
+        self.cloud_read_reg_no = int(reg_no)
+        self.cloud_read_code = code
+        self._cloud_read_username = user
+        cfg = self.settings.get("warmlink_cloud", {})
+        self.cloud_read_thread = QThread(self)
+        self.cloud_read_worker = WarmLinkCloudReadWorker(
+            username=user, password=pw or "", codes=[code],
+            device_code=self.cloud_session_device_code, initial_token=token, load_credentials=True,
+            use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
+            preferred_login_method=str(cfg.get("login_method") or "md5"),
+            login_fallbacks=bool(cfg.get("login_fallbacks", False)),
+        )
+        worker = self.cloud_read_worker
+        thread = self.cloud_read_thread
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.data.connect(self._on_cloud_read_rows)
+        worker.error.connect(self._on_cloud_read_error)
+        worker.log.connect(self._log)
+        worker.token_updated.connect(self._on_cloud_read_token)
+        worker.login_method.connect(self._on_cloud_read_login_method)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._cloud_read_finished)
+        for dialog in list(self.register_write_dialogs.values()):
+            dialog.update_cloud_actions()
+        thread.start()
+        return None
+
+    @Slot(list)
+    def _on_cloud_read_rows(self, rows: list[dict[str, Any]]) -> None:
+        self._on_cloud_read_data(self.cloud_read_code, rows)
+
+    def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
+        self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
+        if self.warmlink_cloud_dialog is not None:
+            self.warmlink_cloud_dialog._on_data(rows)
+        row = next((r for r in rows if r.get("code") == code and r.get("supported")), None)
+        error = "Cloud liefert keinen Wert für " + code if row is None else ""
+        display = self.cloud_overlay_by_reg.get(self.cloud_read_reg_no, {}).get("value", "kein Wert")
+        self._log(f"WarmLink Cloud Readback: {code}={display}", level=2)
+        self._complete_cloud_read_dialogs(error)
+
+    def _complete_cloud_read_dialogs(self, error: str = "") -> None:
+        for dialog in list(self.register_write_dialogs.values()):
+            if dialog.reg_no == self.cloud_read_reg_no:
+                dialog.cloud_read_completed(error=error)
+
+    @Slot(str)
+    def _on_cloud_read_token(self, token: str) -> None:
+        self._cloud_read_token = token
+        self._cloud_read_token_username = self._cloud_read_username
+        cache = getattr(self, "cloud_credentials_cache", {})
+        cache.update(token=token, token_user=self._cloud_read_username, login_at=time.time())
+        self.cloud_credentials_cache = cache
+        dlg = self.warmlink_cloud_dialog
+        if dlg is not None and dlg.username_edit.text().strip() == self._cloud_read_username:
+            dlg._on_token_updated(token)
+        elif self.settings.get("warmlink_cloud", {}).get("save_token", True):
+            store = getattr(self, "_cloud_keyring_store", None)
+            if store is None:
+                store = self._cloud_keyring_store = AsyncKeyringStore(self)
+            username = self._cloud_read_username
+            store.submit(lambda: set_token(username, token))
+
+    @Slot(str)
+    def _on_cloud_read_login_method(self, method: str) -> None:
+        self.settings.setdefault("warmlink_cloud", {})["login_method"] = method
+
+    @Slot()
+    def _cloud_read_finished(self) -> None:
+        self.cloud_read_thread = None
+        self.cloud_read_worker = None
+        self.cloud_read_reg_no = None
+        self.cloud_read_code = ""
+        for dialog in list(self.register_write_dialogs.values()):
+            dialog.update_cloud_actions()
+            if getattr(dialog, "_cloud_read_pending", False):
+                dialog.cloud_read_completed(error="Cloud-Abfrage ohne Ergebnis beendet.")
+        if getattr(self, "_close_after_cloud_read", False):
+            self.close()
+
+    @Slot(str)
+    def _on_cloud_read_error(self, text: str) -> None:
+        self._log("WarmLink Cloud lesen: " + str(text))
+        self._complete_cloud_read_dialogs(str(text))
+        lower = str(text).lower()
+        if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
+            self.set_cloud_connection_state(False)
+            self.set_cloud_ui_state("ERROR")
+
     def _cloud_write_credentials(self) -> tuple[str | None, str | None, str | None, str | None]:
         """Zugangsdaten fuer Cloud-Schreiben aus Dialog/Settings/Keyring holen."""
         cfg = self.settings.get("warmlink_cloud", {}) if isinstance(self.settings.get("warmlink_cloud", {}), dict) else {}
@@ -8642,6 +9504,11 @@ class MainWindow(QMainWindow):
         use_token = bool(cfg.get("save_token", True))
         pw: str | None = None
         token: str | None = None
+        credentials = getattr(self, "cloud_credentials_cache", {})
+        if credentials.get("token_user") == user:
+            token = credentials.get("token")
+        if credentials.get("password_user") == user:
+            pw = credentials.get("password")
 
         dlg = self.warmlink_cloud_dialog
         if dlg is not None:
@@ -8649,7 +9516,7 @@ class MainWindow(QMainWindow):
                 user = dlg.username_edit.text().strip() or user
                 device_code = dlg._selected_device_code() or device_code
                 use_token = bool(dlg.save_token_cb.isChecked())
-                if use_token and getattr(dlg, "_cloud_token_username", "") == user:
+                if getattr(dlg, "_cloud_token_username", "") == user:
                     token = getattr(dlg, "_cloud_token", None)
                 pw = dlg._password()
             except Exception:
@@ -8657,32 +9524,21 @@ class MainWindow(QMainWindow):
 
         if not user:
             return None, None, None, device_code or None
-        if use_token and not token:
-            try:
-                token = get_token(user)
-            except Exception as exc:
-                self._log("WarmLink Cloud: Token konnte nicht aus dem OS-Keyring gelesen werden: " + str(exc))
-                token = None
-        if token:
-            if not pw:
-                try:
-                    pw = get_password(user)
-                except Exception as exc:
-                    self._log("WarmLink Cloud: Passwort konnte nicht für Token-Fallback gelesen werden: " + str(exc))
-                    pw = None
-            return user, pw, token, device_code or None
-        if pw:
-            return user, pw, None, device_code or None
-        try:
-            pw = get_password(user)
-        except Exception as exc:
-            QMessageBox.warning(self, "WarmLink Cloud", f"Passwort konnte nicht aus dem OS-Keyring gelesen werden:\n{exc}")
-            return user, None, None, device_code or None
-        return user, pw, None, device_code or None
+        if not token and getattr(self, "_cloud_read_token_username", "") == user:
+            token = getattr(self, "_cloud_read_token", None)
+        # OS access happens in the read/write workers; this GUI helper stays fast.
+        return user, pw or "", token, device_code or None
 
     def _ask_cloud_value(self, reg_no: int, cloud_code: str) -> str | None:
         values = cloud_write_values_for_code(cloud_code)
-        current_raw = current_raw_text_for_cloud_write(self.latest_regs.get(int(reg_no)))
+        reg = self.latest_regs.get(int(reg_no))
+        if self._is_cloud_only_register(reg_no):
+            current_value = self.cloud_overlay_by_reg.get(int(reg_no), {}).get("engineering_value")
+            current_raw = "" if current_value is None else str(current_value)
+        elif reg is not None:
+            current_raw = self._display_write_input_for_register(reg_no, reg.raw_value)
+        else:
+            current_raw = ""
         options, current_index = cloud_write_choice_options(values, current_raw)
         if options:
             labels = [label for _value, label in options]
@@ -8701,7 +9557,7 @@ class MainWindow(QMainWindow):
         text, ok = QInputDialog.getText(
             self,
             "Wert per Cloud schreiben",
-            f"Register {reg_no} / Cloud-Code {cloud_code}:\nCloud-Wert eingeben:",
+            f"Register {reg_no} / Cloud-Code {cloud_code}:\nCloud-Wert eingeben ({code_unit(cloud_code, self.cloud_overlay_by_reg.get(int(reg_no), {}).get('metadata'))}):",
             text=current_raw,
         )
         if not ok:
@@ -8709,48 +9565,65 @@ class MainWindow(QMainWindow):
         text = str(text).strip()
         return text if text != "" else None
 
-    def open_cloud_write_for_register(self, reg_no: int):
+    def open_cloud_write_for_register(self, reg_no: int, user_value: str | None = None):
         cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         if not cloud_code:
             QMessageBox.information(self, "WarmLink Cloud", f"Für Register {reg_no} ist kein freigegebener Cloud-Schreibcode gemappt.")
             return
-        value = self._ask_cloud_value(reg_no, cloud_code)
+        if user_value is None:
+            value = self._ask_cloud_value(reg_no, cloud_code)
+        else:
+            from cloud.cloud_write_helpers import cloud_write_value_from_user_input
+            info = self.regmap.get(int(reg_no))
+            try:
+                value = cloud_write_value_from_user_input(
+                    cloud_code, user_value, info,
+                    lambda text: self.parse_register_write_value(reg_no, text),
+                )
+            except ValueError as exc:
+                QMessageBox.warning(self, "WarmLink Cloud", str(exc))
+                return
         if value is None:
             return
         user, pw, token, device_code = self._cloud_write_credentials()
-        if not user or not (pw or token):
+        if not user:
             QMessageBox.warning(
                 self,
                 "WarmLink Cloud",
                 "Cloud-Zugang fehlt. Bitte im Fenster 'WarmLink Cloud / LTE' Benutzername eintragen und das Passwort speichern.",
             )
             return
-        name = code_display_name(cloud_code)
-        device_txt = device_code if device_code else "automatisch: erstes Cloud-Gerät"
-        if not ask_yes_no(
-            self,
-            "Wert per Cloud schreiben",
-            f"Wirklich per WarmLink Cloud senden?\n\n"
-            f"Register: {reg_no}\nCloud-Code: {cloud_code} - {name}\nWert: {value}\nDevice: {device_txt}\n\n"
-            "Der Befehl wird über die Cloud an die Wärmepumpe gesendet.",
-            default_yes=False,
-        ):
-            return
         self.send_cloud_write(cloud_code, value, device_code=device_code, label=f"Register {reg_no}")
 
-    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = ""):
+    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None):
+        if control_context is not None:
+            if control_context != self.control_context() or self._control_cloud_busy(write=True):
+                return "Steuerverbindung geändert oder Cloudauftrag läuft; Schreiben abgebrochen."
         if self._is_firmware_capture_mode():
             QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Steuerbefehle sind gesperrt.")
             self._log("Firmware-Capture blockierte aktiven Cloud-Steuerbefehl.")
             return
-        if self.cloud_write_thread is not None:
+        if (self.cloud_write_thread is not None or
+                getattr(getattr(self, "warmlink_cloud_dialog", None), "command_thread", None) is not None):
             QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Schreibbefehl.")
             return
         user, pw, token, saved_device_code = self._cloud_write_credentials()
-        if not user or not (pw or token):
+        if control_context is not None and (user != control_context.username or device_code != control_context.device_code):
+            return "Cloud-Gerät oder Account geändert; Schreiben abgebrochen."
+        if not user:
             QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Zugang fehlt oder Passwort ist nicht im Keyring gespeichert.")
             return
         dev = str(device_code or saved_device_code or "").strip()
+        self._control_cloud_write_context = control_context
+        self._control_cloud_write_label = label
+        write_guard = None
+        if control_context is not None:
+            import threading
+            cancelled = self._control_cloud_write_cancelled = threading.Event()
+            # Worker-side guard reads Python state only, never Qt widgets.
+            write_guard = lambda: (not cancelled.is_set() and not self.connected and self.is_cloud_connected()
+                and self.cloud_session_device_code == control_context.device_code
+                and str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip() == control_context.username)
         self._log(f"WarmLink Cloud schreiben: {cloud_code}={value} ({label or 'Hauptfenster'})")
         self.cloud_write_code = str(cloud_code)
         self.cloud_write_thread = QThread(self)
@@ -8762,7 +9635,9 @@ class MainWindow(QMainWindow):
             value=str(value),
             endpoint=ENDPOINT_AUTO_WRITE,
             dry_run=False,
-            initial_token=token,
+            initial_token=token, load_credentials=True,
+            use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
+            write_guard=write_guard, commands=commands,
         )
         self.cloud_write_worker.moveToThread(self.cloud_write_thread)
         self.cloud_write_thread.started.connect(self.cloud_write_worker.run)
@@ -8773,9 +9648,27 @@ class MainWindow(QMainWindow):
         self.cloud_write_worker.finished.connect(self.cloud_write_worker.deleteLater)
         self.cloud_write_thread.finished.connect(self._cloud_write_finished)
         self.cloud_write_thread.start()
+        self._notify_control_connection_changed()
 
     def _on_cloud_write_result_current(self, data: dict):
-        self._on_cloud_write_result(self.cloud_write_code, data)
+        context = getattr(self, "_control_cloud_write_context", None)
+        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+            self._log("Cloud-Schreibantwort nach Verbindungs-/Gerätewechsel verworfen.")
+            return
+        self._on_cloud_write_result(data.get("command_code", self.cloud_write_code), data)
+        if context is not None:
+            ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
+            readback = data.get("readback") or {}
+            self._set_control_write_status(("Cloud-Schreiben abgeschlossen. " +
+                ("Readback aktualisiert." if readback.get("supported") else "Readback nicht verfügbar."))
+                if ok else "Cloud-Schreiben fehlgeschlagen.")
+
+    def _set_control_write_status(self, text):
+        label = getattr(self, "_control_cloud_write_label", "")
+        name = "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog"
+        dialog = getattr(self, name, None)
+        if dialog is not None:
+            dialog.set_write_status(text)
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
         ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
@@ -8784,6 +9677,11 @@ class MainWindow(QMainWindow):
         payload = data.get("payload")
         readback = data.get("readback") if isinstance(data, dict) else None
         rb_txt = ""
+        if isinstance(readback, dict) and readback.get("supported"):
+            readback = {**readback, "lastFetch": time.strftime("%Y-%m-%d %H:%M:%S"), "stale": False}
+            self.apply_cloud_rows_to_main([readback])
+            if self.warmlink_cloud_dialog is not None:
+                self.warmlink_cloud_dialog._on_data([readback])
         if isinstance(readback, dict):
             rb_val = readback.get("value")
             rb_status = readback.get("status") or ("OK" if readback.get("supported") else "")
@@ -8796,12 +9694,23 @@ class MainWindow(QMainWindow):
             # damit Rechtsklick-Schreiben nicht am Ende wie "keine Rueckmeldung" wirkt.
             self.statusBar().showMessage(f"Cloud-Schreiben OK: {cloud_code}={payload if payload is None else data.get('payload', '')}", 6000)
             self._log(f"WarmLink Cloud schreiben OK: {cloud_code} via {endpoint}; {msg or 'Success'}{rb_txt}")
-        else:
+        elif getattr(self, "_control_cloud_write_context", None) is None:
             QMessageBox.warning(self, "WarmLink Cloud", f"Cloud-Schreiben nicht erfolgreich.\nEndpoint: {endpoint}\nMeldung: {msg or data.get('error_code') or 'unbekannt'}")
 
     def _on_cloud_write_error(self, text: str):
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
-        QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + translate_cloud_error_message(str(text)))
+        context = getattr(self, "_control_cloud_write_context", None)
+        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+            self._set_control_write_status("Cloud-Schreiben nach Verbindungs-/Gerätewechsel abgebrochen.")
+            return
+        lower = str(text).lower()
+        if any(marker in lower for marker in ("401", "-100", "please login again", "login")):
+            self.set_cloud_connection_state(False)
+            self.set_cloud_ui_state("ERROR")
+        if getattr(self, "_control_cloud_write_context", None) is not None:
+            self._set_control_write_status(translate_cloud_error_message(str(text)))
+        else:
+            QMessageBox.warning(self, "WarmLink Cloud", "Cloud-Schreiben fehlgeschlagen:\n" + translate_cloud_error_message(str(text)))
 
     def _cloud_write_finished(self):
         if self.cloud_write_thread is not None:
@@ -8809,6 +9718,10 @@ class MainWindow(QMainWindow):
         self.cloud_write_thread = None
         self.cloud_write_worker = None
         self.cloud_write_code = ""
+        self._control_cloud_write_context = None
+        self._notify_control_connection_changed()
+        if getattr(self, "_close_after_cloud_write", False):
+            self.close()
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
         # Display-Modbus: bekannte Parameterregister erst nach geladenem Paket öffnen,
@@ -10223,7 +11136,7 @@ class MainWindow(QMainWindow):
     def open_wp_control(self):
         # WP-Steuerung nutzt im Display-Modus u.a. 1011/1012/1016 und 1157-1159.
         # Deshalb warten wir dort auf Paket 1001ff und 1091ff; andere Backends öffnen sofort.
-        if not self._display_wait_for_param_blocks_before_popup("WP-Steuerung", [1001, 1091], self.open_wp_control):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("WP-Steuerung", [1001, 1091], self.open_wp_control):
             return
         if self.wp_control_dialog is None or not self.wp_control_dialog.isVisible():
             self.wp_control_dialog = WPControlDialog(self)
@@ -10236,7 +11149,7 @@ class MainWindow(QMainWindow):
 
     def open_at_compensation(self):
         # AT-Kompensation liegt im Paket 1181ff (1234-1236).
-        if not self._display_wait_for_param_blocks_before_popup("AT-Kompensation", [1181], self.open_at_compensation):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("AT-Kompensation", [1181], self.open_at_compensation):
             return
         if self.at_comp_dialog is None or not self.at_comp_dialog.isVisible():
             self.at_comp_dialog = ATCompensationDialog(self)
@@ -10249,7 +11162,7 @@ class MainWindow(QMainWindow):
 
     def open_parameter_settings(self):
         # Parameteransicht kann alle Paketbereiche betreffen.
-        if not self._display_wait_for_param_blocks_before_popup("Parameter Einstellungen", [1001, 1091, 1181, 1271, 1361, 1451, 1541], self.open_parameter_settings):
+        if self.connected and not self._display_wait_for_param_blocks_before_popup("Parameter Einstellungen", [1001, 1091, 1181, 1271, 1361, 1451, 1541], self.open_parameter_settings):
             return
         if self.parameter_dialog is None or not self.parameter_dialog.isVisible():
             self.parameter_dialog = ParameterSettingsDialog(self)
@@ -10671,8 +11584,30 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        self.csv_logger_controller.stop()
+        if self.cloud_write_thread is not None:
+            self._close_after_cloud_write = True
+            cancelled = getattr(self, "_control_cloud_write_cancelled", None)
+            if cancelled is not None:
+                cancelled.set()
+            event.ignore()
+            return
+        cloud_dialog = self.warmlink_cloud_dialog
+        if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
+            if not getattr(self, "_close_after_cloud_poll", False):
+                self._close_after_cloud_poll = True
+                cloud_dialog.cloud_thread.finished.connect(self.close)
+            cloud_dialog.stop_worker()
+            event.ignore()
+            return
+        if self.cloud_read_thread is not None:
+            self._close_after_cloud_read = True
+            event.ignore()
+            return
         self._update_main_window_settings()
+        self.main_table_columns.stop_pending_save()
         self._save_settings()
+        self.cloud_btn.setPollingActive(False)
         if self.warmlink_cloud_dialog is not None:
             try:
                 setattr(self.warmlink_cloud_dialog, "_force_close", True)

@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from cloud.mapping_validation import cloud_hint_matches_local_code, register_code_from_definition
+from cloud.register_resolver import CONFIRMED_REGISTER_ALIASES, resolve_cloud_register
+from cloud.mapping_validation import register_code_from_definition
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
 
 try:
@@ -47,28 +48,9 @@ def _static_register_defs() -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def _static_local_code_for_register(reg_no: int) -> str:
-    defs = _static_register_defs()
-    definition = defs.get(str(int(reg_no)))
-    if definition is None:
-        return ""
-    return register_code_from_definition(definition)
-
-
-def _cloud_mapping_is_valid_for_register(code: str, hint: Mapping[str, Any], reg_no: int) -> bool:
-    local_code = _static_local_code_for_register(reg_no)
-    return cloud_hint_matches_local_code(code, hint, local_code)
-
-
 def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
     """Return whether a mapped cloud code is safe to offer for writing."""
-    if not hint.get("modbus_register"):
-        return False
-    try:
-        mapped_register = int(hint.get("modbus_register"))
-    except Exception:
-        return False
-    if not _cloud_mapping_is_valid_for_register(str(code), hint, mapped_register):
+    if resolve_cloud_register(str(code), hint, _static_register_defs()) is None:
         return False
     if str(hint.get("confidence") or "").lower() != "confirmed":
         return False
@@ -83,14 +65,16 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         return None
     best: tuple[int, str] | None = None
     rank = {"confirmed": 0}
+    definitions = _static_register_defs()
+    local_code = register_code_from_definition(definitions.get(str(target), {})).upper()
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
-        try:
-            mapped = int(hint.get("modbus_register")) if hint.get("modbus_register") not in (None, "") else None
-        except Exception:
-            mapped = None
-        if mapped != target:
+        # A dialog refresh needs only this register. Avoid resolving the entire
+        # catalog (each resolution scans the map) on every UI update.
+        hinted_code = str(hint.get("local_code") or "").strip().upper()
+        if not (local_code and hinted_code == local_code) and CONFIRMED_REGISTER_ALIASES.get(str(code)) != target:
             continue
-        if not _cloud_mapping_is_valid_for_register(str(code), hint, target):
+        mapped = resolve_cloud_register(str(code), hint, definitions)
+        if mapped != target:
             continue
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
             continue
@@ -138,3 +122,43 @@ def cloud_write_value_from_label(options: list[tuple[str, str]], selected_label:
         if label == selected_label:
             return value
     return None
+
+
+def cloud_write_value_from_user_input(
+    cloud_code: str, user_text: str, register: Any, parse_local_raw,
+) -> str:
+    """Convert the quick-write field to one unambiguous cloud engineering value."""
+    text = str(user_text).strip()
+    if not text:
+        raise ValueError("Der Cloud-Schreibwert ist leer.")
+    raw = int(parse_local_raw(text))
+    values = cloud_write_values_for_code(cloud_code)
+    if isinstance(values, Mapping) and values:
+        if str(raw) not in {str(key) for key in values}:
+            raise ValueError(f"Wert {raw} ist für Cloud-Code {cloud_code} nicht freigegeben.")
+        return str(raw)
+    dtype = str(getattr(register, "dtype", "") or "").upper()
+    scaled = {"TEMP", "TEMP1", "TEMP05", "TEMP_0_5", "STEP_0_5C", "DIGI5",
+              "DIGI6", "DIGI19", "DIGI4", "POWER_KW_X10", "KW_X10",
+              "BAR_X10", "FLOW_M3H_X10", "FLOW_M3H_X100", "AMP_X10", "AMP_X2"}
+    if dtype in scaled:
+        # The quick-write field already contains the engineering value expected by Cloud.
+        return text.replace(",", ".")
+    return str(raw)
+
+
+def cloud_write_value_from_register_value(cloud_code, raw_value, register, engineering_value=None):
+    """Prepare a normal control value using the same conversion as quick-write.
+
+    Decode a local word only when the caller has no engineering value. Never
+    treat the raw carrier of a Cloud-only row as a local value.
+    """
+    from core.foxair_phnix_core import numeric_value_by_type
+    import math
+
+    if engineering_value is None:
+        engineering_value = numeric_value_by_type(int(raw_value), register.dtype)
+    if not math.isfinite(float(engineering_value)):
+        raise ValueError("Der Cloud-Schreibwert muss eine endliche Zahl sein.")
+    text = str(engineering_value)
+    return cloud_write_value_from_user_input(cloud_code, text, register, lambda _text: int(raw_value))

@@ -121,3 +121,60 @@ FoxAir Control kann zusätzlich direkt mit der Wärmepumpe bzw. dem WarmLink-/LT
 [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
 Für den normalen Betrieb ist FoxAir Control aber nicht erforderlich.
+
+## Cloudwerte in FoxAir Control aktualisieren
+
+Beim ersten Abruf lädt FoxAir Control die verfügbaren Cloudwerte. Danach
+aktualisiert Polling hauptsächlich Live- und Statuswerte, standardmäßig alle
+30 Sekunden. Das Intervall lässt sich im Cloud-Dialog einstellen.
+Jeder Liveabruf fordert zuvor mit dem WarmLink-App-Heartbeat aktuelle
+Statusdaten an und liest sie nach einer kurzen Wartezeit aus der Cloud.
+Der Mechanismus wurde am 05.10.2026 an einer GL9 experimentell bestätigt.
+Schlägt der Heartbeat vorübergehend fehl, werden die verfügbaren Cloudwerte
+trotzdem gelesen. **Polling stoppen** bricht auch die kurze Wartezeit ab.
+Konfigurationswerte bleiben mit ihrem letzten Abrufzeitpunkt gespeichert.
+Mit **Konfigurationswerte neu laden** können sie bei Bedarf erneut gelesen
+werden. **Geräte neu suchen** aktualisiert ausschließlich die Geräteliste;
+Werte werden erst mit **Jetzt abrufen** oder **Polling starten** gelesen.
+Die automatisch gefundene Geräteliste und Auswahl werden gespeichert und
+stehen auch nach einem Programmneustart sofort zur Verfügung. Der Cache gehört
+zum Cloud-Benutzer; ein Accountwechsel verwirft ihn. **Geräte neu suchen** ersetzt
+den Cache durch die aktuelle Geräteliste. Passwort und Token bleiben im Keyring.
+Die frühere manuelle Verwaltung von Gerätecodes entfällt.
+
+Im Geräte-Tab steht eine vollständige Tabelle: wichtige Angaben vorne, alle
+weiteren gelieferten Gerätefelder dahinter. Auch Device-Code, Seriennummer,
+ICCID und andere IDs sind vollständig sichtbar. Eine zusätzliche Detailansicht
+und **IDs anzeigen** sind nicht mehr nötig. Fehlende Angaben erscheinen als `—`;
+Passwort, Token und andere Anmeldegeheimnisse werden nicht angezeigt.
+
+Offene **Parameter Einstellungen** zeigen Cloud-Aktualisierungen und
+Schreib-Readbacks sofort. Lokale Rohwerte bleiben separat; die Spalte **Cloud**
+zeigt den Cloudwert. Ohne lokalen Wert wird dieser auch als aktueller Wert
+angezeigt. **Cloud schreiben** sendet nach der Werteingabe direkt, ohne einen
+zweiten Bestätigungsdialog; die bestehenden Schreibsperren bleiben aktiv.
+
+**Alle bekannten Register lesen** im Hauptfenster nutzt bevorzugt die lokale
+Verbindung. Bei ausschließlich gültiger Cloud-Verbindung liest der Button
+sämtliche bekannten Cloud-Kandidaten erneut, einschließlich Konfiguration,
+Livewerten und bisher nicht unterstützten Codes. Die laufende Cloud-Verbindung
+wird dafür verwendet; der Fortschritt erscheint in der Cloud-Leiste.
+
+Ändert sich ein Cloudwert, blinkt seine Haupttabellenzeile kurz auf.
+**Cloud vorher** zeigt den bisherigen Cloudwert. Bei Cloud-only-Zeilen steht
+er außerdem unter **Letzter Wert**; bei lokal gelesenen Registern bleibt diese
+Spalte für den vorherigen lokalen Wert reserviert.
+
+Die Fortschrittsleiste zeigt den Verbindungsaufbau und den laufenden Abruf.
+Im Hauptfenster zeigt eine zusätzliche schmale Leiste den Abruffortschritt
+und die Restzeit bis zum nächsten Poll oder Retry. Nach dem Abruf beginnt
+das eingestellte Intervall; bei gestopptem Polling wird die Leiste ausgeblendet.
+Der Cloudbutton im Hauptfenster zeigt grau für getrennt, orange für
+Verbindungsaufbau, grün für verbunden und rot für einen Verbindungsfehler.
+Verbundenes, gestopptes Polling hat eine statische grüne Kennzeichnung;
+aktives Polling einen grünen Rahmen mit umlaufenden helleren Abschnitten.
+Der Tooltip unterscheidet **Polling gestoppt** und **Polling aktiv** und nennt
+den letzten erfolgreichen Abruf. Die Animation wird mit QPainter und einem
+75-ms-Timer innerhalb des Buttons gezeichnet; sie beeinflusst keine Cloudabfrage.
+Beim Ausblenden des Cloud-Dialogs läuft Polling
+weiter. Zum Beenden **Polling stoppen** verwenden.

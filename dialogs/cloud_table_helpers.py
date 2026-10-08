@@ -5,6 +5,7 @@ import re
 from typing import Any, Callable, Optional
 
 from core.foxair_phnix_core import numeric_value_by_type
+from cloud.metadata import resolve_cloud_range
 
 from cloud.warmlink_codes import (
     cloud_hint,
@@ -16,9 +17,11 @@ from cloud.warmlink_codes import (
 
 
 def mask_cloud_value(value: Any, show_ids: bool = False) -> str:
-    text = str(value or "")
-    if show_ids or len(text) <= 8:
+    text = str(value if value is not None else "")
+    if show_ids or not text:
         return text
+    if len(text) <= 8:
+        return "••••"
     return text[:4] + "…" + text[-4:]
 
 
@@ -41,7 +44,7 @@ def binary_to_int(value: Any) -> Optional[int]:
 
 def local_display_value(latest_regs: dict, reg_no: int) -> tuple[str, Optional[float]]:
     reg = latest_regs.get(int(reg_no))
-    if reg is None:
+    if reg is None or getattr(reg, "value_source", "modbus") == "cloud":
         return "", None
     text = str(getattr(reg, "display_value", ""))
     # ersten numerischen Anteil fuer groben Diff extrahieren
@@ -51,13 +54,19 @@ def local_display_value(latest_regs: dict, reg_no: int) -> tuple[str, Optional[f
 
 def device_combo_label(device: dict[str, Any], show_ids: bool = False) -> tuple[str, str]:
     code = str(device.get("deviceCode") or "")
-    nick = str(device.get("deviceNickName") or device.get("model") or device.get("custModel") or "Gerät")
+    if device.get("discoverySource") in {"manual", "stored-device-code"}:
+        return f"{mask_cloud_value(code, show_ids=show_ids)} (manuell)", code
+    nick = str(device.get("deviceNickName") or device.get("deviceName") or device.get("model") or device.get("custModel") or "Gerät")
     status = str(device.get("deviceStatus", ""))
     return f"{nick} | {status} | {mask_cloud_value(code, show_ids=show_ids)}", code
 
 
 def device_table_value(device: dict[str, Any], key: str, sensitive_fields: set[str], show_ids: bool = False) -> str:
-    value = device.get(key, "")
+    if key not in device or device[key] is None:
+        return "—"
+    value = device[key]
+    if key == "discoverySource" and value == "house":
+        value = "House"
     if key in sensitive_fields:
         value = mask_cloud_value(value, show_ids=show_ids)
     return str(value)
@@ -85,6 +94,7 @@ def filtered_cloud_rows(data_rows: list[dict[str, Any]], needle: str, unsupporte
 def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[list[Any], str]:
     code = str(row.get("code", ""))
     hint = cloud_hint(code)
+    bounds = resolve_cloud_range(code, hint, row)
     reg = cloud_modbus_register(code)
     mapping = str(reg) if reg is not None else str(hint.get("confidence") or "")
     status = "veraltet" if row.get("stale") else ("OK" if row.get("supported") else "leer/unsupported")
@@ -93,13 +103,13 @@ def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[li
         code_display_name(code),
         row.get("value", ""),
         row.get("dataType") or hint.get("dataType") or hint.get("cloud_dataType", ""),
-        row.get("rangeStart", ""),
-        row.get("rangeEnd", ""),
+        bounds.minimum,
+        bounds.maximum,
         row.get("lastFetch", ""),
         status,
         mapping,
         mapping_status,
-        hint.get("note", ""),
+        "\n".join(str(part) for part in (hint.get("note", ""), bounds.description, hint.get("range_note", "")) if part),
     ]
     return vals, status
 
@@ -125,13 +135,13 @@ def compare_table_values(
     latest_regs: dict,
     regmap: dict,
     display_parts_for_register: Callable[[int, str], tuple[Any, str, Any]],
-    cloud_display_text: Callable[[str, Any], str],
+    cloud_display_text: Callable[[str, Any, dict], str],
 ) -> tuple[list[Any], str]:
     code = str(row.get("code", ""))
     hint = cloud_hint(code)
     cloud_val = row.get("value", "")
-    unit = code_unit(code)
-    cloud_txt = cloud_display_text(code, cloud_val)
+    unit = code_unit(code, row)
+    cloud_txt = cloud_display_text(code, cloud_val, row)
     local_txt, local_num = ("", None)
     diff_txt = ""
     status = "cloud-only"

@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
+from cloud.device_metadata import safe_device_metadata
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
 BASE_URL = SERVICE_ROOT + "/crmservice/api"
@@ -28,9 +29,15 @@ CLOUDSERVICE_API_ROOT = SERVICE_ROOT + "/cloudservice/api"
 
 ENDPOINT_LOGIN = "app/user/login"
 ENDPOINT_DEVICE_LIST = "app/device/deviceList"
+ENDPOINT_USER_INFO = "app/user/getUserInfo"
+ENDPOINT_LEGACY_SHARED_DEVICE_LIST = "app/device/getMyAppectDeviceShareDataList"
+ENDPOINT_UPDATE_DEVICE_NICKNAME = "app/device/updateDeviceNickName"
 ENDPOINT_GET_DATA_BY_CODE = "app/device/getDataByCode"
 ENDPOINT_GET_DEVICE_STATUS = "app/device/getDeviceStatus"
 ENDPOINT_GET_FAULT_DATA = "app/device/getFaultDataByDeviceCode"
+ENDPOINT_GET_FAULT_DATA_V2 = "app/device/v2/getFaultDataByDeviceCode"
+ENDPOINT_HOUSE_LIST = "house/info/listOwnerHouses"
+ENDPOINT_HOUSE_DEVICES = "houseRelDevice/v4/selectHouseToDeviceData"
 ENDPOINT_DEVICE_CONTROL = "app/device/control"
 ENDPOINT_DEVICE_CONTROL_LANG = "app/device/control?lang=en"
 
@@ -188,7 +195,7 @@ class WarmLinkCloudApi:
         raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.0",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
         }
         if raw_body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -217,16 +224,19 @@ class WarmLinkCloudApi:
         except TimeoutError as exc:
             raise WarmLinkCloudError(translate_cloud_error_message(f"Timeout nach {self.timeout:.0f}s")) from exc
 
-    def _request_json(self, endpoint: str, payload: dict[str, Any], token: str | None = None) -> dict[str, Any]:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    def _request_json(self, endpoint: str, payload: dict[str, Any] | None = None,
+                      token: str | None = None, method: str = "POST") -> dict[str, Any]:
+        verb = str(method).upper()
+        body = None if verb == "GET" else json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
         headers = {
-            "Content-Type": "application/json;charset=utf-8",
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.0",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
         }
+        if body is not None:
+            headers["Content-Type"] = "application/json;charset=utf-8"
         if token:
             headers["x-token"] = token
-        req = urllib.request.Request(self._url(endpoint), data=body, headers=headers, method="POST")
+        req = urllib.request.Request(self._url(endpoint), data=body, headers=headers, method=verb)
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
@@ -364,16 +374,23 @@ class WarmLinkCloudApi:
         raise WarmLinkAuthError((self._message(last_data) or "Login fehlgeschlagen") + fallback_txt + (f" ({detail})" if detail else ""))
 
     def post(self, endpoint: str, payload: dict[str, Any], relogin: bool = True) -> dict[str, Any]:
+        return self.request(endpoint, payload, method="POST", relogin=relogin)
+
+    def get(self, endpoint: str, relogin: bool = True) -> dict[str, Any]:
+        return self.request(endpoint, None, method="GET", relogin=relogin)
+
+    def request(self, endpoint: str, payload: dict[str, Any] | None, *, method: str,
+                relogin: bool = True) -> dict[str, Any]:
         if self.token:
             self.reused_initial_token = True
         else:
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
-        data = self._request_json(endpoint, payload, token=self.token)
+        data = self._request_json(endpoint, payload, token=self.token, method=method)
         if relogin and self._token_expired(data):
             self.token = None
             self.last_login_at = 0.0
             self.login(self.preferred_login_method or "md5", self.use_login_fallbacks)
-            data = self._request_json(endpoint, payload, token=self.token)
+            data = self._request_json(endpoint, payload, token=self.token, method=method)
         if not isinstance(data, dict):
             raise WarmLinkCloudError("Ungueltige Antwortstruktur")
         return data
@@ -386,9 +403,120 @@ class WarmLinkCloudApi:
         }
         return self.post(ENDPOINT_DEVICE_LIST, payload)
 
+    def send_app_heartbeat(self, device_code: str) -> dict[str, Any]:
+        """Trigger the app's live refresh with its dedicated, appId-free payload."""
+        code = str(device_code or "").strip()
+        if not code:
+            raise ValueError("deviceCode fehlt für app_heartbeat")
+        return self.post(ENDPOINT_DEVICE_CONTROL, {
+            "param": [{"deviceCode": code, "protocolCode": "app_heartbeat", "value": "23205"}],
+        })
+
+    def get_houses(self) -> dict[str, Any]:
+        """Return all owner and membership Houses visible to the app account."""
+        return self.get(ENDPOINT_HOUSE_LIST)
+
+    def get_house_devices(self, house_id: str | int) -> dict[str, Any]:
+        return self.post(ENDPOINT_HOUSE_DEVICES, {
+            "appId": 16,
+            "houseId": str(house_id),
+            "level": 0,
+        })
+
+    def get_user_info(self) -> dict[str, Any]:
+        """Return the official app user model (including userId, if supplied)."""
+        return self.post(ENDPOINT_USER_INFO, {})
+
+    def get_legacy_shared_devices(
+        self, user_id: str, product_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Query legacy direct shares; this is *not* Residence discovery."""
+        return self.post(ENDPOINT_LEGACY_SHARED_DEVICE_LIST, {
+            "toUser": str(user_id),
+            "productIds": product_ids or WARMLINK_PRODUCT_IDS,
+            "pageIndex": 1,
+            "pageSize": 999,
+        })
+
     def get_data_by_code(self, device_code: str, codes: list[str]) -> dict[str, Any]:
         payload = {"deviceCode": str(device_code), "protocalCodes": list(codes)}
         return self.post(ENDPOINT_GET_DATA_BY_CODE, payload)
+
+    def get_data_by_code_batched(
+        self, device_code: str, codes: list[str], batch_size: int = 50,
+        *, progress=None, cancelled=None,
+    ) -> dict[str, Any]:
+        """Read a large discovery catalog without one bad batch losing all data.
+
+        WarmLink installations differ in supported family-644 codes. Every
+        batch is independent; failed batches become unsupported rows while
+        successful responses retain their cloud-provided metadata.
+        """
+        requested = list(dict.fromkeys(str(code) for code in codes if str(code)))
+        size = max(1, int(batch_size))
+        items: list[dict[str, Any]] = []
+        failures: list[dict[str, Any]] = []
+
+        def code_related_failure(response: dict[str, Any]) -> bool:
+            """Return true only for errors plausibly caused by requested codes."""
+            status = str(response.get("http_status") or response.get("status") or "")
+            if self._token_expired(response) or status == "401":
+                raise WarmLinkAuthError(self.message(response) or "WarmLink-Login abgelaufen")
+            try:
+                http_status = int(status) if status else 0
+            except (TypeError, ValueError):
+                http_status = 0
+            if http_status == 429 or http_status >= 500:
+                raise WarmLinkCloudError(self.message(response) or f"WarmLink HTTP {http_status}")
+            message = self.message(response).lower()
+            code_markers = (
+                "unsupported", "not support", "invalid code", "unknown code",
+                "protocol code", "protocal code", "parameter code",
+            )
+            if any(marker in message for marker in code_markers):
+                return True
+            raise WarmLinkCloudError(self.message(response) or "WarmLink API-Fehler beim Code-Abruf")
+
+        completed = 0
+
+        def read_batch(batch: list[str]) -> None:
+            nonlocal completed
+            if cancelled and cancelled():
+                raise WarmLinkCloudError("Cloud-Abfrage gestoppt")
+            """Bisect failed groups so one unsupported candidate stays local."""
+            # Transport/authentication failures must reach the worker's normal
+            # retry path. Bisecting those would turn one outage into hundreds
+            # of requests and would incorrectly report the codes as unsupported.
+            response = self.get_data_by_code(device_code, batch)
+            if self.success(response):
+                items.extend(normalize_data_values(response, batch))
+                completed += len(batch)
+                if progress:
+                    progress(completed, len(requested))
+                return
+            code_related_failure(response)
+            message = self.message(response)
+            if len(batch) > 1:
+                midpoint = len(batch) // 2
+                read_batch(batch[:midpoint])
+                read_batch(batch[midpoint:])
+                return
+            failures.append({"codes": batch, "message": message})
+            items.extend(normalize_data_values({}, batch))
+            completed += len(batch)
+            if progress:
+                progress(completed, len(requested))
+
+        for offset in range(0, len(requested), size):
+            batch = requested[offset:offset + size]
+            read_batch(batch)
+        return {
+            "error_code": "0",
+            "error_msg": "Success" if not failures else "Partial success",
+            "isReusltSuc": True,
+            "objectResult": items,
+            "batchFailures": failures,
+        }
 
     def get_device_status(self, device_code: str) -> dict[str, Any]:
         payloads = [
@@ -405,6 +533,13 @@ class WarmLinkCloudApi:
         ]
         endpoints = [ENDPOINT_GET_FAULT_DATA, "cloudservice/api/device/getFaultDataByDeviceCode", "cloudservice/api/device/queryFaultDevice", "cloudservice/api/device/v4/listAllDeviceFault"]
         return self._post_first_success(endpoints, payloads)
+
+    def get_fault_data_v2(self, device_codes: list[str]) -> dict[str, Any]:
+        """Read backend fault history; raw Fault1…Fault10 remain independent."""
+        codes = list(dict.fromkeys(str(code).strip() for code in device_codes if str(code).strip()))
+        if not codes:
+            raise ValueError("deviceCodeList darf nicht leer sein")
+        return self.post(ENDPOINT_GET_FAULT_DATA_V2, {"deviceCodeList": codes})
 
     def _post_first_success(self, endpoints: list[str], payloads: list[dict[str, Any]]) -> dict[str, Any]:
         attempts: list[dict[str, Any]] = []
@@ -558,6 +693,79 @@ def normalize_device_list(response: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
+def normalize_house_list(response: dict[str, Any]) -> list[dict[str, str]]:
+    """Keep only non-sensitive House identity metadata needed for discovery."""
+    obj = response.get("objectResult")
+    if not isinstance(obj, list):
+        return []
+    houses: list[dict[str, str]] = []
+    for item in obj:
+        if not isinstance(item, dict):
+            continue
+        house_id = str(item.get("id") or item.get("houseId") or "").strip()
+        if not house_id:
+            continue
+        house = {"id": house_id}
+        for key, alias in (("houseName", "name"), ("roleType", "roleType")):
+            if key in item or alias in item:
+                value = item.get(key, item.get(alias))
+                if value is not None:
+                    house[key] = str(value).strip()
+        houses.append(house)
+    return houses
+
+
+def normalize_house_devices(response: dict[str, Any], house: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Extract direct and room devices, preserving metadata except auth secrets."""
+    obj = response.get("objectResult")
+    data = obj.get("data") if isinstance(obj, dict) else None
+    if not isinstance(data, list):
+        return []
+    house = house or {}
+    devices: list[dict[str, Any]] = []
+    by_code: dict[str, dict[str, Any]] = {}
+
+    def add(raw: Any, area: Any = None, room: Any = None) -> None:
+        if not isinstance(raw, dict):
+            return
+        code = str(raw.get("deviceCode") or "").strip()
+        if not code:
+            return
+        normalized = safe_device_metadata(raw)
+        normalized["deviceCode"] = code
+        if house.get("id") or raw.get("houseId"):
+            normalized["houseId"] = str(house.get("id") or raw["houseId"]).strip()
+        if "houseName" in house:
+            normalized["houseName"] = str(house["houseName"])
+        if "roleType" in house and house["roleType"] is not None:
+            normalized["houseRoleType"] = str(house["roleType"])
+        for key, context in (("areaId", area), ("roomId", room)):
+            if (key not in normalized or normalized[key] in (None, "")) and isinstance(context, dict):
+                value = context.get(key, context.get("id"))
+                if value is not None:
+                    normalized[key] = value
+        if code in by_code:
+            existing = by_code[code]
+            for key, value in normalized.items():
+                if key not in existing or existing[key] in (None, ""):
+                    existing[key] = value
+        else:
+            devices.append(normalized)
+            by_code[code] = normalized
+
+    for area in data:
+        if not isinstance(area, dict):
+            continue
+        for raw in area.get("houseRelDeviceList") or []:
+            add(raw, area=area)
+        for room in area.get("roomInfoResultList") or []:
+            if not isinstance(room, dict):
+                continue
+            for raw in room.get("houseRelDeviceList") or []:
+                add(raw, area=area, room=room)
+    return devices
+
+
 def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) -> list[dict[str, Any]]:
     obj = response.get("objectResult")
     raw_items: list[Any] = []
@@ -576,6 +784,7 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
     for item in raw_items:
         if not isinstance(item, dict):
             continue
+        original_item = item
         code = str(item.get("code") or item.get("protocalCode") or item.get("protocolCode") or item.get("name") or "").strip()
         if not code and len(item) == 1:
             code = str(next(iter(item.keys())))
@@ -584,14 +793,17 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
             continue
         seen.add(code)
         value = item.get("value", item.get("dataValue", item.get("val", item.get("currentValue"))))
+        live_supported = value not in (None, "")
         rows.append({
+            **item,  # Preserve optional live metadata (unit, dataTypeAi, tmJson, ...).
             "code": code,
             "value": value,
             "dataType": item.get("dataType") or item.get("type") or "",
             "rangeStart": item.get("rangeStart", item.get("min")),
             "rangeEnd": item.get("rangeEnd", item.get("max")),
-            "raw": item,
-            "supported": value not in (None, ""),
+            "raw": original_item,
+            "supported": live_supported,
+            "cloud_supported": live_supported,
         })
 
     for code in requested_codes:
@@ -604,5 +816,6 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
                 "rangeEnd": "",
                 "raw": {},
                 "supported": False,
+                "cloud_supported": False,
             })
     return rows
