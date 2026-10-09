@@ -1,17 +1,4 @@
-# FoxAir / Phnix Control PUBLIC V0.3.4
-
-**CSV Logger:** Register **2001–2090** periodisch als UTF-8-CSV aufzeichnen,
-über die bestehende lokale Modbusverbindung oder ausschließlich über WarmLink
-Cloud. Lokale Verbindung hat beim Start Vorrang; fehlende frische Werte bleiben
-leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
-
-V0.3.4 erweitert die Cloud-Steuerung für WP und AT mit **Modbus vor Cloud**,
-verbessert Geräteauswahl und Polling sowie die Darstellung der Haupttabelle.
-Spaltenbreiten werden gespeichert, aktives Cloud-Polling ist am animierten
-Cloud-Button erkennbar und **Hauptfenster leeren** entfernt jetzt auch Cloud-Werte.
-Details: [Steuertransport](docs/warmlink_polling_and_readback.md#gemeinsamer-steuertransport-für-wp-und-at)
-und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
-
+# FoxAir / Phnix Control 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
 </p>
