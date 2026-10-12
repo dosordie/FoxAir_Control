@@ -39,7 +39,7 @@ from workers.warmlink_cloud_worker import (
     WarmLinkCloudSimWorker,
 )
 from cloud.device_metadata import (
-    cached_device_metadata, device_iccid, redacted_device_metadata,
+    cached_device_metadata, device_iccid,
     SIM_STATUS_FIELDS, safe_sim_status,
 )
 from core.settings_manager import ensure_warmlink_cloud_defaults
@@ -1011,9 +1011,8 @@ class WarmLinkCloudDialog(QDialog):
         self.device_table.setHorizontalHeaderLabels(self.device_columns)
         self.device_table.setRowCount(len(self.devices))
         for row, dev in enumerate(self.devices):
-            display_device = redacted_device_metadata(dev)
             for col, key in enumerate(self.device_columns):
-                value = display_device.get(key)
+                value = dev.get(key)
                 if isinstance(value, (dict, list)):
                     value = json.dumps(value, ensure_ascii=False, sort_keys=True)
                 text = "—" if value is None or value == "" else str(value)

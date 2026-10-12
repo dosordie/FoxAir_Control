@@ -100,7 +100,7 @@ def test_ota_http_404_and_query_are_preserved(monkeypatch):
     assert response.status == 404 and response.body == raw.decode()
 
 
-def test_house_device_iccid_is_retained_internally_and_redacted_for_display():
+def test_house_device_iccid_is_retained_internally_and_redacted_for_safe_output():
     response = {"objectResult": {"data": [{"roomInfoResultList": [
         {"houseRelDeviceList": [{"deviceCode": "A", **PRIVATE, "accessToken": "secret"}]}
     ]}]}}
@@ -237,7 +237,9 @@ def test_sim_data_and_errors_are_excluded_from_logs_and_raw_exports(sim_dialog, 
             assert value not in text
     assert "expireDays" not in output.read_text()
     column = dialog.device_columns.index("dtuIccid")
-    assert dialog.device_table.item(0, column).text() != SIM_A
+    assert dialog.device_table.item(0, column).text() == SIM_A
+    imei_column = dialog.device_columns.index("dtuImeiMac")
+    assert dialog.device_table.item(0, imei_column).text() == PRIVATE["dtuImeiMac"]
 
 
 def test_main_close_waits_for_sim_read_using_existing_single_read_guard(window, monkeypatch):
