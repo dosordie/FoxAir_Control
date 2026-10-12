@@ -187,6 +187,7 @@ def test_pwm_empty_null_and_zero_stay_distinct_and_retryable(code, value):
 def test_confirmed_h36_and_zone1_curve_mappings_remain_authoritative():
     assert cloud_hint("H36")["confidence"] == "confirmed"
     assert cloud_modbus_register("H36") == 1236 and cloud_hint("H36")["write_allowed"] is True
+    assert cloud_hint("H36")["rangeStart"] == "0" and cloud_hint("H36")["rangeEnd"] == "2"
     assert cloud_modbus_register("CP1-1") == 1250
     assert cloud_hint("CP1-1")["write_allowed"] is False
 
