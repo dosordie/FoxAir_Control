@@ -40,7 +40,7 @@ from workers.warmlink_cloud_worker import (
 )
 from cloud.device_metadata import (
     cached_device_metadata, device_iccid,
-    SIM_STATUS_FIELDS, safe_sim_status,
+    SIM_STATUS_FIELDS, safe_sim_status, sim_display_value,
 )
 from core.settings_manager import ensure_warmlink_cloud_defaults
 
@@ -237,6 +237,17 @@ class WarmLinkCloudDialog(QDialog):
             }.get(field, field)
             sim_layout.addWidget(QLabel(caption + ":"), row, column)
             sim_layout.addWidget(label, row, column + 1)
+
+        raw_row = 1 + (len(SIM_STATUS_FIELDS) + 1) // 2
+        sim_layout.addWidget(QLabel("Alle API-Felder (Debug):"), raw_row, 0, 1, 4)
+        self.sim_raw_table = QTableWidget(0, 2)
+        self.sim_raw_table.setHorizontalHeaderLabels(["Feld", "Rohwert / Übersetzung"])
+        self.sim_raw_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.sim_raw_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.sim_raw_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.sim_raw_table.setMinimumHeight(150)
+        self.sim_raw_table.setMaximumHeight(240)
+        sim_layout.addWidget(self.sim_raw_table, raw_row + 1, 0, 1, 4)
         dev_layout.addWidget(sim_box)
         self.tabs.addTab(dev_tab, "Geräte")
 
@@ -1439,6 +1450,8 @@ class WarmLinkCloudDialog(QDialog):
             self._sim_context = None
             for label in self.sim_status_labels.values():
                 label.setText("—")
+            if hasattr(self, "sim_raw_table"):
+                self.sim_raw_table.setRowCount(0)
             self.sim_status_label.setText(
                 "Noch nicht abgefragt." if identity else "Keine ICCID für das ausgewählte Gerät verfügbar.")
         if identity is None:
@@ -1502,9 +1515,21 @@ class WarmLinkCloudDialog(QDialog):
             return  # A changed device/account/ICCID must not receive the old reply.
         values = safe_sim_status(result)
         for field, label in self.sim_status_labels.items():
-            value = values[field]
-            label.setText("—" if value in (None, "") else str(value))
-        self.sim_status_label.setText("SIM-/LTE-Status aktualisiert; Statuscodes sind Rohwerte.")
+            label.setText(sim_display_value(values[field]))
+
+        raw_items = list(result.items()) if isinstance(result, dict) else []
+        self.sim_raw_table.setRowCount(len(raw_items))
+        for row, (field, value) in enumerate(raw_items):
+            self.sim_raw_table.setItem(row, 0, QTableWidgetItem(str(field)))
+            if isinstance(value, (dict, list)):
+                display = json.dumps(value, ensure_ascii=False, sort_keys=True)
+            else:
+                display = sim_display_value(value)
+            self.sim_raw_table.setItem(row, 1, QTableWidgetItem(display))
+        self.sim_raw_table.resizeColumnToContents(0)
+        self.sim_status_label.setText(
+            f"SIM-/LTE-Status aktualisiert; {len(raw_items)} API-Felder, Statuscodes sind Rohwerte."
+        )
         self.main_window._log("WarmLink Cloud: SIM-/LTE-Status aktualisiert.")
 
     def _on_sim_error(self, context, _error):
