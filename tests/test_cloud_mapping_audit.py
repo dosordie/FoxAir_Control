@@ -66,6 +66,7 @@ def test_static_audit_reports_aliases_without_claiming_runtime_support():
     assert report["aliases"] == [
         {"main_register": 1206, "codes": ["1206", "E03-3"]},
         {"main_register": 1208, "codes": ["1208", "E03-5"]},
+        {"main_register": 1250, "codes": ["1250", "CP1-1"]},
         {"main_register": 2029, "codes": ["2029", "InputCurrent1"]},
     ]
 

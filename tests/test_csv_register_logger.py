@@ -97,7 +97,9 @@ def test_only_current_confirmed_catalogue_cloud_codes_including_reviewed_faults(
     assert all(2001 <= n <= 2090 for n in mappings.values())
     assert "2078" not in mappings and "R02" not in mappings and "F23" not in mappings
     assert {code: mappings[code] for code in (f"Fault{n}" for n in range(1, 11))} == {f"Fault{n}": 2080 + n for n in range(1, 11)}
-    assert len(set(mappings.values())) == 50
+    assert mappings["T14"] == 2050
+    assert mappings["T57"] == 2023
+    assert len(set(mappings.values())) == 52
     custom = {"2078": {"code": "T04"}, "2081": {"code": "Fault1"}}
     assert logger_cloud_mappings(custom) == {"T04": 2078, "Fault1": 2081}
 

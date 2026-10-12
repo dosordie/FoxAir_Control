@@ -3124,6 +3124,134 @@ WARMLINK_CLOUD_CODE_HINTS["Switch2168"] = {
 for _ios_code in WARMLINK_IOS308_CODES:
     WARMLINK_CLOUD_CODE_HINTS.setdefault(_ios_code, ios308_code_metadata(_ios_code))
 
+# GL9 live mapping audit 2026-10-12. These read mappings were confirmed by
+# simultaneous/near-simultaneous Cloud <-> local values. Cloud writeability is
+# deliberately NOT inferred from local Modbus writeability.
+_IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
+    "H41": {
+        "confidence": "confirmed", "local_code": "H41", "modbus_register": 1346,
+        "name": "Supervisor-Passwort / H41",
+        "note": "GL9 live 2026-10-12: Cloud H41=66 matches local H41/MAIN:1346=66.",
+        "write_allowed": False,
+    },
+    "R40": {
+        "confidence": "confirmed", "local_code": "R40", "modbus_register": 1193,
+        "name": "R40 Temperaturparameter",
+        "note": "GL9 live 2026-10-12: exact R40 code match; Cloud value 0.0 and range -10..60 agree with local MAIN:1193.",
+        "write_allowed": False,
+    },
+    "R41": {
+        "confidence": "confirmed", "local_code": "R41", "modbus_register": 1194,
+        "name": "R41 Temperaturparameter",
+        "note": "GL9 live 2026-10-12: exact R41 code match; Cloud value 0.0 and range -10..60 agree with local MAIN:1194.",
+        "write_allowed": False,
+    },
+    "T14": {
+        "confidence": "confirmed", "local_code": "T14", "modbus_register": 2050,
+        "name": "Verteilerrohrtemperatur / T14",
+        "note": "GL9 live 2026-10-12: Cloud T14=17.6 C equals local T14/MAIN:2050=17.6 C.",
+        "unit": "°C", "write_allowed": False,
+    },
+    "T57": {
+        "confidence": "confirmed", "modbus_register": 2023,
+        "name": "Anzahl Verdichter-Starts",
+        "note": "GL9 live 2026-10-12: Cloud T57 tracked compressor starts 609->610 while local MAIN:2023 was 610.",
+        "write_allowed": False,
+    },
+    "1250": {
+        "confidence": "confirmed", "modbus_register": 1250,
+        "name": "7P-Heiz-Sollwert bei -20 °C / Alias zu CP1-1",
+        "note": "GL9 live 2026-10-12: Cloud 1250=45.0 C equals local MAIN:1250=45.0 C and CP1-1=45.0 C.",
+        "unit": "°C", "write_allowed": False,
+    },
+    "1256": {
+        "confidence": "confirmed", "local_code": "KG1", "modbus_register": 1256,
+        "name": "WP Timer 1 Start / Alias zu KG1",
+        "note": "GL9 live 2026-10-12: Cloud 1256 raw 1805 equals local MAIN:1256/KG1 raw 1805.",
+        "write_allowed": False,
+    },
+    "1257": {
+        "confidence": "confirmed", "local_code": "KG2", "modbus_register": 1257,
+        "name": "WP Timer 1 Stop / Alias zu KG2",
+        "note": "GL9 live 2026-10-12: Cloud 1257 raw 5396 equals local MAIN:1257/KG2 raw 5396.",
+        "write_allowed": False,
+    },
+    "1258": {
+        "confidence": "confirmed", "local_code": "KG3", "modbus_register": 1258,
+        "name": "WP Timer 2 Start / Alias zu KG3",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1258 observed 0.",
+        "write_allowed": False,
+    },
+    "1259": {
+        "confidence": "confirmed", "local_code": "KG4", "modbus_register": 1259,
+        "name": "WP Timer 2 Stop / Alias zu KG4",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1259 observed 0.",
+        "write_allowed": False,
+    },
+    "1260": {
+        "confidence": "confirmed", "local_code": "KG5", "modbus_register": 1260,
+        "name": "WP Timer 3 Start / Alias zu KG5",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1260 observed 0.",
+        "write_allowed": False,
+    },
+    "1261": {
+        "confidence": "confirmed", "local_code": "KG6", "modbus_register": 1261,
+        "name": "WP Timer 3 Stop / Alias zu KG6",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1261 observed 0.",
+        "write_allowed": False,
+    },
+    "1262": {
+        "confidence": "confirmed", "local_code": "KG7", "modbus_register": 1262,
+        "name": "WP Timer 4 Start / Alias zu KG7",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1262 observed 0.",
+        "write_allowed": False,
+    },
+    "1263": {
+        "confidence": "confirmed", "local_code": "KG8", "modbus_register": 1263,
+        "name": "WP Timer 4 Stop / Alias zu KG8",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1263 observed 0.",
+        "write_allowed": False,
+    },
+    "1264": {
+        "confidence": "confirmed", "local_code": "KG9", "modbus_register": 1264,
+        "name": "WP Timer 5 Start / Alias zu KG9",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1264 observed 0.",
+        "write_allowed": False,
+    },
+    "1265": {
+        "confidence": "confirmed", "local_code": "KG10", "modbus_register": 1265,
+        "name": "WP Timer 5 Stop / Alias zu KG10",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1265 observed 0.",
+        "write_allowed": False,
+    },
+    "1266": {
+        "confidence": "confirmed", "local_code": "KG11", "modbus_register": 1266,
+        "name": "WP Timer 6 Start / Alias zu KG11",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1266 observed 0.",
+        "write_allowed": False,
+    },
+    "1267": {
+        "confidence": "confirmed", "local_code": "KG12", "modbus_register": 1267,
+        "name": "WP Timer 6 Stop / Alias zu KG12",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1267 observed 0.",
+        "write_allowed": False,
+    },
+    "1268": {
+        "confidence": "confirmed", "local_code": "KG13-KG28", "modbus_register": 1268,
+        "name": "WP Timer 1+2 Aktiv/Tage / Alias zu KG13~KG28",
+        "note": "GL9 live 2026-10-12: Cloud 1268 binary 0000000100011111 exactly matches local MAIN:1268 timer bitmask.",
+        "write_allowed": False,
+    },
+    "1269": {
+        "confidence": "confirmed", "local_code": "KG29-KG44", "modbus_register": 1269,
+        "name": "WP Timer 3+4 Aktiv/Tage / Alias zu KG29~KG44",
+        "note": "GL9 live 2026-10-12: Cloud 1269 binary 0000000000000000 matches local MAIN:1269 timer bitmask.",
+        "write_allowed": False,
+    },
+}
+for _code, _reviewed in _IOS308_CONFIRMED_READ_MAPPINGS.items():
+    WARMLINK_CLOUD_CODE_HINTS[_code].update(_reviewed)
+
 
 def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})

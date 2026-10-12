@@ -1700,6 +1700,11 @@ class WarmLinkCloudDialog(QDialog):
         if reg is not None:
             local_txt, local_num = local_display_value(self.main_window.latest_regs, int(reg_no))
             display = display or local_txt
+            # TIME_HHMM is shown as HH:MM locally, while WarmLink returns the
+            # 16-bit timer word as a decimal raw value (e.g. 1805 = 0x070D).
+            # Compare raw-to-raw here instead of extracting "07" from "07:13".
+            if str(getattr(info, "dtype", "") or "").upper() == "TIME_HHMM":
+                local_num = try_float(raw)
         if cloud_num is not None and local_num is not None:
             diff = f"{cloud_num - local_num:+.3g}"
         return [str(reg_no), local_code, local_name, raw, signed, display, diff]
