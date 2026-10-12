@@ -138,7 +138,7 @@ def ios308_code_metadata(code: str) -> dict[str, object]:
     if code not in WARMLINK_IOS308_CODE_SET:
         return {}
     metadata = {
-        "name": code, "app_known": True, "query_candidate": True,
+        "app_known": True, "query_candidate": True,
         "app_observation_only": True,
         "app_version": "iOS 3.0.8", "source": WARMLINK_IOS308_SOURCE,
         "confidence": "unknown", "mapping_intentionally_absent": True,

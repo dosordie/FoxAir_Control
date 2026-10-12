@@ -33,7 +33,8 @@ def cached_device_metadata(devices: Any) -> list[dict[str, Any]]:
 
 SENSITIVE_DEVICE_KEYS = frozenset({
     "iccid", "dtuiccid", "imei", "dtuimeimac", "imeimac", "msisdn", "imsi",
-    "email", "phone", "telephone", "phonenumber", "mobile", "mobilephone", "userid",
+    "email", "emailaddress", "useremail", "phone", "telephone", "tel",
+    "phonenumber", "phoneno", "mobile", "mobilephone", "mobileno", "userid",
 })
 
 

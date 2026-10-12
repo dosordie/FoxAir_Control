@@ -212,3 +212,18 @@ def test_empty_app_candidates_do_not_abort_a_valid_discovered_session(monkeypatc
     assert errors == [] and states[-1] == "CONNECTED"
     assert worker.session.retry_codes == codes
     assert all(row["cloud_supported"] is None for row in worker.session.rows.values())
+
+
+def test_app_observations_do_not_replace_existing_app_labels_or_become_reviewed_hints():
+    from cloud.warmlink_codes import code_display_name, merged_cloud_metadata
+    metadata = merged_cloud_metadata("O12")
+    assert metadata["app_observation_only"] is True
+    assert metadata["cloud_hint_known"] is False
+    assert metadata["modbus_mapped"] is False and metadata["write_confirmed"] is False
+    assert code_display_name("O12") == metadata["app_label_644"]
+
+
+def test_service_metadata_only_applies_to_its_explicit_slave_namespace():
+    from cloud.warmlink_codes import warmlink_service_metadata
+    assert warmlink_service_metadata(0x63, 8004)["main_mirror"] == 2154
+    assert warmlink_service_metadata(0x01, 8004) is None
