@@ -3152,7 +3152,7 @@ def merged_cloud_metadata(code: str) -> dict[str, object]:
     merged.update(confirmed)  # stronger, existing reverse engineering wins
     # Static mapping knowledge is not evidence that this particular device
     # returned the code. Runtime rows carry the actual ``supported`` result.
-    merged["cloud_hint_known"] = bool(confirmed)
+    merged["cloud_hint_known"] = bool(confirmed) and not confirmed.get("app_observation_only", False)
     merged["cloud_supported"] = None
     merged["modbus_mapped"] = confirmed.get("modbus_register") is not None
     merged["write_confirmed"] = bool(confirmed.get("write_allowed", False))

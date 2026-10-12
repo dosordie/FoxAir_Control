@@ -79,4 +79,4 @@ jobs:
       - name: Compile all Python files
         run: python -m compileall -q .
       - name: Check whitespace
-        run: git diff --check HEAD^ HEAD
+        run: git diff --check origin/work...HEAD
