@@ -21,7 +21,7 @@ PRIVATE = {"dtuIccid": SIM_A, "dtuImeiMac": "test-imei-000000003",
            "email": "private@example.test", "userId": 0}
 PUBLIC = {"expireDays": 0, "expireTime": None, "activeTime": "2026-10-10",
           "openTime": None, "cardState": 0, "onlineState": None,
-          "netType": "2", "cardType": None, "cardPlatform": None, "dataService": None,
+          "netType": "2", "cardType": "物联卡", "cardPlatform": None, "dataService": None,
           "renewYear": 0}
 
 
@@ -124,8 +124,13 @@ def test_sim_api_payload_and_scalar_status_allowlist(monkeypatch):
     monkeypatch.setattr(api, "post", post)
     result = api.get_sim_status(SIM_A)
     assert calls == [("dtuIccId/getInfoByIccId", {"iccId": SIM_A})]
-    assert result == PUBLIC
-    assert "dtuIccid" not in result and "extra" not in result
+    assert result["expireDays"] == PUBLIC["expireDays"]
+    assert result["cardType"] == "物联卡"
+    assert result["dtuIccid"] == SIM_A
+    assert result["dtuImeiMac"] == PRIVATE["dtuImeiMac"]
+    assert result["email"] == PRIVATE["email"]
+    assert result["extra"]["private"]["imsi"] == PRIVATE["imsi"]
+    assert safe_sim_status(result) == PUBLIC
     assert safe_sim_status({"expireDays": {"unexpected": PRIVATE}})["expireDays"] is None
 
 
@@ -180,6 +185,12 @@ def test_sim_is_manual_keeps_zero_null_and_unknown_status_raw(sim_dialog, monkey
     assert dialog.sim_status_labels["cardState"].text() == "0"
     assert dialog.sim_status_labels["onlineState"].text() == "—"
     assert dialog.sim_status_labels["netType"].text() == "2"
+    assert dialog.sim_status_labels["cardType"].text() == "IoT-SIM-Karte (物联卡)"
+    raw = {
+        dialog.sim_raw_table.item(row, 0).text(): dialog.sim_raw_table.item(row, 1).text()
+        for row in range(dialog.sim_raw_table.rowCount())
+    }
+    assert raw["cardType"] == "IoT-SIM-Karte (物联卡)"
     assert owner.cloud_btn.property("pollingActive") is True
 
 
@@ -240,6 +251,13 @@ def test_sim_data_and_errors_are_excluded_from_logs_and_raw_exports(sim_dialog, 
     assert dialog.device_table.item(0, column).text() == SIM_A
     imei_column = dialog.device_columns.index("dtuImeiMac")
     assert dialog.device_table.item(0, imei_column).text() == PRIVATE["dtuImeiMac"]
+    raw = {
+        dialog.sim_raw_table.item(row, 0).text(): dialog.sim_raw_table.item(row, 1).text()
+        for row in range(dialog.sim_raw_table.rowCount())
+    }
+    assert raw["dtuIccid"] == SIM_A
+    assert raw["dtuImeiMac"] == PRIVATE["dtuImeiMac"]
+    assert raw["email"] == PRIVATE["email"]
 
 
 def test_main_close_waits_for_sim_read_using_existing_single_read_guard(window, monkeypatch):
