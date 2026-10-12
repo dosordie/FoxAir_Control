@@ -152,11 +152,21 @@ def test_supported_unmapped_values_remain_visible_in_cloud_dialog(application):
     window.deleteLater()
 
 
-@pytest.mark.parametrize("code", ["I28", "H55", "T100", "T101"])
-def test_923_codes_are_not_in_644_catalog_or_mapping(code):
-    assert code not in WARMLINK_644_DISCOVERY_CODES
-    assert not cloud_hint(code)
-    assert resolve_cloud_projection_register(code, cloud_hint(code)) is None
+def test_unobserved_923_code_is_not_in_644_catalog_or_mapping():
+    assert "I28" not in WARMLINK_644_DISCOVERY_CODES
+    assert not cloud_hint("I28")
+    assert resolve_cloud_projection_register("I28", cloud_hint("I28")) is None
+
+
+@pytest.mark.parametrize("code", ["H55", "T100", "T101"])
+def test_ios308_observations_allow_queries_without_importing_923_mappings(code):
+    assert code in WARMLINK_644_DISCOVERY_CODES
+    metadata = cloud_hint(code)
+    assert metadata["app_observation_only"] is True
+    assert metadata["confidence"] == "unknown"
+    assert metadata["write_allowed"] is False
+    assert not metadata.get("modbus_register") and not metadata.get("unit")
+    assert resolve_cloud_projection_register(code, metadata) is None
 
 
 def test_sg_binary_word_and_distinct_numeric_cloud_code(application):

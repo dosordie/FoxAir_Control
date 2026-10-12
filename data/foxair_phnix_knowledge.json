@@ -2961,12 +2961,12 @@
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2151": {
-    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Übernommener EMS-/Remote-Modus aus Warmlink 0x63:8001. 0 = kein Modus; fachliche Namen der Modi 1..4 sind offen. MAIN1691 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
   },
   "2155": {
-    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Batterieladezustand / Battery_SoC aus Warmlink 0x63:8005. RAW; Einheit/Skalierung offen, keine bestätigte Prozentdarstellung. Die frühere Timer-/Zähler-Erklärung ist durch OEM-Strings und Mainboard-XREFs überholt. MAIN1695 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
   },
   "2147": {
     "description": "V3.5/H30=3: signed Pass-through aus HYD61:2050 (Unit 0x61 FC03). Direkter Nachbar zu MAIN:2146 Bit1 = HYD61:2049 Bit1. Hersteller-Klartextname und physikalische Semantik sind noch offen.",
@@ -2981,8 +2981,8 @@
     "source": "V3.5 Disassembly 0x0806CD68ff / 0x08088054; KASKADENBETRIEB-MASTER-SLAVE.md"
   },
   "2139": {
-    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt. Weitere bestätigte Bits laut Issue #176: Bit8 SG-/Zusatzheizungs-Frequenzlimit und Bit10 dreiphasiger Strom-Soft-Limiter.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140; Issue #176"
   },
   "6011": {
     "description": "Raw I/O-/Switch-Diagnosewort; Einzelbitsemantik offen.",
@@ -3063,5 +3063,29 @@
   "1557": {
     "knowledge": "Read-only V3.5-Export des effektiven intern berechneten Heiz-Wassersollwerts als signed int16 RAW / 10 °C. RAW bleibt verfuegbar; die normalen Heiz-Min-/Max-Grenzen gelten.",
     "source": "Reverse Engineering V3.5"
+  },
+  "2152": {
+    "description": "EMS-Statusbitfeld (u16), kein direktes 800x-Datenregister. Bits 0..2 bilden den exklusiven thermischen Vergleichszustand: Bit0 Abschalt-/Überschussseite, Bit1 Hystereseband, Bit2 Bedarfsseite. Bits 3..7 betreffen Remote-Aktionen/Qualifizierung; Einzelbedeutungen bleiben offen. HEX und Bitmaske anzeigen, kein 1/2/4-Enum.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2153": {
+    "description": "Strompreis-Rohwert aus Warmlink 0x63:8002. Einheit und Skalierung unbekannt. MAIN1693 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2154": {
+    "description": "Netzleistungs-Rohwert (signed int16) aus Warmlink 0x63:8004. Einheit und Polarität nicht live bestätigt. MAIN1427 ist ein separater lokaler Schwellwert (Default 200 RAW), nicht der Spiegel von 8004. MAIN1694 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2156": {
+    "description": "Batterieleistungs-Rohwert (signed int16) aus Warmlink 0x63:8003. Einheit und Polarität offen. MAIN1696 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2157": {
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8007. Semantik offen, kein Herstellername belegt. MAIN1697 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2158": {
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8008. Semantik offen, kein Herstellername belegt. MAIN1698 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
   }
 }

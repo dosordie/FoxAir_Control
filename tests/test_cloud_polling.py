@@ -276,7 +276,11 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
     loop = QEventLoop()
     timer = QTimer()
     timer.setInterval(5)
-    timer.timeout.connect(lambda: beats.append(1))
+    def heartbeat():
+        beats.append(1)
+        if len(beats) >= 3:
+            gate.set()
+    timer.timeout.connect(heartbeat)
     timer.start()
     def os_provider():
         thread_ids.append(threading.get_ident())
@@ -286,7 +290,6 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
         results.append((value, error, threading.get_ident()))
         loop.quit()
     store.submit(os_provider, done)
-    QTimer.singleShot(60, gate.set)
     QTimer.singleShot(2000, loop.quit)
     loop.exec()
     timer.stop()

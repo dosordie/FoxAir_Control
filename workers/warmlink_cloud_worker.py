@@ -17,6 +17,7 @@ from cloud.warmlink_api import (
     WarmLinkCloudApi,
     WarmLinkCloudError,
     WarmLinkAuthError,
+    WarmLinkSimStatusError,
     translate_cloud_error_message,
     normalize_data_values,
     normalize_device_list,
@@ -48,7 +49,8 @@ def supported_codes_for_next_poll(
     requested_codes: list[str], rows: list[dict[str, Any]],
 ) -> list[str]:
     """Reduce a discovery request to codes actually returned by this device."""
-    supported = {str(row.get("code") or "") for row in rows if row.get("supported")}
+    supported = {str(row.get("code") or "") for row in rows
+                 if row.get("supported") or row.get("retry_when_empty")}
     return [code for code in requested_codes if code in supported]
 
 
@@ -156,16 +158,37 @@ class WarmLinkCloudDebugWorker(QObject):
             )
             api.preferred_login_method = self.preferred_login_method
             api.use_login_fallbacks = self.login_fallbacks
-            response = api.debug_request(
-                self.method, self.endpoint, self.body, relogin=self.relogin_on_401,
-            )
+            response = self._request_result(api)
             if api.token:
                 self.token_updated.emit(api.token)
             self.result.emit(response)
         except Exception as exc:
-            self.error.emit(translate_cloud_error_message(str(exc)))
+            self.error.emit(self._error_text(exc))
         finally:
             self.finished.emit()
+
+    def _request_result(self, api):
+        return api.debug_request(self.method, self.endpoint, self.body,
+                                 relogin=self.relogin_on_401)
+
+    def _error_text(self, exc):
+        return translate_cloud_error_message(str(exc))
+
+
+class WarmLinkCloudSimWorker(WarmLinkCloudDebugWorker):
+    """One manual read using existing credentials, API and worker lifecycle."""
+
+    def __init__(self, username, password, icc_id, request_id=0, **kwargs):
+        super().__init__(username, password, "POST", "dtuIccId/getInfoByIccId",
+                         body={"iccId": icc_id}, **kwargs)
+        self.request_id = request_id
+
+    def _request_result(self, api):
+        return {"request_id": self.request_id, "status": api.get_sim_status(self.body["iccId"])}
+
+    def _error_text(self, exc):
+        return str(exc) if isinstance(exc, WarmLinkSimStatusError) else (
+            "SIM-/LTE-Status konnte nicht gelesen werden.")
 
 
 class WarmLinkKnownDeviceValidationWorker(QObject):
@@ -587,7 +610,8 @@ class WarmLinkCloudWorker(QObject):
                 self.reload_static = False
                 self._reload_event.clear()
                 requested = self.codes if initial else (
-                    self.session.static_codes if static_reload else self.session.live_codes)
+                    self.session.static_codes if static_reload else
+                    list(dict.fromkeys([*self.session.live_codes, *self.session.retry_codes])))
                 phase = "READING_INITIAL" if initial else ("READING_STATIC" if static_reload else "READING_LIVE")
                 try:
                     if requested:
@@ -607,7 +631,7 @@ class WarmLinkCloudWorker(QObject):
                         self.session.merge(rows)
                         if initial:
                             self.session.classify(self.codes, rows)
-                            if not self.session.supported_codes:
+                            if not self.session.supported_codes and not self.session.retry_codes:
                                 self.session.scanned = False
                                 self._publish_session()
                                 self.connection_state.emit("ERROR")

@@ -358,9 +358,9 @@ def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]]) -> str:
     for bit in sorted(bit_map):
         if 0 <= bit <= 15 and (raw_value & (1 << bit)):
             hits.append(f"B{bit}: {bit_map[bit]}")
-    if not hits:
-        return "0"
-    return f"0x{raw_value:04X}: " + "; ".join(hits)
+    mask = f"0x{raw_value:04X} / {raw_value:016b}"
+    # Unknown bits stay visible as raw bits, without invented labels.
+    return mask + (": " + "; ".join(hits) if hits else "")
 
 def _temperature_unit(unit: Optional[str]) -> str:
     unit = str(unit or "").strip()

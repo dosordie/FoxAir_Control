@@ -6,6 +6,7 @@ from typing import Any
 
 from cloud.register_resolver import resolve_cloud_register
 from cloud.warmlink_codes import cloud_hint
+from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODE_SET
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class CloudSession:
     other_codes: list[str] = field(default_factory=list)
     rows: dict[str, dict[str, Any]] = field(default_factory=dict)
     scanned: bool = False
+    retry_codes: list[str] = field(default_factory=list)
 
     def reusable(self, username, device_code, token):
         account_matches = self.username == username and self.device_code == device_code
@@ -73,6 +75,10 @@ class CloudSession:
         # A full scan rechecks support; retained stale values are not evidence of support.
         evidence = self.rows if fresh_rows is None else {row["code"]: row for row in fresh_rows}
         self.supported_codes = [code for code in candidates if evidence.get(code, {}).get("supported")]
+        # Empty app-requested candidates remain eligible for later live validation.
+        # This is separate from proven support and from the local register namespace.
+        self.retry_codes = [code for code in candidates if code in WARMLINK_IOS308_CODE_SET
+                            and not evidence.get(code, {}).get("supported")]
         groups = classify_cloud_codes(self.supported_codes)
         self.live_codes, self.static_codes, self.other_codes = (
             groups["live"], groups["static"], groups["other"])

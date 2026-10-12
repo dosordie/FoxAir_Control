@@ -110,7 +110,11 @@ def test_timeout_starts_at_transport_send_then_releases_queue(application):
     pump(application)
     assert timeouts == [a] and sent == [a]
     assert scheduler.matching(0x63, 2) is None
-    wait(WARMLINK_TIMEOUT_DRAIN_MS + 30)
+    remaining = scheduler.resume_at - time.monotonic()
+    assert 0 < remaining <= WARMLINK_TIMEOUT_DRAIN_MS / 1000
+    deadline = time.monotonic() + WARMLINK_TIMEOUT_DRAIN_MS / 1000 + 1.0
+    while sent != [a, b] and time.monotonic() < deadline:
+        wait(20)
     assert sent == [a, b]
     scheduler.cancel()
 

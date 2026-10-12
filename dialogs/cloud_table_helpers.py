@@ -5,6 +5,7 @@ import re
 from typing import Any, Callable, Optional
 
 from core.foxair_phnix_core import numeric_value_by_type
+from cloud.device_metadata import mask_identifier
 from cloud.metadata import resolve_cloud_range
 
 from cloud.warmlink_codes import (
@@ -20,9 +21,7 @@ def mask_cloud_value(value: Any, show_ids: bool = False) -> str:
     text = str(value if value is not None else "")
     if show_ids or not text:
         return text
-    if len(text) <= 8:
-        return "••••"
-    return text[:4] + "…" + text[-4:]
+    return mask_identifier(text)
 
 
 def try_float(value: Any) -> Optional[float]:
@@ -97,7 +96,8 @@ def data_table_values(row: dict[str, Any], mapping_status: str = "") -> tuple[li
     bounds = resolve_cloud_range(code, hint, row)
     reg = cloud_modbus_register(code)
     mapping = str(reg) if reg is not None else str(hint.get("confidence") or "")
-    status = "veraltet" if row.get("stale") else ("OK" if row.get("supported") else "leer/unsupported")
+    status = "veraltet" if row.get("stale") else ("OK" if row.get("supported") else
+        "leer (erneut abfragbar)" if row.get("retry_when_empty") else "leer/unsupported")
     vals = [
         code,
         code_display_name(code),

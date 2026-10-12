@@ -134,3 +134,17 @@ Beispielausgabe:
 
 ## Lizenz
 [GPLv3](LICENSE)
+
+
+### WarmLink iOS 3.0.8: zusätzliche Diagnose
+
+Die Cloud-Codeabdeckung enthält additiv die 108 in der Original-App beobachteten
+Codebezeichnungen. Leere Werte bleiben erneut abfragbar; insbesondere die drei
+PWM-Codes brauchen noch einen Gegencheck bei laufender Wärmepumpe.
+Der Bereich **Geräte → SIM / LTE-Vertragsstatus** liest die Vertragsdaten nur
+auf **Aktualisieren**. Er benötigt die ICCID aus der vorhandenen Geräteübersicht;
+Statuscodes werden als Rohwerte angezeigt, Zahlungsfunktionen gibt es nicht.
+**API-Debugger → OTA-Updateprüfung vorbereiten** befüllt lediglich einen
+editierbaren Request. Das ist keine Firmware-Updatefunktion; erst **Senden**
+führt die Abfrage aus. HTTP 404 bleibt eine Serverantwort und bedeutet nicht
+„kein Update verfügbar“.

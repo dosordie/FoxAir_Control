@@ -21,7 +21,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
-from cloud.device_metadata import safe_device_metadata
+from cloud.device_metadata import safe_device_metadata, safe_sim_status
+from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODE_SET
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
 BASE_URL = SERVICE_ROOT + "/crmservice/api"
@@ -95,6 +96,10 @@ def translate_cloud_error_message(msg: str) -> str:
 
 class WarmLinkCloudError(RuntimeError):
     pass
+
+
+class WarmLinkSimStatusError(WarmLinkCloudError):
+    """Only locally constructed safe messages; never a server body or identifier."""
 
 
 class WarmLinkAuthError(WarmLinkCloudError):
@@ -422,6 +427,24 @@ class WarmLinkCloudApi:
             "houseId": str(house_id),
             "level": 0,
         })
+
+    def get_sim_status(self, icc_id: str) -> dict[str, Any]:
+        """Read SIM contract details through the existing session transport."""
+        identifier = str(icc_id or "").strip()
+        if not identifier:
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: ICCID fehlt.")
+        try:
+            data = self.post("dtuIccId/getInfoByIccId", {"iccId": identifier})
+        except Exception:
+            # HTTP/JSON/credential exceptions can contain response PII.
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: Anfrage fehlgeschlagen.") from None
+        status = data.get("http_status") if isinstance(data, dict) else None
+        if type(status) is int and status >= 400:
+            raise WarmLinkSimStatusError(f"SIM-/LTE-Status: HTTP {status}.") from None
+        if not isinstance(data, dict) or not (
+                self.success(data) or str(data.get("error_code")) == "0"):
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: Cloud-Anfrage abgelehnt.") from None
+        return safe_sim_status(data.get("objectResult"))
 
     def get_user_info(self) -> dict[str, Any]:
         """Return the official app user model (including userId, if supplied)."""
@@ -794,6 +817,7 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
         seen.add(code)
         value = item.get("value", item.get("dataValue", item.get("val", item.get("currentValue"))))
         live_supported = value not in (None, "")
+        retry_when_empty = not live_supported and code in WARMLINK_IOS308_CODE_SET
         rows.append({
             **item,  # Preserve optional live metadata (unit, dataTypeAi, tmJson, ...).
             "code": code,
@@ -803,7 +827,8 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
             "rangeEnd": item.get("rangeEnd", item.get("max")),
             "raw": original_item,
             "supported": live_supported,
-            "cloud_supported": live_supported,
+            "cloud_supported": None if retry_when_empty else live_supported,
+            "retry_when_empty": retry_when_empty,
         })
 
     for code in requested_codes:
@@ -816,6 +841,7 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
                 "rangeEnd": "",
                 "raw": {},
                 "supported": False,
-                "cloud_supported": False,
+                "cloud_supported": None if code in WARMLINK_IOS308_CODE_SET else False,
+                "retry_when_empty": code in WARMLINK_IOS308_CODE_SET,
             })
     return rows
