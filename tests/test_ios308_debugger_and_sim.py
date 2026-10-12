@@ -243,6 +243,7 @@ def test_sim_data_and_errors_are_excluded_from_logs_and_raw_exports(sim_dialog, 
 def test_main_close_waits_for_sim_read_using_existing_single_read_guard(window, monkeypatch):
     dialog = WarmLinkCloudDialog(window)
     window.warmlink_cloud_dialog = dialog
+    dialog.save_token_cb.setChecked(False)
     dialog.username_edit.setText("user")
     dialog._on_devices([{"deviceCode": "A", "dtuIccid": SIM_A}])
     gate = threading.Event()
