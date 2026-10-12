@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
-from cloud.device_metadata import safe_device_metadata, safe_sim_status
+from cloud.device_metadata import debug_sim_status, safe_device_metadata
 from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODE_SET
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
@@ -444,7 +444,7 @@ class WarmLinkCloudApi:
         if not isinstance(data, dict) or not (
                 self.success(data) or str(data.get("error_code")) == "0"):
             raise WarmLinkSimStatusError("SIM-/LTE-Status: Cloud-Anfrage abgelehnt.") from None
-        return safe_sim_status(data.get("objectResult"))
+        return debug_sim_status(data.get("objectResult"))
 
     def get_user_info(self) -> dict[str, Any]:
         """Return the official app user model (including userId, if supplied)."""
