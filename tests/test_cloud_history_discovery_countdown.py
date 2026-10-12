@@ -251,7 +251,7 @@ def test_device_merge_keeps_authoritative_zero_false_and_fills_only_gaps():
     assert merged[1] == {"deviceCode": "manual", "discoverySource": "manual"}
 
 
-def test_full_device_table_keeps_metadata_and_unmasked_sim_identifiers(application):
+def test_full_device_table_keeps_metadata_and_masks_sim_identifiers(application):
     dialog = WarmLinkCloudDialog(DialogWindow())
     dialog._on_devices([{"deviceCode": "device", "deviceId": "short", "deviceName": "Shared",
         "isShared": True, "isFault": False, "houseName": "Zuhause", "roomId": "R", "areaId": "A",
@@ -265,7 +265,7 @@ def test_full_device_table_keeps_metadata_and_unmasked_sim_identifiers(applicati
     assert values["dtuSignalIntensity"] == "—"
     assert values["deviceId"] == "short" and values["deviceCode"] == "device"
     assert values["sn"] == "SN123"
-    assert values["dtuIccid"] == "123456"
+    assert values["dtuIccid"] == "••••"
     assert dialog.devices[0]["dtuIccid"] == "123456"  # Available internally for the manual read.
     assert values["houseRoleType"] == "1" and values["productKey"] == "P"
     assert values["MAC"] == "new-field" and "deviceSecret" not in values
