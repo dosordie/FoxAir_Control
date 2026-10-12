@@ -70,9 +70,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libegl1 libopengl0
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pytest
+          python -m pip install -r requirements.txt 'PySide6==6.8.3' 'pytest>=8,<9'
       - name: Run all tests
-        run: python -m pytest -q
+        run: python -m pytest -v
       - name: Compile all Python files
         run: python -m compileall -q .
       - name: Check whitespace
