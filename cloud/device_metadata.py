@@ -91,3 +91,25 @@ def safe_sim_status(value: Any) -> dict[str, Any]:
             item = mask_identifier(item)
         result[field] = item
     return result
+
+
+SIM_VALUE_TRANSLATIONS = {
+    "物联卡": "IoT-SIM-Karte",
+}
+
+
+def debug_sim_status(value: Any) -> dict[str, Any]:
+    """Return all SIM API fields for the debug UI, excluding auth secrets only."""
+    data = safe_device_metadata(value) if isinstance(value, dict) else {}
+    return dict(data)
+
+
+def sim_display_value(value: Any) -> str:
+    """Human-readable debug display while preserving non-obvious raw values."""
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, (dict, list)):
+        return str(value)
+    text = str(value)
+    translated = SIM_VALUE_TRANSLATIONS.get(text)
+    return f"{translated} ({text})" if translated else text
