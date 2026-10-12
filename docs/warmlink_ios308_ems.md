@@ -83,8 +83,8 @@ Zeitfelder werden roh angezeigt; unbekannte Status-Enums bleiben Rohwerte.
 
 Nur erlaubte skalare Statusfelder verlassen den Worker. ICCID, IMEI,
 MSISDN, IMSI, Kontakt-/Kontodaten und vollständige SIM-JSON-Antworten kommen
-nicht ins Log oder in Rohdatenexporte. Die Geräteübersicht des Debug-Tools zeigt
-Gerätekennungen unmaskiert; Authentifizierungsgeheimnisse bleiben ausgeschlossen.
+nicht ins Log oder in Rohdatenexporte. Geräteanzeigen maskieren sensible
+Metadaten rekursiv; interne Identifikatoren bleiben für den Request verfügbar.
 Fehlermeldungen enthalten keine Serverantwort oder Kennung.
 
 Geräte-, Account- oder ICCID-Wechsel leert den Status und verwirft alte
