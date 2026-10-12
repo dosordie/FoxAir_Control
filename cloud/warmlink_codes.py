@@ -1752,9 +1752,8 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'local_code': 'H36',
          'modbus_register': 1236,
          'name': 'H36 / Anlagenparameter',
-         'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0; Confirmed by static '
-                 'cleanup: cloud_code == local register code',
-         'rangeEnd': '10',
+         'note': 'Confirmed MAIN:1236 mapping; GL9 live Cloud read shows ENUM range 0..2. Cloud control write 1->0 confirmed with readback in WarmLink iOS 3.0.8 capture.',
+         'rangeEnd': '2',
          'rangeStart': '0',
          'write_allowed': True},
  'H37': {'cloud_dataType': 'DIGI1',
