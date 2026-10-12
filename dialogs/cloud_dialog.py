@@ -36,8 +36,12 @@ from dialogs.cloud_table_helpers import (
 )
 from workers.warmlink_cloud_worker import (
     WarmLinkCloudWorker, WarmLinkCloudCommandWorker, WarmLinkCloudDebugWorker,
+    WarmLinkCloudSimWorker,
 )
-from cloud.device_metadata import cached_device_metadata
+from cloud.device_metadata import (
+    cached_device_metadata, device_iccid, redacted_device_metadata,
+    SIM_STATUS_FIELDS, safe_sim_status,
+)
 from core.settings_manager import ensure_warmlink_cloud_defaults
 
 class WarmLinkCloudDialog(QDialog):
@@ -67,6 +71,11 @@ class WarmLinkCloudDialog(QDialog):
         self.command_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.debug_thread: Optional[QThread] = None
         self.debug_worker: Optional[WarmLinkCloudDebugWorker] = None
+        self.sim_thread: Optional[QThread] = None
+        self.sim_worker: Optional[WarmLinkCloudSimWorker] = None
+        self._sim_identity = None
+        self._sim_context = None
+        self._sim_request_id = 0
         self.devices: list[dict[str, Any]] = []
         self.data_rows: list[dict[str, Any]] = []
         credentials = getattr(main_window, "cloud_credentials_cache", {})
@@ -207,6 +216,28 @@ class WarmLinkCloudDialog(QDialog):
         dev_layout.addWidget(self.device_table, 1)
         self.device_table.itemSelectionChanged.connect(self._device_table_selection_changed)
         self.device_table.cellDoubleClicked.connect(self._device_table_double_clicked)
+        sim_box = QGroupBox("SIM / LTE-Vertragsstatus")
+        sim_layout = QGridLayout(sim_box)
+        self.sim_status_label = QLabel("Kein Gerät ausgewählt.")
+        self.sim_status_label.setWordWrap(True)
+        self.sim_refresh_btn = QPushButton("Aktualisieren")
+        self.sim_refresh_btn.setEnabled(False)
+        sim_layout.addWidget(self.sim_status_label, 0, 0, 1, 3)
+        sim_layout.addWidget(self.sim_refresh_btn, 0, 3)
+        self.sim_status_labels = {}
+        for index, field in enumerate(SIM_STATUS_FIELDS):
+            row, column = 1 + index // 2, (index % 2) * 2
+            label = QLabel("—")
+            if field not in ("expireDays", "expireTime", "activeTime", "openTime"):
+                label.setToolTip("Rohwert; Enum-Bedeutung nicht bestätigt.")
+            self.sim_status_labels[field] = label
+            caption = {
+                "expireDays": "Restlaufzeit (Tage)", "expireTime": "Ablaufzeit",
+                "activeTime": "Aktivierungszeit", "openTime": "Startzeit",
+            }.get(field, field)
+            sim_layout.addWidget(QLabel(caption + ":"), row, column)
+            sim_layout.addWidget(label, row, column + 1)
+        dev_layout.addWidget(sim_box)
         self.tabs.addTab(dev_tab, "Geräte")
 
         data_tab = QWidget()
@@ -340,6 +371,7 @@ class WarmLinkCloudDialog(QDialog):
         self.debug_body_edit.setPlaceholderText('Optionaler JSON-Body, z. B. {"deviceCode": "..."}')
         self.debug_device_btn = QPushButton("Aktuellen Gerätecode einfügen")
         self.debug_template_btn = QPushButton("getDataByCode vorbereiten")
+        self.debug_ota_template_btn = QPushButton("OTA-Updateprüfung vorbereiten")
         self.debug_relogin_cb = QCheckBox("Bei 401 automatisch neu anmelden")
         self.debug_relogin_cb.setChecked(False)
         self.debug_send_btn = QPushButton("Senden")
@@ -355,6 +387,7 @@ class WarmLinkCloudDialog(QDialog):
         debug_buttons = QHBoxLayout()
         debug_buttons.addWidget(self.debug_device_btn)
         debug_buttons.addWidget(self.debug_template_btn)
+        debug_buttons.addWidget(self.debug_ota_template_btn)
         debug_buttons.addStretch(1)
         debug_layout.addLayout(debug_buttons, 4, 1, 1, 2)
         debug_layout.addWidget(self.debug_relogin_cb, 5, 1, 1, 2)
@@ -405,6 +438,9 @@ class WarmLinkCloudDialog(QDialog):
         self.debug_send_btn.clicked.connect(self.run_debug_request)
         self.debug_device_btn.clicked.connect(self._insert_debug_device_code)
         self.debug_template_btn.clicked.connect(self._prepare_debug_get_data)
+        self.debug_ota_template_btn.clicked.connect(self._prepare_debug_ota)
+        self.sim_refresh_btn.clicked.connect(self.refresh_sim_status)
+        self.username_edit.textChanged.connect(lambda _text: self._update_device_controls())
         self.close_btn.clicked.connect(self.close)
         self._refresh_write_values()
 
@@ -613,6 +649,7 @@ class WarmLinkCloudDialog(QDialog):
 
     def _update_device_controls(self) -> None:
         """Keep device mutation locked to a stopped cloud polling session."""
+        self._sync_sim_identity()
         running = self.cloud_thread is not None
         self.device_combo.setEnabled(not running)
         self.rediscover_btn.setEnabled(not running)
@@ -974,8 +1011,9 @@ class WarmLinkCloudDialog(QDialog):
         self.device_table.setHorizontalHeaderLabels(self.device_columns)
         self.device_table.setRowCount(len(self.devices))
         for row, dev in enumerate(self.devices):
+            display_device = redacted_device_metadata(dev)
             for col, key in enumerate(self.device_columns):
-                value = dev.get(key)
+                value = display_device.get(key)
                 if isinstance(value, (dict, list)):
                     value = json.dumps(value, ensure_ascii=False, sort_keys=True)
                 text = "—" if value is None or value == "" else str(value)
@@ -1372,6 +1410,121 @@ class WarmLinkCloudDialog(QDialog):
         request_path = urllib.parse.urlsplit(str(response.url or "")).path
         method = self.debug_method_combo.currentText()
         self.main_window._log(f"Cloud API Debugger: {response.status} {method} {request_path}")
+
+    def _prepare_debug_ota(self):
+        device_code = self._selected_device_code()
+        if not device_code:
+            QMessageBox.information(self, "Cloud API Debugger", "Kein Gerät ausgewählt.")
+            return
+        self.debug_method_combo.setCurrentText("POST")
+        self.debug_path_edit.setText("app/device/ota/judgeUpgradeList?lang=de")
+        # appId 16 is observed in one iOS 3.0.8 capture, not a universal family ID.
+        # This only prepares editable fields. The existing Send button is explicit.
+        self.debug_body_edit.setPlainText(json.dumps({
+            "appId": "16", "deviceCode": device_code,
+        }, ensure_ascii=False, indent=2))
+
+    def _current_sim_identity(self):
+        username = self.username_edit.text().strip()
+        code = self._selected_device_code()
+        if not username or not code or getattr(self, "_devices_username", "") != username:
+            return None
+        device = next((item for item in self.devices if item.get("deviceCode") == code), None)
+        identifier = device_iccid(device)
+        return (username, code, identifier) if identifier else None
+
+    def _sync_sim_identity(self):
+        identity = self._current_sim_identity()
+        if identity != self._sim_identity:
+            self._sim_identity = identity
+            self._sim_context = None
+            for label in self.sim_status_labels.values():
+                label.setText("—")
+            self.sim_status_label.setText(
+                "Noch nicht abgefragt." if identity else "Keine ICCID für das ausgewählte Gerät verfügbar.")
+        if identity is None:
+            self.sim_status_label.setText("Keine ICCID für das ausgewählte Gerät verfügbar.")
+        self.sim_refresh_btn.setEnabled(bool(identity) and self.sim_thread is None)
+
+    def refresh_sim_status(self):
+        self._sync_sim_identity()
+        identity = self._current_sim_identity()
+        if identity is None:
+            self.sim_status_label.setText("Keine ICCID für das ausgewählte Gerät verfügbar.")
+            return
+        if self.sim_thread is not None or getattr(self.main_window, "cloud_read_thread", None) is not None:
+            self.sim_status_label.setText("Cloud-Einzelabfrage läuft bereits.")
+            return
+        username, _device_code, identifier = identity
+        token = self._initial_token_for_user(username)
+        password = self._password() if not token else (self.password_edit.text() or "")
+        cfg = self._cloud_settings()
+        self._sim_context = identity
+        self._sim_request_id += 1
+        self.sim_thread = QThread(self)
+        self.sim_worker = WarmLinkCloudSimWorker(
+            username, password or "", identifier, request_id=self._sim_request_id, initial_token=token,
+            preferred_login_method=str(cfg.get("login_method") or "md5"),
+            login_fallbacks=bool(cfg.get("login_fallbacks", False)),
+            load_credentials=True, use_saved_token=bool(cfg.get("save_token", True)),
+        )
+        # Reuse MAIN's existing single-read close/busy guard, not a second API lifecycle.
+        self.main_window.cloud_read_thread = self.sim_thread
+        self.main_window.cloud_read_worker = self.sim_worker
+        self.sim_refresh_btn.setEnabled(False)
+        self.sim_status_label.setText("SIM-/LTE-Status wird gelesen …")
+        self.sim_worker.moveToThread(self.sim_thread)
+        self.sim_thread.started.connect(self.sim_worker.run)
+        self.sim_worker.result.connect(self._on_sim_worker_result)
+        self.sim_worker.error.connect(self._on_sim_worker_error)
+        self.sim_worker.token_updated.connect(self._on_sim_worker_token)
+        self.sim_worker.finished.connect(self.sim_thread.quit)
+        self.sim_worker.finished.connect(self.sim_worker.deleteLater)
+        self.sim_thread.finished.connect(self._sim_finished)
+        self.sim_thread.start()
+
+    @Slot(object)
+    def _on_sim_worker_result(self, result):
+        if result.get("request_id") == self._sim_request_id and self._sim_context is not None:
+            self._on_sim_result(self._sim_context, result.get("status"))
+
+    @Slot(str)
+    def _on_sim_worker_error(self, error):
+        if self._sim_context is not None:
+            self._on_sim_error(self._sim_context, error)
+
+    @Slot(str)
+    def _on_sim_worker_token(self, token):
+        if self._sim_context is not None and self._sim_context == self._current_sim_identity():
+            self._on_token_updated(token)
+
+    def _on_sim_result(self, context, result):
+        if context is None or context != self._sim_context or context != self._current_sim_identity():
+            return  # A changed device/account/ICCID must not receive the old reply.
+        values = safe_sim_status(result)
+        for field, label in self.sim_status_labels.items():
+            value = values[field]
+            label.setText("—" if value in (None, "") else str(value))
+        self.sim_status_label.setText("SIM-/LTE-Status aktualisiert; Statuscodes sind Rohwerte.")
+        self.main_window._log("WarmLink Cloud: SIM-/LTE-Status aktualisiert.")
+
+    def _on_sim_error(self, context, _error):
+        if context != self._sim_context or context != self._current_sim_identity():
+            return
+        self.sim_status_label.setText("SIM-/LTE-Status konnte nicht gelesen werden.")
+        # No server body, exception string, ICCID or contact data reaches the log.
+        self.main_window._log("WarmLink Cloud: SIM-/LTE-Status nicht verfügbar.")
+
+    @Slot()
+    def _sim_finished(self):
+        thread = self.sim_thread
+        self.sim_thread = None
+        self.sim_worker = None
+        if thread is not None:
+            thread.deleteLater()
+        if getattr(self.main_window, "cloud_read_thread", None) is thread and thread is not None:
+            self.main_window._cloud_read_finished()
+        self._update_device_controls()
 
     def _insert_debug_device_code(self):
         device_code = self._selected_device_code()

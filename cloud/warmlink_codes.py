@@ -15,6 +15,8 @@ zusätzliche Cloud-Aliase/Livewerte aus direkten getDataByCode-Gegenchecks ergä
 
 from __future__ import annotations
 
+from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODES, ios308_code_metadata
+
 from cloud.warmlink_644_catalog import (
     WARMLINK_644_APP_PARAMETERS,
     app_644_cloud_code,
@@ -427,12 +429,17 @@ ALL_WARMLINK_CLOUD_CODES: list[str] = ['A03',
  'Fault9',
  'Fault10']
 
+# Add the exact iOS request list without replacing prior codes or changing order.
+ALL_WARMLINK_CLOUD_CODES = list(dict.fromkeys([*ALL_WARMLINK_CLOUD_CODES, *WARMLINK_IOS308_CODES]))
+
 # Default = alles, was der dump_all-Lauf sinnvoll abgefragt hat.
 DEFAULT_WARMLINK_CLOUD_CODES: list[str] = list(ALL_WARMLINK_CLOUD_CODES)
 
 # Live-Test FoxAir GL9 / Linked-Go Cloud 2026-10-03.
 # Reine Dokumentationsliste: beeinflusst DEFAULT_WARMLINK_CLOUD_CODES nicht.
 # Diese Codes wurden explizit abgefragt und kamen auf der GL9 leer zurück.
+# Historische Leerbeobachtung, kein dauerhafter Unsupported-Nachweis; der
+# Kompatibilitätsname schließt iOS-App-Kandidaten nicht von weiteren Reads aus.
 WARMLINK_GL9_TESTED_UNSUPPORTED_CODES: tuple[str, ...] = (
     "Manual-mute",
     "F14", "F15", "F17", "H43", "O01~014",
@@ -460,9 +467,16 @@ WARMLINK_PRODUCT_IDS: list[str] = [
 # sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
 WARMLINK_SERVICE_SLAVE = 0x63
 WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
-    8001: {"name": "Remote-Control-Mode-Selector", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Remote-Control-Modus 1..4; übernommener Modus wird als MAIN:1691 exportiert"},
-    8004: {"name": "Remote-Control Schwellwert / MAIN1427", "type": "int16", "mode": "service-observed", "write_allowed": False, "effect": "Wird im Remote-Control-Modus 4 im 8004/MAIN1427-Schwellautomaten verwendet; physikalische Einheit noch offen"},
-    8006: {"name": "Remote-Control Change-/Generation-Token", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an"},
+    8001: {"name":"EMS-/Remote-Strategiekommando","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Remote-Modus / Strategy Command 0..4; 0 = kein Modus; fachliche Namen 1..4 offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2151},
+    8002: {"name":"Strompreis / Electricity Price","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Externer Strompreis; Einheit und Skalierung unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2153},
+    8003: {"name":"Batterieleistung / Battery Power","type":"int16","mode":"service-observed","write_allowed":False,"effect":"Signed Batterieleistungs-Rohwert; Einheit und Polarität offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2156},
+    8004: {"name":"Netzleistung / OnGrid Power","type":"int16","mode":"service-observed","write_allowed":False,"effect":"Signed int16 Netzleistungs-Rohwert; MAIN1427 ist ein separater lokaler Schwellwert, kein Spiegel von 8004; Einheit und Polarität offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2154},
+    8005: {"name":"Batterieladezustand / Battery SoC","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Batterieladezustand als RAW; Skalierung offen, keine bestätigte Prozentdarstellung","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2155},
+    8006: {"name":"Remote-Synchronisations-/Generation-Token","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an; kein gleichnummerierter MAIN-Spiegel","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
+    8007: {"name":"Warmlink-EMS-Rohwert 8007","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer EMS-Rohwert; Semantik offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2157},
+    8008: {"name":"Warmlink-EMS-Rohwert 8008","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer EMS-Rohwert; Semantik offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2158},
+    8009: {"name":"Warmlink-Rohwert 8009","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer Rohwert; Semantik unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
+    8010: {"name":"Warmlink-Rohwert 8010","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer Rohwert; Semantik unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
     8021: {"name": "Cooling Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Cooling", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8022: {"name": "Heating Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Heating", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8023: {"name": "DHW Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "DHW", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
@@ -3076,7 +3090,7 @@ for _curve_code in WARMLINK_305_CURVE_CODES:
         "mapping_intentionally_absent": not bool(_point),
         "cloud_dataType": "TEMP", "unit": "°C", "write_allowed": False,
         "confidence": "confirmed" if _point else "unknown",
-        "name": f"7-Punkt-AT-Kurve {_curve_code}",
+        "name": f"7-Punkt-AT-Kurve {_curve_code}" if _point else _curve_code,
         "note": "WarmLink 3.0.5 / Family 416/644: read-only curve code; CP1-4/CP2-4 are not the 0 C point; Zone-2 MAIN mapping remains unconfirmed",
         **({"modbus_register": _point[0], "allow_code_mismatch": True,
             "note": f"WarmLink 3.0.5 app structure and confirmed GL9 firmware: {_point[1]:+d} C point -> MAIN:{_point[0]}"} if _point else {}),
@@ -3105,6 +3119,11 @@ WARMLINK_CLOUD_CODE_HINTS["Switch2168"] = {
     "name": "SG switches (protocol 773)",
     "note": "GL9/644 live test 2026-10-06: empty value and dataType; tested unsupported; no confirmed MAIN projection",
 }
+
+
+# Keep reviewed mappings/units/write grants. App-only entries remain neutral.
+for _ios_code in WARMLINK_IOS308_CODES:
+    WARMLINK_CLOUD_CODE_HINTS.setdefault(_ios_code, ios308_code_metadata(_ios_code))
 
 
 def cloud_hint(code: str) -> dict[str, object]:

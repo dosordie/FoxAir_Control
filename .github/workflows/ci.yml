@@ -53,6 +53,7 @@ jobs:
 
   test:
     name: Semantic and UI regression tests
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen
@@ -71,8 +72,10 @@ jobs:
           sudo apt-get install -y libegl1 libopengl0
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt 'PySide6==6.8.3' 'pytest>=8,<9'
+      - name: Run new integration tests
+        run: python -m pytest -q tests/test_ios308_registers_and_codes.py tests/test_ios308_debugger_and_sim.py tests/test_warmlink_service_main_table.py
       - name: Run all tests
-        run: python -m pytest -v
+        run: timeout 300 python -m pytest -v -s -o faulthandler_timeout=120
       - name: Compile all Python files
         run: python -m compileall -q .
       - name: Check whitespace
