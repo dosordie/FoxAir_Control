@@ -6,7 +6,7 @@ import urllib.error
 
 import pytest
 
-from cloud.device_metadata import device_iccid, redacted_device_metadata, safe_sim_status
+from cloud.device_metadata import device_iccid, mask_identifier, redacted_device_metadata, safe_sim_status
 from cloud.warmlink_api import WarmLinkCloudApi, WarmLinkCloudError, normalize_house_devices
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from workers import warmlink_cloud_worker as workers
@@ -237,9 +237,9 @@ def test_sim_data_and_errors_are_excluded_from_logs_and_raw_exports(sim_dialog, 
             assert value not in text
     assert "expireDays" not in output.read_text()
     column = dialog.device_columns.index("dtuIccid")
-    assert dialog.device_table.item(0, column).text() == SIM_A
+    assert dialog.device_table.item(0, column).text() == mask_identifier(SIM_A)
     imei_column = dialog.device_columns.index("dtuImeiMac")
-    assert dialog.device_table.item(0, imei_column).text() == PRIVATE["dtuImeiMac"]
+    assert dialog.device_table.item(0, imei_column).text() == mask_identifier(PRIVATE["dtuImeiMac"])
 
 
 def test_main_close_waits_for_sim_read_using_existing_single_read_guard(window, monkeypatch):
