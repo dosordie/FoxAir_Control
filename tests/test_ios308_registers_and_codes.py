@@ -156,7 +156,7 @@ def test_additive_coverage_keeps_work_baseline_and_exact_literal_codes():
 
 
 @pytest.mark.parametrize("code", [
-    "Run_Mode", "1250", "1256", "1268", "CP2-1", "CompPreHeatRemainTim", *WARMLINK_IOS308_PWM_CODES,
+    "Run_Mode", "CP2-1", "CompPreHeatRemainTim", *WARMLINK_IOS308_PWM_CODES,
 ])
 def test_observed_unknown_codes_have_no_invented_mapping_or_write_grant(code):
     hint = cloud_hint(code)
@@ -190,6 +190,56 @@ def test_confirmed_h36_and_zone1_curve_mappings_remain_authoritative():
     assert cloud_hint("H36")["rangeStart"] == "0" and cloud_hint("H36")["rangeEnd"] == "2"
     assert cloud_modbus_register("CP1-1") == 1250
     assert cloud_hint("CP1-1")["write_allowed"] is False
+
+
+@pytest.mark.parametrize(("code", "register"), [
+    ("H41", 1346),
+    ("R40", 1193),
+    ("R41", 1194),
+    ("T14", 2050),
+    ("T57", 2023),
+    ("1250", 1250),
+    ("1256", 1256), ("1257", 1257), ("1258", 1258), ("1259", 1259),
+    ("1260", 1260), ("1261", 1261), ("1262", 1262), ("1263", 1263),
+    ("1264", 1264), ("1265", 1265), ("1266", 1266), ("1267", 1267),
+    ("1268", 1268), ("1269", 1269),
+])
+def test_live_20261012_confirmed_read_mappings(code, register):
+    hint = cloud_hint(code)
+    assert hint["confidence"] == "confirmed"
+    assert hint["write_allowed"] is False
+    assert cloud_modbus_register(code) == register
+
+
+@pytest.mark.parametrize("code", ["C06", "T49", "S01~S11", "T54"])
+def test_still_open_20261012_candidates_are_not_promoted(code):
+    hint = cloud_hint(code)
+    assert hint["confidence"] != "confirmed"
+    assert cloud_modbus_register(code) is None
+
+
+def test_mapping_candidate_time_hhmm_diff_uses_raw_value():
+    from types import SimpleNamespace
+    from dialogs.cloud_dialog import WarmLinkCloudDialog
+
+    info = SimpleNamespace(dtype="TIME_HHMM", name="WP Timer", value_map=None)
+    reg = SimpleNamespace(
+        raw_value=1805,
+        signed_value=1805,
+        display_value="07:13",
+        value_source="modbus",
+    )
+    fake = SimpleNamespace(
+        main_window=SimpleNamespace(
+            regmap=SimpleNamespace(get=lambda _reg: info),
+            latest_regs={1256: reg},
+            _display_parts_for_register=lambda _reg, _name: ("KG", "KG1", "KG1"),
+        )
+    )
+    values = WarmLinkCloudDialog._mapping_candidate_local_values(fake, 1256, "1805")
+    assert values[3] == 1805
+    assert values[5] == "07:13"
+    assert values[6] == "+0"
 
 
 def test_empty_app_candidates_do_not_abort_a_valid_discovered_session(monkeypatch):
