@@ -49,6 +49,8 @@ CONFIRMED_REGISTER_ALIASES: dict[str, int] = {
     "CP1-5": 1253,
     "CP1-6": 1254,
     "CP1-7": 1255,
+    "1250": 1250,
+    "T57": 2023,
 }
 
 
