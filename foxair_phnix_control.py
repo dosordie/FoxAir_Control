@@ -55,6 +55,7 @@ from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
+from core.device_identity_io import DeviceIdentityIOMixin
 from core.at_compensation import (
     AT_LIVE_REGISTERS,
     AT_CLOUD_READ_CODES,
@@ -574,7 +575,7 @@ def set_windows_app_id() -> None:
 
 
 
-class ReaderWorker(QObject):
+class ReaderWorker(DeviceIdentityIOMixin, QObject):
     connected = Signal()
     disconnected = Signal()
     error = Signal(str)
@@ -585,6 +586,7 @@ class ReaderWorker(QObject):
     read_sent = Signal(int, int, int)
     read_failed = Signal(int, int, int, str)
     tx_blocked_attempt = Signal(str, int, int, int)
+    identity_event = Signal(str, str, object)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
         super().__init__()
@@ -611,6 +613,7 @@ class ReaderWorker(QObject):
         self.rx_timeout_logged = False
         self.total_rx_bytes = 0
         self.rx_restbuffer_since_monotonic = 0.0
+        self.init_identity_io()
 
     def set_tx_blocked(self, blocked: bool) -> int:
         """Set the final, low-level TX barrier and atomically discard queued work."""
@@ -645,9 +648,11 @@ class ReaderWorker(QObject):
                         self.log.emit("Verbindung geschlossen (EOF).")
                         break
 
-                    self.raw_chunk.emit(chunk)
+                    identity_rx = self.identity_service_active
+                    if not identity_rx:
+                        self.raw_chunk.emit(chunk)
                     self.total_rx_bytes += len(chunk)
-                    if self.transport == "serial":
+                    if self.transport == "serial" and not self.identity_service_active:
                         self.log.emit(f"SERIAL RX Rohdaten: {len(chunk)} Byte, HEX={hexdump(chunk, -1)}")
                     self.rx_after_last_send = True
                     self.rx_timeout_logged = False
@@ -656,6 +661,9 @@ class ReaderWorker(QObject):
                     self._discard_stale_rx_restbuffer()
 
                     for parsed in parsed_frames:
+                        if identity_rx:
+                            self._identity_route_frame(parsed[6])
+                            continue
                         frame = decode_frame(parsed, self.regmap)
                         self.frame_decoded.emit(frame)
 
@@ -667,7 +675,7 @@ class ReaderWorker(QObject):
 
         except Exception as exc:
             if self.running:
-                self.error.emit(str(exc))
+                self.error.emit("Identity-Service: Transportfehler (Details geschützt)." if self.identity_service_active else str(exc))
         finally:
             if self.client:
                 self.client.close()
@@ -680,6 +688,9 @@ class ReaderWorker(QObject):
         before_parse_len = len(self.buf)
         parsed_frames = find_frames(self.buf, max_len=512)
         after_parse_len = len(self.buf)
+        if self.identity_service_active:
+            self.rx_restbuffer_since_monotonic = time.monotonic() if self.buf else 0.0
+            return parsed_frames
         if parsed_frames:
             self.log.emit(
                 f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
@@ -728,6 +739,8 @@ class ReaderWorker(QObject):
         rest = bytes(self.buf)
         self.buf.clear()
         self.rx_restbuffer_since_monotonic = 0.0
+        if self.identity_service_active:
+            return
         self.log.emit(
             f"RX-Restbuffer verworfen: {len(rest)} Byte, kein gültiges Frame; "
             f"HEX={hexdump(rest, -1)}"
@@ -741,16 +754,21 @@ class ReaderWorker(QObject):
 
     def enqueue_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, write_single: Optional[bool] = None):
         use_single = self.write_single if write_single is None else bool(write_single)
-        self.write_queue.put(("write", slave_addr, addr, value, post_delay_ms, use_single))
+        if not self._enqueue_io(("write", slave_addr, addr, value, post_delay_ms, use_single)):
+            return False
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         self.log.emit(
             f"WRITE in Sendewarteschlange: bus=0x{slave_addr:02X}, "
             f"addr={addr} / 0x{addr:04X}, value={value} / 0x{value:04X}{delay_text}"
         )
 
-    def enqueue_write_block(self, addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
+    def enqueue_write_block(self, addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, *, identity_token=None):
         vals = [int(v) & 0xFFFF for v in values]
-        self.write_queue.put(("write_block", slave_addr, addr, vals, post_delay_ms, False))
+        if not self._enqueue_io(("write_block", slave_addr, addr, vals, post_delay_ms, False), identity_token):
+            return False
+        if identity_token is not None:
+            self.log.emit("Identity-Service: FC10 0x63 / 7001 / 10 vorgemerkt; Payload geschützt.")
+            return True
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         preview_vals = ", ".join(f"{addr + i}={v}/0x{v:04X}" for i, v in enumerate(vals[:8]))
         more = "" if len(vals) <= 8 else f" ... (+{len(vals) - 8})"
@@ -760,8 +778,11 @@ class ReaderWorker(QObject):
             f"{preview_vals}{more}"
         )
 
-    def enqueue_read(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
-        self.write_queue.put(("read", slave_addr, addr, quantity, post_delay_ms, False))
+    def enqueue_read(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, *, identity_token=None):
+        if not self._enqueue_io(("read", slave_addr, addr, quantity, post_delay_ms, False), identity_token):
+            return False
+        if identity_token is not None:
+            return True
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         self.log.emit(
             f"READ in Sendewarteschlange: bus=0x{slave_addr:02X}, "
@@ -775,7 +796,11 @@ class ReaderWorker(QObject):
                 return
 
             try:
-                kind, slave_addr, addr, value_or_quantity, post_delay_ms, use_single_write = self.write_queue.get_nowait()
+                with self._identity_lock:
+                    entry = self.write_queue.get_nowait()
+                    kind, slave_addr, addr, value_or_quantity, post_delay_ms, use_single_write = entry[:6]
+                    identity_token = entry[6] if len(entry) == 7 else None
+                    self._normal_tx_busy = identity_token is None
             except queue.Empty:
                 return
 
@@ -783,10 +808,11 @@ class ReaderWorker(QObject):
                 size = len(value_or_quantity) if kind == "write_block" else 1
                 self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
                 self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), int(size))
+                self._normal_tx_busy = False
                 continue
 
             try:
-                if self.buf:
+                if self.buf and not self.identity_service_active:
                     self.log.emit(
                         f"DEBUG RX-Buffer erst beim naechsten Send-Zyklus gesehen: "
                         f"{len(self.buf)} Byte stehen vor {kind.upper()} noch im Parser-Buffer"
@@ -831,8 +857,15 @@ class ReaderWorker(QObject):
                     self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
                     self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), len(frame))
                     continue
-                self.tx_chunk.emit(frame)
+                if identity_token is not None:
+                    if not self._identity_before_send(identity_token, kind):
+                        continue
+                else:
+                    self.tx_chunk.emit(frame)
                 self.client.send(frame)
+                if identity_token is not None:
+                    self.identity_event.emit(identity_token, "sent", kind)
+                    action = f"Identity-Service: {kind} gesendet (Rohdaten geschützt)."
                 if kind == "read":
                     self.read_sent.emit(int(addr), int(value_or_quantity), int(slave_addr))
                 self.last_send_monotonic = time.monotonic()
@@ -844,9 +877,14 @@ class ReaderWorker(QObject):
                     self.next_write_monotonic = time.monotonic() + (post_delay_ms / 1000.0)
                     return
             except Exception as exc:
+                if identity_token is not None:
+                    self.identity_event.emit(identity_token, "error", None)
+                    continue
                 self.error.emit(str(exc))
                 if kind == "read":
                     self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), str(exc))
+            finally:
+                self._normal_tx_busy = False
 
     def _check_rx_timeout(self):
         if self.transport != "serial":
@@ -9064,6 +9102,8 @@ class MainWindow(QMainWindow):
         self._check_pending_read_timeouts()
 
     def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0, *, priority=None, start_delay_ms=0, expect_response=True):
+        if getattr(self._active_io_worker(), "identity_service_active", False):
+            return None
         # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
         # normale FC03-Reads absetzen. Stattdessen den bewährten Reboot-Snapshot
         # anstoßen. Manuelle FC03-Reads bleiben absichtlich direkt möglich, damit
@@ -11584,6 +11624,14 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        from dialogs.device_identity_dialog import DeviceIdentityDialog
+        for dialog in self.findChildren(DeviceIdentityDialog):
+            if dialog.service.busy or dialog.service.wait_seconds:
+                dialog.show()
+                dialog.raise_()
+                dialog._can_close()
+                event.ignore()
+                return
         self.csv_logger_controller.stop()
         if self.cloud_write_thread is not None:
             self._close_after_cloud_write = True
