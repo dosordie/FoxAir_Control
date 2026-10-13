@@ -6,6 +6,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Betrieb und Regelung
 
 - [Heizungsregelung, H25 und Heizkurve](regelung_heizkurve.md)
+- [Zonenregelung – Raumfühler, Thermostate und Mischer](zonenregelung.md)
 - [Warmwasser mit der FoxAir](warmwasser.md)
 - [Abtauen, Kondensat und Frostschutz](abtauen_frostschutz.md)
 
