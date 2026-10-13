@@ -26,7 +26,8 @@ Die folgenden Bezeichnungen gelten für die **PC4003-Platine**, nicht automatisc
 | **AI/DI07 + GND** | Raumtemperaturfühler **Zone 1** oder passives Thermostat Zone 1 |
 | **AI17 (50K) + GND** | Raumtemperaturfühler **Zone 2** oder passives Thermostat Zone 2 |
 | **AI/DI15 + GND** | **Zone 2: Vorlauffühler nach dem Mischer** |
-| **RO02 / RO03** | 3-Punkt-Mischventil Zone 2 (zwei Stellrichtungen) |
+| **RO02** | **Mischventil Zone 2 – AUF (öffnen)** |
+| **RO03** | **Mischventil Zone 2 – ZU (schließen)** |
 | **RO14** | Heizkreispumpe Zone 1 |
 | **RO15** | Heizkreispumpe Zone 2 |
 
