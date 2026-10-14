@@ -113,6 +113,11 @@ des Typenschilds; der ProductKey ist ebenfalls keine individuelle Seriennummer.
 Vollständige WiFi-ID und ProductKey erscheinen bewusst nur im ausdrücklich
 geöffneten lokalen Dialog und werden nicht in normale Diagnoseausgaben übernommen.
 
+Bei aktivierter Einstellung **Engineering-Parameter anzeigen** bietet Geräte-Info
+zusätzlich die gefährliche, Warmlink-only [Mainboard-WiFi-ID-Servicefunktion](docs/mainboard_wifi_identity.md).
+Sie verlangt eine erneute ID-Bestätigung, Backup, ACK-/Rückleseprüfung und eine
+60-s-Wartezeit vor einem manuellen Neustart.
+
 ## UDP-Diagnoseausgabe
 
 FoxAir Control kann optional kompakte Diagnoseereignisse per UDP an lokale Auswertewerkzeuge senden. Die Funktion ist standardmäßig deaktiviert und sendet ausschließlich ausgehend (Best Effort, kein Empfangspfad, keine Wiederholungen).
