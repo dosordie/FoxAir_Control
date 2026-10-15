@@ -1,5 +1,12 @@
 ## Unreleased
 
+- Register-Audit: MAIN2080/2109/2139/2152 mit kompakten aktiven Statusbits,
+  ausführlichen Tooltips und eigenen Tabs im System-/I/O-Dialog; RAW/HEX/Binär bleiben verfügbar.
+- INV1-Rohwerte 2026–2028 und optionales Frostschutzfeld 2056 präzisiert.
+- Bestätigte Cloud-Aliasse T49/T50/T51 ergänzt; Überhitzungen bleiben Kelvin,
+  lokale T-Diag-Codes und bisherige Cloud-Zuordnungen erhalten.
+- Diagnoseantworten und Timeouts korrigiert; keine zusätzlichen Schreibfreigaben.
+
 ## 0.3.4
 
 - WP- und AT-Steuerung nutzen einen gemeinsamen Steuertransport mit **Modbus vor Cloud**.

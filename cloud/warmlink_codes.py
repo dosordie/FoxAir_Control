@@ -3128,6 +3128,24 @@ for _ios_code in WARMLINK_IOS308_CODES:
 # simultaneous/near-simultaneous Cloud <-> local values. Cloud writeability is
 # deliberately NOT inferred from local Modbus writeability.
 _IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
+    "T49": {
+        "confidence": "confirmed", "local_code": "T-Diag1", "modbus_register": 2065,
+        "name": "Verdampfungstemperatur", "cloud_dataType": "TEMP", "unit": "°C",
+        "note": "GL9 live-confirmed 2026-10-14: T49 matches MAIN:2065 / T-Diag1. Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
+    "T50": {
+        "confidence": "confirmed", "local_code": "T-Diag2", "modbus_register": 2066,
+        "name": "Abgasüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
+        "note": "GL9 live-confirmed 2026-10-14: T50 matches MAIN:2066 / T-Diag2. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
+    "T51": {
+        "confidence": "confirmed", "local_code": "T-Diag3", "modbus_register": 2067,
+        "name": "Rückgas-/Saugüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
+        "note": "GL9 live-confirmed 2026-10-14: T51 matches MAIN:2067 / T-Diag3. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
     "H41": {
         "confidence": "confirmed", "local_code": "H41", "modbus_register": 1346,
         "name": "Supervisor-Passwort / H41",

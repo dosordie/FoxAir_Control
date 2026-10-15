@@ -6,10 +6,13 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton,
-    QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget,
 )
 
-from core.foxair_phnix_core import DEFAULT_BUS_ADDR, decode_contact_bits, decode_system_io_status_2146, s16
+from core.foxair_phnix_core import (
+    DEFAULT_BUS_ADDR, bitfield_states, decode_contact_bits, decode_system_io_status_2146,
+    format_bitfield_details, format_value_by_type, s16,
+)
 from ui.paths import resource_path
 from ui.theme import APP_ICON_FILE
 
@@ -277,16 +280,25 @@ class LoadOutputDecoderDialog(QDialog):
 
 
 class SystemIOStatusDecoderDialog(QDialog):
-    """Practical decoder for MAIN:2146 plus its adjacent HYD61 value 2147."""
+    """MAIN status groups sharing the formatter and scheduled read path."""
 
     READ_LABEL = "System-/I/O-Status 2146-2147"
+    DIAGNOSTIC_GROUPS = (
+        (2139, "Frequenzbegrenzungen"), (2152, "EMS / Remote"),
+        (2109, "Parameteränderungen"), (2080, "Inverterstatus"),
+    )
+    STATUS_REGISTERS = frozenset((2146, 2147, *(reg for reg, _ in DIAGNOSTIC_GROUPS)))
+    READ_LABELS = frozenset((READ_LABEL, *(f"System-/I/O-Status {reg}" for reg, _ in DIAGNOSTIC_GROUPS)))
 
     def __init__(self, parent: "MainWindow"):
         super().__init__(parent)
         self.main_window = parent
         self._value_2146: Optional[int] = None
         self._value_2147: Optional[int] = None
-        self.setWindowTitle("System-/I/O-Status Register 2146 / 2147")
+        self._diagnostic_values = {}
+        self._read_status = {}
+        self._source_slave = self._selected_slave()
+        self.setWindowTitle("System-/I/O-Status und Registerdiagnose")
         self.setWindowIcon(app_icon())
         self.resize(1040, 470)
         layout = QVBoxLayout(self)
@@ -309,12 +321,17 @@ class SystemIOStatusDecoderDialog(QDialog):
         top.addWidget(self.read_now_btn)
         layout.addLayout(top)
 
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs, 1)
+        io_page = QWidget()
+        io_layout = QVBoxLayout(io_page)
+        self.tabs.addTab(io_page, "System / I/O 2146–2147")
         self.info_label = QLabel(
             "2146 ist ein System-/I/O-Statuswort, kein Temperaturwert. "
             "Die praktische Ansicht blendet feste Basisbits aus; der volle Rohwert bleibt oben sichtbar."
         )
         self.info_label.setWordWrap(True)
-        layout.addWidget(self.info_label)
+        io_layout.addWidget(self.info_label)
 
         self.table = QTableWidget(6, 4)
         self.table.verticalHeader().setVisible(False)
@@ -324,23 +341,95 @@ class SystemIOStatusDecoderDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        layout.addWidget(self.table, 1)
+        io_layout.addWidget(self.table, 1)
+
+        self.diagnostic_tables = {}
+        self.diagnostic_summaries = {}
+        for reg_no, title in self.DIAGNOSTIC_GROUPS:
+            page = QWidget()
+            page_layout = QVBoxLayout(page)
+            summary = QLabel("–")
+            summary.setWordWrap(True)
+            page_layout.addWidget(summary)
+            description = QLabel("Gesetzte Statusbits belegen nicht automatisch eine aktuell messbare Regelauswirkung. Details im Tooltip.")
+            description.setToolTip(self.main_window.register_defs.get(str(reg_no), {}).get("description", ""))
+            description.setWordWrap(True)
+            page_layout.addWidget(description)
+            table = QTableWidget(16, 4)
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            table.verticalHeader().setVisible(False)
+            table.setHorizontalHeaderLabels(["Bit / Maske", "Zustand", "Status", "Bedeutung"])
+            for col in range(3):
+                table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+            page_layout.addWidget(table, 1)
+            self.tabs.addTab(page, f"{title} {reg_no}")
+            self.diagnostic_tables[reg_no] = table
+            self.diagnostic_summaries[reg_no] = summary
+            self._refresh_diagnostic_group(reg_no)
 
         self.poll_timer = QTimer(self)
         self.poll_timer.timeout.connect(self.poll_once)
         self.poll_cb.stateChanged.connect(lambda _=None: self._apply_poll_state())
         self.poll_interval_spin.valueChanged.connect(lambda _=None: self._apply_poll_state())
         self.read_now_btn.clicked.connect(self.poll_once)
+        self.tabs.currentChanged.connect(self._show_current_group)
+        self.finished.connect(lambda _=None: self.poll_timer.stop())
 
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
 
-        self.set_values(
-            self.main_window.last_values.get(2146),
-            self.main_window.last_values.get(2147),
-            status_text="Vorhandene Live-Werte geladen.",
-        )
+        self.set_values(None, None)
+        # Only a local MAIN word from the selected bus may seed this dialog.
+        # Cloud projections never carry a local Modbus raw word.
+        for reg_no in self.STATUS_REGISTERS:
+            reg = self.main_window.latest_regs.get(reg_no)
+            if reg is not None:
+                self.update_from_live_register(reg)
+        self._show_current_group()
+
+    def _selected_slave(self):
+        try:
+            return self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
+        except (AttributeError, TypeError, ValueError):
+            return DEFAULT_BUS_ADDR
+
+    def _current_group(self):
+        index = self.tabs.currentIndex()
+        return 2146 if index == 0 else self.DIAGNOSTIC_GROUPS[index - 1][0]
+
+    def _show_current_group(self, _index=None):
+        group = self._current_group()
+        if group == 2146:
+            self.set_values(self._value_2146, self._value_2147)
+        else:
+            raw = self._diagnostic_values.get(group)
+            info = self.main_window.regmap.get(group)
+            self.value_label.setText(f"{group}: " + format_bitfield_details(raw, info).split("\n")[0])
+        self.status_label.setText(self._read_status.get(group, "Bereit. Nur lokale MAIN-Werte."))
+
+    def _refresh_diagnostic_group(self, reg_no):
+        raw = self._diagnostic_values.get(reg_no)
+        info = self.main_window.regmap.get(reg_no)
+        self.diagnostic_summaries[reg_no].setText(format_value_by_type(raw, info.dtype, bit_map=info.bit_map, compact=True))
+        table = self.diagnostic_tables[reg_no]
+        for row, (bit, label, description, active) in enumerate(bitfield_states(raw, info.bit_map, info.bit_descriptions)):
+            values = [f"B{bit} / 0x{1 << bit:04X}", "–" if active is None else "gesetzt" if active else "aus", label, description]
+            for col, text in enumerate(values):
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
+                item.setBackground(QColor(220, 240, 255) if active else QColor(245, 245, 245))
+                table.setItem(row, col, item)
+
+    def clear_values(self, status_text="Werte geleert."):
+        self._value_2146 = self._value_2147 = None
+        self._diagnostic_values.clear()
+        self._read_status = {reg: status_text for reg in self.STATUS_REGISTERS}
+        self.set_values(None, None)
+        for reg, _title in self.DIAGNOSTIC_GROUPS:
+            self._refresh_diagnostic_group(reg)
+        self._show_current_group()
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -349,25 +438,57 @@ class SystemIOStatusDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
-        self.status_label.setText("Lese Register 2146-2147 ...")
-        try:
-            slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
-        except Exception:
-            slave_addr = DEFAULT_BUS_ADDR
-        self.main_window.send_read_request(2146, 2, slave_addr=slave_addr, label=self.READ_LABEL)
+        slave_addr = self._selected_slave()
+        if slave_addr != self._source_slave:
+            self._source_slave = slave_addr
+            self.clear_values("Bus gewechselt; noch keine neuen Werte.")
+        group = self._current_group()
+        self._read_status[group] = f"Lese MAIN:{group} ..."
+        self._show_current_group()
+        if group == 2146:
+            self.main_window.send_read_request(2146, 2, slave_addr=slave_addr, label=self.READ_LABEL)
+        else:
+            self.main_window.send_read_request(group, 1, slave_addr=slave_addr, label=f"System-/I/O-Status {group}")
 
-    def show_read_timeout(self):
-        self.status_label.setText("Timeout / keine Antwort.")
+    def _group_for_label(self, label):
+        return 2146 if label == self.READ_LABEL else int(label.rsplit(" ", 1)[-1])
+
+    def show_read_timeout(self, label=READ_LABEL):
+        self._read_status[self._group_for_label(label)] = "Timeout / keine Antwort; letzter Wert bleibt sichtbar."
+        self._show_current_group()
+
+    def show_read_response(self, label, registers):
+        accepted = any([self.update_from_live_register(reg) for reg in registers])
+        if accepted:
+            self._read_status[self._group_for_label(label)] = "Erfolgreich gelesen."
+            self._show_current_group()
 
     def update_from_live_register(self, reg):
+        if getattr(reg, "value_source", "modbus") != "modbus":
+            return False
+        wire_slave = self._source_slave
+        if hasattr(self.main_window, "_wire_slave_addr"):
+            wire_slave = self.main_window._wire_slave_addr(wire_slave)
+        if reg.slave_addr != wire_slave:
+            is_main_broadcast = (
+                reg.slave_addr == 0 and reg.frame_type in (2001, 2091)
+                and self.main_window.current_backend_key() == "display_modbus"
+            )
+            if not is_main_broadcast:
+                return False
         reg_no = int(reg.reg)
         if reg_no == 2146:
             self._value_2146 = int(reg.raw_value) & 0xFFFF
         elif reg_no == 2147:
             self._value_2147 = s16(int(reg.raw_value) & 0xFFFF)
+        elif reg_no in self.diagnostic_tables:
+            self._diagnostic_values[reg_no] = int(reg.raw_value) & 0xFFFF
+            self._refresh_diagnostic_group(reg_no)
         else:
-            return
-        self.set_values(self._value_2146, self._value_2147, status_text="Live-Wert aktualisiert.")
+            return False
+        self._read_status[2146 if reg_no == 2147 else reg_no] = "Lokaler Live-Wert aktualisiert."
+        self._show_current_group()
+        return True
 
     def set_values(self, value_2146: Optional[int], value_2147: Optional[int], status_text: Optional[str] = None):
         if value_2146 is not None:

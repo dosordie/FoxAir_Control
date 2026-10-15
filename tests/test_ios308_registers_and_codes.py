@@ -54,7 +54,7 @@ def test_all_ten_service_inputs_exist_and_other_namespaces_remain_separate():
 def test_frequency_limits_only_have_confirmed_labels_and_unknown_bits_stay_raw():
     info = RegisterMap(str(ROOT / "data/foxair_phnix_registers.json")).get(2139)
     assert info.dtype == "BITFIELD"
-    assert set(info.bit_map) == {1, 3, 4, 5, 6, 8, 10}
+    assert set(info.bit_map) == {0, 1, 2, 3, 4, 5, 6, 8, 9, 10}
     mask = sum(1 << bit for bit in info.bit_map)
     rendered = format_value_by_type(mask, info.dtype, info.value_map, info.bit_map)
     for label in info.bit_map.values():
@@ -211,7 +211,7 @@ def test_live_20261012_confirmed_read_mappings(code, register):
     assert cloud_modbus_register(code) == register
 
 
-@pytest.mark.parametrize("code", ["C06", "T49", "S01~S11", "T54"])
+@pytest.mark.parametrize("code", ["C06", "S01~S11", "T54"])
 def test_still_open_20261012_candidates_are_not_promoted(code):
     hint = cloud_hint(code)
     assert hint["confidence"] != "confirmed"

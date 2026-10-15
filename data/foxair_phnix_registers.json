@@ -2426,7 +2426,11 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "R40"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R40 → MAIN:1193; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1194": {
     "block": "R",
@@ -2434,7 +2438,11 @@
     "function": "03/16",
     "mode": "r/w",
     "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "R41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R41 → MAIN:1194; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1195": {
     "app_current_video_value": "2.0 °C",
@@ -3096,7 +3104,12 @@
     "name": "7P-Heiz-Sollwert bei -20 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“.",
+    "cloud_aliases": [
+      "1250",
+      "CP1-1"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1250, CP1-1 → MAIN:1250; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1251": {
     "function": "03/16",
@@ -3145,7 +3158,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1256"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1256 → MAIN:1256; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1257": {
     "block": "KG",
@@ -3154,7 +3171,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1257"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1257 → MAIN:1257; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1258": {
     "block": "KG",
@@ -3163,7 +3184,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1258"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1258 → MAIN:1258; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1259": {
     "block": "KG",
@@ -3172,7 +3197,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1259"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1259 → MAIN:1259; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1260": {
     "block": "KG",
@@ -3181,7 +3210,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1260"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1260 → MAIN:1260; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1261": {
     "block": "KG",
@@ -3190,7 +3223,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1261"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1261 → MAIN:1261; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1262": {
     "block": "KG",
@@ -3199,7 +3236,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1262"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1262 → MAIN:1262; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1263": {
     "block": "KG",
@@ -3208,7 +3249,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1263"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1263 → MAIN:1263; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1264": {
     "block": "KG",
@@ -3217,7 +3262,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1264"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1264 → MAIN:1264; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1265": {
     "block": "KG",
@@ -3226,7 +3275,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1265"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1265 → MAIN:1265; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1266": {
     "block": "KG",
@@ -3235,7 +3288,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1266"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1266 → MAIN:1266; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1267": {
     "block": "KG",
@@ -3244,7 +3301,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1267"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1267 → MAIN:1267; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1268": {
     "block": "KG",
@@ -3253,7 +3314,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1+2 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR"
+    "type": "TIMER_BITPAIR",
+    "cloud_aliases": [
+      "1268"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1268 → MAIN:1268; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1269": {
     "block": "KG",
@@ -3262,7 +3327,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3+4 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR"
+    "type": "TIMER_BITPAIR",
+    "cloud_aliases": [
+      "1269"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1269 → MAIN:1269; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1270": {
     "block": "KG",
@@ -3875,7 +3944,11 @@
     "name": "Supervisor-Passwort: 66",
     "type": "RAW",
     "last_review": "v0.2.41 fix8 user confirmed",
-    "notes": "H41 bestätigt."
+    "notes": "H41 bestätigt.",
+    "cloud_aliases": [
+      "H41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: H41 → MAIN:1346; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1347": {
     "app_current_video_value": "90 Hz",
@@ -4698,7 +4771,11 @@
     "mode": "read",
     "name": "Anzahl Verdichter-Starts",
     "type": "RAW",
-    "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet."
+    "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet.",
+    "cloud_aliases": [
+      "T57"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T57 → MAIN:2023; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "2024": {
     "function": "16",
@@ -4715,20 +4792,26 @@
   "2026": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwort High-Byte (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2113 High-Byte (Bedeutung offen)",
+    "type": "UINT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 High-Byte → MAIN:2026. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "storage_type": "uint8"
   },
   "2027": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwort Low-Byte (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2113 Low-Byte (Bedeutung offen)",
+    "type": "UINT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 Low-Byte → MAIN:2027. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "storage_type": "uint8"
   },
   "2028": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwert 16 Bit (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2118 Rohwert (signed, Bedeutung offen)",
+    "type": "INT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2118 → MAIN:2028. Signed int16 (-32768..32767); physikalische Bedeutung und Einheit offen.",
+    "storage_type": "int16"
   },
   "2029": {
     "function": "16",
@@ -4943,7 +5026,11 @@
     "function": "16",
     "mode": "read",
     "name": "Verteilerrohrtemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "T14"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T14 → MAIN:2050; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "2051": {
     "block": "T",
@@ -4996,8 +5083,11 @@
   "2056": {
     "function": "16",
     "mode": "read",
-    "name": "T? / System 1 Frostschutztemperatur 2 / Coil/Frost Temp 2 (ASM V1.3)",
-    "type": "TEMP1"
+    "name": "Frostschutztemperatur 2 (optional, Quelle ungeklärt)",
+    "type": "UINT16",
+    "description": "DWIN V1.3 bezeichnet das Feld als System 1 Frostschutztemperatur 2 (TEMP1). V3.5 exportiert 2055 und 2057; am Public-Buffer-Offset von 2056 wurde kein direkter Writer gefunden. Starkes Indiz für ein optionales bzw. in dieser Konfiguration unbelegtes Feld, kein Beweis für dauernde Ungültigkeit. Sensorquelle und Hersteller-T-Code offen. Daher neutrale Rohwertanzeige; keine Zuordnung zu T06, T06_1 oder einem bestimmten Fühler. Cloud T06_1 lieferte im Livetest keine Daten.",
+    "unit": "raw",
+    "optional": true
   },
   "2057": {
     "function": "16",
@@ -5089,7 +5179,11 @@
     "code": "T-Diag1",
     "unit": "°C",
     "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
-    "app_label": "Evaporating Temp (ASM)"
+    "app_label": "Evaporating Temp (ASM)",
+    "cloud_aliases": [
+      "T49"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T49 → MAIN:2065; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2066": {
     "function": "16",
@@ -5100,7 +5194,11 @@
     "code": "T-Diag2",
     "unit": "K",
     "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
-    "app_label": "Exhaust Superheat (ASM)"
+    "app_label": "Exhaust Superheat (ASM)",
+    "cloud_aliases": [
+      "T50"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T50 → MAIN:2066; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2067": {
     "function": "16",
@@ -5111,7 +5209,11 @@
     "code": "T-Diag3",
     "unit": "K",
     "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
-    "app_label": "Suction Superheat (ASM)"
+    "app_label": "Suction Superheat (ASM)",
+    "cloud_aliases": [
+      "T51"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T51 → MAIN:2067; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2068": {
     "function": "16",
@@ -5220,10 +5322,20 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Interner Betriebs-/Anforderungsstatus (Displaybus 91099)",
+    "name": "Inverter-/Driverstatus (INV1:2099)",
     "type": "BITFIELD",
     "unit": "raw",
-    "notes": "V3.4-Firmware: internes 16-Bit-Statuswort, an mehreren Stellen bitweise gesetzt/gelöscht. Live identisch zur virtuellen Displaybus-ID 91099. Einzelne Bits sind noch nicht sicher fachlich zugeordnet."
+    "notes": "Älterer Livevergleich: Wert identisch zur virtuellen Displaybus-ID 91099. V3.5 bestätigt die zusätzliche Kopie nach 0x200119A6, aber noch nicht den Dispatcher-Nachweis für genau 91099.",
+    "description": "Bestätigt in V3.5: INV1 / Slave 0x01:2099 → MAIN:2080, unverändertes 16-Bit-Inverter-/Driverstatuswort; nicht die Fehlerwörter MAIN:2081/2082. Bits 7/14 werden im Mainboard geprüft und setzen im jeweiligen Prioritätszweig den internen Wert 0x200152F4 auf 100. Normalfall: gerundeter Istfrequenzanteil relativ zu C03 (MAIN:1220, Low-Byte-Kopie 0x20016FD3). 100 in den Sonderpfaden belegt keinen tatsächlichen 100-%-Verdichterbetrieb und keine Pumpenwirkung; direkter Export/Consumer des RAM-Werts offen. Die 19 Einzelbedeutungen der vorgelagerten Sammelprüfung 0x0808876C bleiben offen. Herstellerbitnamen unbekannt.",
+    "bit_map": {
+      "7": "Driverstatus Bit 7",
+      "14": "Driverstatus Bit 14"
+    },
+    "bit_descriptions": {
+      "7": "INV1:2099 Bit 7: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung.",
+      "14": "INV1:2099 Bit 14: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung."
+    },
+    "bitfield_compact": true
   },
   "2081": {
     "bit_map": {
@@ -5580,9 +5692,26 @@
   "2109": {
     "function": "16",
     "mode": "read",
-    "name": "Internes Ereignis-/Statusbitfeld",
+    "name": "Parameterblock-Änderungs-/Synchronisationsmaske",
     "type": "BITFIELD",
-    "description": "Internes Ereignis-/Statusbitfeld; Darstellung als RAW, Hex und Binär. Die Semantik der Einzelbits ist weiterhin offen."
+    "description": "Parameterblock-Änderungs-/Synchronisationsmaske, bestätigt in V3.4 und unabhängig in V3.5. Vergleich zweier Parameterabbilder über 540 Positionen, sechs Blöcke zu je 90 Registern (1001–1540). MAIN:1016 ist von der regulären Änderungsmarkierung ausgenommen; ein separater Hilfsflagpfad kann Bit 0 dennoch setzen. Clear-/ACK- und Persistenzlogik offen: kein Nachweis einer erfolgten Flash-Speicherung. Bits 6–15 unbekannt, nicht als reserviert klassifiziert. Nicht mit INV1:2109 / MAIN:2082 verwechseln.",
+    "bit_map": {
+      "0": "Parameterblock 1 (1001–1090)",
+      "1": "Parameterblock 2 (1091–1180)",
+      "2": "Parameterblock 3 (1181–1270)",
+      "3": "Parameterblock 4 (1271–1360)",
+      "4": "Parameterblock 5 (1361–1450)",
+      "5": "Parameterblock 6 (1451–1540)"
+    },
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Änderungs-/Synchronisationsbedarf für Parameterblock 1 (1001–1090). Keine bestätigte Speicher-/ACK-Aussage.",
+      "1": "Änderungs-/Synchronisationsbedarf für Parameterblock 2 (1091–1180). Keine bestätigte Speicher-/ACK-Aussage.",
+      "2": "Änderungs-/Synchronisationsbedarf für Parameterblock 3 (1181–1270). Keine bestätigte Speicher-/ACK-Aussage.",
+      "3": "Änderungs-/Synchronisationsbedarf für Parameterblock 4 (1271–1360). Keine bestätigte Speicher-/ACK-Aussage.",
+      "4": "Änderungs-/Synchronisationsbedarf für Parameterblock 5 (1361–1450). Keine bestätigte Speicher-/ACK-Aussage.",
+      "5": "Änderungs-/Synchronisationsbedarf für Parameterblock 6 (1451–1540). Keine bestätigte Speicher-/ACK-Aussage."
+    }
   },
   "2110": {
     "function": "16",
@@ -5816,15 +5945,31 @@
     "name": "Schutz-/Frequenzbegrenzungs-Status",
     "type": "BITFIELD",
     "bit_map": {
-      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß",
-      "3": "A27 – Temperaturdifferenz-Frequenzbegrenzung",
-      "4": "A38 – Niederdruck-Frequenzbegrenzung",
-      "5": "AC-Eingangsstrom-Begrenzung / T35",
-      "6": "T12 Heißgas-/Abgastemperatur-Frequenzbegrenzung",
-      "8": "SG-/Zusatzheizungs-Frequenzlimit",
-      "10": "Dreiphasiger Strom-Soft-Limiter"
+      "1": "Wasserspreizung (A24)",
+      "3": "Temperaturdifferenz (A27)",
+      "4": "Niederdruck (A38)",
+      "5": "AC-Eingangsstrom (T35)",
+      "6": "Heißgastemperatur (T12)",
+      "8": "SG-/Zusatzheizung",
+      "10": "3-phasiger Stromlimiter",
+      "0": "Thermischer Regelzustand 1",
+      "2": "Thermischer Regelzustand 2",
+      "9": "Remote-/WarmLink Mode 4"
     },
-    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt. Weitere bestätigte Bits laut Issue #176: Bit8 SG-/Zusatzheizungs-Frequenzlimit und Bit10 dreiphasiger Strom-Soft-Limiter."
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt. Weitere bestätigte Bits laut Issue #176: Bit8 SG-/Zusatzheizungs-Frequenzlimit und Bit10 dreiphasiger Strom-Soft-Limiter. V3.5 zusätzlich bestätigt: Bits 0/2 sind T02-/temperaturabhängige Schutz-/Frequenzregelzustände. Ihr interner State 1 begrenzt den neuen Frequenzkandidaten nach oben auf MAIN:2071/T30; Herstellername und sämtliche State-2-Wirkungen bleiben offen. Bit 9 entspricht MAIN:2152 Bit 6 (Mode-4-Klasse 1/2), kein Inverterfehler. Das Bit unterscheidet weder die Klasse noch eine aktuell messbare Kappung. Kein allgemeiner Pumpenoverride aus MAIN:2139; die A38-spezifische Wirkung bleibt getrennt.",
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Temperaturabhängiger Schutz-/Frequenzregelzustand 1, Quelle 0x20016D50+0x0A. State 1: Frequenz-Hold/Obergrenze auf bestehendes T30 (MAIN:2071). OEM-Name und State-2-Wirkungen offen; keine belegte 100-%-Pumpenanforderung.",
+      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß.",
+      "2": "Temperaturabhängiger Schutz-/Frequenzregelzustand 2, Quelle 0x20016D50+0x0C. State 1: Frequenz-Hold/Obergrenze auf bestehendes T30 (MAIN:2071). OEM-Name und State-2-Wirkungen offen; keine belegte 100-%-Pumpenanforderung.",
+      "3": "A27 – Temperaturdifferenz-Frequenzlimit.",
+      "4": "A38 – Niederdruck-Frequenzlimit; MAIN:2115 wird auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+      "5": "AC-Eingangsstromlimit / T35.",
+      "6": "T12 – Heißgastemperaturlimit.",
+      "8": "SG-/Zusatzheizungs-Frequenzlimit.",
+      "9": "Remote-/WarmLink-Mode-4-Frequenzregelzustand aus 0x20016A54+0x0E, Klasse 1 oder 2; identische Bedingung wie MAIN:2152 Bit 6. Status zeigt weder die genaue Klasse noch zwingend eine aktuell wirksame Frequenzbegrenzung. Kein Inverterfehler und kein allgemeiner Pumpenoverride.",
+      "10": "Dreiphasiger Strom-Soft-Limiter."
+    }
   },
   "2140": {
     "function": "03",
@@ -5895,7 +6040,11 @@
     },
     "baseline": "0x002C",
     "baseline_v35": "0x022C",
-    "practical_status_bits": [4, 6, 8]
+    "practical_status_bits": [
+      4,
+      6,
+      8
+    ]
   },
   "2147": {
     "function": "03",
@@ -5946,22 +6095,33 @@
     "mode": "read",
     "name": "EMS-/Remote-Statusbitfeld",
     "type": "BITFIELD",
-    "description": "EMS-Statusbitfeld (u16), kein direktes 800x-Datenregister. Bits 0..2 bilden den exklusiven thermischen Vergleichszustand: Bit0 Abschalt-/Überschussseite, Bit1 Hystereseband, Bit2 Bedarfsseite. Bits 3..7 betreffen Remote-Aktionen/Qualifizierung; Einzelbedeutungen bleiben offen. HEX und Bitmaske anzeigen, kein 1/2/4-Enum.",
+    "description": "EMS Strategy Command State (u16); interne State-Machine, kein direktes 800x-Datenregister und kein Enum. Bits 0/1/2: thermische Abschalt-/Überschussseite, Hystereseband, Bedarfsseite. Bit 3 beeinflusst vier thermische Sollwert-/Hysteresepfade. Bit 4 aktiviert den Frequenzcap-Pfad über MAIN:1422, beweist aber keine aktuell greifende Kappung. Bit 5 verhindert unter den nachgewiesenen Bedingungen das Setzen von 0x20016E2C+4 Bit 1; physische Wirkung offen. Bit 6 entspricht MAIN:2139 Bit 9 (Mode-4-Klasse 1/2). Bit 7: qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten, gemeinsamer Producer mit MAIN:2085 Bit 0, kein gewöhnlicher Fehler. Normaler Abbruch löscht Aktivflag, Zähler und Bit. Sonderfall Kommunikations-/Sperrflag 0x200144D1: zunächst nur Zähler-Reset; bereits gesetztes Bit 7 kann während der Sperre stehen bleiben. Nach Wegfall der Sperre und regulärer Auswertung wird es bis zur erneuten Qualifizierung gelöscht. OEM-Bezeichnungen, finale Aktoren und weitere Verbraucher von Bits 3/5 bleiben offen. Status angefordert/aktiv ist nicht gleich messbarer Regelauswirkung.",
     "write_allowed": false,
     "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
     "bit_map": {
-      "0": "Abschalt-/Überschussseite",
-      "1": "Hystereseband",
-      "2": "Bedarfsseite",
-      "3": "Remote-Bit3 (Bedeutung offen)",
-      "4": "Remote-Bit4 (Bedeutung offen)",
-      "5": "Remote-Bit5 (Bedeutung offen)",
-      "6": "Remote-Bit6 (Bedeutung offen)",
-      "7": "Remote-Bit7 (Bedeutung offen)"
+      "0": "Thermische Abschalt-/Überschussseite",
+      "1": "Thermisches Hystereseband",
+      "2": "Thermische Bedarfsseite",
+      "3": "Remote-Thermikzustand",
+      "4": "Remote-Frequenzobergrenze (1422)",
+      "5": "Remote-Regelzustand Bit 5",
+      "6": "Remote-/WarmLink Mode 4",
+      "7": "Runtime qualifiziert (30 min)"
     },
     "storage_type": "uint16",
     "app_label_goheating_pro": "EMS Strategy Command State",
-    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)",
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Thermische Abschalt-/Überschussseite des Vergleichszustands.",
+      "1": "Thermisches Hystereseband des Vergleichszustands.",
+      "2": "Thermische Bedarfsseite des Vergleichszustands.",
+      "3": "Remote-Regelzustand aus 0x20016A54+0x08. Bestätigte Eingriffe in vier thermische Sollwert-/Hysteresepfade (0x0805CD00, 0x0805CEA2, 0x0805D144, 0x0805D2E8). OEM-Name und finale Aktoren offen.",
+      "4": "Remote-Frequenzobergrenze über MAIN:1422: Prozentwert × Referenzfrequenz / 100, durch Mindestfrequenz begrenzt. Gesetztes Bit aktiviert den Pfad; aktuelle Sollfrequenz muss nicht bereits am Cap liegen.",
+      "5": "Remote-Regelzustand aus 0x20016A54+0x0A. Bit 5=1 verhindert unter den nachgewiesenen Zusatzbedingungen das Setzen des internen Flags 0x20016E2C+4 Bit 1. Physische Funktion und OEM-Name offen.",
+      "6": "Mode-4-Frequenzregelzustand, gleiche Bedingung wie MAIN:2139 Bit 9 (Klasse 1 oder 2). Kein Nachweis der genauen Klasse oder einer aktuell wirksamen Kappung.",
+      "7": "Qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten; gemeinsamer Producer mit MAIN:2085 Bit 0. Normaler Abbruch löscht Flag, Zähler und Bit. Bei Kommunikationssperre 0x200144D1 zunächst nur Zähler-Reset; bereits gesetztes Bit kann vorübergehend stehen bleiben. Keine einfache AI-Saving- oder Fehleranzeige."
+    }
   },
   "2155": {
     "function": "03",

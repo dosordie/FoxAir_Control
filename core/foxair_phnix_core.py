@@ -219,6 +219,8 @@ class RegisterInfo:
     value_map: Optional[Dict[int, str]] = None
     bit_map: Optional[Dict[int, str]] = None
     write_min: Optional[int] = None
+    bitfield_compact: bool = False
+    bit_descriptions: Optional[Dict[int, str]] = None
 
 
 def validate_register_write_value(value: int, info: RegisterInfo) -> int:
@@ -320,6 +322,8 @@ class RegisterMap:
                     value_map,
                     bit_map,
                     int(write_min) if write_min is not None else None,
+                    bool(value.get("bitfield_compact", False)),
+                    {int(k): str(v) for k, v in value.get("bit_descriptions", {}).items()},
                 )
             else:
                 self.items[reg] = RegisterInfo(str(value), "RAW")
@@ -350,14 +354,42 @@ def _decode_timer_bit_byte(byte_value: int) -> str:
 
 
 
-def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]]) -> str:
+def bitfield_states(raw_value: Optional[int], bit_map=None, bit_descriptions=None):
+    """Shared 16-bit states for the formatter and diagnostic detail view."""
+    labels, descriptions = bit_map or {}, bit_descriptions or {}
+    return [
+        (bit, labels.get(bit, f"B{bit} (unbekannt)"),
+         descriptions.get(bit, labels.get(bit, "Bedeutung offen")),
+         None if raw_value is None else bool(int(raw_value) & (1 << bit)))
+        for bit in range(16)
+    ]
+
+
+def format_bitfield_details(raw_value: Optional[int], info: RegisterInfo) -> str:
+    if raw_value is None:
+        return "–"
+    raw = int(raw_value) & 0xFFFF
+    lines = [f"RAW={raw} / 0x{raw:04X} / {raw:016b}"]
+    lines.extend(
+        f"B{bit}: {description}" for bit, _label, description, active
+        in bitfield_states(raw, info.bit_map, info.bit_descriptions) if active
+    )
+    return "\n".join(lines)
+
+
+def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]], *, compact: bool = False) -> str:
     raw_value = int(raw_value) & 0xFFFF
+    if compact:
+        return "; ".join(
+            label for _bit, label, _description, active
+            in bitfield_states(raw_value, bit_map) if active
+        ) or "Keine aktiven Bits"
     if not bit_map:
         return f"{raw_value} / 0x{raw_value:04X} / {raw_value:016b}"
     hits = []
-    for bit in sorted(bit_map):
-        if 0 <= bit <= 15 and (raw_value & (1 << bit)):
-            hits.append(f"B{bit}: {bit_map[bit]}")
+    for bit, label, _description, active in bitfield_states(raw_value, bit_map):
+        if active and bit in bit_map:
+            hits.append(f"B{bit}: {label}")
     mask = f"0x{raw_value:04X} / {raw_value:016b}"
     # Unknown bits stay visible as raw bits, without invented labels.
     return mask + (": " + "; ".join(hits) if hits else "")
@@ -377,12 +409,16 @@ def _append_display_unit(text: str, unit: Optional[str]) -> str:
 
 
 def format_value_by_type(
-    raw_value: int,
+    raw_value: Optional[int],
     dtype: str,
     value_map: Optional[Dict[int, str]] = None,
     bit_map: Optional[Dict[int, str]] = None,
     unit: Optional[str] = None,
+    *,
+    compact: bool = False,
 ) -> str:
+    if raw_value is None:
+        return "–"
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
     if dtype in ("UINT16", "UNSIGNED INT16"):
@@ -394,7 +430,7 @@ def format_value_by_type(
     if value_map and signed in value_map:
         return f"{signed} = {value_map[signed]}"
     if bit_map or dtype in ("FAULT_BITS", "BITFIELD"):
-        return _decode_bit_map(raw_value, bit_map)
+        return _decode_bit_map(raw_value, bit_map, compact=compact)
     if dtype in ("TEMP", "TEMP1"):
         return f"{signed / 10.0:.1f} {_temperature_unit(unit)}"
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
