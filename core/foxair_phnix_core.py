@@ -221,6 +221,7 @@ class RegisterInfo:
     write_min: Optional[int] = None
     bitfield_compact: bool = False
     bit_descriptions: Optional[Dict[int, str]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 def validate_register_write_value(value: int, info: RegisterInfo) -> int:
@@ -324,6 +325,7 @@ class RegisterMap:
                     int(write_min) if write_min is not None else None,
                     bool(value.get("bitfield_compact", False)),
                     {int(k): str(v) for k, v in value.get("bit_descriptions", {}).items()},
+                    dict(value),
                 )
             else:
                 self.items[reg] = RegisterInfo(str(value), "RAW")
@@ -425,6 +427,15 @@ def format_value_by_type(
         return str(int(raw_value) & 0xFFFF)
     if dtype in ("INT16", "SIGNED INT16"):
         return str(signed)
+    if dtype == "HZ_LOW8":
+        return f"{int(raw_value) & 0xFF} Hz"
+    if dtype in ("TEMP_OFFSET55", "TEMP_OFFSET55_LOW8"):
+        value = int(raw_value) & (0xFF if dtype.endswith("LOW8") else 0xFFFF)
+        return f"{value - 55} °C"
+    if dtype == "BYTE_PAIR":
+        return f"0x{int(raw_value) & 0xFFFF:04X}: High={(int(raw_value) >> 8) & 0xFF}, Low={int(raw_value) & 0xFF}"
+    if dtype == "YEAR_2000":
+        return str(2000 + (int(raw_value) & 0xFFFF))
     if value_map and raw_value in value_map:
         return f"{raw_value} = {value_map[raw_value]}"
     if value_map and signed in value_map:
@@ -781,6 +792,14 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
 def numeric_value_by_type(raw_value: int, dtype: str) -> float:
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
+    if dtype in ("UINT16", "UNSIGNED INT16", "BYTE_PAIR"):
+        return float(int(raw_value) & 0xFFFF)
+    if dtype == "HZ_LOW8":
+        return float(int(raw_value) & 0xFF)
+    if dtype in ("TEMP_OFFSET55", "TEMP_OFFSET55_LOW8"):
+        return float((int(raw_value) & (0xFF if dtype.endswith("LOW8") else 0xFFFF)) - 55)
+    if dtype == "YEAR_2000":
+        return float(2000 + (int(raw_value) & 0xFFFF))
     if dtype in ("TEMP", "TEMP1"):
         return signed / 10.0
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):

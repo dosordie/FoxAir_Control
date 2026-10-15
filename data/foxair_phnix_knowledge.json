@@ -59,7 +59,10 @@
     "description": "Manuelle Steuerung / Silent Status: Bit 1 (Maske 0x0002) ist Silent Mode. Derselbe Registerwert ist auch der Status. Beim Schreiben nur Bit 1 per Read-Modify-Write ändern.",
     "source": "v36 Beschreibung/App-Review"
   },
-  "1017": {},
+  "1017": {
+    "description": "Funktion und Seiteneffekte ungeklärt. Die bisherige Logo-Zuordnung ist widerlegt: DWIN V1.7 liest MAIN:1026 / H39 für die Logo-Auswahl. MAIN:1017 darf bis zur Klärung nicht automatisch wiederhergestellt werden.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L424-L431"
+  },
   "1018": {
     "description": "0-nein/1-ja",
     "source": "v36 Beschreibung/App-Review",
@@ -1365,8 +1368,8 @@
   },
   "1193": {
     "default": "0",
-    "description": "V1.3 begrenzt R40 in Celsius auf 60 °C; Fahrenheit-Minimum 14 °F.",
-    "source": "ASM DEMONS.ASM",
+    "description": "Temperaturparameter R40, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt.",
+    "source": "ASM DEMONS.ASM; ASM DEMONS V1.3; Nutzer-Registeraudit 15.10.2026",
     "cloud_aliases": [
       "R40"
     ],
@@ -1374,8 +1377,8 @@
   },
   "1194": {
     "default": "0",
-    "description": "V1.3 begrenzt R41 in Celsius auf 60 °C; Fahrenheit-Minimum 14 °F.",
-    "source": "ASM DEMONS.ASM",
+    "description": "Temperaturparameter R41, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt.",
+    "source": "ASM DEMONS.ASM; ASM DEMONS V1.3; Nutzer-Registeraudit 15.10.2026",
     "cloud_aliases": [
       "R41"
     ],
@@ -3148,7 +3151,8 @@
   },
   "1430": {
     "knowledge": "MAIN:1430 existiert bereits vor V3.5. Effektiv uint8, persistent im 32-Byte-Record 0x218, Default 0: 0 = Gate nicht aktiv, != 0 = Gate aktiv. Fuer V3.5 ist die zusaetzliche Verwendung als notwendiges Gate des positiven 8055-Heizboosts bestaetigt (zusammen mit MAIN:1492.high != 0, Z01 in {4,5,6}, int16(8055) > 0). Ausserdem ist 1430 ein alternativer Aktivierungsweg des dokumentierten 30-Minuten-Qualifier-Pfads. Offizieller PHNIX-Name bleibt offen.",
-    "source": "Reverse Engineering V3.5"
+    "source": "Reverse Engineering V3.5; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md",
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen. Livebeobachtung: MAIN:1430=0, unverändert; der zusätzliche Heizboost war damit in dieser Anlage gesperrt. Kein gewöhnlicher immer aktiver Boost."
   },
   "1492": {
     "knowledge": "Engineering: gepacktes uint16, persistent im 32-Byte-Record 0x218, Default 0x0000. High Byte liegt bei 0x20016A34 +0x12, ist uint8 (0..255) und bildet factor = high / 10 sowie scaled_boost_raw = int16(8055) * high / 10; high=0 sperrt den 8055-Pfad. Low Byte liegt bei +0x14, ist uint8: 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische PHNIX-/FoxAir-Klemmenbezeichnungen bleiben offen.",
@@ -3164,7 +3168,8 @@
   },
   "2152": {
     "description": "EMS Strategy Command State (u16); interne State-Machine, kein direktes 800x-Datenregister und kein Enum. Bits 0/1/2: thermische Abschalt-/Überschussseite, Hystereseband, Bedarfsseite. Bit 3 beeinflusst vier thermische Sollwert-/Hysteresepfade. Bit 4 aktiviert den Frequenzcap-Pfad über MAIN:1422, beweist aber keine aktuell greifende Kappung. Bit 5 verhindert unter den nachgewiesenen Bedingungen das Setzen von 0x20016E2C+4 Bit 1; physische Wirkung offen. Bit 6 entspricht MAIN:2139 Bit 9 (Mode-4-Klasse 1/2). Bit 7: qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten, gemeinsamer Producer mit MAIN:2085 Bit 0, kein gewöhnlicher Fehler. Normaler Abbruch löscht Aktivflag, Zähler und Bit. Sonderfall Kommunikations-/Sperrflag 0x200144D1: zunächst nur Zähler-Reset; bereits gesetztes Bit 7 kann während der Sperre stehen bleiben. Nach Wegfall der Sperre und regulärer Auswertung wird es bis zur erneuten Qualifizierung gelöscht. OEM-Bezeichnungen, finale Aktoren und weitere Verbraucher von Bits 3/5 bleiben offen. Status angefordert/aktiv ist nicht gleich messbarer Regelauswirkung.",
-    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_followup_2026-10-15.md; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md; https://github.com/dosordie/FoxAir_Control/issues/180"
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_followup_2026-10-15.md; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md; https://github.com/dosordie/FoxAir_Control/issues/180",
+    "live_observation_2026_10_15": "Vor WP-Start 2 (Bit1), beim Anlaufen 1 (Bit0). Beobachtung, keine allgemeine WP-Aus/Ein-Definition. Bit4 war jeweils aus; der 1422-Pfad war dort nicht aktiviert."
   },
   "2153": {
     "description": "Strompreis-Rohwert aus Warmlink 0x63:8002. Einheit und Skalierung unbekannt. MAIN1693 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
@@ -3185,5 +3190,45 @@
   "2158": {
     "description": "Warmlink-EMS-Rohwert aus 0x63:8008. Semantik offen, kein Herstellername belegt. MAIN1698 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
     "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "1381": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1382": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1383": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1384": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1385": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1386": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1422": {
+    "description": "V3.5 bestätigt: prozentualer Frequenzdeckel im Remote-Regelpfad, aktiviert durch MAIN:2152 Bit4. Default 70 %. Effektive Grenze hängt von Frequenzanforderung und Mindestfrequenz ab. 0 und Werte >100 werden in diesem Rechenpfad funktional wie 100 % behandelt. Keine neuen Schreibgrenzen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md"
+  },
+  "1424": {
+    "description": "Bestätigte Verwendung in der Remote-Modus-3/4-Presetfamilie. RAW 20 live beobachtet. Konkrete physikalische Skalierung bleibt offen; unsigned Rohwert ohne Einheit.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md"
+  },
+  "1466": {
+    "description": "Aktiver Konfigurationswert, live RAW 300. Funktion, Einheit und zeitliche Bedeutung nicht bestätigt. Frühere Entprellzeit-/Qualifikationsannahme ist keine gesicherte Bezeichnung.",
+    "source": "Nutzer-Registeraudit 15.10.2026"
+  },
+  "1476": {
+    "description": "Aktiver Konfigurationswert, live RAW 5. Hinweise auf eine spezielle Regelungsfamilie; endgültige OEM-Funktion und Einheit offen. Keine gesicherte Sekunden-, Kelvin-, °C- oder Prozentangabe.",
+    "source": "Nutzer-Registeraudit 15.10.2026"
   }
 }

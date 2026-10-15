@@ -646,6 +646,9 @@ class BackupRestoreDialog(QDialog):
         return out
 
     def restore_values(self, mode: str = "changed"):
+        if getattr(self.main_window, "display_fake_reboot_state", {}).get("active"):
+            QMessageBox.information(self, "Display-Synchronisation läuft", "Restore erst nach Abschluss der Display-Parametersynchronisation starten.")
+            return
         if not self._ensure_connected_for_transfer("Restore", resume=lambda: self.restore_values(mode=mode)):
             return
         if not self.loaded_backup:

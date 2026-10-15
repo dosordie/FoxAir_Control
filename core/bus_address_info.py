@@ -15,7 +15,7 @@ def display_bus_address_info(addr: int) -> tuple[str, str, str]:
     if addr == 0x01:
         return (
             "Verdichter-/Leistungs-/Inverterboard (+ Fan-Driver bei H33)",
-            "FC10 1999ff Sollwerte; FC03 2099ff Telemetrie",
+            "FC10 1999ff Sollwerte; FC03 INV1:2099–2149 Telemetrie → virtuelle FoxAir-IDs 91099–91149 (keine Modbus-Adressen)",
             "interner Boardbus-Teilnehmer",
         )
     if addr == 0x02:

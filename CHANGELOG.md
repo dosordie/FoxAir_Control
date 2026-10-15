@@ -1,5 +1,10 @@
 ## Unreleased
 
+- Display-Modbus: DWIN-Version/RTC, Anzeigeobjekte und Sichtbarkeitsflags anhand V1.7 präzisiert;
+  Unit-1-Telemetrie mit korrekten Skalierungen und eigener virtueller Browsergruppe.
+- Display-Parametersynchronisation erfordert alle sechs frischen, gültigen Pflichtpakete;
+  Teilstände und fehlende Pakete bleiben sichtbar. MAIN1017 ist kein Logo und wird nicht automatisch restauriert.
+
 - Register-Audit: MAIN2080/2109/2139/2152 mit kompakten aktiven Statusbits,
   ausführlichen Tooltips und eigenen Tabs im System-/I/O-Dialog; RAW/HEX/Binär bleiben verfügbar.
 - INV1-Rohwerte 2026–2028 und optionales Frostschutzfeld 2056 präzisiert.
