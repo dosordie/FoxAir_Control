@@ -73,6 +73,17 @@ Nicht verwechseln mit:
 
 Diese Busse können andere Adressen, Baudraten oder Kommunikationsabläufe verwenden.
 
+Im Display-Modbus-Modus heißt die bestehende Parameterabfrage
+**„Display-Parameter synchronisieren“**. Sie verwendet Display-Steuerregister
+und ist daher kein rein passiver Lesevorgang. Vollständiger Erfolg erfordert
+alle sechs gültigen Pflichtpakete; fehlende Pakete und das optionale Paket 1541
+werden getrennt angezeigt.
+
+Die FoxAir-IDs 91099–91149 gehören zur virtuellen Unit-1-Telemetrie und können
+nicht direkt per Modbus gelesen oder geschrieben werden. Details zu DWIN,
+Kodierungen und Quellentrennung stehen im
+[Register-Audit](../register_audit_2026-10-15.md#nachtrag-display-modbus-und-virtuelle-unit-1-telemetrie).
+
 ## Wenn keine Verbindung zustande kommt
 
 Zuerst prüfen:

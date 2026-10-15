@@ -20,3 +20,8 @@ Empfehlung:
 > Nicht jedes Firmwareupdate besitzt exakt dieselben Parameter. Deshalb ein altes Backup nach einem Update nicht blind vollständig zurückschreiben.
 
 Wichtige individuelle Einstellungen sollten zusätzlich dokumentiert werden.
+
+MAIN:1017 ist ein Parameter mit ungeklärter Funktion und wird deshalb nicht
+automatisch gesichert oder wiederhergestellt, auch aus alten Backup-Dateien.
+Die frühere Bezeichnung „Logo-Auswahl“ war falsch; dafür ist MAIN:1026/H39 zuständig.
+Die übrigen bestätigten Paketbereiche behalten ihre bisherige Backup-/Restore-Policy.

@@ -3,7 +3,6 @@
 BACKUP_BLOCKS = [
     # Persistent and safe user-interface configuration.
     ("Bedienoberfläche: Sprache", 1015, 1015),
-    ("Bedienoberfläche: Logo", 1017, 1017),
     ("Paket 1", 1018, 1090),
     ("Paket 2", 1101, 1180),
     ("Paket 3", 1191, 1270),
@@ -21,6 +20,7 @@ EXCLUDED_WRITABLE_REGISTERS = {
     1013: "Laufzeitwert: externe Wassertanktemperatur",
     1014: "Laufzeit-/Steuerwert: Zentralregler-Abtaufreigabe",
     1016: "Command-/Aktionsregister: manuelle Steuerung, Silent und Abtauen",
+    1017: "Funktion und Seiteneffekte unbekannt; keine automatische Wiederherstellung (Logo ist 1026/H39)",
 }
 
 # Protocol/package metadata omitted from backup; the register model marks these

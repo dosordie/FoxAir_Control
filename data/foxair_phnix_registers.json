@@ -254,8 +254,9 @@
   "1017": {
     "function": "03/06",
     "mode": "r/w",
-    "name": "Logo-Auswahl",
-    "type": "RAW"
+    "name": "Unbekannter Parameter",
+    "type": "RAW",
+    "description": "Funktion und Seiteneffekte ungeklärt. Die bisherige Logo-Zuordnung ist widerlegt: DWIN V1.7 liest MAIN:1026 / H39 für die Logo-Auswahl. MAIN:1017 darf bis zur Klärung nicht automatisch wiederhergestellt werden."
   },
   "1018": {
     "app_label": "Auto start",
@@ -2425,24 +2426,26 @@
     "code": "R40",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
+    "name": "Temperaturparameter R40 – Funktion unbekannt",
     "type": "TEMP1",
     "cloud_aliases": [
       "R40"
     ],
-    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R40 → MAIN:1193; #178 / PR #183 (bisherige Zuordnungen)."
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R40 → MAIN:1193; #178 / PR #183 (bisherige Zuordnungen).",
+    "description": "Temperaturparameter R40, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt."
   },
   "1194": {
     "block": "R",
     "code": "R41",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
+    "name": "Temperaturparameter R41 – Funktion unbekannt",
     "type": "TEMP1",
     "cloud_aliases": [
       "R41"
     ],
-    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R41 → MAIN:1194; #178 / PR #183 (bisherige Zuordnungen)."
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R41 → MAIN:1194; #178 / PR #183 (bisherige Zuordnungen).",
+    "description": "Temperaturparameter R41, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt."
   },
   "1195": {
     "app_current_video_value": "2.0 °C",
@@ -4263,9 +4266,11 @@
   "1422": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Verdichter-Frequenz-Derating in %, Default 70 % / Erforschen!",
-    "notes": "Interessant, genau anschauen!.",
-    "type": "RAW"
+    "name": "Remote-Kompressor-Frequenzobergrenze (%)",
+    "notes": "Bestätigter V3.5-Frequenzcap-Pfad; kein Beleg für eine aktuell greifende Begrenzung allein aus Bit4.",
+    "type": "PERCENT",
+    "description": "V3.5 bestätigt: prozentualer Frequenzdeckel im Remote-Regelpfad, aktiviert durch MAIN:2152 Bit4. Default 70 %. Effektive Grenze hängt von Frequenzanforderung und Mindestfrequenz ab. 0 und Werte >100 werden in diesem Rechenpfad funktional wie 100 % behandelt. Keine neuen Schreibgrenzen.",
+    "unit": "%"
   },
   "1427": {
     "function": "03/16",
@@ -4482,16 +4487,18 @@
   "1466": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
-    "notes": "Interessant, genau anschauen!",
-    "type": "RAW"
+    "name": "Erweiterter Konfigurationsparameter – Funktion unbekannt",
+    "notes": "Aktiver Konfigurationswert; keine bestätigte Einheit.",
+    "type": "RAW",
+    "description": "Aktiver Konfigurationswert, live RAW 300. Funktion, Einheit und zeitliche Bedeutung nicht bestätigt. Frühere Entprellzeit-/Qualifikationsannahme ist keine gesicherte Bezeichnung."
   },
   "1476": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
-    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
-    "type": "RAW"
+    "name": "R-/Temperaturregelparameter – Funktion unbekannt",
+    "notes": "Historische Mode-8-/3-K-/2146-Hypothesen sind nicht als bestätigte Funktion belegt.",
+    "type": "RAW",
+    "description": "Aktiver Konfigurationswert, live RAW 5. Hinweise auf eine spezielle Regelungsfamilie; endgültige OEM-Funktion und Einheit offen. Keine gesicherte Sekunden-, Kelvin-, °C- oder Prozentangabe."
   },
   "1541": {
     "function": "03",
@@ -6521,10 +6528,10 @@
   "1430": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Warmlink-8055-Heizboost Freigabe (Engineering)",
+    "name": "Freigabe Warmlink-8055-Heizboost",
     "type": "RAW",
     "ui_visibility": "engineering",
-    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen.",
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen. Livebeobachtung: MAIN:1430=0, unverändert; der zusätzliche Heizboost war damit in dieser Anlage gesperrt. Kein gewöhnlicher immer aktiver Boost.",
     "source": "Reverse Engineering V3.5",
     "effective_type": "uint8",
     "default": "0",
@@ -6656,5 +6663,67 @@
       "slave_addr": "0x63",
       "register": 8008
     }
+  },
+  "1381": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 1",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1382": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 2",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1383": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 3",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1384": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 4",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1385": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 5",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1386": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 6",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1424": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "Remote-Preset Heiz-Wassersollwert-Anhebung",
+    "description": "Bestätigte Verwendung in der Remote-Modus-3/4-Presetfamilie. RAW 20 live beobachtet. Konkrete physikalische Skalierung bleibt offen; unsigned Rohwert ohne Einheit."
   }
 }

@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QMenu, QWidget
 
 from cloud.cloud_write_helpers import cloud_code_for_register
 from cloud.warmlink_codes import warmlink_service_metadata
+from core.display_protocol import is_virtual_register
 
 
 class RegisterContextAction(str, Enum):
@@ -60,6 +61,10 @@ def build_register_context_menu(
 
     menu = QMenu(parent)
     action_map: dict[QAction, RegisterContextMenuResult] = {}
+    if is_virtual_register(reg_no):
+        action = _add_action(menu, f"Unit-1-Telemetrie INV1:{reg_no - 89000} (virtuell, nur Anzeige)")
+        action.setEnabled(False)
+        return menu, action_map
 
     service_meta = warmlink_service_metadata(slave_addr, reg_no) if slave_addr is not None else None
     if not service_meta or bool(service_meta.get("write_allowed", False)):

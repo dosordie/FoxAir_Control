@@ -34,8 +34,8 @@ def test_writable_1xxx_registers_are_backed_up_or_explicitly_excluded():
     excluded = set(EXCLUDED_WRITABLE_REGISTERS)
 
     assert writable - covered == excluded
-    assert {1015, 1017}.issubset(covered)
-    assert excluded == {1011, 1012, 1013, 1014, 1016}
+    assert 1015 in covered and 1017 not in covered
+    assert excluded == {1011, 1012, 1013, 1014, 1016, 1017}
     assert excluded.isdisjoint(covered)
     for start, end in READ_ONLY_BLOCK_HEADER_RANGES:
         assert covered.isdisjoint(range(start, end + 1))
@@ -53,8 +53,8 @@ def test_backup_ranges_cover_every_package_slot_but_no_headers_or_commands():
         for reg_no in range(start, end + 1)
     } - set(EXCLUDED_WRITABLE_REGISTERS)
 
-    assert {1015, 1017, 1018, 1089, 1630}.issubset(covered)
-    assert {1011, 1012, 1013, 1014, 1016}.isdisjoint(covered)
+    assert {1015, 1018, 1089, 1630}.issubset(covered)
+    assert {1011, 1012, 1013, 1014, 1016, 1017}.isdisjoint(covered)
     assert 2001 not in covered
     for start, end in READ_ONLY_BLOCK_HEADER_RANGES:
         assert covered.isdisjoint(range(start, end + 1))

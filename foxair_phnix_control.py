@@ -55,6 +55,10 @@ from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
+from core.display_protocol import (
+    REQUIRED_PARAMETER_PACKETS, OPTIONAL_PARAMETER_PACKETS, is_virtual_register,
+    validate_parameter_packet,
+)
 from core.device_identity_io import DeviceIdentityIOMixin
 from core.at_compensation import (
     AT_LIVE_REGISTERS,
@@ -2581,7 +2585,9 @@ class DualBusLoggerDialog(QDialog):
         # DWIN/Anzeige-Speicher bleibt getrennt.
         if slave == 0x00 and start in {2001, 2091}:
             return self.main_window.regmap
-        if slave == 0x01 and (1000 <= start <= 2300 or start in {1999, 2001, 2099}):
+        if slave == 0x01 and 2099 <= start <= 2149:
+            return self.main_window.unit1_regmap
+        if slave == 0x01 and (1000 <= start <= 2300 or start in {1999, 2001}):
             return self.main_window.regmap
         return self.main_window.display_regmap
 
@@ -2602,21 +2608,7 @@ class DualBusLoggerDialog(QDialog):
 
         Nur solche Pakete werden automatisch in die Hauptliste übernommen.
         """
-        if len(words) < 10:
-            return None
-        if not self._display_packet_signature_valid(words):
-            return None
-        marker = int(words[8]) & 0xFFFF
-        internal_start = int(words[9]) & 0xFFFF
-        if marker != 0x0210:
-            return None
-        if internal_start != int(start):
-            return None
-        return {
-            "marker": marker,
-            "internal_start": internal_start,
-            "end": int(start) + len(words) - 1,
-        }
+        return validate_parameter_packet(start, words, complete=False)
 
     def _validated_packet_info_from_regs(self, start: int, regs) -> Optional[dict[str, int]]:
         words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in list(regs or [])]
@@ -3566,7 +3558,7 @@ class CommunicationSettingsDialog(QDialog):
                 "Unit ist nur die aktive Zieladresse, normalerweise 3. "
                 "Gesehen: 0x03 = Display/DWIN, 3001-3021 lesbar und Bedienwerte über 23xx; "
                 "0x00 = Broadcast echter WP-Livewerte 2001/2091; "
-                "0x01 = Rohstatus 2099/51, virtuell 91099-91149; 91105~2062 AC-Spannung, 91108~2043 DC-Bus (Power-Modul-Spiegel-Kandidaten); "
+                "0x01 = Inverter-/Driver-Telemetrie INV1:2099/51, virtuelle Diagnose-IDs 91099–91149; keine direkt adressierbaren Register. "
                 "0x04 fragt 1011-1024; 0x05 liest 2000/90 und schreibt 1001/90 Nullblock. "
                 "0x04/0x05 bleiben Diagnose, wenn sie bekannte WP-Bereiche berühren."
             )
@@ -4704,6 +4696,8 @@ class MainWindow(QMainWindow):
         # Display-/DWIN-Adressen bekommen bewusst ein eigenes Diagnose-Mapping.
         # Sie duerfen die normale Warmlink/WP-Registertabelle nicht ueberschreiben.
         self.display_regmap = RegisterMap(self.display_regmap_path) if os.path.exists(self.display_regmap_path) else RegisterMap("")
+        self.unit1_regmap = RegisterMap("")
+        self.unit1_regmap.items = {source: self.display_regmap.get(source + 89000) for source in range(2099, 2150)}
         self.register_defs = self._load_register_defs()
 
         self.thread: Optional[QThread] = None
@@ -4755,6 +4749,7 @@ class MainWindow(QMainWindow):
         # Display-/HMI-Diagnose: Rohblock-Snapshots fuer Kandidatensuche.
         # Diese Werte werden bewusst getrennt von der Haupt-Registerliste gehalten.
         self.display_hmi_block_snapshots: Dict[tuple[int, int, str], list[int]] = {}
+        self.display_valid_param_packet_times: Dict[int, float] = {}
         self.display_hmi_block_snapshot_times: Dict[tuple[int, int, str], float] = {}
         # PRIVATE Display-Tests: ACK-Zeitstempel fuer aktiv injizierte FC16-Schreibbefehle.
         # Key: (slave, start_addr, qty). Wichtig, weil die bisherigen Tests fast immer
@@ -5739,6 +5734,9 @@ class MainWindow(QMainWindow):
 
     def _display_parts_for_register(self, reg_no: int, fallback_name: str = "") -> tuple[str, str, str]:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        display_map = getattr(self, "display_regmap", None)
+        if not data and display_map is not None:
+            data = display_map.get(int(reg_no)).metadata or {}
         if isinstance(data, dict):
             block, code, clean = register_meta_parts(data)
             if code or block or clean:
@@ -5759,6 +5757,9 @@ class MainWindow(QMainWindow):
 
     def _unit_for_register(self, reg_no: int) -> str:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        display_map = getattr(self, "display_regmap", None)
+        if not data and display_map is not None:
+            data = display_map.get(int(reg_no)).metadata or {}
         if isinstance(data, dict):
             return str(data.get("unit", "") or "").strip()
         return ""
@@ -5793,6 +5794,15 @@ class MainWindow(QMainWindow):
             )
         )
 
+    def _register_info_for_value(self, reg: DecodedRegister):
+        display_map = getattr(self, "display_regmap", None)
+        if display_map is not None and (
+            (is_virtual_register(reg.reg) and int(reg.slave_addr) == 1)
+            or (int(reg.slave_addr) in (2, 3) and int(reg.reg) in display_map.items)
+        ):
+            return display_map.get(int(reg.reg))
+        return self.regmap.get(int(reg.reg))
+
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
         if int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D:
             # getDataByCode already returns an engineering value.
@@ -5800,7 +5810,7 @@ class MainWindow(QMainWindow):
         if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
-        info = self.regmap.get(int(reg.reg))
+        info = self._register_info_for_value(reg)
         unit = self._unit_for_register(int(reg.reg))
         dtype = info.dtype if info else getattr(reg, "dtype", "RAW")
         value_map = info.value_map if info else None
@@ -6317,6 +6327,7 @@ class MainWindow(QMainWindow):
         # Fix34: Beim Wechsel von Display auf Warmlink/Standard darf ein alter
         # Display-INIT/DisplayWorker-Zustand den Init-Button nicht dauerhaft sperren.
         if self.current_backend_key() != "display_modbus":
+            self.display_fake_reboot_state = {}
             self.display_init_progress_active = False
             self.display_init_progress_busy_state = False
             self.display_init_progress_text = "Bereit"
@@ -6391,14 +6402,23 @@ class MainWindow(QMainWindow):
             self.init_progress_bar.setRange(0, 0)
         else:
             total_value = max(1, int(total if total is not None else 3))
-            done_value = total_value if finished else max(0, min(int(done if done is not None else 0), total_value))
+            done_value = total_value if finished and not failed else max(0, min(int(done if done is not None else 0), total_value))
             self.init_progress_bar.setRange(0, total_value)
             self.init_progress_bar.setValue(done_value)
         self._set_init_progress_text(self.display_init_progress_text)
         self._update_init_read_button_state()
 
     def _display_reboot_finish(self, text: str, *, failed: bool = False) -> None:
-        self._display_reboot_progress(text, busy=False, done=3, total=3, finished=True, failed=failed)
+        state = self.display_fake_reboot_state
+        fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state.get("started", time.monotonic()))))
+        received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+        missing = [start for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+        self.display_last_sync_result = {
+            "complete": not failed and not missing,
+            "received": received, "missing": missing,
+            "optional_received": [start for start in OPTIONAL_PARAMETER_PACKETS if start in fresh],
+        }
+        self._display_reboot_progress(text, busy=False, done=len(received), total=len(REQUIRED_PARAMETER_PACKETS), finished=True, failed=failed)
         self.display_init_progress_active = False
         self.display_init_progress_busy_state = False
         self._update_init_read_button_state()
@@ -6505,7 +6525,7 @@ class MainWindow(QMainWindow):
         generic_active = bool(getattr(self, "init_read_active", False)) and (display_active or warmlink_active or standard_active)
         if display_active:
             self.init_read_btn.setEnabled(False)
-            self.init_read_btn.setText("Display-Init läuft ...")
+            self.init_read_btn.setText("Display-Synchronisation läuft ...")
         elif warmlink_active or standard_active or generic_active:
             self.init_read_btn.setEnabled(False)
             self.init_read_btn.setText("Init läuft ...")
@@ -6514,7 +6534,7 @@ class MainWindow(QMainWindow):
             self.init_read_btn.setText("Firmware-Capture: Senden gesperrt")
         else:
             self.init_read_btn.setEnabled(True)
-            self.init_read_btn.setText("Alle bekannten Register lesen")
+            self.init_read_btn.setText("Display-Parameter synchronisieren" if self.current_backend_key() == "display_modbus" else "Alle bekannten Register lesen")
 
     def connect_to_device(self):
         if self.thread:
@@ -7451,10 +7471,12 @@ class MainWindow(QMainWindow):
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if col == 2 and value:
                 item.setToolTip(reg.name)
-            elif col == 7 and getattr(self.regmap.get(int(reg.reg)), "bitfield_compact", False):
-                info = self.regmap.get(int(reg.reg))
-                definition = self.register_defs.get(str(reg.reg), {})
-                item.setToolTip(format_bitfield_details(reg.raw_value, info) + "\n" + definition.get("description", ""))
+            elif col == 7:
+                info = self._register_info_for_value(reg)
+                definition = info.metadata or self.register_defs.get(str(reg.reg), {})
+                details = format_bitfield_details(reg.raw_value, info) if info.dtype in ("BITFIELD", "FAULT_BITS") else str(value)
+                provenance = "\n".join(str(definition.get(k) or "") for k in ("description", "notes", "source"))
+                item.setToolTip(details + "\n" + provenance)
             elif col in (11, 12):
                 item.setToolTip(value)
             apply_block_header_item_style(self.register_table, item, is_block_row)
@@ -8345,6 +8367,8 @@ class MainWindow(QMainWindow):
                 )
             )
             decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            if int(frame.slave_addr) == 1 and 2099 <= start_addr <= 2149 and self.current_backend_key() == "display_modbus":
+                decode_map = self.unit1_regmap
             frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
             self._check_endblock_signature(frame, start_addr)
             self.observed_display_read_requests.remove(req)
@@ -8394,7 +8418,7 @@ class MainWindow(QMainWindow):
             tracked = True
             label = f"0x{slave:02X}/3001ff DWIN-Anzeige"
         # HMI-Parameterpaket: hier sehen wir 1012 als Soll-/Auswahlmodus.
-        elif slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451, 1541} and mode in {"word-frame", "read-response"}:
+        elif slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451, 1541} and mode in {"word-frame", "read-response", "write-request"}:
             tracked = True
             label = f"0x03/{start}ff Parameter"
         # 0x05 schreibt bisher meist Nullblöcke; trotzdem als Fremdblock beobachten.
@@ -8410,8 +8434,7 @@ class MainWindow(QMainWindow):
         old_words = self.display_hmi_block_snapshots.get(key)
         self.display_hmi_block_snapshots[key] = words
         self.display_hmi_block_snapshot_times[key] = time.monotonic()
-        if bool(getattr(getattr(self, "display_fake_reboot_state", {}), "get", lambda _k, _d=None: _d)("active", False)) and slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451}:
-            self._display_reboot_progress(f"Display: Paket {start} empfangen", busy=True)
+        self._record_display_parameter_packet(frame)
 
         def reg_label(index: int) -> str:
             return f"{start + index}/W{index + 1}"
@@ -8526,50 +8549,23 @@ class MainWindow(QMainWindow):
                 self._log(f"DISPLAY-HMI {label}: ... (+{len(changes) - 80} weitere DREG-Änderungen)")
 
     def _display_hmi_virtual_regs_0x01_2099(self, frame) -> list[DecodedRegister]:
-        """PRIVATE fix14: 0x01/2099ff als virtuellen Diagnosebereich abbilden.
-
-        Der Rohstatus auf Bus 0x01 nutzt echte Adressen 2099-2149, ist aber
-        nicht identisch/vertraulich genug, um die normalen WP-Register 2099ff
-        zu ueberschreiben. Darum wird er im Hauptfenster als 91099-91149
-        sichtbar gemacht.
-        """
-        virt_start = 91099
-        source_start = int(getattr(frame, "typ", 2099) or 2099)
-        regs: list[DecodedRegister] = []
-        # PRIVATE fix18: zwei Rohstatuswerte wurden mit echten WP-Werten
-        # korreliert. Im Log verhaelt sich 91105 wie 2062 (AC-Eingang)
-        # und 91108 wie 2043 (DC-Power-Bus). Die Quelle bleibt Bus 0x01;
-        # als Absender/Rolle ist Power-Modul-Spiegel plausibel, aber noch
-        # nicht endgueltig bestaetigt.
-        special_names = {
-            91105: "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062 (virtuell, Kandidat)",
-            91108: "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043 (virtuell, Kandidat)",
-        }
-        special_units = {91105: "V", 91108: "V"}
-        for idx, old_reg in enumerate(list(getattr(frame, "registers", []) or [])):
-            raw = int(getattr(old_reg, "raw_value", 0) or 0) & 0xFFFF
-            orig_reg = source_start + idx
-            virt_reg = virt_start + idx
-            name = special_names.get(virt_reg, f"Displaybus 0x01 Rohstatus {orig_reg}/0x{orig_reg:04X} (virtuell)")
-            unit = special_units.get(virt_reg)
-            # PRIVATE fix51: format_value_by_type erwartet value_map/bit_map,
-            # keine Einheit. Ein String "V" als value_map kann eine Exception
-            # ausloesen und dadurch die komplette virtuelle 91099ff-Uebernahme
-            # abbrechen. Deshalb die Einheit hier manuell anhaengen.
-            display_value = f"{s16(raw)} {unit}" if unit else format_value_by_type(raw, "DIGI1")
-            regs.append(DecodedRegister(
-                slave_addr=int(getattr(frame, "slave_addr", 0) or 0),
-                reg=virt_reg,
-                index=idx,
-                frame_type=virt_start,
-                raw_value=raw,
-                signed_value=s16(raw),
-                display_value=display_value,
-                name=name,
-                dtype="DIGI1",
-                timestamp=time.time(),
+        """Project complete Unit-1 telemetry into stable, read-only FoxAir IDs."""
+        if (int(frame.slave_addr) != 1 or int(frame.typ) != 2099
+                or frame.mode != "read-response" or not frame.crc_ok
+                or len(frame.registers) != 51 or len(frame.payload) != 102):
+            return []
+        registers = []
+        for index, original in enumerate(frame.registers):
+            virtual = 91099 + index
+            info = self.display_regmap.get(virtual)
+            raw = int(original.raw_value) & 0xFFFF
+            registers.append(DecodedRegister(
+                slave_addr=1, reg=virtual, index=index, frame_type=91099,
+                raw_value=raw, signed_value=s16(raw),
+                display_value=format_value_by_type(raw, info.dtype, info.value_map, info.bit_map),
+                name=info.name, dtype=info.dtype, timestamp=original.timestamp,
             ))
-        return regs
+        return registers
 
     def _display_hmi_promote_0x01_2099_virtual(self, frame) -> bool:
         if self.current_backend_key() != "display_modbus":
@@ -8582,7 +8578,10 @@ class MainWindow(QMainWindow):
             return False
         if not getattr(frame, "registers", None):
             return False
-        frame.registers = self._display_hmi_virtual_regs_0x01_2099(frame)
+        projected = self._display_hmi_virtual_regs_0x01_2099(frame)
+        if not projected:
+            return False
+        frame.registers = projected
         frame.typ = 91099
         frame.length_field = len(frame.registers)
         return True
@@ -8609,11 +8608,14 @@ class MainWindow(QMainWindow):
         start = int(getattr(frame, "typ", 0) or 0)
         regs = list(getattr(frame, "registers", []) or [])
 
-        # Unit 0x02/0x03: echter DWIN-/Display-Speicher. Alles ab 3000
-        # darf sichtbar werden; diese Nummern kollidieren nicht mit den
-        # normalen 10xx/20xx-WP-Paketen.
-        if slave in {0x02, 0x03} and start >= 3000:
-            return True
+        # Unit 0x03: belegter DWIN-/Display-Speicher ab 3000.
+        # Der optionale Kanal 0x02 darf bestehende Displaywerte nicht ersetzen.
+        if slave == 0x03 and start >= 3000:
+            return all(
+                int(reg.reg) not in self.latest_regs
+                or int(self.latest_regs[int(reg.reg)].slave_addr) == slave
+                for reg in regs
+            )
 
         # Unit 0x04/0x05: nur unbekannte/nicht belegte Registerbereiche in die
         # Hauptliste übernehmen. Bekannte WP-Register wie 1001ff/2000ff bleiben
@@ -8622,7 +8624,9 @@ class MainWindow(QMainWindow):
             wp_known = getattr(self.regmap, "items", {})
             for reg in regs:
                 reg_no = int(getattr(reg, "reg", 0) or 0)
-                if reg_no in wp_known:
+                display_known = getattr(getattr(self, "display_regmap", None), "items", {})
+                existing = self.latest_regs.get(reg_no)
+                if reg_no in wp_known or reg_no in display_known or (existing is not None and existing.slave_addr != slave):
                     return False
             # Sicherheitsgurt: Niedrige unbekannte Bereiche nur dann aufnehmen,
             # wenn sie sicher außerhalb der bekannten WP-Paketzone liegen.
@@ -8641,6 +8645,11 @@ class MainWindow(QMainWindow):
         V0.2.38 fix5: validierte aktive Display-Init-WP-Paketbloecke 0x03/10xx
         duerfen vorerst wieder ins Hauptfenster, bis ein besserer Init-Weg gefunden ist.
         """
+        if not getattr(frame, "crc_ok", False):
+            return False
+        # Unit 1 must be projected before the generic matched-request branch.
+        if int(frame.slave_addr) == 1 and int(frame.typ) == 2099:
+            return self._display_hmi_promote_0x01_2099_virtual(frame)
         if matched_pending_read:
             pending_label = str(getattr(frame, "pending_read_label", ""))
             if (
@@ -8706,34 +8715,12 @@ class MainWindow(QMainWindow):
                 )
                 return False
 
-        # 0x01 / 2099ff ist auf dem Displaybus nuetzlich, kollidiert aber mit
-        # echten WP-Registern. PRIVATE fix14: als virtueller Diagnosebereich
-        # 91099-91149 uebernehmen, statt 2099ff zu ueberschreiben.
-        if int(frame.slave_addr) == 0x01 and int(frame.typ) == 2099:
-            # PRIVATE fix51: nicht mehr hart von matched_passive_read abhaengig machen.
-            # Entscheidend ist, dass der Frame bereits als 2099/read-response mit
-            # Registerliste vorliegt. Dann ist der virtuelle Bereich sicher, weil er
-            # 2099ff nicht ueberschreibt, sondern nach 91099ff verschiebt.
-            if frame.registers and str(getattr(frame, "mode", "")) == "read-response":
-                if self._display_hmi_promote_0x01_2099_virtual(frame):
-                    self._log(
-                        "DISPLAY-HMI fix21: 0x01/2099ff Rohstatus als virtuellen "
-                        "Diagnosebereich 91099-91149 in die Hauptliste übernommen "
-                        "(Warmlink-2099ff bleibt unverändert)."
-                    )
-                    return True
-            self._log(
-                "DISPLAY-HMI: 0x01/2099ff Rohstatus nur Diagnose; "
-                "nicht in Hauptliste übernommen (Warmlink-Mapping bleibt unverändert)."
-            )
-            return False
-
         if int(frame.slave_addr) == 0x03 and int(frame.typ) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}:
             self._log(
                 f"DISPLAY-HMI: bekanntes 10xx/Parameterpaket 0x03/{frame.typ}ff "
                 "wieder in Hauptliste übernommen."
             )
-            return True
+            return bool(self._validated_packet_info_from_regs(frame.typ, frame.registers))
 
         if self._display_hmi_is_extra_main_window_candidate(frame):
             self._log(
@@ -8941,6 +8928,8 @@ class MainWindow(QMainWindow):
                 )
             )
             decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            if int(frame.slave_addr) == 1 and 2099 <= start_addr <= 2149 and self.current_backend_key() == "display_modbus":
+                decode_map = self.unit1_regmap
             frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
             # Falls mehrere Display-Reads doch einmal überlappen: WP-Paketkopf enthält
             # den echten internen Start im Wort 10. Dann nach internem Start neu dekodieren.
@@ -9110,6 +9099,9 @@ class MainWindow(QMainWindow):
         self._check_pending_read_timeouts()
 
     def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0, *, priority=None, start_delay_ms=0, expect_response=True):
+        if is_virtual_register(addr):
+            self._log("Virtuelle Unit-1-ID ist keine Modbus-Adresse; Quelle INV1:2099–2149 beobachten.")
+            return None
         if getattr(self._active_io_worker(), "identity_service_active", False):
             return None
         # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
@@ -9772,6 +9764,9 @@ class MainWindow(QMainWindow):
             self.close()
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
+        if is_virtual_register(reg_no):
+            self._log("Unit-1-Telemetrie ist nur lesend; Details stehen im Tooltip der Wertspalte.")
+            return
         # Display-Modbus: bekannte Parameterregister erst nach geladenem Paket öffnen,
         # damit aktueller Wert/Klartext nicht leer oder alt ist. Warmlink/Standard
         # bleiben unverändert.
@@ -10276,22 +10271,61 @@ class MainWindow(QMainWindow):
         return float(self.display_hmi_block_snapshot_times.get((int(slave), int(start), str(mode)), 0.0) or 0.0)
 
     def _display_0bc3_value_from_3001(self) -> Optional[int]:
-        for slave in (0x03, 0x02):
+        for slave in (0x03,):
             words = self.display_hmi_block_snapshots.get((slave, 3001, "read-response"))
             if words and len(words) >= 11:
                 return int(words[10]) & 0xFFFF  # 3001 + 10 = 3011 / 0BC3
         return None
 
+    def _validated_packet_info_from_regs(self, start: int, registers):
+        return validate_parameter_packet(int(start), [int(reg.raw_value) & 0xFFFF for reg in registers])
+
+    def _record_display_parameter_packet(self, frame):
+        complete_payload = (
+            (frame.mode == "read-response" and len(frame.payload) == 180)
+            or (frame.mode in {"word-frame", "write-request"}
+                and len(frame.payload) == 181 and int(frame.length_field) == 90)
+        )
+        if (not frame.crc_ok or int(frame.slave_addr) != 3
+                or int(frame.typ) not in REQUIRED_PARAMETER_PACKETS + OPTIONAL_PARAMETER_PACKETS
+                or frame.mode not in {"word-frame", "read-response", "write-request"}
+                or not complete_payload
+                or not self._validated_packet_info_from_regs(frame.typ, frame.registers)):
+            return False
+        self.display_valid_param_packet_times[int(frame.typ)] = time.monotonic()
+        state = self.display_fake_reboot_state
+        if state.get("active"):
+            fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state["started"])))
+            received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+            missing = [str(start) for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+            text = f"Display: {len(received)}/{len(REQUIRED_PARAMETER_PACKETS)} Pflichtpakete"
+            if missing:
+                text += "; fehlen: " + ", ".join(missing)
+            self._display_reboot_progress(text, done=len(received), total=len(REQUIRED_PARAMETER_PACKETS))
+        return True
+
     def _display_reboot_fresh_param_blocks(self, since: float) -> list[int]:
-        starts = [1001, 1091, 1181, 1271, 1361, 1451]
-        fresh: list[int] = []
-        for start in starts:
-            if (
-                self._display_snapshot_time(0x03, start, "word-frame") >= since
-                or self._display_snapshot_time(0x03, start, "read-response") >= since
-            ):
-                fresh.append(start)
-        return fresh
+        times = getattr(self, "display_valid_param_packet_times", {})
+        return [start for start in REQUIRED_PARAMETER_PACKETS + OPTIONAL_PARAMETER_PACKETS
+                if times.get(start, 0) > 0 and times[start] >= since]
+
+    def _display_sync_block_reason(self):
+        if self._is_firmware_capture_mode():
+            return "Firmware-Capture aktiv"
+        if getattr(self, "display_user_value_state", {}).get("active") or getattr(self, "display_user_value_queue", []):
+            return "Parametrierung/Restore läuft oder ist vorgemerkt"
+        if any(time.time() - float(req.get("time", 0)) < 15 for req in self.pending_write_requests):
+            return "Schreibantwort steht noch aus"
+        worker = self._active_io_worker()
+        if worker is not None:
+            if getattr(worker, "identity_service_active", False) or getattr(worker, "_normal_tx_busy", False):
+                return "Kommunikation ist belegt"
+            pending = getattr(worker, "write_queue", None)
+            if pending is not None and hasattr(pending, "mutex"):
+                with pending.mutex:
+                    if any(entry[0] != "read" for entry in pending.queue):
+                        return "Schreibvorgänge in der Sendewarteschlange"
+        return ""
 
     def send_display_fake_reboot(self, _checked: bool = False):
         """PRIVATE/Debug-Button: Reboot-Fake mit Bestätigung.
@@ -10324,6 +10358,10 @@ class MainWindow(QMainWindow):
             if prompt:
                 QMessageBox.information(self, "Display Reboot Fake", "Ein Display-Reboot-Fake läuft bereits.")
             self._log(msg)
+            return False
+        reason = self._display_sync_block_reason()
+        if reason:
+            self._log("Display-Parametersynchronisation nicht gestartet: " + reason)
             return False
         io_worker = self._active_io_worker()
         if io_worker is None:
@@ -10410,6 +10448,11 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active"):
             return
+        reason = self._display_sync_block_reason()
+        if reason or self.current_backend_key() != "display_modbus":
+            self._display_reboot_finish("Display: Synchronisation abgebrochen; " + (reason or "Backend gewechselt"), failed=True)
+            self.display_fake_reboot_state = {}
+            return
         state["phase"] = "wait_5112_ack"
         state["last_send_addr"] = 0x5112
         state["last_send_time"] = time.monotonic()
@@ -10440,6 +10483,12 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active"):
             return
+        reason = self._display_sync_block_reason()
+        if reason or self.current_backend_key() != "display_modbus":
+            self._display_reboot_finish("Display: Synchronisation abgebrochen; " + (reason or "Backend gewechselt"), failed=True)
+            self.display_fake_reboot_state = {}
+            return
+        state.setdefault("packets_since", time.monotonic())
         state["phase"] = "wait_flag_ack"
         state["last_send_addr"] = 0x0BC3
         state["last_send_time"] = time.monotonic()
@@ -10476,26 +10525,30 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active") or state.get("phase") != "wait_upload":
             return
-        since = float(state.get("attempt_started", 0.0) or 0.0)
+        since = float(state.get("packets_since", state.get("started", 0.0)) or 0.0)
         wait_started = float(state.get("upload_wait_started", since) or since)
         flag = self._display_0bc3_value_from_3001()
         fresh = self._display_reboot_fresh_param_blocks(since)
-        if len(fresh) >= 4:
-            source = str(state.get("source_label") or "Display Reboot Fake")
+        received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+        missing = [start for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+        optional = [start for start in OPTIONAL_PARAMETER_PACKETS if start in fresh]
+        if not missing:
+            source = str(state.get("source_label") or "Display-Parametersynchronisation")
             self.display_fake_reboot_last_success_time = time.monotonic()
             self.display_fake_reboot_last_source = source
-            self._log(
-                "DISPLAY Reboot Fake fix11 ERFOLG: frische Parameterblöcke gesehen: "
-                f"{fresh}; 0BC3 aktuell {('--' if flag is None else '0x%04X' % flag)}; Quelle={source}."
-            )
-            self._display_reboot_finish(f"Display: {len(fresh)}/{len(fresh)} Pakete übernommen")
+            text = f"Display: vollständig synchronisiert ({len(received)}/{len(REQUIRED_PARAMETER_PACKETS)})"
+            text += "; optional 1541: " + ("empfangen" if optional else "nicht empfangen")
+            self._log(text + f"; Quelle={source}.")
+            self._display_reboot_finish(text)
             self.display_fake_reboot_state = {}
             self._update_init_read_button_state()
             return
+        self._display_reboot_progress(
+            f"Display: {len(received)}/{len(REQUIRED_PARAMETER_PACKETS)} Pflichtpakete; fehlen: " + ", ".join(map(str, missing)),
+            done=len(received), total=len(REQUIRED_PARAMETER_PACKETS))
         age = time.monotonic() - wait_started
         if flag == 0x8000:
             if age < 14.0:
-                self._display_reboot_progress("Display: 0BC3 sichtbar, warte auf Pakete ...", busy=True)
                 self._log(
                     "DISPLAY Reboot Fake fix11: 0BC3=0x8000 sichtbar, warte weiter auf Parameterblöcke "
                     f"(bisher {fresh or '-'})."
@@ -10530,7 +10583,12 @@ class MainWindow(QMainWindow):
         if attempt < max_attempts:
             QTimer.singleShot(700, self._display_fake_reboot_attempt)
         else:
-            self._display_reboot_finish("Display: Timeout", failed=True)
+            fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state.get("started", time.monotonic()))))
+            received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+            missing = [str(start) for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+            outcome = "teilweise synchronisiert" if received else "Timeout"
+            text = f"Display: {outcome} ({len(received)}/{len(REQUIRED_PARAMETER_PACKETS)}); fehlen: " + ", ".join(missing)
+            self._display_reboot_finish(text, failed=True)
             self._log("DISPLAY Reboot Fake fix11 FEHLGESCHLAGEN: nach 3 Versuchen kein sicherer Parameter-Upload gesehen.")
             self.display_fake_reboot_state = {}
             self._update_init_read_button_state()
@@ -10693,6 +10751,9 @@ class MainWindow(QMainWindow):
         label: str = "",
         delay_ms: int = 0,
     ) -> bool:
+        if self.current_backend_key() == "display_modbus" and getattr(self, "display_fake_reboot_state", {}).get("active"):
+            self._log("Parameterwrite nicht gesendet: Display-Synchronisation läuft.")
+            return True
         candidate = self._display_param_user_write_candidate(addr, slave_addr)
         if candidate is None:
             return False
@@ -11045,6 +11106,12 @@ class MainWindow(QMainWindow):
         self._display_user_value_complete_current(False)
 
     def send_register_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        if self.current_backend_key() == "display_modbus" and getattr(self, "display_fake_reboot_state", {}).get("active"):
+            self._log("WRITE nicht gesendet: Display-Synchronisation läuft.")
+            return False
+        if is_virtual_register(addr):
+            self._log("Virtuelle Unit-1-IDs dürfen nicht per Modbus beschrieben werden.")
+            return
         # Zentrale letzte Sicherheitsgrenze fuer alle normalen Register-Writes.
         # Aufrufer wie Restore und das manuelle Popup liefern bewusst RAW-Werte
         # und umgehen deshalb teilweise parse_register_write_value().

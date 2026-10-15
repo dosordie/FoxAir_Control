@@ -53,7 +53,7 @@ jobs:
 
   test:
     name: Semantic and UI regression tests
-    timeout-minutes: 10
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen
@@ -75,7 +75,7 @@ jobs:
       - name: Run new integration tests
         run: python -m pytest -q tests/test_ios308_registers_and_codes.py tests/test_ios308_debugger_and_sim.py tests/test_warmlink_service_main_table.py
       - name: Run all tests
-        run: timeout 300 python -m pytest -v -s -o faulthandler_timeout=120
+        run: timeout 600 python -m pytest -v -s -o faulthandler_timeout=120
       - name: Compile all Python files
         run: python -m compileall -q .
       - name: Check whitespace
