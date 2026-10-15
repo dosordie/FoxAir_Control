@@ -27,12 +27,20 @@ Schreibfreigabe. Bestehende 8021–8028 und 8055 wurden nicht geändert.
 
 MAIN2152 ist ein u16-Bitfeld, kein direktes 800x-Datenregister:
 Bits 0–2 sind thermische Vergleichszustände (Abschalt-/Überschussseite,
-Hystereseband, Bedarfsseite); Bits 3–7 bleiben einzeln neutral benannt.
+Hystereseband, Bedarfsseite). Nach V3.5-Abgleich vom 15.10.2026: Bit3 greift
+in thermische Sollwert-/Hysteresepfade ein; Bit4 aktiviert den Frequenzcap-Pfad
+über MAIN1422; Bit5 beeinflusst ein internes Flag, dessen physische Wirkung
+offen bleibt; Bit6 entspricht MAIN2139 Bit9 (Mode 4); Bit7 ist der
+30-min-Runtime-Qualifier. Bei Kommunikationssperre kann ein bereits gesetztes
+Bit7 trotz Zählerrücksetzung vorübergehend stehen bleiben. OEM-Namen der
+Bits3/5 bleiben offen; Status und messbare Regelwirkung sind zu unterscheiden.
 MAIN1427 ist der separate lokale Schwellwert, User8801 bleibt SG-Ready.
 Interne MAIN169x-Puffer sind keine bestätigten User-Schreibadressen.
 
-MAIN2139 nutzt die zentrale BITFIELD-Anzeige mit bestätigten Bits 1, 3, 4, 5,
-6, 8 und 10. Auch unbekannte gesetzte Bits bleiben als HEX/Binärmaske sichtbar;
+MAIN2139 nutzt die zentrale BITFIELD-Anzeige mit bestätigten Bits 0, 1, 2, 3, 4, 5,
+6, 8, 9 und 10. Bits0/2 heißen neutral thermische Regelzustände; für ihren
+internen State1 ist ein Frequenz-Hold auf MAIN2071/T30 bestätigt, State2 und
+OEM-Namen bleiben offen. Bit9 entspricht MAIN2152 Bit6. Auch unbekannte gesetzte Bits bleiben als HEX/Binärmaske sichtbar;
 sie erhalten keine erfundenen Namen. Die bestehende Niederdruck-/PWM-RE-Notiz
 bleibt erhalten. Die 21 OEM-Strings stehen als app_label_goheating_pro mit
 Quellenmetadaten in der Registerdatei. Präzisere deutsche Namen, insbesondere
@@ -57,13 +65,26 @@ False. Separate retry_codes halten sie für spätere Reads offen, ohne eine
 lokale Mappingklasse zu behaupten. Unbekannte Nicht-App-Codes behalten die
 vorherige Behandlung.
 
-Der Mitschnitt vom 10.10.2026 erfolgte mit ausgeschalteter WP.
-T_PWM_Out2, T_PWM_IN2_1 und T_PWM_IN2_2 müssen bei laufendem Kompressor/Pumpe,
-optional Warmwasser, noch mit lokalen Werten gegengeprüft werden. Keine Aussage
-zu Prozent, Hz oder Pumpendrehzahl ist bestätigt. Die dokumentierten
-Off-Werte CompPreHeatRemainTim=0, T57=608, T58=0, 1256=1805, 1257=5396,
-1258–1267=0, 1268=0x011F, 1269=0 und L01–L07=0 sind Beobachtungen,
-keine neue Semantik. Snapshot-Historie und AI-/SG-API bleiben außerhalb des Scopes.
+Der Mitschnitt vom 10.10.2026 erfolgte mit ausgeschalteter WP. Der Folgetest
+vom 14.10.2026 **bei aktiver WP ist erledigt**: T_PWM_Out2, T_PWM_IN2_1 und
+T_PWM_IN2_2 liefern weiterhin keine Daten. Die Cloud-PWM-Forschung ist vorerst
+geparkt; keine zusätzliche Pumpenrückmeldung, Prozent-/Hz-Skalierung oder
+dauerhafte Unsupported-Klassifikation daraus ableiten. Zeitgleiche lokale
+Kompressor-/Pumpenwerte wurden im Livetest nicht separat protokolliert.
+
+Bestätigte Cloud-Aliasse sind implementiert: T49→2065 (°C), T50→2066 (K),
+T51→2067 (K); die lokalen T-Diag1/2/3-Codes bleiben bestehen. Cloudwerte sind
+bereits Engineering-Werte, lokale TEMP1-Rohwerte werden durch 10 geteilt.
+T14→2050, T57→2023, H41→1346, R40/R41→1193/1194 sowie 1250/CP1-1 und
+1256–1269 bleiben erhalten und sind auch lokal mit Cloud-Provenienz versehen.
+Die alte 1250-Metadatenbezeichnung ist kein neuer Beleg für einen Systemzeit-Schalter.
+
+T58=0 ist ein gültiger DIGI1-Wert mit offener Bedeutung. T52–T56 lieferten keine
+Daten bzw. mindestens einen nicht genauer zugeordneten Nullwert. T06_1,
+T100–T109 und T112–T120 bleiben ungemappte Zusatzcodes; fehlende Daten sind kein
+dauerhafter Unsupported-Nachweis. Die alten Off-Werte sind historische
+Beobachtungen, keine zusätzliche Semantik. Snapshot-Historie und AI-/SG-API bleiben
+außerhalb des Scopes. Details und Primärbelege: [Register-Audit](register_audit_2026-10-15.md).
 
 ## OTA-Prüfvorlage
 

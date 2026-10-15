@@ -166,6 +166,7 @@ from core.foxair_phnix_core import (
     hex_ascii_line,
     numeric_value_by_type,
     format_value_by_type,
+    format_bitfield_details,
     s16,
     validate_register_write_value,
 )
@@ -5810,6 +5811,7 @@ class MainWindow(QMainWindow):
             value_map,
             bit_map,
             unit=unit or None,
+            compact=bool(getattr(info, "bitfield_compact", False)),
         )
 
     def _display_value_with_register_unit(self, reg_no: int, display_value: str) -> str:
@@ -6150,7 +6152,7 @@ class MainWindow(QMainWindow):
             self._update_contact_table(None)
             self._update_load_output_decoder(None)
             if self.system_io_dialog is not None and self.system_io_dialog.isVisible():
-                self.system_io_dialog.set_values(None, None, status_text="Hauptfenster geleert.")
+                self.system_io_dialog.clear_values("Hauptfenster geleert.")
             self._update_fault_button_style()
             if self.value_search_target is not None:
                 self.value_search_matches = []
@@ -7100,7 +7102,9 @@ class MainWindow(QMainWindow):
                 self._update_fault_decoder()
             if reg.reg in (2081, 2082, 2083, 2085, 2086, 2087, 2088, 2089, 2090):
                 self._update_fault_decoder()
-            if reg.reg in (2146, 2147) and self.system_io_dialog is not None and self.system_io_dialog.isVisible():
+            if (reg.reg in SystemIOStatusDecoderDialog.STATUS_REGISTERS
+                    and str(getattr(frame, "pending_read_label", "")) not in SystemIOStatusDecoderDialog.READ_LABELS
+                    and self.system_io_dialog is not None and self.system_io_dialog.isVisible()):
                 self.system_io_dialog.update_from_live_register(reg)
 
             if self.timer_dialog is not None and self.timer_dialog.isVisible():
@@ -7447,6 +7451,10 @@ class MainWindow(QMainWindow):
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if col == 2 and value:
                 item.setToolTip(reg.name)
+            elif col == 7 and getattr(self.regmap.get(int(reg.reg)), "bitfield_compact", False):
+                info = self.regmap.get(int(reg.reg))
+                definition = self.register_defs.get(str(reg.reg), {})
+                item.setToolTip(format_bitfield_details(reg.raw_value, info) + "\n" + definition.get("description", ""))
             elif col in (11, 12):
                 item.setToolTip(value)
             apply_block_header_item_style(self.register_table, item, is_block_row)
@@ -8851,16 +8859,10 @@ class MainWindow(QMainWindow):
                 load_dialog = getattr(self, "load_output_dialog", None)
                 if load_dialog is not None and load_dialog.isVisible():
                     load_dialog.show_read_timeout()
-            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
+            if req_label in SystemIOStatusDecoderDialog.READ_LABELS:
                 system_io_dialog = getattr(self, "system_io_dialog", None)
                 if system_io_dialog is not None and system_io_dialog.isVisible():
-                    system_io_dialog.show_read_timeout()
-            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
-                system_io_dialog = getattr(self, "system_io_dialog", None)
-                if system_io_dialog is not None and system_io_dialog.isVisible():
-                    for reg in frame.registers:
-                        system_io_dialog.update_from_live_register(reg)
-                    system_io_dialog.status_label.setText("System-/I/O-Status erfolgreich gelesen.")
+                    system_io_dialog.show_read_timeout(req_label)
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -8925,9 +8927,11 @@ class MainWindow(QMainWindow):
                 or "Display Init Paketblock" in req_label
                 or is_display_wp_param_packet
             )
+            is_main_diagnostic = req_label in SystemIOStatusDecoderDialog.READ_LABELS
             use_display_map = (
                 self.current_backend_key() == "display_modbus"
                 and not force_wp_map
+                and not is_main_diagnostic
                 and (
                     "DWIN" in req_label
                     or "Display" in req_label
@@ -8994,6 +8998,10 @@ class MainWindow(QMainWindow):
                         if int(reg.reg) == 2019:
                             load_dialog.set_value(int(reg.raw_value) & 0xFFFF, status_text="Lastausgänge erfolgreich gelesen.")
                             break
+            if req_label in SystemIOStatusDecoderDialog.READ_LABELS:
+                system_io_dialog = getattr(self, "system_io_dialog", None)
+                if system_io_dialog is not None and system_io_dialog.isVisible():
+                    system_io_dialog.show_read_response(req_label, frame.registers)
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():

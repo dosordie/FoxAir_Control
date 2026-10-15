@@ -94,7 +94,7 @@ def test_fw33_confirmed_register_metadata_and_interface_boundary():
     assert "Lüfter tatsächlich aktiv" in main["2019"]["bit_map"]["2"]
     assert main["2057"]["name"] == "T35 / AC Input Current"
     assert main["2071"]["name"] == "Kompressor-Sollfrequenz"
-    assert main["2109"]["name"] == "Internes Ereignis-/Statusbitfeld"
+    assert "Parameterblock" in main["2109"]["name"]
     assert main["2109"]["type"] == "BITFIELD"
     assert main["2136"]["type"] == "TEMP1"
     assert main["2137"]["type"] == main["2138"]["type"] == "POWER_KW_X10"
