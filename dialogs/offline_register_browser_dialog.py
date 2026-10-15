@@ -141,13 +141,17 @@ class OfflineRegisterBrowserDialog(QDialog):
                 virtual = bool(metadata.get("virtual"))
                 if virtual != (source == "unit1"):
                     continue
+                source_info = (
+                    "Unit-1-Telemetrie: virtuelle Diagnose-ID, getrennt von MAIN und DWIN"
+                    if virtual else "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)"
+                )
                 name = str(getattr(info, "name", "") or "")
                 dtype = str(getattr(info, "dtype", "RAW") or "RAW")
                 display_search_data = {
                     "name": name,
                     "block": "INV1" if virtual else "DWIN",
                     "code": metadata.get("code", f"0x{int(reg):04X}"),
-                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
+                    "info": source_info,
                     "value_map": getattr(info, "value_map", None),
                     "bit_map": getattr(info, "bit_map", None),
                     "description": metadata.get("description", ""),
@@ -160,7 +164,7 @@ class OfflineRegisterBrowserDialog(QDialog):
                     "name": name or f"Display/DWIN {int(reg)}",
                     "app_label": "",
                     "dtype": dtype,
-                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
+                    "info": source_info,
                     "detail": "\n".join(str(metadata.get(k) or "") for k in ("description", "notes", "source")) or "Display-/DWIN-Diagnosemapping. Keine MAIN-Zuordnung ohne Beleg.",
                     "has_extra": True,
                     "search_text": _mapping_search_text(display_search_data),
