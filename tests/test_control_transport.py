@@ -191,10 +191,10 @@ def test_wp_buttons_use_dispatcher_and_one_confirmation(window, monkeypatch):
     wp.target_spin.setValue(42); wp.write_target()
     wp.ww_target_spin.setValue(43); wp.write_ww_target()
     assert writes == [("Power", "1"), ("Mode", "1"), ("R02", "42.0"), ("R01", "43.0")]
-    assert len(confirms) == 4 and all("WarmLink Cloud" in text for text in confirms)
+    assert confirms == []
     assert not wp.silent_write_btn.isEnabled()
     wp.write_silent()
-    assert len(writes) == 4 and len(confirms) == 4
+    assert len(writes) == 4 and not confirms
     wp.close()
 
 
@@ -202,11 +202,9 @@ def test_confirmation_is_bound_to_transport_and_selected_device(window, monkeypa
     cloud_only(window)
     wp = open_wp(window)
     monkeypatch.setattr(window, "send_cloud_write", lambda *a, **kw: pytest.fail("No write to changed device"))
-    def confirm(*args, **kwargs):
-        window.set_cloud_connection_state(True, "different-device")
-        return True
-    monkeypatch.setattr(gui, "ask_yes_no", confirm)
-    wp.write_power()
+    context = window.control_context()
+    window.set_cloud_connection_state(True, "different-device")
+    assert window.control_write_register(1011, 1, 1, expected_context=context)
     assert not wp.cloud_request
     wp.close()
 
@@ -247,8 +245,8 @@ def test_at_cloud_writes_h36_but_rejects_partial_curve_actions(window, monkeypat
     assert at.write_mode_btn.isEnabled()
     at.write_mode()
     assert writes == [("H36", "2")]
-    for code in ("CP1-1", "CP1-2", "CP1-3", "compensate_offset"):
-        monkeypatch.setitem(cloud_hint(code), "write_allowed", True)
+    for code in ("CP1-5", "CP1-6", "CP1-7", "compensate_slope"):
+        monkeypatch.setitem(cloud_hint(code), "write_allowed", False)
     at._update_write_actions()
     assert not at.write_curve_btn.isEnabled()
     at.write_seven_points()
@@ -288,10 +286,10 @@ class CommandApi:
     def login(self):
         self.on_login()
 
-    def write_test_code(self, **kwargs):
-        self.calls.append(("write", kwargs["device_code"], kwargs["code"], kwargs["value"]))
-        self.values[kwargs["code"]] = kwargs["value"]
-        return {"isReusltSuc": True, "payload": kwargs}
+    def write_control_batch(self, device_code, commands):
+        self.calls.append(("write", device_code, tuple(commands)))
+        self.values.update(dict(commands))
+        return {"isReusltSuc": True}
 
     def get_data_by_code(self, device, codes):
         self.calls.append(("readback", device, codes))
@@ -326,7 +324,7 @@ def test_normal_write_reuses_worker_and_readback_updates_open_wp(window, monkeyp
     wp.write_target()
     assert window.cloud_write_thread is not None
     wait_for(lambda: window.cloud_write_thread is None)
-    assert command_api.created[0].calls == [("write", "device", "R02", "42.0"), ("readback", "device", ["R02"])]
+    assert command_api.created[0].calls == [("write", "device", (("R02", "42.0"),)), ("readback", "device", ["R02"])]
     assert window.cloud_overlay_by_reg[1158]["engineering_value"] == 42
     assert wp.target_spin.value() == 42
     wp.close()
@@ -345,8 +343,8 @@ def test_all_confirmed_writable_curve_registers_use_one_serial_command_worker(wi
     wait_for(lambda: window.cloud_write_thread is None)
     assert len(command_api.created) == 1
     assert command_api.created[0].calls == [
-        ("write", "device", "compensate_slope", "1.5"), ("readback", "device", ["compensate_slope"]),
-        ("write", "device", "compensate_offset", "42.0"), ("readback", "device", ["compensate_offset"]),
+        ("write", "device", (("compensate_slope", "1.5"), ("compensate_offset", "42.0"))),
+        ("readback", "device", ["compensate_slope", "compensate_offset"]),
     ]
     assert window.cloud_overlay_by_reg[1234]["engineering_value"] == 1.5
     assert window.cloud_overlay_by_reg[1235]["engineering_value"] == 42
@@ -407,3 +405,4 @@ def test_main_close_waits_for_cloud_command_thread_without_blocking_gui(window, 
     window._cloud_write_finished()
     assert calls == ["thread-deleted", "close"]
     assert window.cloud_write_thread is None
+    assert window._close_after_cloud_write is False

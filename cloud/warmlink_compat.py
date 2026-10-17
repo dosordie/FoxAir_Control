@@ -17,26 +17,6 @@ def ensure_warmlink_compat() -> None:
     if not hasattr(warmlink_codes, "cloud_hint"):
         warmlink_codes.cloud_hint = _cloud_hint
 
-    if not hasattr(warmlink_codes, "WARMLINK_CLOUD_WRITE_TEST_CODES"):
-        warmlink_codes.WARMLINK_CLOUD_WRITE_TEST_CODES = {
-            "Mode": {
-                "name": "Betriebsart umschalten",
-                "values": {
-                    "0": "Warmwasser",
-                    "1": "Heizen",
-                    "2": "Kühlen",
-                    "3": "WW+Heizen",
-                    "4": "WW+Kühlen",
-                },
-                "note": "Testcode fuer Heizen/Kuehlen/WW-Umschaltung. Nur mit Extra-Bestaetigung senden.",
-            },
-            "Power": {
-                "name": "WP Ein/Aus",
-                "values": {"0": "Aus", "1": "Ein"},
-                "note": "Optionaler Schreibtest.",
-            },
-        }
-
     if not hasattr(warmlink_codes, "code_display_name"):
         def _code_display_name(code: str) -> str:
             return str(warmlink_codes.cloud_hint(code).get("name") or code)

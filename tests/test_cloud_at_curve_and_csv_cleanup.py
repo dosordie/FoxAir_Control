@@ -24,11 +24,11 @@ from test_warmlink_request_scheduler import window
     ("CP1-1", 1250), ("CP1-2", 1251), ("CP1-3", 1252), ("compensate_offset", 1235),
     ("CP1-5", 1253), ("CP1-6", 1254), ("CP1-7", 1255),
 ])
-def test_zone1_curve_uses_confirmed_firmware_points_without_cloud_write_grants(code, register):
+def test_zone1_curve_uses_confirmed_firmware_points_and_cloud_write_grants(code, register):
     assert code in WARMLINK_644_DISCOVERY_CODES
     assert cloud_modbus_register(code) == register
     assert cloud_hint(code)["confidence"] == "confirmed"
-    assert cloud_hint(code)["write_allowed"] is (code == "CP1-1")
+    assert cloud_hint(code)["write_allowed"] is True
 
 
 def test_middle_alias_and_zone2_have_no_invented_projection():
@@ -164,10 +164,12 @@ def test_at_cloud_only_guard_blocks_unconfirmed_curve_writes_and_updates_on_disc
     dialog = open_at(window)
     monkeypatch.setattr(window, "send_register_write", lambda *a, **kw: pytest.fail("Cloud-only must never write locally"))
     monkeypatch.setattr("foxair_phnix_control.ask_yes_no", lambda *a, **kw: pytest.fail("No unavailable write confirmation"))
-    for mode in (0, 1, 2):
+    for code in ("CP1-5", "compensate_slope"):
+        monkeypatch.setitem(cloud_hint(code), "write_allowed", False)
+    for mode in (1, 2):
         dialog.mode_combo.setCurrentIndex(dialog.mode_combo.findData(mode))
-        assert dialog.write_mode_btn.isEnabled()  # H36 is centrally confirmed writable.
-        assert not any(btn.isEnabled() for btn in (dialog.write_curve_btn, dialog.write_curve_btn))
+        assert dialog.write_mode_btn.isEnabled()
+        assert not dialog.write_curve_btn.isEnabled()
         dialog.write_linear_params(); dialog.write_seven_points()
     window.set_cloud_connection_state(False)
     assert not dialog.write_mode_btn.isEnabled()

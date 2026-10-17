@@ -276,14 +276,15 @@ Modbus-Rohwerte skaliert.
 `update_from_cloud_register(reg_no)`. Initialscan, Livepoll, statisches Nachladen,
 Einzelread und Schreib-Readback aktualisieren die betroffene sichtbare Zeile
 sofort, auch bei sortierter Tabelle. WP-Steuerung, Timer und SG-Editor erhalten
-keine neue Cloud-Logik. Cloud-only öffnet die Parametertabelle ohne Display-
-Snapshot und sendet keine lokalen automatischen Blockreads.
+Cloud-only lädt der Parameterdialog nur auflösbare Codes des sichtbaren Blocks
+über die vorhandene Snapshot-Queue. Er erzeugt keine lokalen Blockreads oder
+Display-Snapshots und keinen vollständigen Cloud-Katalogscan.
 
 Normale **Cloud schreiben**-Aktionen senden nach der bestehenden Werteingabe/
 -auswahl direkt. Der zusätzliche Bestätigungsdialog entfällt. Allowlist,
 Wertevalidierung, Firmware-Capture-Sperre, Sperre paralleler Schreibbefehle,
-Fehlerbehandlung und automatischer Readback bleiben erhalten. Der separate
-Experten-/Dry-Run-Schreibtest behält seine eigenen Bestätigungen.
+Fehlerbehandlung und automatischer Readback bleiben erhalten. Schreibtest und
+Wertefinder wurden entfernt; der generische API-Debugger bleibt verfügbar.
 
 ## Alle bekannten Register lesen
 
@@ -497,8 +498,8 @@ der dedizierte Heartbeat ohne `appId` bleiben unverändert.
 Cloud-Engineeringwert bereit. Der AT-Dialog bevorzugt echte lokale Werte;
 Cloud-only-Tabellenzeilen behalten ihre Cloud-Provenienz und werden nicht als
 lokale Wörter ausgewertet. Neue Cloud-Overlays aktualisieren den offenen Dialog.
-Cloud-only sind vollständige Kurvenschreibaktionen mit ausdrücklich bestätigtem
-Testmodus verfügbar; CP1-1 und das bereits bestätigte H36-Schreiben sind regulär verfügbar. Direkte Aufrufe
+Cloud-only sind die sieben bestätigten AT-Punkte, lineare Kurve und H36 regulär
+schreibbar, ohne experimentelle Freigabe oder zusätzliche Cloud-Rückfrage. Direkte Aufrufe
 der Schreibhandler können keinen lokalen Write auslösen. Lokale Schreibpläne,
 Interpolation, Display-Lesewege und bestehende Parameter-Cloud-Writes bleiben erhalten.
 
@@ -529,28 +530,41 @@ Cloud-Schreibbarkeit wird **pro Register und Aktion** geprüft:
 | WP WW-/Heiz-/Kühlsollwert (1157–1159 / R01–R03) | bestätigt schreibbar; Engineeringtemperatur |
 | Silent (1016 Bit 1) | nur lokal; kein bestätigter Cloudcode |
 | AT H36-Modus (1236) | bestätigt schreibbar |
-| AT Linear (1234 und 1235) | expliziter Testmodus; Schreibnachweise offen |
-| AT 7-Punkt-Kurve | CP1-1 regulär; vollständige Sequenz mit explizitem Testmodus |
-| SG01–SG08 | lesbar; einzelne Schreibtests im expliziten Testmodus |
+| AT Linear (1234 und 1235) | bestätigt; geänderte Werte gemeinsam |
+| AT 7-Punkt-Kurve | alle sieben Punkte bestätigt; geänderte Werte als Batch |
+| SG01–SG08 | Lesen und Schreiben bestätigt; SG01 als separate Sicherheitsbarriere |
 | SG Status / 8801 | Status read-only; 8801 ohne Cloud-Schreibpfad |
 
 Mehrregisteraktionen werden vor dem Senden vollständig auf Schreibfreigaben
 und gültige Werte geprüft. Vier schreibbare von sieben Punkten reichen nicht.
-Der explizite Testmodus erlaubt nur die fest benannten AT-/SG-Konfigurationscodes,
-keine unbekannten Mappings. Ein bestehender CommandWorker sendet die Sequenz
-seriell mit gezieltem Readback. API-Erfolg und tatsächliche Wertbestätigung sind
-getrennte Ergebnisse. Erst nach bestätigtem Readback aller Codes erscheint ein
-Gesamterfolg. Fehlende/stale/abweichende Werte führen nach höchstens drei
-Leseversuchen (Settle 2 s, dann 1 s und 2 s) zum Abbruch; kein Write-Retry,
-kein Rollback. Float-Vergleiche verwenden eine halbe Registerauflösung.
-Der Identitätsguard gilt vor und nach Netzwerkaufrufen und vor jedem Folgeschritt.
-Normale Writes nutzen das bestehende `appId: "16"`-Controlpayload.
+Nur bestätigte Mappings erhalten eine Schreibfreigabe. Der vorhandene CommandWorker
+verwendet `write_control_batch(device_code, commands)` für einen oder mehrere Werte.
+Das Payload enthält `appId: "16"` und pro Code einen `param[]`-Eintrag mit
+`deviceCode`, `protocolCode`, `value`. Es gibt einen Schreibrequest an
+`app/device/control?lang=en`, ohne Endpoint-Fallback und ohne Write-Token-Replay.
+Alle geschriebenen Codes werden in einem `getDataByCode`-Request gemeinsam gelesen.
+Bei fehlenden/stale/abweichenden Werten folgen höchstens drei Readback-Versuche
+(Settle 2 s, dann 1 s und 2 s). Kein Write-Retry und kein Rollback.
 
-CP1-1 wurde laut GL9-Gerätetest vom 17.10.2026 mit Cloud-Schreiben und
-Cloud-Readback bestätigt; kein zusätzlicher Mainboard-Abgleich dieses Writes
-ist dokumentiert. Weitere Kurvenparameter und einzelne SG-Schreibcodes bleiben
-experimentell. Lesbarkeit, Mapping, API-ACK, Cloud-Readback und Mainboard-Abgleich
-sind getrennte Nachweisstufen. Automatisierte Simulationen sind keine Live-Tests.
+Ergebnisse unterscheiden `sent`, `api_success`, `readback_verified`,
+`confirmed_codes`, `missing_codes`, `mismatched_codes`, `stale_codes` und
+`sequence_complete`. GUI und Dirty-Tracking verarbeiten jedes Feld einzeln.
+Frische Cloudantworten sind erforderlich; Cachewerte bestätigen keinen Write.
+Der Vergleich toleriert eine halbe Registerauflösung. Nach unklarer Schreibantwort
+oder Timeout liest der Worker den Zustand nach; er sendet den Batch nicht erneut.
+Der Kontextguard gilt vor und nach Netzwerkaufrufen sowie vor jedem Folgeschritt.
+Account-I/O wird zwischen den bestehenden Poll-, Snapshot-, Debug- und CommandWorkern
+koordiniert; ein CommandWorker hält die Account-Sperre über Write und Readbacks.
+
+Am **17.10.2026** hat der Betreiber an der GL9 alle sieben AT-Punkte einzeln
+sowie einen gemeinsamen 7-fach-Write mit gemeinsamem exaktem Readback bestätigt.
+Lineare AT-Steuerung, H36 und SG01–SG08 wurden ebenfalls erfolgreich getestet.
+Das bestätigt weder andere Codes noch atomare Serverwrites. Ein zusätzlicher
+Mainboard-Abgleich ist eine separate Nachweisstufe; Simulationen sind keine Live-Tests.
+
+SG01 bildet eine Sicherheitsbarriere: vor Aktivierung/Moduswechsel werden alle
+geänderten SG02–SG08 als Batch bestätigt; bei Deaktivierung wird zuerst SG01=0
+bestätigt. Erst dann folgt der andere Schritt. Teilfehler sperren Folgeschritte.
 
 
 WP liest gezielt Power, Mode, ModeState, R01/R02/R03, H36, 2014,
@@ -570,14 +584,30 @@ Modbuswörter skaliert: raw 420 entspricht Cloud `42.0`. WP zeigt cloud-only
 Ein/Aus explizit aus Power/1011, ohne ein Mapping für 2011 zu erfinden. 2013
 bleibt unbekannt; 2014 und die R01–R03-Sollwerte bleiben getrennt.
 
-Die vorhandene Bestätigung nennt den fest gewählten Transport. Die Aktion
-ist an dessen Worker bzw. Account/Gerät gebunden; Änderungen während der
-Bestätigung brechen sie ab. Der CommandWorker prüft die Cloudidentität vor
-dem Senden erneut, auch nach Credential-Laden/Login. Veraltete Antworten
-werden nicht ins neue Gerät übernommen. Laufende inkompatible Cloudaufträge
-und Firmware-Capture sperren die Aktion. Der kleine Transporthinweis und
-die Buttonfreigaben reagieren auf Verbindungsänderungen; Gerätewechsel
-löscht die alten Cloudwerte und bricht gezielte Reads ab.
+Cloud-Schreibbuttons in WP, AT, SG und Registertabelle starten nach der Werteingabe
+direkt. Lokale Bestätigungen bleiben erhalten und an den gewählten Transport gebunden.
+Der CommandWorker prüft die Cloudidentität vor und nach Credential-Laden/Login und
+jedem Netzwerkaufruf. Veraltete Antworten gelangen nicht ins neu gewählte Gerät.
+Laufende inkompatible Aufträge und Firmware-Capture sperren die Aktion.
+
+AT und SG zeigen beim Öffnen Cachewerte und laden anschließend automatisch einen
+gezielten Cloud-Snapshot. Die Parametereinstellungen laden nur bekannte Codes des
+sichtbaren Blocks und laden beim Blockwechsel nach. Ein ausstehender Auftrag wird
+nicht dupliziert; aktuelle Block-Snapshots werden kurz wiederverwendet. Geschlossene
+Dialoge und alte Geräte-/Accountgenerationen verwerfen verspätete Antworten.
+
+Der Störungsdecoder lädt beim Öffnen, manuell und beim Polling gemeinsam
+`O01~023` (2019) und `Fault1`…`Fault10` (2081…2090). 16-stellige BINARY-Wörter
+und Dezimalzahlen werden als uint16 interpretiert, 0 bleibt gültig. 2019 Bit 10
+steuert die Sammelstörung; vorhandene Klartextkataloge dekodieren die Fehlerbits.
+Fehlende/unsupported Werte bleiben unbekannt; die Anzeige meldet **Daten unvollständig**
+statt Fehlerfreiheit. Cloud-only ignoriert alte lokale Werte, aktive lokale
+Verbindungen behalten ihre etablierte Priorität. Die Fehlerhistorien-API bleibt getrennt.
+
+Im Cloud-Dialog entfallen Schreibtest und Wertefinder samt exklusiven Helfern,
+Signalen und Threadverwaltung. Mapping-Kandidaten exportieren bekannte Mappings
+und reguläre Daten ohne heuristische Treffer. Anmeldung, Gerätewahl, Polling,
+Cloud ↔ Lokal, CSV/JSON, SIM und der generische API-Debugger bleiben erhalten.
 
 Ein Doppelklick auf ein Gerät wählt es zunächst über den bestehenden
 Auswahlpfad und fragt anschließend nach dem Pollingstart. **Ja** verwendet
@@ -608,8 +638,9 @@ TCP-Neuverbindung den ungeklärten Stream. Es gibt keinen automatischen Read-Ret
 auf einem ungeklärten RTU-Stream und keine Wiederholung alter Writes.
 Standard-/Display-Modbus verwenden weiterhin ihre bisherigen Lesewege.
 
-Noch erforderlich: echte LTE-Messung von ACK→TX→RX, alle weiteren AT-Schreibtests,
-SG-Code-/SG01-Modus-Schreibtests sowie zusätzlicher Mainboard-Abgleich.
+Noch erforderlich: echte LTE-Messung von ACK→TX→RX sowie optionaler zusätzlicher
+Mainboard-Abgleich. Die neue Dialogbedienung, SG01-Fehlerbarrieren und partielle
+Cloudantworten sollten zusätzlich an der GL9 geprüft werden.
 
 
 ### Begrenzte automatische Wiederherstellung bei verlorener FC03-Antwort

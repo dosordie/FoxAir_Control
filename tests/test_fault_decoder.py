@@ -55,8 +55,8 @@ def test_fault_decoder_includes_error_10_and_preserves_unknown_bits():
         if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
     }
 
-    assert assignments["FAULT_REGS"][-1] == 2084
-    assert assignments["FAULT_TITLES"][2084] == "Fehler 10"
+    assert assignments["FAULT_REGS"][-1] == 2090
+    assert assignments["FAULT_TITLES"][2090] == "Fehler 10"
     assert 'bit_map.get(bit, "Fehlerbit aktiv, Klartext noch unbekannt")' in source
 
 

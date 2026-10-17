@@ -11,31 +11,6 @@ from cloud.register_resolver import CONFIRMED_REGISTER_ALIASES, resolve_cloud_re
 from cloud.mapping_validation import register_code_from_definition
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
 
-try:
-    from cloud.warmlink_codes import WARMLINK_CLOUD_WRITE_TEST_CODES
-except ImportError:
-    # Backwards-compatible fallback: older/generated mapping files may not
-    # contain this optional helper table. Keep startup working and still offer
-    # the small, explicit write choices for Mode/Power.
-    WARMLINK_CLOUD_WRITE_TEST_CODES: dict[str, dict[str, object]] = {
-        "Mode": {
-            "name": "Betriebsart umschalten",
-            "values": {
-                "0": "Warmwasser",
-                "1": "Heizen",
-                "2": "Kühlen",
-                "3": "WW+Heizen",
-                "4": "WW+Kühlen",
-            },
-            "note": "Testcode fuer Heizen/Kuehlen/WW-Umschaltung. Nur mit Extra-Bestaetigung senden.",
-        },
-        "Power": {
-            "name": "WP Ein/Aus",
-            "values": {"0": "Aus", "1": "Ein"},
-            "note": "Optionaler Schreibtest.",
-        },
-    }
-
 
 @lru_cache(maxsize=1)
 def _static_register_defs() -> dict[str, Any]:
@@ -57,7 +32,7 @@ def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
     return bool(hint.get("write_allowed"))
 
 
-def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False, *, test_mode: bool = False) -> str | None:
+def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) -> str | None:
     """Find the best mapped WarmLink cloud code for a local register."""
     try:
         target = int(reg_no)
@@ -84,9 +59,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False, *,
         if mapped != target:
             continue
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
-            from cloud.warmlink_codes import CLOUD_CONFIGURATION_TEST_CODES
-            if not test_mode or code not in CLOUD_CONFIGURATION_TEST_CODES:
-                continue
+            continue
         confidence = str(hint.get("confidence") or "")
         if confidence != "confirmed":
             continue
@@ -99,7 +72,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False, *,
 def cloud_write_values_for_code(cloud_code: str) -> Any:
     """Return configured write value choices for a cloud code, if any."""
     hint = cloud_hint(cloud_code)
-    return hint.get("write_values") or WARMLINK_CLOUD_WRITE_TEST_CODES.get(cloud_code, {}).get("values")
+    return hint.get("write_values")
 
 
 def current_raw_text_for_cloud_write(register: Any) -> str:
@@ -190,3 +163,51 @@ def cloud_readback_matches(code, requested, row):
             expected, actual, rel_tol=0, abs_tol=step / 2 + 1e-9)
     except (ValueError, TypeError, KeyError):
         return False
+
+
+def validate_cloud_commands(commands):
+    """Validate the entire batch before any network I/O, including every grant."""
+    import math
+    from cloud.metadata import resolve_cloud_range
+
+    result = []
+    seen = set()
+    for code, value in commands:
+        code, value = str(code).strip(), str(value).strip().replace(",", ".")
+        hint = cloud_hint(code)
+        if not cloud_code_is_write_candidate(code, hint):
+            raise ValueError(f"Cloud-Schreiben für {code} ist nicht freigegeben.")
+        if code in seen:
+            raise ValueError(f"Doppelter Cloud-Schreibcode: {code}")
+        try:
+            number = float(value)
+        except (ValueError, TypeError) as exc:
+            raise ValueError(f"Ungültiger Cloud-Wert für {code}") from exc
+        if not math.isfinite(number):
+            raise ValueError(f"Cloud-Wert für {code} muss endlich sein.")
+        choices = cloud_write_values_for_code(code)
+        if choices and number not in {float(key) for key in choices}:
+            raise ValueError(f"Wert für {code} ist nicht freigegeben.")
+        bounds = resolve_cloud_range(code, hint, {})
+        for limit, lower in ((bounds.minimum, True), (bounds.maximum, False)) if bounds.confirmed else ():
+            try:
+                outside = number < float(limit) if lower else number > float(limit)
+            except (ValueError, TypeError):
+                outside = False
+            if outside:
+                raise ValueError(f"Cloud-Wert für {code} liegt außerhalb des Wertebereichs.")
+        seen.add(code)
+        result.append((code, value))
+    if not result:
+        raise ValueError("Leerer Cloud-Schreibauftrag.")
+    return tuple(result)
+
+
+def cloud_command_batches(commands):
+    """SG01 is a verified barrier; all other parameters share one request."""
+    mode = tuple(item for item in commands if item[0] == "SG01")
+    if not mode:
+        return (tuple(commands),)
+    parameters = tuple(item for item in commands if item[0] != "SG01")
+    groups = (mode, parameters) if float(mode[0][1]) == 0 else (parameters, mode)
+    return tuple(group for group in groups if group)

@@ -268,14 +268,26 @@ def test_main_close_waits_for_sim_read_using_existing_single_read_guard(window, 
     dialog._on_devices([{"deviceCode": "A", "dtuIccid": SIM_A}])
     gate = threading.Event()
     _calls, entered = install_sim_api(monkeypatch, gate)
+    close_calls = []
+    original_close = window.close
+    def close():
+        close_calls.append(True)
+        return original_close()
+    monkeypatch.setattr(window, "close", close)
+    window.show()
     dialog.refresh_sim_status()
     try:
         wait_for(entered.is_set)
         window.close()
+        assert window.isVisible()
         assert window.cloud_read_thread is not None
         assert window._close_after_cloud_read is True
+        assert not dialog.sim_thread.property("_close_main_when_finished")
         gate.set()
         wait_for(lambda: window.cloud_read_thread is None)
+        wait_for(lambda: not window.isVisible())
+        assert close_calls == [True, True]  # User request, then one automatic retry.
+        assert window._close_after_cloud_read is False
     finally:
         gate.set()
         wait_for(lambda: dialog.sim_thread is None)

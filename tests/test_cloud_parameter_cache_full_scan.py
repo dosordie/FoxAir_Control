@@ -86,8 +86,11 @@ def test_parameter_cloud_only_values_clear_on_device_switch_and_no_local_reads(a
     window, dialog = parameter_window("R02")
     reg = cloud_modbus_register("R02")
     monkeypatch.setattr(window, "send_read_request", lambda *a, **kw: pytest.fail("No local transport"))
+    requests = []
+    monkeypatch.setattr(window, "request_cloud_snapshot", lambda request: requests.append(request))
     window.apply_cloud_rows_to_main([cloud_row(55)])
     dialog.read_visible_registers(auto=True)
+    assert len(requests) == 1 and "R02" in requests[0].codes
     window.clear_cloud_device_values()
     assert parameter_cells(dialog, reg) == ["--", "--", "--"]
     assert not dialog._read_expected_regs

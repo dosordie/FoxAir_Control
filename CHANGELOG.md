@@ -2,14 +2,24 @@
 
 - AT-Kompensation: sieben kompakte Eingabefelder, berechnete Werteübersicht,
   kontextabhängiger Kurvenschreibbutton und Schutz ungespeicherter Live-Eingaben.
-- Cloud: CP1-1 regulär schreibbar gemäß gemeldetem GL9-Schreib-/Cloud-Readback-Test
-  vom 17.10.2026; vollständige AT-/Linear-Kurve und SG-Konfiguration über expliziten
-  Testmodus. Weitere einzelne Schreibnachweise und Mainboard-Abgleiche stehen aus.
-- Cloud-Multiwrite: serielle Wertprüfung mit Auflösungstoleranz, begrenztem Nachlesen,
-  Abbruch bei Teilfehlern/Identitätswechsel und transparenter Teilbestätigung ohne Rollback.
-- SG-Editor: gemeinsame Transportwahl, Cloud-Snapshot und Liveupdates, kW-/°C-Eingaben,
-  nur geänderte Parameter und keine manuelle Schreibpause. Display-Paketsync bleibt erhalten;
-  8801 bleibt auf direkten Mainboard-Modbus beschränkt. SG Status=0 wird in allen Modi korrekt angezeigt.
+- Cloud: zentrale Batch-API (`appId: "16"`, `param[]`) mit einem gemeinsamen
+  Readback, höchstens drei Leseversuchen, Einzelcode-Ergebnissen und gesondertem
+  Status für gesendet / API bestätigt / Readback bestätigt. Kein Write-Replay,
+  kein Rollback; Account-I/O ist zwischen Poll-, Snapshot- und CommandWorker serialisiert.
+- GL9-Livenachweis vom 17.10.2026: sieben AT-Punkte einzeln und gemeinsam als
+  7-fach-Write/-Readback erfolgreich. AT linear, H36 und SG01–SG08 regulär freigegeben;
+  experimentelle Checkboxen und zusätzliche Cloud-Schreibbestätigungen entfernt.
+- AT schreibt nur geänderte Cloud-Kurvenwerte und bereinigt nur bestätigte Editorversionen.
+- SG-Editor: Reihenfolge SG01–SG08, SG08 als Aus/Ein; geänderte SG02–SG08 als Batch.
+  Aktivierung SG01 erst nach bestätigtem Parameterbatch; Deaktivierung SG01=0 zuerst.
+  Lokale 500-ms-Abstände und Display-Paketsync bleiben erhalten; Status ist read-only,
+  8801 bleibt auf direkten Mainboard-Modbus beschränkt.
+- Gezielter asynchroner Cloud-Autoload für AT, SG, sichtbare Parameterblöcke und
+  Störungsdecoder. Editorentwürfe, Geräte-/Accountkontext und Abbruch bei Schließen geschützt.
+- Störungsdecoder liest elf aktuelle Cloudwörter gemeinsam, dekodiert BINARY/Dezimal,
+  verwendet Fault1→2081 bis Fault10→2090 und zeigt fehlende Daten ausdrücklich an.
+- Cloud-Schreibtest und Wertefinder samt exklusiven Helfern/Threads entfernt;
+  bekannte Mapping-Exporte, Cloud ↔ Lokal, SIM und generischer API-Debugger bleiben erhalten.
 - LTE: automatische Readbacks mit 800 ms Settle und 12 s Timeout ab tatsächlichem TX;
   ein Deadlinebesitzer. Nach verlorenen FC03-Antworten kontrollierte TCP-Neuverbindung
   nach 2 s Wartephase, maximal drei Versuche (1/2/4 s). Alte Verbindungsgenerationen

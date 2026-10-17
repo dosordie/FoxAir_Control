@@ -4,11 +4,10 @@ from typing import Optional
 import time
 
 from cloud.snapshot_request import CloudSnapshotRequest
-from core.control_transport import LOCAL_TRANSPORTS, TRANSPORT_NAMES
+from core.control_transport import TRANSPORT_NAMES
 from core.foxair_phnix_core import numeric_value_by_type
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFormLayout,
     QHBoxLayout, QLabel, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
@@ -38,6 +37,7 @@ class SGReadyEditorDialog(QDialog):
         self._pending_write_raw = {}
         self._control_identity = main_window.control_context()
         self.cloud_request = None
+        self.finished.connect(lambda *_args: self._cancel_cloud_read())
         self.cloud_read_timer = QTimer(self)
         self.cloud_read_timer.setSingleShot(True)
         self.cloud_read_timer.timeout.connect(self._cloud_timeout)
@@ -50,6 +50,10 @@ class SGReadyEditorDialog(QDialog):
         self._build_ui()
         self.load_from_live_values()
         self.connection_changed()
+        self.initial_read_timer = QTimer(self)
+        self.initial_read_timer.setSingleShot(True)
+        self.initial_read_timer.timeout.connect(self._autoload_cloud)
+        self.initial_read_timer.start(250)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -85,7 +89,6 @@ class SGReadyEditorDialog(QDialog):
             (1335, "SG02 – Schlaf-/Sperrzeit klassischer Mode 1"),
             (1336, "SG03 – Low-PV / klassische Mode-2-Leistungsgrenze"),
             (1337, "SG04 – klassische Mode-3-/Medium-PV-Leistung"),
-            (1341, "SG08 – High-PV E-Heizer / Zusatzfunktion"),
         ]:
             if reg_no in (1336, 1337):
                 spin = QDoubleSpinBox()
@@ -106,13 +109,15 @@ class SGReadyEditorDialog(QDialog):
             self.temp_spins[reg_no] = spin
             form.addRow(f"{label} ({reg_no}):", spin)
 
+        self.sg08_combo = QComboBox()
+        self.sg08_combo.addItem("Aus", 0)
+        self.sg08_combo.addItem("Ein", 1)
+        form.addRow("SG08 – High-PV E-Heizer / Zusatzfunktion (1341):", self.sg08_combo)
+
         self.sg_status_label = QLabel("--")
         self.sg_status_label.setToolTip("Read-only: Register 2133 zeigt im klassischen Pfad den aktiven SG-Modus. Bei SG01=7 entspricht 1=Low PV, 2=Neutral und 3=High PV.")
         form.addRow("Aktiver SG-Modus (2133, read-only):", self.sg_status_label)
 
-        self.cloud_test_cb = QCheckBox("Experimentelle Cloud-Schreibcodes freigeben")
-        self.cloud_test_cb.setToolTip("Lesbarkeit ist bestätigt; einzelne SG-Schreibtests stehen aus, auch SG01-Modi 3–7.")
-        layout.addWidget(self.cloud_test_cb)
         for reg_no in sorted(self.SG_REGS - {2133}):
             widget = self._widget_for_reg(reg_no)
             signal = widget.currentIndexChanged if isinstance(widget, QComboBox) else widget.valueChanged
@@ -196,6 +201,8 @@ class SGReadyEditorDialog(QDialog):
             return self.sg_mode_combo
         if reg_no == 8801:
             return self.virtual_sg_combo
+        if reg_no == 1341:
+            return self.sg08_combo
         if reg_no in self.raw_spins:
             return self.raw_spins[reg_no]
         if reg_no in getattr(self, "power_spins", {}):
@@ -247,11 +254,12 @@ class SGReadyEditorDialog(QDialog):
                     idx = self.sg_mode_combo.findData(raw)
                     if idx >= 0:
                         self.sg_mode_combo.setCurrentIndex(idx)
-            elif reg_no == 8801:
-                if force or (reg_no not in self._dirty and not self._has_focus(self.virtual_sg_combo)):
-                    idx = self.virtual_sg_combo.findData(raw)
-                    if idx >= 0:
-                        self.virtual_sg_combo.setCurrentIndex(idx)
+            elif reg_no in (8801, 1341):
+                combo = self.virtual_sg_combo if reg_no == 8801 else self.sg08_combo
+                if force or (reg_no not in self._dirty and not self._has_focus(combo)):
+                    index = combo.findData(raw)
+                    if index >= 0 or reg_no == 1341:
+                        combo.setCurrentIndex(index)
             elif reg_no in self.raw_spins:
                 spin = self.raw_spins[reg_no]
                 if force or (reg_no not in self._dirty and not self._has_focus(spin)):
@@ -288,13 +296,23 @@ class SGReadyEditorDialog(QDialog):
             values.append((reg_no, round(spin.value() * 10), f"SG Register {reg_no}"))
         for reg_no, label in ((1338, "SG05 WW-Anhebung"), (1339, "SG06 HZ-Anhebung"), (1340, "SG07 High-PV Kühl-Sollwertänderung")):
             values.append((reg_no, int(round(float(self.temp_spins[reg_no].value()) * 10.0)) & 0xFFFF, label))
-        values.append((1341, int(self.raw_spins[1341].value()) & 0xFFFF, "SG08 High-PV E-Heizer / Zusatzfunktion"))
+        values.append((1341, int(self.sg08_combo.currentData()) & 0xFFFF, "SG08 High-PV E-Heizer / Zusatzfunktion"))
         if uses_virtual_sg_input(
                 int(self.sg_mode_combo.currentData()), self.main_window.control_transport()):
             values.append((8801, int(self.virtual_sg_combo.currentData()) & 0xFFFF, "Virtueller SG-Modus (nur direkter Modbus)"))
         return values
 
+    def _autoload_cloud(self):
+        if self.isVisible() and self.main_window.control_transport() == "cloud":
+            if self.main_window._control_cloud_busy():
+                self.initial_read_timer.start(250)
+                return
+            self.read_from_wp()
+
     def read_from_wp(self):
+        if not self.isVisible():
+            return
+        self.initial_read_timer.stop()
         try:
             context = self.main_window.control_context()
             capability = self.main_window.control_can_read(*range(1334, 1342), 2133)
@@ -385,13 +403,13 @@ class SGReadyEditorDialog(QDialog):
         context = self.main_window.control_context()
         if context != self._control_identity:
             self._cancel_cloud_read()
-            self.cloud_test_cb.setChecked(False)
             self._dirty.clear()
             self._pending_write_versions.clear()
             self._pending_write_raw.clear()
             self._last_raw_values.clear()
             self._programmatic = True
             self.sg_mode_combo.setCurrentIndex(0)
+            self.sg08_combo.setCurrentIndex(0)
             for spin in (*self.raw_spins.values(), *self.power_spins.values(), *self.temp_spins.values()):
                 spin.setValue(0)
             self.sg_status_label.setText("--")
@@ -399,9 +417,8 @@ class SGReadyEditorDialog(QDialog):
             self._control_identity = context
             self.load_from_live_values()
         self._update_virtual_stage_choices()
-        self.cloud_test_cb.setVisible(context.transport == "cloud")
         self.read_btn.setEnabled(bool(self.main_window.control_can_read(*range(1334, 1342), 2133)))
-        self.send_btn.setEnabled(context.transport != "none")
+        self.send_btn.setEnabled(bool(self.main_window.control_can_write(*range(1334, 1342))))
 
     def _cancel_cloud_read(self):
         self.cloud_read_timer.stop()
@@ -412,13 +429,14 @@ class SGReadyEditorDialog(QDialog):
     def _cloud_timeout(self):
         self._cancel_cloud_read()
         self.set_write_status("SG Ready Cloud: Timeout / keine frische Antwort.")
+        self.connection_changed()
 
     def cloud_read_finished(self, cycle_id, rows, error):
         request = self.cloud_request
         if request is None or request.cycle_id != cycle_id:
             return
         context = self.main_window.control_context()
-        if context != self._control_identity or context.transport != "cloud":
+        if not self.isVisible() or context != self._control_identity or context.transport != "cloud":
             self.connection_changed()
             return
         if request.expired():
@@ -430,6 +448,7 @@ class SGReadyEditorDialog(QDialog):
         if not error:
             self.main_window.apply_cloud_rows_to_main(fresh)
         self.set_write_status(f"SG Ready Cloud: {len(fresh)}/{len(request.codes)} Werte" + (f" · {error}" if error else ""))
+        self.connection_changed()
 
     def send_values(self):
         try:
@@ -444,26 +463,24 @@ class SGReadyEditorDialog(QDialog):
             if not changed:
                 self.set_write_status("Keine geänderten SG-Parameter.")
                 return
-            test_mode = self.cloud_test_cb.isChecked() and context.transport == "cloud"
-            capability = owner.control_can_write(*(r for r, _, _ in changed), test_mode=test_mode)
+            capability = owner.control_can_write(*(r for r, _, _ in changed))
             if not capability:
                 self.set_write_status(capability.reason)
                 return
             text = "Geänderte SG-Parameter schreiben?\nTransport: " + TRANSPORT_NAMES[context.transport]
-            if test_mode:
-                text += "\nExperimenteller Cloud-Test: einzelne SG-Schreibcodes und erweiterte SG01-Modi sind noch nicht live schreibbestätigt. Teiländerungen bleiben bei Abbruch bestehen; kein Rollback. Ausdrücklich freigeben?"
-            if QMessageBox.question(self, "SG Ready schreiben", text,
+            if owner.control_requires_write_confirmation() and QMessageBox.question(self, "SG Ready schreiben", text,
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 return
             writes = tuple((r, raw, numeric_value_by_type(raw, owner.regmap.get(r).dtype)) for r, raw, _ in changed)
             self._pending_write_versions = {r: self._edit_versions.get(r, 0) for r, _, _ in writes}
             self._pending_write_raw = {r: raw for r, raw, _ in writes}
-            error = owner.control_write_registers(writes, "SG Ready", expected_context=context, test_mode=test_mode)
+            error = owner.control_write_registers(writes, "SG Ready", expected_context=context)
             self.set_write_status(error or "SG Ready Schreiben eingeplant; Bestätigung steht aus.")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige SG-Werte", str(exc))
 
     def closeEvent(self, event):
+        self.initial_read_timer.stop()
         self._sg_read_generation += 1
         self._cancel_cloud_read()
         super().closeEvent(event)

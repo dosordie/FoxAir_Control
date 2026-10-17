@@ -4,7 +4,6 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Optional
 
-from core.foxair_phnix_core import numeric_value_by_type
 from cloud.device_metadata import mask_identifier
 from cloud.metadata import resolve_cloud_range
 
@@ -29,16 +28,6 @@ def try_float(value: Any) -> Optional[float]:
         return float(str(value).replace(",", "."))
     except Exception:
         return None
-
-
-def binary_to_int(value: Any) -> Optional[int]:
-    text = str(value or "").strip()
-    if text and set(text) <= {"0", "1"} and len(text) <= 32:
-        try:
-            return int(text, 2)
-        except Exception:
-            return None
-    return None
 
 
 def local_display_value(latest_regs: dict, reg_no: int) -> tuple[str, Optional[float]]:
@@ -173,82 +162,3 @@ def compare_table_values(
         hint.get("note", ""),
     ]
     return vals, status
-
-
-def finder_code_label(row: dict[str, Any]) -> tuple[str, str] | None:
-    code = str(row.get("code", ""))
-    if not code:
-        return None
-    value = row.get("value", "")
-    return f"{code} = {value} ({code_confidence(code) or 'unknown'})", code
-
-
-def finder_cloud_row(data_rows: list[dict[str, Any]], code: str) -> dict[str, Any] | None:
-    for row in data_rows:
-        if str(row.get("code", "")) == str(code):
-            return row
-    return None
-
-
-def local_numeric_value(reg: Any, info: Any = None) -> Optional[float]:
-    """Return the numeric value used by the Cloud value finder.
-
-    The finder must compare numbers only.  Display text, units, hexadecimal
-    formatting, and raw string fragments are intentionally ignored so a Cloud
-    value like ``4`` cannot match local values such as ``46.5 °C`` or ``4616``.
-    """
-    raw = getattr(reg, "raw_value", None)
-    if raw is None:
-        return None
-    dtype = str(getattr(info, "dtype", "") or getattr(reg, "dtype", "RAW") or "RAW")
-    try:
-        return float(numeric_value_by_type(int(raw), dtype))
-    except Exception:
-        return None
-
-
-def value_finder_matches(
-    *,
-    code: str,
-    cloud_raw: Any,
-    latest_regs_items: list[tuple[Any, Any]],
-    regmap: dict,
-    display_parts_for_register: Callable[[int, str], tuple[Any, str, Any]],
-    tolerance: float,
-    hide_zero: bool,
-) -> list[list[str]]:
-    cloud_num = try_float(cloud_raw)
-    cloud_bin = binary_to_int(cloud_raw) if cloud_num is None else None
-    matches: list[list[str]] = []
-    for reg_no, reg in latest_regs_items:
-        raw = getattr(reg, "raw_value", None)
-        display = str(getattr(reg, "display_value", ""))
-        info = regmap.get(int(reg_no))
-        try:
-            raw_i = int(raw) if raw is not None else None
-        except Exception:
-            raw_i = None
-        local_num = local_numeric_value(reg, info) if cloud_num is not None else None
-        if hide_zero and local_num == 0:
-            continue
-        reasons: list[str] = []
-        if cloud_num is not None:
-            if local_num is None:
-                continue
-            if abs(local_num - cloud_num) <= tolerance:
-                reasons.append("numeric==cloud")
-        elif cloud_bin is not None and raw_i is not None and (raw_i & 0xFFFF) == cloud_bin:
-            reasons.append("binary==raw")
-        if reasons:
-            _block, local_code, _clean = display_parts_for_register(int(reg_no), info.name if info else f"Reg {reg_no}")
-            matches.append([
-                code,
-                str(cloud_raw),
-                str(reg_no),
-                local_code,
-                str(info.name if info else getattr(reg, "name", "")),
-                display,
-                ", ".join(sorted(set(reasons))),
-                "candidate",
-            ])
-    return matches

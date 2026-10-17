@@ -143,7 +143,7 @@ def test_local_and_cloud_histories_stay_separate_even_after_cloud_only_promotion
     assert window.register_change_highlights == set()
 
 
-@pytest.mark.parametrize("path", ["single", "main_write", "dialog_write", "static_reload"])
+@pytest.mark.parametrize("path", ["single", "main_write", "static_reload"])
 def test_all_cloud_readback_paths_update_history(application, monkeypatch, path):
     window = DialogWindow()
     dialog = WarmLinkCloudDialog(window)
@@ -157,8 +157,6 @@ def test_all_cloud_readback_paths_update_history(application, monkeypatch, path)
         window._on_cloud_read_data("R02", [cloud_row(54)])
     elif path == "main_write":
         window._on_cloud_write_result("R02", {"isReusltSuc": True, "readback": cloud_row(54)})
-    elif path == "dialog_write":
-        dialog._on_command_result({"isReusltSuc": True, "readback": cloud_row(54)})
     else:
         dialog._on_data([cloud_row(54)])  # The static worker emits this same data signal.
     assert window.cloud_previous_value_by_reg[register] == "55 °C"

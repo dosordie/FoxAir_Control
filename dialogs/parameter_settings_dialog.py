@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
 
 from core.foxair_phnix_core import DEFAULT_BUS_ADDR, format_value_by_type, s16
 from core.settings_manager import engineering_parameter_is_visible
+from cloud.snapshot_request import CloudSnapshotRequest
+from cloud.cloud_write_helpers import cloud_code_for_register
 
 DEFAULT_DEVICE_MODEL = "foxair_green_gl9_1"
 DEVICE_MODEL_LABELS = {
@@ -178,6 +180,13 @@ class ParameterSettingsDialog(QDialog):
         super().__init__(main_window)
         self.main_window = main_window
         self._items = self._collect_parameter_items()
+        self._control_identity = main_window.control_context()
+        self.cloud_request = None
+        self._cloud_loaded_blocks = {}
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_timeout)
+        self.finished.connect(self._cancel_cloud_read)
         self._read_expected_regs: set[int] = set()
         self._read_started_monotonic = 0.0
         self._read_status_timeout_s = 12.0
@@ -203,6 +212,7 @@ class ParameterSettingsDialog(QDialog):
             self.tab_poll_timer.stop()
 
     def closeEvent(self, event):
+        self._cancel_cloud_read()
         self._apply_tab_poll_state(save=True)
         self.tab_poll_timer.stop()
         self.read_status_timer.stop()
@@ -210,6 +220,9 @@ class ParameterSettingsDialog(QDialog):
 
     def _auto_read_initial_block(self):
         if self.isVisible() and self.auto_read_block_cb.isChecked() and self._visible_items():
+            if self.main_window.control_transport() == "cloud" and self.main_window._control_cloud_busy():
+                QTimer.singleShot(250, self, self._auto_read_initial_block)
+                return
             self.read_visible_registers(auto=True)
 
     def _block_description_line(self, blocks: list[str]) -> str:
@@ -433,6 +446,8 @@ class ParameterSettingsDialog(QDialog):
         self.block_bar.addStretch(1)
 
     def _select_block(self, block: str):
+        if block != getattr(self, "current_block", None):
+            self._cancel_cloud_read()
         self.current_block = block
         for b, btn in self.block_buttons.items():
             btn.blockSignals(True)
@@ -664,8 +679,11 @@ class ParameterSettingsDialog(QDialog):
         self.main_window.open_register_quick_write(reg_no, self._parse_bus())
 
     def read_visible_registers(self, auto: bool = False):
+        if self.main_window.control_transport() == "cloud":
+            self._read_cloud_block(auto)
+            return
         if not getattr(self.main_window, "connected", False):
-            self._set_read_status("Status: Cloudwerte werden durch Abrufe und Schreib-Readbacks aktualisiert.")
+            self._set_read_status("Status: keine Steuerverbindung.")
             return
         items = self._visible_items()
         if not items:
@@ -683,6 +701,92 @@ class ParameterSettingsDialog(QDialog):
         self.read_status_timer.start()
         prefix = "Auto-Blocklesen" if auto else "Parameter Einstellungen"
         self.main_window._log(f"{prefix}: {len(blocks)} Lesebloecke fuer {len(regs)} Parameter angefordert.")
+
+    def _cancel_cloud_read(self, *_args):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def connection_changed(self):
+        context = self.main_window.control_context()
+        if context != self._control_identity:
+            self._cancel_cloud_read()
+            self._cloud_loaded_blocks.clear()
+            self._control_identity = context
+            self.refresh_table()
+            if self.isVisible() and context.transport == "cloud":
+                QTimer.singleShot(0, self, self._auto_read_initial_block)
+
+    def _cloud_timeout(self):
+        self._cancel_cloud_read()
+        self._set_read_status("Status: Cloud-Timeout; vorhandene Werte bleiben erhalten.", error=True)
+
+    def _read_cloud_block(self, auto):
+        if not self.isVisible() or self.cloud_request is not None:
+            return
+        self.connection_changed()
+        owner = self.main_window
+        context = owner.control_context()
+        codes = tuple(dict.fromkeys(code for item in self._visible_items()
+                                   if (code := cloud_code_for_register(item["reg"]))))
+        if not codes:
+            self._set_read_status("Status: keine bestätigten Cloudcodes in diesem Block.")
+            return
+        # Initial load and block selection share one request. Subsequent auto
+        # reads reuse a recent snapshot rather than duplicating poll traffic.
+        if auto and time.monotonic() - self._cloud_loaded_blocks.get(codes, -1e10) < 10:
+            return
+        if auto and self._cloud_loaded_blocks:
+            cached = getattr(getattr(owner, "cloud_session", None), "rows", {})
+            def recently_fetched(code):
+                row = cached.get(code, {})
+                if (not row.get("supported") or row.get("value") in (None, "") or
+                        any(row.get(flag) for flag in ("stale", "cached", "currentEmpty"))):
+                    return False
+                try:
+                    age = time.time() - time.mktime(time.strptime(str(row.get("lastFetch", "")), "%Y-%m-%d %H:%M:%S"))
+                    return 0 <= age < 10
+                except (ValueError, TypeError, OverflowError):
+                    return False
+            if all(recently_fetched(code) for code in codes):
+                self._cloud_loaded_blocks[codes] = time.monotonic()
+                self.refresh_table()
+                self._set_read_status("Status: aktuelle Cloudwerte aus dem Polling übernommen.", ok=True)
+                return
+        capability = owner.control_can_read()
+        if not capability:
+            self._set_read_status(capability.reason, error=True)
+            return
+        owner._parameters_cloud_generation = getattr(owner, "_parameters_cloud_generation", 0) + 1
+        self.cloud_request = CloudSnapshotRequest(owner._parameters_cloud_generation, codes,
+            time.monotonic() + 60, context.username, context.device_code, purpose="parameters")
+        self.cloud_read_timer.start(60000)
+        self._set_read_status(f"Status: lade {len(codes)} Cloud-Parameter …")
+        error = owner.control_request_snapshot(self.cloud_request)
+        if error:
+            self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible() or self.main_window.control_context() != self._control_identity:
+            self._cancel_cloud_read()
+            return
+        if request.expired():
+            self._cloud_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and row.get("value") not in (None, "") and not any(
+                     row.get(flag) for flag in ("stale", "cached", "currentEmpty"))]
+        self._cancel_cloud_read()
+        if not error:
+            self.main_window.apply_cloud_rows_to_main(fresh)
+            if len(fresh) == len(request.codes):
+                self._cloud_loaded_blocks[request.codes] = time.monotonic()
+        self._set_read_status(f"Status: Cloud {len(fresh)}/{len(request.codes)} Werte" + (f" · {error}" if error else ""),
+                              ok=not error and len(fresh) == len(request.codes), error=bool(error))
 
     def _set_read_status(self, text: str, ok: bool = False, error: bool = False):
         if not hasattr(self, "read_status_label"):
