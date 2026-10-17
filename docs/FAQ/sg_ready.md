@@ -211,3 +211,50 @@ Wegen der 10-Minuten-Umschaltzeit sollte die PV-Steuerung nicht auf jede kurze W
 Die ausführliche technische Dokumentation mit Registerdetails, Kontaktbits und den bestätigten Firmwarepfaden gibt es hier:
 
 [SG-Ready-Dokumentation](../sg_ready.md)
+
+
+## Cloudfähiger SG-Ready-Editor
+
+Der Editor verwendet den gemeinsamen Steuertransport: eine aktive lokale
+Verbindung hat Vorrang. Cloud-only liest **„Von WP lesen“** gezielt SG01–SG08
+und **SG Status** über den bestehenden Snapshot-/`getDataByCode`-Pfad. Auch
+laufendes Cloud-Polling aktualisiert den offenen Dialog. SG03/SG04 werden in
+**kW**, SG05–SG07 in **°C** eingegeben; Modbus-RAW-Werte werden nur für den
+lokalen Transport verwendet. Ungespeicherte Änderungen bleiben bei Liveupdates
+erhalten; „Aus Live-Werten laden“ übernimmt den aktuellen Stand bewusst.
+
+| Register | Cloudcode | Zugriff / Nachweis |
+| --- | --- | --- |
+| 1334 | SG01 | Lesen bestätigt; Schreibtests separat, Firmwareauswahl 0–7 |
+| 1335 | SG02 | Lesen bestätigt; Schreiben experimentell |
+| 1336–1337 | SG03–SG04 | Lesen bestätigt; Schreiben experimentell |
+| 1338–1340 | SG05–SG07 | Lesen bestätigt; Schreiben experimentell |
+| 1341 | SG08 | Lesen bestätigt; Schreiben experimentell |
+| 2133 | SG Status | Lesen bestätigt; grundsätzlich read-only |
+| 8801 | kein Cloudcode | nur direkter User-/Mainboard-Modbus, SG01=3 oder 7 |
+
+Die Nutzerbestätigung für SG01–SG08 und SG Status belegt den Cloud-Zugriff,
+keine einzelnen Schreibversuche. Die frühere automatische Freigabe von SG03/04
+aus statischem Wertegleichstand wird deshalb nicht als Schreibnachweis behandelt.
+Bis einzelne reale Schreibtests dokumentiert sind, erfordert Schreiben die
+Option **„Experimentelle Cloud-Schreibcodes freigeben“** und eine ausdrückliche
+Bestätigung pro Aktion. SG01=3–7 bleiben auswählbar, ohne ihre Cloud-Schreibbarkeit
+anhand veralteter Metadaten (0–2) zu behaupten.
+
+Nur selbst geänderte, vom aktuellen Wert abweichende Felder werden geschrieben.
+Cloud und direkte Modbus-Queues konfigurieren zuerst die abhängigen Parameter,
+dann einen aktivierenden SG01-Wechsel und zuletzt einen angeforderten virtuellen
+Eingang. SG01=0 wird zuerst gesendet. Display-Modbus behält seine bestehende
+Paket-/Commit-/Sync-Sequenz. Die manuelle „Pause zwischen Writes“ entfällt;
+Transport-Queues und Display-Synchronisierung steuern die nötigen Abstände.
+
+Cloud schreibt seriell, liest jeden Code gezielt zurück und vergleicht den
+Engineeringwert mit seiner Registerauflösung. Bei fehlender Bestätigung endet
+die Sequenz; bereits bestätigte Codes werden genannt. Kein automatischer
+Rollback. Register 8801 ist bei Cloud, LTE und Display gesperrt; das deaktivierte
+Feld nennt den Grund. Es gibt keine lokalen Sends im Cloud-only-Betrieb.
+
+**SG Status 2133 = 0 bedeutet immer „Wärmepumpe aus oder SG Ready deaktiviert“,
+auch bei SG01=7.** Dort bleiben 1=Low PV, 2=Neutral und 3=High PV erhalten.
+Für SG01=5/6 und AI Saving werden keine unbekannten Detailbedeutungen erfunden.
+Ein Statusupdate wird auch im bereits geöffneten Dialog unmittelbar angezeigt.

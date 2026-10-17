@@ -28,7 +28,7 @@ def test_zone1_curve_uses_confirmed_firmware_points_without_cloud_write_grants(c
     assert code in WARMLINK_644_DISCOVERY_CODES
     assert cloud_modbus_register(code) == register
     assert cloud_hint(code)["confidence"] == "confirmed"
-    assert cloud_hint(code)["write_allowed"] is False
+    assert cloud_hint(code)["write_allowed"] is (code == "CP1-1")
 
 
 def test_middle_alias_and_zone2_have_no_invented_projection():
@@ -152,7 +152,7 @@ def test_at_local_values_and_transport_keep_priority_and_local_writes(window, mo
     monkeypatch.setattr(window, "send_register_write", lambda *args, **kw: writes.append(args))
     monkeypatch.setattr("foxair_phnix_control.ask_yes_no", lambda *a, **kw: True)
     dialog.mode_combo.setCurrentIndex(dialog.mode_combo.findData(2))
-    assert dialog.write_seven_btn.isEnabled()
+    assert dialog.write_curve_btn.isEnabled()
     dialog.write_seven_points()
     assert [item[0] for item in writes] == [1250, 1251, 1252, 1235, 1253, 1254, 1255]
     assert window.latest_regs[1250] is local and window.last_values[1250] == 453
@@ -167,7 +167,7 @@ def test_at_cloud_only_guard_blocks_unconfirmed_curve_writes_and_updates_on_disc
     for mode in (0, 1, 2):
         dialog.mode_combo.setCurrentIndex(dialog.mode_combo.findData(mode))
         assert dialog.write_mode_btn.isEnabled()  # H36 is centrally confirmed writable.
-        assert not any(btn.isEnabled() for btn in (dialog.write_linear_btn, dialog.write_seven_btn))
+        assert not any(btn.isEnabled() for btn in (dialog.write_curve_btn, dialog.write_curve_btn))
         dialog.write_linear_params(); dialog.write_seven_points()
     window.set_cloud_connection_state(False)
     assert not dialog.write_mode_btn.isEnabled()

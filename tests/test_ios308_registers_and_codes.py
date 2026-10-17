@@ -189,7 +189,7 @@ def test_confirmed_h36_and_zone1_curve_mappings_remain_authoritative():
     assert cloud_modbus_register("H36") == 1236 and cloud_hint("H36")["write_allowed"] is True
     assert cloud_hint("H36")["rangeStart"] == "0" and cloud_hint("H36")["rangeEnd"] == "2"
     assert cloud_modbus_register("CP1-1") == 1250
-    assert cloud_hint("CP1-1")["write_allowed"] is False
+    assert cloud_hint("CP1-1")["write_allowed"] is True  # GL9 write + Cloud readback, 2026-10-17.
 
 
 @pytest.mark.parametrize(("code", "register"), [

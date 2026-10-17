@@ -3347,3 +3347,22 @@ def code_confidence(code: str) -> str:
 
 
 cloud_modbus_register = code_modbus_register
+
+# CP1-1: real GL9 Cloud write + getDataByCode readback, 2026-10-17.
+# No additional Mainboard verification was documented for that write test.
+WARMLINK_CLOUD_CODE_HINTS["CP1-1"].update(
+    write_allowed=True,
+    note="GL9 2026-10-17: Cloud write 45.0 → 45.5 and Cloud readback confirmed; no Mainboard write verification documented.",
+)
+# Mapping/readability is independent of a write grant. These codes require an
+# explicit, per-action experimental confirmation in the AT/SG configuration UI.
+CLOUD_CONFIGURATION_TEST_CODES = frozenset({
+    "CP1-2", "CP1-3", "CP1-5", "CP1-6", "CP1-7",
+    "compensate_slope", "compensate_offset", *(f"SG{i:02}" for i in range(1, 9)),
+})
+
+for _sg_code in ("SG03", "SG04"):
+    WARMLINK_CLOUD_CODE_HINTS[_sg_code].update(
+        write_allowed=False,
+        note="Cloud mapping/read access confirmed; former static value equality is not a device write test. Explicit test mode required.",
+    )

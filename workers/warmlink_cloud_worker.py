@@ -24,6 +24,7 @@ from cloud.warmlink_api import (
     normalize_house_devices,
     normalize_house_list,
 )
+from cloud.cloud_write_helpers import cloud_readback_matches
 from cloud.known_devices import merge_discovered_and_known_devices, merge_device_sources, select_available_device_code
 from cloud.known_devices import validation_has_value
 from cloud.polling import CloudSession, CloudTimingState
@@ -762,6 +763,7 @@ class WarmLinkCloudCommandWorker(QObject):
 
     @Slot()
     def run(self) -> None:
+        confirmed = []
         try:
             self._check_write_guard()
             if self.load_credentials:
@@ -801,30 +803,43 @@ class WarmLinkCloudCommandWorker(QObject):
 
                 data = dict(data)
                 data["command_code"] = code
-                if (not self.dry_run) and api.success(data):
-                    # Kurzer Readback: App/Cloud braucht oft einen Moment, bis der neue
-                    # Wert wieder in getDataByCode auftaucht. Fehler hier macht den
-                    # eigentlichen Schreib-Erfolg nicht kaputt.
-                    time.sleep(2.0)
-                    self._check_write_guard()
-                    try:
-                        rb_response = api.get_data_by_code(self.device_code, [code])
-                        rb_rows = normalize_data_values(rb_response, [code])
-                        rb = rb_rows[0] if rb_rows else {"code": code, "supported": False}
-                        data["readback"] = rb
-                        if rb.get("supported"):
-                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code}={rb.get('value')}")
-                        else:
-                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code} leer/unsupported")
-                    except Exception as rb_exc:
-                        data["readback_error"] = str(rb_exc)
-                        self.log.emit(f"WarmLink Cloud schreiben: Readback übersprungen: {rb_exc}")
-
+                data["api_success"] = api.success(data)
+                data["readback_verified"] = False
+                self._check_write_guard()
+                if not self.dry_run and data["api_success"]:
+                    for attempt, delay in enumerate((2.0, 1.0, 2.0), 1):
+                        time.sleep(delay)  # Command worker thread; never blocks the GUI.
+                        self._check_write_guard()
+                        try:
+                            response = api.get_data_by_code(self.device_code, [code])
+                            self._check_write_guard()
+                            rows = normalize_data_values(response, [code])
+                            rb = next((r for r in rows if r.get("code") == code),
+                                      {"code": code, "supported": False})
+                            data["readback"] = rb
+                            data["readback_verified"] = api.success(response) and cloud_readback_matches(code, value, rb)
+                            self.log.emit(f"Cloud Readback {code}: Soll={value}, Ist={rb.get('value')}, Versuch={attempt}/3, bestätigt={data['readback_verified']}")
+                        except Exception as exc:
+                            self._check_write_guard()
+                            data["readback_error"] = str(exc)
+                        if data["readback_verified"]:
+                            break
+                verified = data["readback_verified"]
+                if verified:
+                    confirmed.append(code)
+                data["confirmed_codes"] = list(confirmed)
+                data["command_count"] = len(self.commands)
+                data["sequence_complete"] = verified and len(confirmed) == len(self.commands)
+                if not self.dry_run and not verified:
+                    data["validation_error"] = (
+                        f"{code}: API bestätigt={data['api_success']}; "
+                        f"Readback nicht bestätigt (Soll {value}, Ist {(data.get('readback') or {}).get('value', 'fehlt')}). "
+                        f"Bestätigt: {', '.join(confirmed) or 'keine'}. Sequenz abgebrochen; kein Rollback.")
                 self.result.emit(data)
-                if not api.success(data):
-                    break  # A failed command must not send the rest of a sequence.
+                if not self.dry_run and not verified:
+                    break
         except Exception as exc:
-            self.error.emit(translate_cloud_error_message(str(exc)))
+            self.error.emit(translate_cloud_error_message(str(exc)) + f" Bestätigt: {', '.join(confirmed) or 'keine'}; kein Rollback.")
         finally:
             self.finished.emit()
 

@@ -6,10 +6,11 @@ response or its transport-started deadline; queued reads have no deadline yet.
 from __future__ import annotations
 
 import time
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Qt
 
 WARMLINK_READ_TIMEOUT_S = 5.0
-WARMLINK_READBACK_DELAY_MS = 200
+WARMLINK_READBACK_DELAY_MS = 800
+WARMLINK_READBACK_TIMEOUT_S = 12.0
 WARMLINK_TIMEOUT_DRAIN_MS = 500
 READ_PRIORITIES = {"readback": 0, "manual": 1, "dialog": 2, "background": 3, "init": 4}
 
@@ -37,8 +38,10 @@ class WarmlinkRequestScheduler(QObject):
         self.queue = []
         self.sequence = 0
         self.resume_at = 0.0
+        self.unresolved = None
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.timeout.connect(self._timeout)
 
     @staticmethod
@@ -48,7 +51,8 @@ class WarmlinkRequestScheduler(QObject):
     def submit(self, request, priority=None, delay_ms=0):
         priority = priority or read_priority(request.get("label"))
         request.update(scheduler=True, priority=priority, time=None, sent_monotonic=None,
-                       ready_at=time.monotonic() + delay_ms / 1000)
+                       ready_at=time.monotonic() + delay_ms / 1000,
+                       timeout_s=WARMLINK_READBACK_TIMEOUT_S if priority == "readback" else WARMLINK_READ_TIMEOUT_S)
         key = self.key(request)
         if priority == "readback":
             # A new acknowledged write needs a fresh read, even if an older
@@ -70,7 +74,7 @@ class WarmlinkRequestScheduler(QObject):
         return request
 
     def _dispatch(self):
-        if self.active or not self.queue:
+        if self.active or self.unresolved or not self.queue:
             return
         quiet_remaining = self.resume_at - time.monotonic()
         if quiet_remaining > 0:
@@ -88,12 +92,12 @@ class WarmlinkRequestScheduler(QObject):
 
     def sent(self, addr, quantity, slave):
         request = self.active
-        if not request or self.key(request) != (slave, addr, quantity):
+        if not request or request["sent_monotonic"] is not None or self.key(request) != (slave, addr, quantity):
             return
         request["time"] = time.time()
         request["sent_monotonic"] = time.monotonic()
         if request.get("expect_response", True):
-            self.timer.start(int(WARMLINK_READ_TIMEOUT_S * 1000))
+            self.timer.start(int(request["timeout_s"] * 1000))
         else:
             self.complete(request)
         self.log(f"WARMLINK READ sent: reg={request['addr']} qty={quantity}")
@@ -113,6 +117,12 @@ class WarmlinkRequestScheduler(QObject):
         self.active = None
         if timeout:
             self.resume_at = time.monotonic() + WARMLINK_TIMEOUT_DRAIN_MS / 1000
+            if request.get("sent_monotonic") is not None:
+                # FC03 has no address or transaction ID. Quiet time alone cannot
+                # prove a late answer is gone. Retain ownership until it arrives,
+                # or until reconnect resets the stream.
+                self.unresolved = request
+                self.log("WARMLINK READ suspended: ausstehende Antwort nach Timeout; späte Antwort abwarten oder Verbindung neu aufbauen.")
         QTimer.singleShot(0, self._dispatch)
 
     def _timeout(self):
@@ -121,15 +131,20 @@ class WarmlinkRequestScheduler(QObject):
             self.timed_out(request)
             self.complete(request, timeout=True)
 
-    def unmatched_response(self):
-        if self.active is None and self.resume_at > time.monotonic():
+    def unmatched_response(self, slave=None, byte_count=None):
+        if self.unresolved and (self.unresolved["slave_addr"], self.unresolved["quantity"] * 2) == (slave, byte_count):
+            self.log(f"WARMLINK READ late response drained: reg={self.unresolved['addr']}")
+            self.unresolved = None
+        if self.active is None:
             self.resume_at = time.monotonic() + WARMLINK_TIMEOUT_DRAIN_MS / 1000
+            QTimer.singleShot(WARMLINK_TIMEOUT_DRAIN_MS + 1, self._dispatch)
 
     def cancel(self):
         self.timer.stop()
         self.active = None
         self.resume_at = 0.0
         self.queue.clear()
+        self.unresolved = None
 
     def cancel_labels(self, labels):
         self.queue = [item for item in self.queue if item[2].get("label") not in labels]

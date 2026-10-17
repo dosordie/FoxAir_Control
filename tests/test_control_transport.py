@@ -250,16 +250,16 @@ def test_at_cloud_writes_h36_but_rejects_partial_curve_actions(window, monkeypat
     for code in ("CP1-1", "CP1-2", "CP1-3", "compensate_offset"):
         monkeypatch.setitem(cloud_hint(code), "write_allowed", True)
     at._update_write_actions()
-    assert not at.write_seven_btn.isEnabled()
+    assert not at.write_curve_btn.isEnabled()
     at.write_seven_points()
     assert writes == [("H36", "2")]
     at.mode_combo.setCurrentIndex(at.mode_combo.findData(1))
-    assert not at.write_linear_btn.isEnabled()
+    assert not at.write_curve_btn.isEnabled()
     at.write_linear_params()
     assert len(writes) == 1
     monkeypatch.setitem(cloud_hint("compensate_slope"), "write_allowed", True)
     at._update_write_actions()
-    assert at.write_linear_btn.isEnabled()  # Both mappings required, no blanket Cloud ban.
+    assert at.write_curve_btn.isEnabled()  # Both mappings required, no blanket Cloud ban.
     at.close()
 
 
