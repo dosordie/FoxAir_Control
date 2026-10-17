@@ -341,16 +341,22 @@ Lesen/Schreiben, Dialoge, Hintergrundpoll und Init nun den zentralen
 `WarmlinkRequestScheduler`:
 
 1. Genau ein Read darf in-flight sein. Weitere Reads bleiben im Scheduler.
-2. `ReaderWorker.read_sent` startet die **5-s-Timeout-Uhr erst nach dem TX**.
+2. `ReaderWorker.read_sent` startet die **Timeout-Uhr erst nach dem TX** (normale Reads 5 s, automatische Readbacks 12 s).
 3. Nur der aktive, tatsächlich gesendete Request wird über Slave und
    ByteCount zugeordnet; seine bekannte Startadresse wird normal dekodiert.
 4. Antwort oder Timeout beendet den Request. Der nächste Dispatch erfolgt
    über einen Qt-Timer, nach Abschluss der aktuellen Frame-Verarbeitung.
-5. Nach Timeout gibt es eine **500-ms-Ruhephase** für späte Antworten.
-   Nicht zuordenbare FC03-Antworten innerhalb dieser Phase verlängern sie.
-   Da RTU-FC03 keine Transaktions-ID trägt, kann eine beliebig stark verspätete
-   Antwort nach einer neuen Übertragung grundsätzlich nicht sicher erkannt
-   werden; die Ruhephase reduziert dieses Protokollrisiko.
+5. Nach einem Timeout bleibt die gesendete FC03-Anforderung **ungeklärt**.
+   Trifft ihre späte Antwort innerhalb von **2 s** ein, wird sie verworfen;
+   danach gilt eine **500-ms-Ruhephase** vor dem nächsten Read.
+   Bleibt die Antwort aus, startet für **Warmlink RAW über TCP** eine kontrollierte
+   Neuverbindung. Bis dahin bleibt jede weitere FC03-Anforderung gesperrt.
+   Die alte TX-Queue wird gesperrt und verworfen, der alte Socket geschlossen.
+   Erst nach `QThread.finished` wird ein neuer Worker mit leerem Parser und neuer
+   Verbindungsgeneration gestartet. Alte Frames, TX-/Fehlersignale und
+   Verbindungsstatusmeldungen können die neue Sitzung nicht mehr beeinflussen.
+   Nach erfolgreichem Verbindungsaufbau wird der Scheduler zurückgesetzt;
+   wartende Reads behalten ihre Prioritäten und laufen nach 500 ms Ruhe weiter.
 6. Disconnect/Firmware-Capture cancelt den Scheduler; Sendefehler lassen
    keinen Request ohne Deadline dauerhaft aktiv.
 
@@ -363,7 +369,7 @@ folgt der frische Readback. Legacy-Pending-Einträge können den neuen Read
 nicht unterdrücken oder seine Antwort übernehmen.
 
 Nach adressgenauem FC16-ACK erzeugt Quickwrite einen Readback mit der benannten
-Konstante `WARMLINK_READBACK_DELAY_MS = 200`. Der Scheduler reserviert den
+Konstante `WARMLINK_READBACK_DELAY_MS = 800`. Der Scheduler reserviert den
 nächsten Read-Slot während dieser Pause. R02 bleibt ein gewöhnlicher
 Registerfall: Cloud 55 bedeutet 55 °C; lokal 550 ebenfalls 55 °C;
 Cloud-Write 52 sendet `"52"`, Modbus-Write 52 sendet 520.
@@ -395,7 +401,7 @@ und reaktionsfähigen Stop während der echten Settle-Zeit.
 `tests/test_warmlink_request_scheduler.py` verwendet echte FC03-/FC16-Frames,
 den echten `ReaderWorker`-Sendepfad und die normale Hauptfenster-Dekodierung.
 Prüffälle: zwei qty=1-Reads, richtige Adresszuordnung, Readback-Priorität,
-Stale-Pending, 200-ms-Pause, tatsächlicher TX als Timeoutbeginn, späte Antwort
+Stale-Pending, 800-ms-Pause, tatsächlicher TX als Timeoutbeginn, späte Antwort
 während Timeout-Ruhephase, Sendefehler, Quickwrite-Einzelread,
 Write→ACK→FC03 sowie unveränderter Standard-Modbus-Pfad.
 
@@ -491,8 +497,8 @@ der dedizierte Heartbeat ohne `appId` bleiben unverändert.
 Cloud-Engineeringwert bereit. Der AT-Dialog bevorzugt echte lokale Werte;
 Cloud-only-Tabellenzeilen behalten ihre Cloud-Provenienz und werden nicht als
 lokale Wörter ausgewertet. Neue Cloud-Overlays aktualisieren den offenen Dialog.
-Cloud-only bleiben die Kurven-Schreibbuttons deaktiviert; das zentral bestätigte
-H36-Schreiben ist über den gemeinsamen Steuertransport verfügbar. Direkte Aufrufe
+Cloud-only sind vollständige Kurvenschreibaktionen mit ausdrücklich bestätigtem
+Testmodus verfügbar; CP1-1 und das bereits bestätigte H36-Schreiben sind regulär verfügbar. Direkte Aufrufe
 der Schreibhandler können keinen lokalen Write auslösen. Lokale Schreibpläne,
 Interpolation, Display-Lesewege und bestehende Parameter-Cloud-Writes bleiben erhalten.
 
@@ -513,7 +519,7 @@ deren Scheduler, Validierung und Displaylogik erhalten. Cloud verwendet
 weiterhin die zentralen bestätigten Codes, `WarmLinkCloudCommandWorker` und
 die bestehende `CloudSnapshotRequest`-Queue. Es gibt keine zusätzliche
 Login-/Pollingarchitektur. Spätere Steuerdialoge sollen diese Dispatcher
-ebenfalls verwenden; Timer-/SG-/Silent-Timer-Editoren sind hier nicht umgestellt.
+ebenfalls verwenden; SG Ready verwendet den Dispatcher ebenfalls; Timer-/Silent-Timer-Editoren bleiben bei ihren vorhandenen Pfaden.
 
 Cloud-Schreibbarkeit wird **pro Register und Aktion** geprüft:
 
@@ -523,14 +529,29 @@ Cloud-Schreibbarkeit wird **pro Register und Aktion** geprüft:
 | WP WW-/Heiz-/Kühlsollwert (1157–1159 / R01–R03) | bestätigt schreibbar; Engineeringtemperatur |
 | Silent (1016 Bit 1) | nur lokal; kein bestätigter Cloudcode |
 | AT H36-Modus (1236) | bestätigt schreibbar |
-| AT Linear (1234 und 1235) | gesperrt; compensate_slope/offset read-only |
-| AT 7-Punkt-Kurve | gesperrt; CP1-Punkte/Offset read-only |
+| AT Linear (1234 und 1235) | expliziter Testmodus; Schreibnachweise offen |
+| AT 7-Punkt-Kurve | CP1-1 regulär; vollständige Sequenz mit explizitem Testmodus |
+| SG01–SG08 | lesbar; einzelne Schreibtests im expliziten Testmodus |
+| SG Status / 8801 | Status read-only; 8801 ohne Cloud-Schreibpfad |
 
 Mehrregisteraktionen werden vor dem Senden vollständig auf Schreibfreigaben
 und gültige Werte geprüft. Vier schreibbare von sieben Punkten reichen nicht.
-Falls später alle benötigten Codes bestätigt freigegeben werden, sendet ein
-einziger bestehender CommandWorker die Sequenz seriell mit Readback; bei
-Fehler oder Identitätswechsel endet sie. Dieser PR erweitert keine Schreibrechte.
+Der explizite Testmodus erlaubt nur die fest benannten AT-/SG-Konfigurationscodes,
+keine unbekannten Mappings. Ein bestehender CommandWorker sendet die Sequenz
+seriell mit gezieltem Readback. API-Erfolg und tatsächliche Wertbestätigung sind
+getrennte Ergebnisse. Erst nach bestätigtem Readback aller Codes erscheint ein
+Gesamterfolg. Fehlende/stale/abweichende Werte führen nach höchstens drei
+Leseversuchen (Settle 2 s, dann 1 s und 2 s) zum Abbruch; kein Write-Retry,
+kein Rollback. Float-Vergleiche verwenden eine halbe Registerauflösung.
+Der Identitätsguard gilt vor und nach Netzwerkaufrufen und vor jedem Folgeschritt.
+Normale Writes nutzen das bestehende `appId: "16"`-Controlpayload.
+
+CP1-1 wurde laut GL9-Gerätetest vom 17.10.2026 mit Cloud-Schreiben und
+Cloud-Readback bestätigt; kein zusätzlicher Mainboard-Abgleich dieses Writes
+ist dokumentiert. Weitere Kurvenparameter und einzelne SG-Schreibcodes bleiben
+experimentell. Lesbarkeit, Mapping, API-ACK, Cloud-Readback und Mainboard-Abgleich
+sind getrennte Nachweisstufen. Automatisierte Simulationen sind keine Live-Tests.
+
 
 WP liest gezielt Power, Mode, ModeState, R01/R02/R03, H36, 2014,
 T01/T02/T08/T04 und T39. AT behält seinen bisherigen gezielten Read mit
@@ -566,3 +587,64 @@ Logik. **Nein** lässt das Gerät ausgewählt. Während ein Worker läuft,
 ändern weder einfacher Tabellenklick noch Doppelklick oder ComboBox die
 aktive Session; ein zweiter Start wird verhindert. Ein anderes Gerät kann
 erst nach Stoppen des Pollings ausgewählt werden.
+
+
+## Automatischer LTE-Readback nach FC16-ACK
+
+Ein passendes FC16-ACK plant den Quickwrite-Readback mit **800 ms Settle-Zeit**
+ein. Sein Scheduler-Slot bleibt vor Hintergrundreads reserviert; ein bereits
+laufender FC03 wird zunächst abgeschlossen. Der Readback-Timeout beträgt gezielt
+**12 s**, normale LTE-Reads bleiben bei **5 s**. Beide Werte sind konservative
+Transportparameter und noch durch Latenzmessungen am realen LTE-Gerät zu prüfen.
+
+Die einzige Deadline gehört dem Scheduler und startet bei `ReaderWorker.read_sent`,
+nicht bei Enqueue/Dispatch. Der ältere Pending-Wallclock-Check kann diesen
+Request nicht vorzeitig beenden. Logs enthalten ACK, Queue, tatsächliches TX,
+RX bzw. Timeout mit Laufzeit sowie das Verwerfen einer späten Antwort.
+Sendefehler vor TX hinterlassen keinen blockierten, unbeantworteten Request.
+Nach einem tatsächlichen Timeout schützt die oben beschriebene Sperre vor einer
+falschen Zuordnung. Bei vollständig verlorener Antwort ersetzt die automatische
+TCP-Neuverbindung den ungeklärten Stream. Es gibt keinen automatischen Read-Retry
+auf einem ungeklärten RTU-Stream und keine Wiederholung alter Writes.
+Standard-/Display-Modbus verwenden weiterhin ihre bisherigen Lesewege.
+
+Noch erforderlich: echte LTE-Messung von ACK→TX→RX, alle weiteren AT-Schreibtests,
+SG-Code-/SG01-Modus-Schreibtests sowie zusätzlicher Mainboard-Abgleich.
+
+
+### Begrenzte automatische Wiederherstellung bei verlorener FC03-Antwort
+
+Die Neuverbindung verwendet dieselben Verbindungseinstellungen und denselben
+`ReaderWorker`-Lebenszyklus wie eine normale lokale Verbindung. Die Oberfläche
+blockiert weder für Socket-I/O noch für das Thread-Ende. Ein `wait(0)`-Probeaufruf
+prüft den nativen Thread-Abschluss ohne Wartezeit; bei noch laufendem Cleanup
+folgt ein neuer Qt-Timer-Tick. Der alte Worker muss
+vollständig beendet sein, bevor ein neuer verbindet. Das normale konfigurierte
+Hintergrund-Polling startet nach erfolgreicher Verbindung wieder; bereits im
+Scheduler wartende Reads bleiben erhalten. Der ursprünglich abgelaufene Read
+wird nicht nachträglich als erfolgreich gemeldet und nicht blind erneut gesendet.
+Ausstehende Write-ACKs und alte Worker-Queues werden verworfen; Writes werden
+niemals automatisch wiederholt.
+
+Pro Folge fehlgeschlagener Reads gibt es höchstens **drei automatische
+Verbindungsversuche** mit **1 / 2 / 4 s** Abstand. Erst eine gültig zugeordnete
+FC03-Antwort oder ein expliziter manueller Verbindungsaufbau setzt das Budget
+zurück. Ein TCP-Connect allein genügt dafür nicht. Bei ausgeschöpftem Budget
+wird sauber getrennt und eine sichtbare Fehlermeldung ausgegeben, statt weiterhin
+Reads in einer gesperrten Sitzung zu sammeln.
+
+Manuelles Trennen, Backend-/Verbindungseinstellungswechsel, Firmware-Capture und
+Schließen der Anwendung verhindern weitere automatische Versuche. Einstellungen
+werden auch nach dem TCP-Verbindungsaufbau nochmals geprüft. Beim Schließen
+wartet die Anwendung über das Finished-Signal auf das Thread-Ende, ohne die GUI
+zu blockieren. Standard-/Display-Modbus erhalten keine neue Reconnect-Logik.
+Serielle Warmlink-Verbindungen werden ebenfalls nicht automatisch neu geöffnet,
+da ein lokales COM-Reopen keine neue entfernte RTU-Sitzung nachweist.
+
+`tests/test_warmlink_recovery.py` prüft mit echten Qt-Threads und simulierten
+TCP-Streams: vollständig verlorene Hintergrund-/Readback-Antworten, Wiederanlauf
+wartender Reads und des Hintergrund-Pollings, alte Antworten während und nach
+Socket-Schließung, kaputte/fremde Frames, Thread-Ende vor Neuverbindung,
+Verbindungsfehler und Versuchslimit, Schutz vor Write-Replay sowie manuelles
+Trennen, Einstellungswechsel, Capture und App-Ende. Diese Simulationen ersetzen
+keinen realen LTE-Latenz- oder Gateway-Test.

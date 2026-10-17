@@ -138,7 +138,9 @@ def test_status_tabs_use_scheduler_response_timeout_and_polling(window, applicat
     window.worker._flush_write_queue()
     req = window.warmlink_read_scheduler.active
     req["time"] = time.time() - 100
-    window._check_pending_read_timeouts()  # Must not try to consume an undefined frame.
+    window._check_pending_read_timeouts()
+    assert window.warmlink_read_scheduler.active is req  # Wallclock is not the deadline owner.
+    window.warmlink_read_scheduler._timeout()  # Simulate its transport-started timer.
     assert "Timeout" in dialog.status_label.text()
     assert dialog._diagnostic_values[2139] == 0x0211
     dialog.poll_cb.setChecked(True)

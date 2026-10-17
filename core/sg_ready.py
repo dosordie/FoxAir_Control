@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 
+# Preserve the established local SG queue spacing without exposing a UI field.
+SG_LOCAL_WRITE_INTERVAL_MS = 500
+
 SG_MODE_OPTIONS = (
     ("Aus", 0),
     ("Klassisch: 1 Kontakt", 1),
@@ -43,6 +46,8 @@ def uses_virtual_sg_input(sg_mode: int, backend_key: str) -> bool:
 def sg_status_description(sg_mode: int, status: int) -> str:
     """Describe effective register 2133 without applying the app's contact-bit view."""
     mode = int(sg_mode)
+    if int(status) == 0:
+        return "Wärmepumpe aus oder SG Ready deaktiviert"
     if mode == 7:
         return {
             1: "Low PV – Begrenzung über SG03 (1336)",

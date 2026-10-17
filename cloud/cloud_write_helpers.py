@@ -57,17 +57,24 @@ def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
     return bool(hint.get("write_allowed"))
 
 
-def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) -> str | None:
+def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False, *, test_mode: bool = False) -> str | None:
     """Find the best mapped WarmLink cloud code for a local register."""
     try:
         target = int(reg_no)
     except Exception:
         return None
     best: tuple[int, str] | None = None
-    rank = {"confirmed": 0}
+    # Use the exact configuration codes, even when a read-only numeric alias
+    # for the same register is also present in the discovery catalog.
+    preferred = {1234: "compensate_slope", 1235: "compensate_offset",
+                 1250: "CP1-1", 1251: "CP1-2", 1252: "CP1-3",
+                 1253: "CP1-5", 1254: "CP1-6", 1255: "CP1-7",
+                 **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status"}
     definitions = _static_register_defs()
     local_code = register_code_from_definition(definitions.get(str(target), {})).upper()
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():
+        if target in preferred and code != preferred[target]:
+            continue
         # A dialog refresh needs only this register. Avoid resolving the entire
         # catalog (each resolution scans the map) on every UI update.
         hinted_code = str(hint.get("local_code") or "").strip().upper()
@@ -77,11 +84,13 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         if mapped != target:
             continue
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
-            continue
+            from cloud.warmlink_codes import CLOUD_CONFIGURATION_TEST_CODES
+            if not test_mode or code not in CLOUD_CONFIGURATION_TEST_CODES:
+                continue
         confidence = str(hint.get("confidence") or "")
         if confidence != "confirmed":
             continue
-        item = (rank.get(confidence, 5), str(code))
+        item = (0, str(code))
         if best is None or item < best:
             best = item
     return best[1] if best else None
@@ -162,3 +171,22 @@ def cloud_write_value_from_register_value(cloud_code, raw_value, register, engin
         raise ValueError("Der Cloud-Schreibwert muss eine endliche Zahl sein.")
     text = str(engineering_value)
     return cloud_write_value_from_user_input(cloud_code, text, register, lambda _text: int(raw_value))
+
+
+def cloud_readback_matches(code, requested, row):
+    """Compare fresh engineering numbers within half one register step."""
+    import math
+    from core.foxair_phnix_core import numeric_value_by_type
+    if (not row.get("supported") or row.get("value") is None
+            or any(row.get(flag) for flag in ("cached", "stale", "currentEmpty"))):
+        return False
+    try:
+        expected, actual = float(requested), float(row["value"])
+        register = resolve_cloud_register(code, cloud_hint(code), _static_register_defs())
+        definition = _static_register_defs().get(str(register), {})
+        dtype = definition.get("type", "DIGI1")
+        step = abs(numeric_value_by_type(1, dtype) - numeric_value_by_type(0, dtype)) or 1.0
+        return math.isfinite(expected) and math.isfinite(actual) and math.isclose(
+            expected, actual, rel_tol=0, abs_tol=step / 2 + 1e-9)
+    except (ValueError, TypeError, KeyError):
+        return False
