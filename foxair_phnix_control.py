@@ -79,7 +79,10 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.token_store import AsyncKeyringStore, get_password, get_token, set_token
-from core.warmlink_request_scheduler import (WarmlinkRequestScheduler, WARMLINK_READ_TIMEOUT_S, WARMLINK_READBACK_DELAY_MS)
+from core.warmlink_request_scheduler import (
+    WarmlinkRequestScheduler, ReaderSessionGuard, WARMLINK_READ_TIMEOUT_S,
+    WARMLINK_READBACK_DELAY_MS, WARMLINK_RECONNECT_DELAYS_MS,
+)
 from cloud.register_resolver import resolve_cloud_register
 from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
@@ -608,6 +611,7 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
         self.bytesize = int(bytesize)
         self.stopbits = float(stopbits)
         self.running = False
+        self._stop_requested = False
         self.client = None
         self.buf = bytearray()
         self.write_queue: queue.Queue[tuple[str, int, int, int, int, bool]] = queue.Queue()
@@ -634,6 +638,8 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
     def run(self):
         self.running = True
         try:
+            if self._stop_requested:
+                return
             if self.transport == "serial":
                 self.log.emit(f"Verbinde zu {self.serial_port} {self.baudrate},{self.bytesize}{self.parity}{self.stopbits:g} ({self.backend_label}) ...")
                 self.client = ModbusSerialClient(self.serial_port, baudrate=self.baudrate, parity=self.parity, bytesize=self.bytesize, stopbits=self.stopbits, timeout=0.5)
@@ -641,6 +647,8 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
                 self.log.emit(f"Verbinde zu {self.host}:{self.port} ({self.backend_label}) ...")
                 self.client = WarmlinkSocketClient(self.host, self.port, timeout=0.5)
             self.client.connect()
+            if self._stop_requested:
+                return
             self.connected.emit()
             self.log.emit("Verbunden. Lese Stream ...")
             if self.transport == "serial" and "Warmlink" in self.backend_label:
@@ -650,6 +658,8 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
                 self._flush_write_queue()
                 try:
                     chunk = self.client.recv(4096)
+                    if self._stop_requested:
+                        break
                     if not chunk:
                         self.log.emit("Verbindung geschlossen (EOF).")
                         break
@@ -754,6 +764,7 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
 
     @Slot()
     def stop(self):
+        self._stop_requested = True
         self.running = False
         if self.client:
             self.client.close()
@@ -1642,7 +1653,10 @@ class RegisterQuickWriteDialog(QDialog):
     def show_write_readback_timeout(self):
         text = "Schreiben bestätigt. Automatisches Nachlesen ohne Antwort."
         if self.main_window.current_backend_key() == "warmlink_raw":
-            text += " Späte Antwort abwarten oder Verbindung neu aufbauen."
+            if self.main_window._backend_settings("warmlink_raw").get("transport", "tcp") == "tcp":
+                text += " LTE/TCP wird bei dauerhaft fehlender Antwort kontrolliert neu verbunden."
+            else:
+                text += " Späte Antwort abwarten oder Verbindung neu aufbauen."
         self.status_label.setText(text)
 
 
@@ -4796,7 +4810,18 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
-        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log, self._recover_warmlink_stream)
+        self._reader_epoch = 0
+        self._reader_signal_guard = None
+        self._reader_connection_settings = None
+        self._warmlink_recovery = None
+        self._warmlink_recovery_attempts = 0
+        self._warmlink_recovery_error = ""
+        self._warmlink_closing = False
+        self._close_after_reader = False
+        self._warmlink_reconnect_timer = QTimer(self)
+        self._warmlink_reconnect_timer.setSingleShot(True)
+        self._warmlink_reconnect_timer.timeout.connect(self._attempt_warmlink_reconnect)
         self.pending_write_requests: list[dict[str, Any]] = []
         self.device_info_tracker = DeviceInfoTracker()
         self.device_info_dialog: Optional[DeviceInfoDialog] = None
@@ -6386,6 +6411,9 @@ class MainWindow(QMainWindow):
         return build_read_frame(wire_addr, quantity, slave_addr=wire_slave), wire_addr, wire_slave, note
 
     def _backend_changed(self):
+        self._warmlink_recovery_error = ""
+        if self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         # Kompatibilitätsmethode für alte Signalpfade; Werte werden jetzt über das Kommunikations-Popup gesetzt.
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
@@ -6448,7 +6476,9 @@ class MainWindow(QMainWindow):
             self.init_progress_bar.setTextVisible(True)
             self.init_progress_bar.setFormat(text)
         if hasattr(self, "status_label"):
-            self.status_label.setText(text)
+            recovery_text = ("LTE: Verbindung wird wiederhergestellt …"
+                             if getattr(self, "_warmlink_recovery", None) is not None else "")
+            self.status_label.setText(getattr(self, "_warmlink_recovery_error", "") or recovery_text or text)
 
     def _compact_init_progress_format(self, done: int | None = None, total: int | None = None, fallback: str = "") -> str:
         if done is not None and total is not None:
@@ -6601,7 +6631,7 @@ class MainWindow(QMainWindow):
             self.init_read_btn.setEnabled(True)
             self.init_read_btn.setText("Display-Parameter synchronisieren" if self.current_backend_key() == "display_modbus" else "Alle bekannten Register lesen")
 
-    def connect_to_device(self):
+    def connect_to_device(self, *, recovering=False):
         if self.thread:
             return
 
@@ -6612,7 +6642,13 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Kommunikation", "Bitte in Programm-Einstellungen ... zuerst Host/IP eintragen.")
             return
 
-        self.thread = QThread()
+        if not recovering:
+            self._cancel_warmlink_recovery()
+            self._warmlink_recovery_attempts = 0
+        self._reader_connection_settings = self._current_reader_settings()
+        self._reader_epoch += 1
+        guard = self._reader_signal_guard = ReaderSessionGuard(self, self._reader_epoch)
+        self.thread = QThread(self)
         self.worker = ReaderWorker(
             host, port, self.regmap,
             backend_label=self.current_backend_label(),
@@ -6630,24 +6666,28 @@ class MainWindow(QMainWindow):
         self.worker.moveToThread(self.thread)
 
         self.thread.started.connect(self.worker.run)
-        self.worker.connected.connect(self.on_connected)
-        self.worker.disconnected.connect(self.on_disconnected)
+        self.worker.connected.connect(guard.connected)
+        self.worker.disconnected.connect(guard.disconnected)
         self.worker.error.connect(self.on_error)
         self.worker.log.connect(self._log)
-        self.worker.frame_decoded.connect(self.on_frame_decoded)
-        self.worker.read_sent.connect(self._on_warmlink_read_sent)
-        self.worker.read_failed.connect(self._on_warmlink_read_failed)
+        self.worker.frame_decoded.connect(guard.frame)
+        self.worker.read_sent.connect(guard.sent)
+        self.worker.read_failed.connect(guard.failed)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
         self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.tx_blocked_attempt.connect(self._on_passive_tx_blocked)
         self.worker.disconnected.connect(self.thread.quit)
         self.worker.disconnected.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.finished.connect(self._clear_thread_refs)
 
         self.thread.start()
 
     def disconnect_from_device(self):
+        recovering = self._warmlink_recovery is not None
+        self._cancel_warmlink_recovery()
+        if recovering:
+            self._reader_epoch += 1
+            self.on_disconnected()
         # Wenn Display-INIT den ausgelagerten DisplayWorker benutzt, ist die
         # normale Hauptverbindung eventuell schon per EOF weg. Disconnect soll
         # dann trotzdem den noch laufenden Display-/Warmlink-Hilfsworker stoppen.
@@ -6676,8 +6716,98 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _clear_thread_refs(self):
+        thread = self.thread
+        # finished precedes thread-local cleanup. Keep both Python wrappers
+        # alive until a zero-wait probe confirms the native thread has exited.
+        # Never block the GUI or delete QThread while that cleanup still runs.
+        if thread is not None and not thread.wait(0):
+            QTimer.singleShot(10, self._clear_thread_refs)
+            return
         self.thread = None
         self.worker = None
+        if thread is not None:
+            thread.deleteLater()
+        if self._reader_signal_guard is not None:
+            self._reader_signal_guard.deleteLater()
+            self._reader_signal_guard = None
+        if self._close_after_reader:
+            QTimer.singleShot(0, self.close)
+        elif self._warmlink_recovery is not None:
+            self._schedule_warmlink_reconnect()
+
+    def _current_reader_settings(self):
+        backend = self.current_backend_key()
+        cfg = self._backend_settings(backend)
+        return (backend, self.host_edit.text().strip(), int(self.port_edit.value()),
+                str(cfg.get("transport", "tcp")), str(cfg.get("serial_port", "COM3")),
+                int(cfg.get("baudrate", 9600)), str(cfg.get("parity", "N")),
+                int(cfg.get("bytesize", 8)), float(cfg.get("stopbits", 1.0)))
+
+    def _cancel_warmlink_recovery(self):
+        recovering = self._warmlink_recovery is not None
+        self._warmlink_recovery_error = ""
+        self._warmlink_reconnect_timer.stop()
+        self._warmlink_recovery = None
+        self.warmlink_read_scheduler.cancel()
+        self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
+        if recovering and not self.connected:
+            self.status_label.setText("getrennt")
+            self.disconnect_btn.setEnabled(False)
+            self._update_connection_button_icons()
+
+    def _recover_warmlink_stream(self, request):
+        # Automatic recovery is only a TCP connection replacement. Reopening a
+        # serial port cannot establish a new remote RTU session.
+        settings = self._reader_connection_settings
+        if (self._warmlink_closing or self._warmlink_recovery is not None
+                or not self.connected or self.worker is None or self.thread is None
+                or self._is_firmware_capture_mode() or settings is None
+                or settings != self._current_reader_settings()
+                or settings[0] != "warmlink_raw" or settings[3] != "tcp"):
+            self._log("LTE-Neuverbindung nicht gestartet: Transport geändert, getrennt oder nicht als TCP-Verbindung verfügbar.")
+            return False
+        self._warmlink_recovery = {"settings": settings}
+        self._reader_epoch += 1  # Retire even already-queued old signals before closing.
+        self.worker.set_tx_blocked(True)  # Discard old queued reads AND writes.
+        self.pending_write_requests.clear()  # Never replay an unacknowledged write.
+        controller = getattr(self, "warmlink_init_controller", None)
+        if controller is not None and controller.active:
+            controller.cancel("WARMLINK-INIT wegen LTE-Neuverbindung abgebrochen.")
+        self._log(f"LTE-Neuverbindung: FC03 für Register {request['addr']} verloren; alte Verbindung wird geschlossen.")
+        self.worker.stop()
+        self.on_disconnected()
+        self.status_label.setText("LTE: Verbindung wird wiederhergestellt …")
+        # _clear_thread_refs schedules reconnection only after QThread.finished.
+        return True
+
+    def _schedule_warmlink_reconnect(self):
+        state = self._warmlink_recovery
+        if state is None:
+            return
+        if (self._warmlink_closing or state["settings"] != self._current_reader_settings()
+                or self._is_firmware_capture_mode()):
+            self._cancel_warmlink_recovery()
+            return
+        if self._warmlink_recovery_attempts >= len(WARMLINK_RECONNECT_DELAYS_MS):
+            self._cancel_warmlink_recovery()
+            self._warmlink_recovery_error = "LTE-Wiederherstellung fehlgeschlagen; bitte Verbindung prüfen und manuell verbinden."
+            self.status_label.setText(self._warmlink_recovery_error)
+            self._log("LTE-Neuverbindung: Versuchslimit erreicht; keine weiteren automatischen Verbindungsversuche.")
+            return
+        delay = WARMLINK_RECONNECT_DELAYS_MS[self._warmlink_recovery_attempts]
+        self._warmlink_reconnect_timer.start(delay)
+
+    def _attempt_warmlink_reconnect(self):
+        state = self._warmlink_recovery
+        if state is None or self.thread is not None:
+            return
+        if (self._warmlink_closing or state["settings"] != self._current_reader_settings()
+                or self._is_firmware_capture_mode()):
+            self._cancel_warmlink_recovery()
+            return
+        self._warmlink_recovery_attempts += 1
+        self._log(f"LTE-Neuverbindung: Versuch {self._warmlink_recovery_attempts}/{len(WARMLINK_RECONNECT_DELAYS_MS)}.")
+        self.connect_to_device(recovering=True)
 
     def _update_connection_button_icons(self):
         if not hasattr(self, "connect_btn") or not hasattr(self, "disconnect_btn"):
@@ -6691,6 +6821,13 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_connected(self):
+        state = self._warmlink_recovery
+        if state is not None and (self._warmlink_closing or self._is_firmware_capture_mode()
+                                  or state["settings"] != self._current_reader_settings()):
+            self.disconnect_from_device()
+            return
+        recovering = state is not None
+        self._warmlink_recovery = None
         self.connected = True
         self.status_label.setText("verbunden")
         self.connect_btn.setEnabled(False)
@@ -6709,12 +6846,16 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        if recovering:
+            self.warmlink_read_scheduler.transport_reconnected()
+            self._log("LTE-Neuverbindung erfolgreich: Scheduler zurückgesetzt; wartende Reads werden auf der neuen Verbindung fortgesetzt.")
 
     @Slot()
     def on_disconnected(self):
         scheduler = getattr(self, "warmlink_read_scheduler", None)
         if scheduler:
-            scheduler.cancel()
+            if self._warmlink_recovery is None:
+                scheduler.cancel()
             self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
         # Beim Backend "Modbus Display" wird fuer "Alle bekannten Register lesen"
         # absichtlich der robuste DisplayWorker-Pfad benutzt. Dadurch trennt die
@@ -6750,6 +6891,10 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        if self._warmlink_recovery is not None:
+            self.status_label.setText("LTE: Verbindung wird wiederhergestellt …")
+            self.disconnect_btn.setEnabled(True)
+            self.disconnect_btn.setToolTip("Automatische LTE-Wiederherstellung abbrechen")
 
     @Slot(str)
     def on_error(self, text: str):
@@ -6813,6 +6958,8 @@ class MainWindow(QMainWindow):
 
     def _set_firmware_capture_guard(self, active: bool) -> None:
         active = bool(active and self._is_warmlink_backend_key(self.current_backend_key()))
+        if active and self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         worker = getattr(self, "worker", None)
         # FIRST: close the final TX gate on every Warmlink ReaderWorker. Only
         # after that may timers/controllers/queues be touched.
@@ -9030,6 +9177,7 @@ class MainWindow(QMainWindow):
             self.pending_read_requests.remove(req)
             if req.get("scheduler"):
                 self.warmlink_read_scheduler.complete(req)
+                self._warmlink_recovery_attempts = 0
             label = f" ({req.get('label')})" if req.get("label") else ""
             logger_level = 7 if req_label.startswith("CSV Logger ") else None
             self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register", level=logger_level)
@@ -9169,7 +9317,9 @@ class MainWindow(QMainWindow):
         scheduler = getattr(self, "warmlink_read_scheduler", None)
         if scheduler and scheduler.active and scheduler.key(scheduler.active) == (slave, addr, quantity):
             self._warmlink_queue_log("WARMLINK READ send failed: " + error)
-            self._warmlink_read_timeout(scheduler.active)
+            request = scheduler.active
+            self._warmlink_read_timeout(request)
+            scheduler.complete(request, timeout=True)
 
     def _warmlink_read_timeout(self, request):
         request["timeout_reported"] = True
@@ -9217,7 +9367,7 @@ class MainWindow(QMainWindow):
             scheduler = getattr(self, "warmlink_read_scheduler", None)
             if scheduler is None:
                 scheduler = self.warmlink_read_scheduler = WarmlinkRequestScheduler(self,
-                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log, self._recover_warmlink_stream)
             return scheduler.submit({"slave_addr": wire_slave, "addr": addr, "wire_addr": wire_addr,
                 "quantity": quantity, "label": label, "delay_ms": delay_ms, "expect_response": expect_response}, priority, start_delay_ms)
 
@@ -11797,6 +11947,9 @@ class MainWindow(QMainWindow):
                 dialog._can_close()
                 event.ignore()
                 return
+        self._warmlink_closing = True
+        if self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         self.csv_logger_controller.stop()
         if self.cloud_write_thread is not None:
             self._close_after_cloud_write = True
@@ -11831,6 +11984,10 @@ class MainWindow(QMainWindow):
             self.live_poll_timer.stop()
         self.disconnect_from_device()
         self._stop_warmlink_capture("App wird beendet")
+        if self.thread is not None:
+            self._close_after_reader = True
+            event.ignore()
+            return
         event.accept()
 
 

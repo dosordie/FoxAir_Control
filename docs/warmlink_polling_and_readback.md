@@ -347,13 +347,16 @@ Lesen/Schreiben, Dialoge, Hintergrundpoll und Init nun den zentralen
 4. Antwort oder Timeout beendet den Request. Der nächste Dispatch erfolgt
    über einen Qt-Timer, nach Abschluss der aktuellen Frame-Verarbeitung.
 5. Nach einem Timeout bleibt die gesendete FC03-Anforderung **ungeklärt**.
-   Weitere FC03-Reads werden zurückgehalten, bis ihre späte Antwort verworfen
-   wurde oder die Verbindung neu aufgebaut wurde. Auch nach längerer Ruhe wird
-   kein neuer Read blind für diese Antwort zuständig. Nach dem Verwerfen gilt
-   weiterhin eine **500-ms-Ruhephase**. Bei vollständig verlorener Antwort muss
-   der Nutzer neu verbinden; die Oberfläche und Schreibbestätigung bleiben
-   bedienbar. Ohne Transaktions-ID lässt sich das nicht durch einen Zeitabstand
-   allein sicher auflösen.
+   Trifft ihre späte Antwort innerhalb von **2 s** ein, wird sie verworfen;
+   danach gilt eine **500-ms-Ruhephase** vor dem nächsten Read.
+   Bleibt die Antwort aus, startet für **Warmlink RAW über TCP** eine kontrollierte
+   Neuverbindung. Bis dahin bleibt jede weitere FC03-Anforderung gesperrt.
+   Die alte TX-Queue wird gesperrt und verworfen, der alte Socket geschlossen.
+   Erst nach `QThread.finished` wird ein neuer Worker mit leerem Parser und neuer
+   Verbindungsgeneration gestartet. Alte Frames, TX-/Fehlersignale und
+   Verbindungsstatusmeldungen können die neue Sitzung nicht mehr beeinflussen.
+   Nach erfolgreichem Verbindungsaufbau wird der Scheduler zurückgesetzt;
+   wartende Reads behalten ihre Prioritäten und laufen nach 500 ms Ruhe weiter.
 6. Disconnect/Firmware-Capture cancelt den Scheduler; Sendefehler lassen
    keinen Request ohne Deadline dauerhaft aktiv.
 
@@ -600,8 +603,48 @@ Request nicht vorzeitig beenden. Logs enthalten ACK, Queue, tatsächliches TX,
 RX bzw. Timeout mit Laufzeit sowie das Verwerfen einer späten Antwort.
 Sendefehler vor TX hinterlassen keinen blockierten, unbeantworteten Request.
 Nach einem tatsächlichen Timeout schützt die oben beschriebene Sperre vor einer
-falschen Zuordnung. Es gibt keinen automatischen Read-Retry auf ungeklärtem RTU-Stream.
+falschen Zuordnung. Bei vollständig verlorener Antwort ersetzt die automatische
+TCP-Neuverbindung den ungeklärten Stream. Es gibt keinen automatischen Read-Retry
+auf einem ungeklärten RTU-Stream und keine Wiederholung alter Writes.
 Standard-/Display-Modbus verwenden weiterhin ihre bisherigen Lesewege.
 
 Noch erforderlich: echte LTE-Messung von ACK→TX→RX, alle weiteren AT-Schreibtests,
 SG-Code-/SG01-Modus-Schreibtests sowie zusätzlicher Mainboard-Abgleich.
+
+
+### Begrenzte automatische Wiederherstellung bei verlorener FC03-Antwort
+
+Die Neuverbindung verwendet dieselben Verbindungseinstellungen und denselben
+`ReaderWorker`-Lebenszyklus wie eine normale lokale Verbindung. Die Oberfläche
+blockiert weder für Socket-I/O noch für das Thread-Ende. Ein `wait(0)`-Probeaufruf
+prüft den nativen Thread-Abschluss ohne Wartezeit; bei noch laufendem Cleanup
+folgt ein neuer Qt-Timer-Tick. Der alte Worker muss
+vollständig beendet sein, bevor ein neuer verbindet. Das normale konfigurierte
+Hintergrund-Polling startet nach erfolgreicher Verbindung wieder; bereits im
+Scheduler wartende Reads bleiben erhalten. Der ursprünglich abgelaufene Read
+wird nicht nachträglich als erfolgreich gemeldet und nicht blind erneut gesendet.
+Ausstehende Write-ACKs und alte Worker-Queues werden verworfen; Writes werden
+niemals automatisch wiederholt.
+
+Pro Folge fehlgeschlagener Reads gibt es höchstens **drei automatische
+Verbindungsversuche** mit **1 / 2 / 4 s** Abstand. Erst eine gültig zugeordnete
+FC03-Antwort oder ein expliziter manueller Verbindungsaufbau setzt das Budget
+zurück. Ein TCP-Connect allein genügt dafür nicht. Bei ausgeschöpftem Budget
+wird sauber getrennt und eine sichtbare Fehlermeldung ausgegeben, statt weiterhin
+Reads in einer gesperrten Sitzung zu sammeln.
+
+Manuelles Trennen, Backend-/Verbindungseinstellungswechsel, Firmware-Capture und
+Schließen der Anwendung verhindern weitere automatische Versuche. Einstellungen
+werden auch nach dem TCP-Verbindungsaufbau nochmals geprüft. Beim Schließen
+wartet die Anwendung über das Finished-Signal auf das Thread-Ende, ohne die GUI
+zu blockieren. Standard-/Display-Modbus erhalten keine neue Reconnect-Logik.
+Serielle Warmlink-Verbindungen werden ebenfalls nicht automatisch neu geöffnet,
+da ein lokales COM-Reopen keine neue entfernte RTU-Sitzung nachweist.
+
+`tests/test_warmlink_recovery.py` prüft mit echten Qt-Threads und simulierten
+TCP-Streams: vollständig verlorene Hintergrund-/Readback-Antworten, Wiederanlauf
+wartender Reads und des Hintergrund-Pollings, alte Antworten während und nach
+Socket-Schließung, kaputte/fremde Frames, Thread-Ende vor Neuverbindung,
+Verbindungsfehler und Versuchslimit, Schutz vor Write-Replay sowie manuelles
+Trennen, Einstellungswechsel, Capture und App-Ende. Diese Simulationen ersetzen
+keinen realen LTE-Latenz- oder Gateway-Test.

@@ -11,8 +11,10 @@
   nur geänderte Parameter und keine manuelle Schreibpause. Display-Paketsync bleibt erhalten;
   8801 bleibt auf direkten Mainboard-Modbus beschränkt. SG Status=0 wird in allen Modi korrekt angezeigt.
 - LTE: automatische Readbacks mit 800 ms Settle und 12 s Timeout ab tatsächlichem TX;
-  ein Deadlinebesitzer. Ungeklärte FC03-Timeouts blockieren weitere Reads bis zur verworfenen
-  späten Antwort oder Neuverbindung, damit keine falsche Antwortzuordnung entsteht.
+  ein Deadlinebesitzer. Nach verlorenen FC03-Antworten kontrollierte TCP-Neuverbindung
+  nach 2 s Wartephase, maximal drei Versuche (1/2/4 s). Alte Verbindungsgenerationen
+  werden verworfen; Scheduler und Hintergrund-Polling laufen auf dem frischen Stream
+  weiter. Kein Write-Replay; manueller Abbruch, Capture und App-Ende stoppen die Wiederherstellung.
 
 - Display-Modbus: DWIN-Version/RTC, Anzeigeobjekte und Sichtbarkeitsflags anhand V1.7 präzisiert;
   Unit-1-Telemetrie mit korrekten Skalierungen und eigener virtueller Browsergruppe.
