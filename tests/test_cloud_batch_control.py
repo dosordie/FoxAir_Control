@@ -486,3 +486,28 @@ def test_only_sg01_changed_uses_single_member_batch(command_api):
     assert not errors and results[0]["sequence_complete"]
     assert CommandApi.created[0].calls == [("write", "device", (("SG01", "7"),)),
                                           ("readback", "device", ["SG01"])]
+
+
+@pytest.mark.parametrize("job_name", ["debug_thread", "sim_thread"])
+def test_main_close_waits_for_cloud_auxiliary_thread_even_after_dialog_closed(window, job_name):
+    import threading
+    from PySide6.QtCore import QThread
+    gate = threading.Event()
+    class WaitingThread(QThread):
+        def run(self):
+            gate.wait(3)
+    dialog = WarmLinkCloudDialog(window)
+    job = WaitingThread(dialog)
+    setattr(dialog, job_name, job)
+    job.finished.connect(lambda: setattr(dialog, job_name, None))
+    job.start()
+    window.show()
+    dialog.close()  # The active dialog slot is deliberately empty.
+    try:
+        window.close()
+        assert window.isVisible() and job.isRunning()
+    finally:
+        gate.set()
+        wait_for(lambda: not job.isRunning())
+    wait_for(lambda: not window.isVisible())
+    assert getattr(dialog, job_name) is None

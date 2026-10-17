@@ -12022,6 +12022,17 @@ class MainWindow(QMainWindow):
                 cancelled.set()
             event.ignore()
             return
+        # Closed Cloud dialogs remain QObject children until their workers finish.
+        # Wait for debug/SIM jobs too, including dialogs no longer in the active slot.
+        for dialog in self.findChildren(QDialog):
+            for name in ("debug_thread", "sim_thread"):
+                job = getattr(dialog, name, None)
+                if job is not None and job.isRunning():
+                    if not job.property("_close_main_when_finished"):
+                        job.setProperty("_close_main_when_finished", True)
+                        job.finished.connect(self.close)
+                    event.ignore()
+                    return
         cloud_dialog = self.warmlink_cloud_dialog
         if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
             if not getattr(self, "_close_after_cloud_poll", False):
