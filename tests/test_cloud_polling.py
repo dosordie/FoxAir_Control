@@ -298,28 +298,68 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
 
 
 def test_cloud_start_has_heartbeat_and_stop_during_slow_keyring(application, monkeypatch, fake_api):
-    gate = threading.Event()
+    entered, release = threading.Event(), threading.Event()
+
     def load(*args, **kwargs):
-        gate.wait(1)
+        entered.set()
+        # Stay inside the slow keyring call until the GUI has proved responsive.
+        # A bounded wait also lets this test fail safely if the GUI is blocked.
+        release.wait(3)
         return "password", "token"
+
     monkeypatch.setattr(workers, "load_cloud_credentials", load)
     window = DialogWindow()
     dialog = WarmLinkCloudDialog(window)
     dialog.password_edit.clear()
+
     loop, beats = QEventLoop(), []
+    stop_requested = False
     timer = QTimer()
-    timer.setInterval(5)
-    timer.timeout.connect(lambda: beats.append(1))
+    timer.setInterval(10)
+
+    def on_heartbeat():
+        nonlocal stop_requested
+        # Do not measure timer ticks before the worker actually enters keyring.
+        if not entered.is_set() or stop_requested:
+            return
+        beats.append(1)
+        if len(beats) >= 3:
+            stop_requested = True
+            dialog.stop_worker()
+            release.set()
+
+    timer.timeout.connect(on_heartbeat)
+    deadline = QTimer()
+    deadline.setSingleShot(True)
+    deadline.timeout.connect(loop.quit)
+
     dialog._start_worker(False)
     assert dialog.cloud_thread is not None and dialog.stop_poll_btn.isEnabled()
     dialog.cloud_thread.finished.connect(loop.quit)
     timer.start()
-    QTimer.singleShot(30, dialog.stop_worker)
-    QTimer.singleShot(80, gate.set)
-    QTimer.singleShot(2000, loop.quit)
-    loop.exec()
-    timer.stop()
-    assert len(beats) >= 3 and fake_api.created == []
+    deadline.start(5000)
+    try:
+        loop.exec()
+    finally:
+        timer.stop()
+        deadline.stop()
+        release.set()
+        # Ensure a failing assertion cannot leave a QThread running at teardown.
+        if dialog.cloud_worker is not None:
+            dialog.stop_worker()
+        if dialog.cloud_thread is not None:
+            cleanup = QEventLoop()
+            cleanup_timeout = QTimer()
+            cleanup_timeout.setSingleShot(True)
+            cleanup_timeout.timeout.connect(cleanup.quit)
+            dialog.cloud_thread.finished.connect(cleanup.quit)
+            cleanup_timeout.start(3000)
+            cleanup.exec()
+            cleanup_timeout.stop()
+
+    assert entered.is_set(), "Keyring-Arbeit wurde nicht gestartet."
+    assert stop_requested and len(beats) >= 3, "Qt-GUI reagierte nicht während des Keyring-Zugriffs."
+    assert fake_api.created == [], "Cloud-API wurde trotz Stop während Keyring gestartet."
     assert dialog.cloud_thread is None
     assert dialog.start_poll_btn.isEnabled()
     dialog.close()
