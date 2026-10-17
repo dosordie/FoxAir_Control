@@ -4929,6 +4929,9 @@ class MainWindow(QMainWindow):
         self.cloud_write_code: str = ""
         self.cloud_read_thread: Optional[QThread] = None
         self.cloud_read_worker: Optional[WarmLinkCloudReadWorker] = None
+        self._close_after_cloud_read = False
+        self._close_after_cloud_write = False
+        self._close_after_cloud_poll = False
         self.cloud_read_reg_no: int | None = None
         self.cloud_read_code = ""
         self._cloud_read_token = None
@@ -9786,6 +9789,7 @@ class MainWindow(QMainWindow):
             if getattr(dialog, "_cloud_read_pending", False):
                 dialog.cloud_read_completed(error="Cloud-Abfrage ohne Ergebnis beendet.")
         if getattr(self, "_close_after_cloud_read", False):
+            self._close_after_cloud_read = False
             self.close()
 
     @Slot(str)
@@ -10065,6 +10069,7 @@ class MainWindow(QMainWindow):
         self._control_cloud_write_dialog = None
         self._notify_control_connection_changed()
         if getattr(self, "_close_after_cloud_write", False):
+            self._close_after_cloud_write = False
             self.close()
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
@@ -12022,6 +12027,12 @@ class MainWindow(QMainWindow):
                 cancelled.set()
             event.ignore()
             return
+        # SIM jobs share the single-read slot and its cleanup callback. Let
+        # that owner resume closing, rather than connecting the same job twice.
+        if self.cloud_read_thread is not None:
+            self._close_after_cloud_read = True
+            event.ignore()
+            return
         # Closed Cloud dialogs remain QObject children until their workers finish.
         # Wait for debug/SIM jobs too, including dialogs no longer in the active slot.
         for dialog in self.findChildren(QDialog):
@@ -12035,14 +12046,8 @@ class MainWindow(QMainWindow):
                     return
         cloud_dialog = self.warmlink_cloud_dialog
         if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
-            if not getattr(self, "_close_after_cloud_poll", False):
-                self._close_after_cloud_poll = True
-                cloud_dialog.cloud_thread.finished.connect(self.close)
+            self._close_after_cloud_poll = True
             cloud_dialog.stop_worker()
-            event.ignore()
-            return
-        if self.cloud_read_thread is not None:
-            self._close_after_cloud_read = True
             event.ignore()
             return
         self._update_main_window_settings()

@@ -718,6 +718,11 @@ class WarmLinkCloudDialog(QDialog):
             self.progress_bar.setFormat("Polling gestoppt")
         elif getattr(self.main_window, "cloud_ui_state", "") == "CONNECTED":
             self.progress_bar.setFormat("Cloud verbunden")
+        # Resume only after all poll-worker references/UI state are cleaned up.
+        # This also covers a finished signal queued before closeEvent ran.
+        if getattr(self.main_window, "_close_after_cloud_poll", False):
+            self.main_window._close_after_cloud_poll = False
+            self.main_window.close()
 
     @Slot(str)
     def _on_worker_log(self, text: str):

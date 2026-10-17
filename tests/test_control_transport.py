@@ -405,3 +405,4 @@ def test_main_close_waits_for_cloud_command_thread_without_blocking_gui(window, 
     window._cloud_write_finished()
     assert calls == ["thread-deleted", "close"]
     assert window.cloud_write_thread is None
+    assert window._close_after_cloud_write is False
