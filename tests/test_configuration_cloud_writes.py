@@ -27,15 +27,15 @@ CURVE_CODES = ("CP1-1", "CP1-2", "CP1-3", "compensate_offset", "CP1-5", "CP1-6",
 
 def open_sg(window):
     window.open_sg_editor()
+    window.sg_dialog.initial_read_timer.stop()
     return window.sg_dialog
 
 
 @pytest.mark.parametrize("pair,code", list(zip(AT_SEVEN_POINT_REGISTERS, CURVE_CODES)))
-def test_curve_grants_are_per_code_and_experimental_mapping_is_exact(pair, code):
+def test_curve_grants_are_per_code_and_mapping_is_exact(pair, code):
     _, reg = pair
     assert cloud_code_for_register(reg) == code
-    assert cloud_code_for_register(reg, True, test_mode=True) == code
-    assert cloud_code_for_register(reg, True) == (code if code == "CP1-1" else None)
+    assert cloud_code_for_register(reg, True) == code
     assert code != "CP1-4"
 
 
@@ -64,14 +64,14 @@ def run_commands(commands, guard=None):
     return results, errors
 
 
-def test_complete_curve_is_serial_and_every_value_verified(command_api):
+def test_complete_curve_is_one_batch_and_every_value_verified(command_api):
     commands = tuple((code, str(45.5 - i)) for i, code in enumerate(CURVE_CODES))
     results, errors = run_commands(commands)
     assert not errors and results[-1]["sequence_complete"]
     assert results[-1]["confirmed_codes"] == list(CURVE_CODES)
-    assert [c[0] for c in CommandApi.created[0].calls] == ["write", "readback"] * 7
+    assert [c[0] for c in CommandApi.created[0].calls] == ["write", "readback"]
     assert all(r["readback_verified"] for r in results)
-    assert not any(r["sequence_complete"] for r in results[:-1])
+    assert all(r["sequence_complete"] for r in results)
 
 
 @pytest.mark.parametrize("failure", ["missing", "mismatch", "exception", "api"])
@@ -84,10 +84,10 @@ def test_readback_failure_stops_before_following_parameter(command_api, monkeypa
                 else [{"code": codes[0], "value": 12}]}
     monkeypatch.setattr(CommandApi, "get_data_by_code", read)
     results, errors = run_commands((("CP1-1", "45.5"), ("CP1-2", "44.5")))
-    assert not errors and len(results) == 1
+    assert not errors and len(results) == 2
     assert results[0]["api_success"] and not results[0]["readback_verified"]
     assert not results[0]["sequence_complete"] and results[0]["confirmed_codes"] == []
-    assert "CP1-1" in results[0]["validation_error"]
+    assert "Readback bestätigt" in results[0]["validation_error"]
     assert len([c for c in CommandApi.created[0].calls if c[0] == "write"]) == 1
     assert len(CommandApi.created[0].calls) == 4  # one write, three bounded reads
 
@@ -110,41 +110,42 @@ def test_eventually_fresh_readback_retries_only_reads(command_api, monkeypatch):
 def test_partial_success_reports_confirmed_subset(command_api, monkeypatch):
     original = CommandApi.get_data_by_code
     def read(self, device, codes):
-        return original(self, device, codes) if codes == ["CP1-1"] else {"isReusltSuc": True, "objectResult": []}
+        response = original(self, device, codes)
+        response["objectResult"] = response["objectResult"][:1]
+        return response
     monkeypatch.setattr(CommandApi, "get_data_by_code", read)
     results, _ = run_commands(tuple((c, "45.5") for c in CURVE_CODES[:3]))
-    assert len(results) == 2 and results[-1]["confirmed_codes"] == ["CP1-1"]
+    assert len(results) == 3 and results[-1]["confirmed_codes"] == ["CP1-1"]
     assert not results[-1]["sequence_complete"]
-    assert [c[2] for c in CommandApi.created[0].calls if c[0] == "write"] == ["CP1-1", "CP1-2"]
+    assert len([c for c in CommandApi.created[0].calls if c[0] == "write"]) == 1
 
 
 @pytest.mark.parametrize("stage", ["write", "readback"])
 def test_account_or_device_change_aborts_sequence_after_network_call(command_api, monkeypatch, stage):
     allowed = [True]
-    original = CommandApi.write_test_code if stage == "write" else CommandApi.get_data_by_code
+    original = CommandApi.write_control_batch if stage == "write" else CommandApi.get_data_by_code
     def changed(self, *args, **kw):
         result = original(self, *args, **kw)
         allowed[0] = False
         return result
-    monkeypatch.setattr(CommandApi, "write_test_code" if stage == "write" else "get_data_by_code", changed)
+    monkeypatch.setattr(CommandApi, "write_control_batch" if stage == "write" else "get_data_by_code", changed)
     results, errors = run_commands((("CP1-1", "45.5"), ("CP1-2", "44.5")), guard=lambda: allowed[0])
     assert errors and not results
     assert len([c for c in CommandApi.created[0].calls if c[0] == "write"]) == 1
 
 
-def test_at_experimental_curve_uses_existing_worker_and_engineering_values(window, monkeypatch, command_api):
+def test_at_curve_uses_existing_worker_batch_and_engineering_values(window, monkeypatch, command_api):
     cloud_only(window)
     monkeypatch.setattr(gui, "ask_yes_no", lambda *a, **kw: True)
     at = open_at(window)
     at.mode_combo.setCurrentIndex(at.mode_combo.findData(2))
-    at.cloud_test_cb.setChecked(True)
     assert at.write_curve_btn.isEnabled()
     for i, spin in enumerate(at._seven_spins()):
         spin.setValue(45.5 - i)
     at.write_seven_points()
     wait_for(lambda: window.cloud_write_thread is None)
     calls = CommandApi.created[0].calls
-    assert [(c[2], c[3]) for c in calls if c[0] == "write"] == [(c, str(45.5 - i)) for i, c in enumerate(CURVE_CODES)]
+    assert [c[2] for c in calls if c[0] == "write"] == [tuple((c, str(45.5 - i)) for i, c in enumerate(CURVE_CODES))]
     assert "abgeschlossen" in at.status_label.text()
     assert not at.findChildren(QTableWidget)
     window.apply_cloud_rows_to_main([cloud_row(49, "CP1-1")])
@@ -209,8 +210,8 @@ def test_sg_cloud_only_snapshot_and_live_values_never_send_local(window, monkeyp
     assert "High PV" in sg.sg_status_label.text()
     window.apply_cloud_rows_to_main([cloud_row(0, "SG Status")])
     assert "deaktiviert" in sg.sg_status_label.text()
-    assert not window.control_can_write(2133, test_mode=True)
-    assert not window.control_can_write(8801, test_mode=True)
+    assert not window.control_can_write(2133)
+    assert not window.control_can_write(8801)
     sg.close()
 
 
@@ -222,12 +223,9 @@ def test_sg_writes_only_changed_values_with_correct_scaling_and_mode_last(window
     sg.sg_mode_combo.setCurrentIndex(sg.sg_mode_combo.findData(7))
     sg.power_spins[1336].setValue(4.5); sg.temp_spins[1338].setValue(2.5)
     sg.send_values()
-    assert not CommandApi.created  # no experimental grant yet
-    sg.cloud_test_cb.setChecked(True)
-    sg.send_values()
     wait_for(lambda: window.cloud_write_thread is None)
-    assert [(c[2], c[3]) for c in CommandApi.created[0].calls if c[0] == "write"] == [
-        ("SG03", "4.5"), ("SG05", "2.5"), ("SG01", "7")]
+    assert [c[2] for c in CommandApi.created[0].calls if c[0] == "write"] == [
+        (("SG03", "4.5"), ("SG05", "2.5")), (("SG01", "7"),)]
     assert "abgeschlossen" in sg.status_label.text()
     sg.send_values()
     assert len(CommandApi.created) == 1
@@ -264,7 +262,7 @@ def test_sg_local_queue_retains_transport_spacing_and_skips_unchanged(window, mo
     sg.send_values()
     assert [a[:2] for a, kw in writes] == [(1335, 5), (1336, 45)]
     assert [kw["delay_ms"] for _, kw in writes] == [500, 500]
-    assert not sg.cloud_test_cb.isVisible()
+    assert not hasattr(sg, "cloud_test_cb")
     sg.close()
 
 
@@ -371,9 +369,9 @@ def test_sg_disable_is_written_before_dependent_configuration(window, monkeypatc
     window.apply_cloud_rows_to_main([cloud_row(7, "SG01"), cloud_row(5, "SG02")])
     sg = open_sg(window)
     sg.sg_mode_combo.setCurrentIndex(sg.sg_mode_combo.findData(0))
-    sg.raw_spins[1335].setValue(6); sg.cloud_test_cb.setChecked(True)
+    sg.raw_spins[1335].setValue(6)
     sg.send_values(); wait_for(lambda: window.cloud_write_thread is None)
-    assert [(c[2], c[3]) for c in CommandApi.created[0].calls if c[0] == "write"] == [("SG01", "0"), ("SG02", "6")]
+    assert [c[2] for c in CommandApi.created[0].calls if c[0] == "write"] == [(("SG01", "0"),), (("SG02", "6"),)]
     sg.close()
 
 
@@ -395,7 +393,7 @@ def test_cp1_1_regular_control_needs_no_experimental_grant(window, monkeypatch):
     monkeypatch.setattr(window, "send_cloud_write", lambda c, v, **kw: writes.append((c, v)))
     assert window.control_write_register(1250, 455, 45.5) is None
     assert writes == [("CP1-1", "45.5")]
-    assert not window.control_can_write(1251)
+    assert window.control_can_write(1251)
 
 
 def test_sg_snapshot_runs_through_existing_cloud_worker_and_routes_to_dialog(window, fake_api, monkeypatch):

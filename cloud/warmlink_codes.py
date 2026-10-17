@@ -3348,21 +3348,27 @@ def code_confidence(code: str) -> str:
 
 cloud_modbus_register = code_modbus_register
 
-# CP1-1: real GL9 Cloud write + getDataByCode readback, 2026-10-17.
-# No additional Mainboard verification was documented for that write test.
-WARMLINK_CLOUD_CODE_HINTS["CP1-1"].update(
-    write_allowed=True,
-    note="GL9 2026-10-17: Cloud write 45.0 → 45.5 and Cloud readback confirmed; no Mainboard write verification documented.",
-)
-# Mapping/readability is independent of a write grant. These codes require an
-# explicit, per-action experimental confirmation in the AT/SG configuration UI.
-CLOUD_CONFIGURATION_TEST_CODES = frozenset({
-    "CP1-2", "CP1-3", "CP1-5", "CP1-6", "CP1-7",
-    "compensate_slope", "compensate_offset", *(f"SG{i:02}" for i in range(1, 9)),
+# GL9 operator tests, 2026-10-17: all seven AT points, a shared seven-value
+# write/readback, linear compensation, H36 and SG01–SG08 are confirmed.
+# This grant deliberately excludes CP1-4, Zone 2, SG Status and register 8801.
+CONFIRMED_CONFIGURATION_WRITE_CODES = frozenset({
+    "CP1-1", "CP1-2", "CP1-3", "CP1-5", "CP1-6", "CP1-7",
+    "compensate_slope", "compensate_offset", "H36",
+    *(f"SG{i:02}" for i in range(1, 9)),
 })
-
-for _sg_code in ("SG03", "SG04"):
-    WARMLINK_CLOUD_CODE_HINTS[_sg_code].update(
-        write_allowed=False,
-        note="Cloud mapping/read access confirmed; former static value equality is not a device write test. Explicit test mode required.",
+for _code in CONFIRMED_CONFIGURATION_WRITE_CODES:
+    WARMLINK_CLOUD_CODE_HINTS[_code].update(
+        write_allowed=True,
+        note="GL9 2026-10-17: Cloud write and fresh Cloud readback confirmed by operator. "
+             "Seven AT points also confirmed in one batch; no server atomicity guarantee.",
     )
+
+# Production enum metadata is shared by quick writes and configuration dialogs.
+WARMLINK_CLOUD_CODE_HINTS["Mode"]["write_values"] = {
+    "0": "Warmwasser", "1": "Heizen", "2": "Kühlen", "3": "WW+Heizen", "4": "WW+Kühlen",
+}
+WARMLINK_CLOUD_CODE_HINTS["Power"]["write_values"] = {"0": "Aus", "1": "Ein"}
+WARMLINK_CLOUD_CODE_HINTS["H36"]["write_values"] = {"0": "Aus", "1": "Linear", "2": "7-Punkt"}
+WARMLINK_CLOUD_CODE_HINTS["SG01"]["write_values"] = {str(i): str(i) for i in range(8)}
+WARMLINK_CLOUD_CODE_HINTS["SG01"]["rangeEnd"] = "7"
+WARMLINK_CLOUD_CODE_HINTS["SG08"]["write_values"] = {"0": "Aus", "1": "Ein"}

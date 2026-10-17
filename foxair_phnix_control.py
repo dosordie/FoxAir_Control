@@ -1572,7 +1572,7 @@ class RegisterQuickWriteDialog(QDialog):
                 return
             self.current_raw_label.setStyleSheet("")
             self.current_decoded_label.setStyleSheet("")
-        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, self, clear_flash)
 
     def refresh_from_live(self):
         self.update_cloud_actions()
@@ -3779,6 +3779,7 @@ class WPControlDialog(QDialog):
         self.setMinimumWidth(760)
         self.setWindowIcon(main_window.windowIcon())
         self.cloud_request = None
+        self.finished.connect(lambda *_args: self._cancel_cloud_read())
         self.cloud_read_timer = QTimer(self)
         self.cloud_read_timer.setSingleShot(True)
         self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
@@ -4053,7 +4054,7 @@ class WPControlDialog(QDialog):
         self.refresh_from_live()
 
     def _confirm_write(self, title, text):
-        return ask_yes_no(self, title, text, default_yes=False)
+        return not self.main_window.control_requires_write_confirmation() or ask_yes_no(self, title, text, default_yes=False)
 
     def _write(self, register, raw, value, label, title, text):
         owner = self.main_window
@@ -4097,6 +4098,8 @@ class WPControlDialog(QDialog):
                     f"Silent wirklich {'ein' if bit else 'aus'}schalten?")
 
     def read_from_wp(self):
+        if not self.isVisible():
+            return
         owner = self.main_window
         context = owner.control_context()
         capability = owner.control_can_read(*self.CLOUD_READ_REGISTERS)
@@ -4134,6 +4137,9 @@ class WPControlDialog(QDialog):
     def cloud_read_finished(self, cycle_id, rows, error):
         request = self.cloud_request
         if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible():
+            self._cancel_cloud_read()
             return
         if not self._cloud_identity_matches():
             self.connection_changed()
@@ -4330,6 +4336,7 @@ class ATCompensationDialog(QDialog):
         self.setMinimumWidth(680)
         self.setWindowIcon(main_window.windowIcon())
         self.cloud_request = None
+        self.finished.connect(lambda *_args: self._cancel_cloud_read())
         self.cloud_read_timer = QTimer(self)
         self.cloud_read_timer.setSingleShot(True)
         self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
@@ -4339,8 +4346,16 @@ class ATCompensationDialog(QDialog):
         self.refresh_from_live()
         self.initial_read_timer = QTimer(self)
         self.initial_read_timer.setSingleShot(True)
-        self.initial_read_timer.timeout.connect(self.read_from_wp)
+        self.initial_read_timer.timeout.connect(self._initial_read)
         self.initial_read_timer.start(250)
+
+    def _initial_read(self):
+        if not self.isVisible():
+            return
+        if self.main_window.control_transport() == "cloud" and self.main_window._control_cloud_busy():
+            self.initial_read_timer.start(250)
+            return
+        self.read_from_wp()
 
     def _value(self, reg_no: int, dtype: str):
         sources = self.main_window.register_value_sources(reg_no)
@@ -4408,7 +4423,7 @@ class ATCompensationDialog(QDialog):
             spin.setRange(*FALLBACK_TARGET_LIMITS)
             spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
             spin.setToolTip(f"MAIN {register}")
-            spin.valueChanged.connect(lambda _value, r=register: self._mark_dirty(r))
+            spin.valueChanged.connect(lambda value, r=register: self._mark_dirty(r, value))
             self.seven_spins.append(spin)
             field.addWidget(spin)
             seven_layout.addLayout(field, row, col)
@@ -4431,10 +4446,6 @@ class ATCompensationDialog(QDialog):
             field.addWidget(value)
             preview.addLayout(field, 0, index)
         layout.addLayout(preview)
-        self.cloud_test_cb = QCheckBox("Experimentelle Cloud-Schreibcodes freigeben")
-        self.cloud_test_cb.setToolTip("Nur CP1-1 ist mit Cloud-Schreiben und Readback bestätigt. Weitere Kurvenparameter benötigen einzelne Gerätetests.")
-        self.cloud_test_cb.toggled.connect(lambda _: self._update_write_actions())
-        layout.addWidget(self.cloud_test_cb)
         buttons = QHBoxLayout()
         self.read_btn = QPushButton("Werte lesen")
         self.apply_live_btn = QPushButton("Live-Werte übernehmen")
@@ -4453,7 +4464,7 @@ class ATCompensationDialog(QDialog):
 
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
         self.slope_spin.valueChanged.connect(lambda _: self._mark_dirty(1234))
-        self.offset_spin.valueChanged.connect(lambda _: self._mark_dirty(1235))
+        self.offset_spin.valueChanged.connect(lambda value: self._mark_dirty(1235, value))
         self.read_btn.clicked.connect(self.read_from_wp)
         self.apply_live_btn.clicked.connect(lambda: self.refresh_from_live(force=True))
         self.write_mode_btn.clicked.connect(self.write_mode)
@@ -4483,8 +4494,15 @@ class ATCompensationDialog(QDialog):
             low, high = (min(minimum, value), max(maximum, value)) if register in self._dirty_registers else (minimum, maximum)
             spin.setRange(low, high)
 
-    def _mark_dirty(self, register):
+    def _mark_dirty(self, register, value=None):
         if not self._programmatic:
+            if register == 1235 and value is not None:
+                # Linear offset and the 0 °C point are the same parameter.
+                for spin in (self.offset_spin, self._seven_spins()[3]):
+                    previous = spin.blockSignals(True)
+                    spin.setRange(min(spin.minimum(), value), max(spin.maximum(), value))
+                    spin.setValue(value)
+                    spin.blockSignals(previous)
             self._dirty_registers.add(register)
             self._edit_versions[register] = self._edit_versions.get(register, 0) + 1
         self.update_curve_table()
@@ -4506,12 +4524,11 @@ class ATCompensationDialog(QDialog):
         mode = int(self.mode_combo.currentData())
         registers = tuple(r for _at, r in AT_SEVEN_POINT_REGISTERS) if mode == 2 else (1234, 1235)
         self.write_curve_btn.setText("7-Punkt-Kurve schreiben" if mode == 2 else "Lineare Kurve schreiben")
-        self.cloud_test_cb.setVisible(owner.control_transport() == "cloud")
         for button, applicable, regs in (
             (self.write_mode_btn, True, (1236,)),
             (self.write_curve_btn, mode in (1, 2), registers),
         ):
-            capability = owner.control_can_write(*regs, test_mode=self.cloud_test_cb.isChecked())
+            capability = owner.control_can_write(*regs)
             button.setEnabled(bool(capability) and applicable)
             button.setToolTip(capability.reason)
         capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
@@ -4530,7 +4547,6 @@ class ATCompensationDialog(QDialog):
             self._dirty_registers.clear()
             self._pending_write_versions.clear()
             self._pending_write_raw.clear()
-            self.cloud_test_cb.setChecked(False)
             self._programmatic = True
             self.mode_combo.setCurrentIndex(0)
             self.slope_spin.setValue(0)
@@ -4634,23 +4650,28 @@ class ATCompensationDialog(QDialog):
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title, text):
-        return ask_yes_no(self, title, text, default_yes=False)
+        return not self.main_window.control_requires_write_confirmation() or ask_yes_no(self, title, text, default_yes=False)
 
     def _write(self, writes, title, text, label):
         owner = self.main_window
         context = owner.control_context()
-        test_mode = self.cloud_test_cb.isChecked() and context.transport == "cloud"
-        capability = owner.control_can_write(*(register for register, _raw, _value in writes), test_mode=test_mode)
+        if context.transport == "cloud" and label != "AT-Kompensation H36-Modus":
+            writes = tuple((register, raw, value) for register, raw, value in writes
+                           if register in self._dirty_registers and
+                           (self._value(register, owner.regmap.get(register).dtype) is None or
+                            abs(float(self._value(register, owner.regmap.get(register).dtype)) - float(value)) > 1e-8))
+            if not writes:
+                self.status_label.setText("Keine geänderten AT-Parameter.")
+                return
+        capability = owner.control_can_write(*(register for register, _raw, _value in writes))
         if not capability:
             self._update_write_actions()
             self.status_label.setText(capability.reason)
             return
-        if test_mode:
-            text += "\n\nExperimenteller Cloud-Test: nur CP1-1 live schreib-/readback-bestätigt. Weitere Codes noch nicht einzeln bestätigt. Teiländerungen bleiben bei Abbruch bestehen; kein Rollback. Test ausdrücklich freigeben?"
         if self._confirm_write(title, f"{text}\nTransport: {TRANSPORT_NAMES[context.transport]}"):
             self._pending_write_versions = {r: self._edit_versions.get(r, 0) for r, _, _ in writes}
             self._pending_write_raw = {r: raw for r, raw, _ in writes}
-            error = owner.control_write_registers(writes, label, expected_context=context, test_mode=test_mode)
+            error = owner.control_write_registers(writes, label, expected_context=context)
             self.status_label.setText(error or "AT-Kompensation Schreiben gesendet.")
             self._update_write_actions()
 
@@ -4678,6 +4699,9 @@ class ATCompensationDialog(QDialog):
         self._write(writes, "7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines), "AT-Kompensation 7-Punkt")
 
     def read_from_wp(self):
+        if not self.isVisible():
+            return
+        self.initial_read_timer.stop()
         owner = self.main_window
         context = owner.control_context()
         capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
@@ -4719,6 +4743,9 @@ class ATCompensationDialog(QDialog):
     def cloud_read_finished(self, cycle_id, rows, error):
         request = self.cloud_request
         if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible():
+            self._cancel_cloud_read()
             return
         if not self._cloud_identity_matches():
             self.connection_changed()
@@ -7609,7 +7636,7 @@ class MainWindow(QMainWindow):
             self._apply_register_row_visual_state(reg_no)
 
         for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
-            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+            QTimer.singleShot(delay_ms, self, lambda c=color: apply_flash_step(c))
 
         def clear_flash() -> None:
             if self.register_flash_tokens.get(reg_no) != token:
@@ -7617,7 +7644,7 @@ class MainWindow(QMainWindow):
             self.register_flash_tokens.pop(reg_no, None)
             self.register_flash_colors.pop(reg_no, None)
             self._apply_register_row_visual_state(reg_no)
-        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, self, clear_flash)
 
     def _apply_persistent_change_backgrounds(self, only_regs: Optional[list[int]] = None) -> None:
         """PRIVATE fix51: geaenderte Zeilen nach Refreshes erneut sichtbar machen."""
@@ -7840,54 +7867,62 @@ class MainWindow(QMainWindow):
     def control_transport(self):
         return self.control_context().transport
 
+    def control_requires_write_confirmation(self):
+        return self.control_transport() != "cloud"
+
+    def _cloud_write_context_is_current(self, context):
+        origin = getattr(self, "_control_cloud_write_origin_context", context)
+        return (origin == self.control_context() and self.is_cloud_connected()
+                and context.username == str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip()
+                and context.device_code == self.cloud_session_device_code)
+
     def _control_cloud_busy(self, *, write=False):
         dialog = getattr(self, "warmlink_cloud_dialog", None)
         busy = (getattr(self, "cloud_read_thread", None) is not None or
                 getattr(self, "cloud_write_thread", None) is not None or
-                getattr(dialog, "command_thread", None) is not None or
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
 
-    def _control_capability(self, registers, *, write=False, test_mode=False):
+    def _control_capability(self, registers, *, write=False):
         return register_control_capability(self.control_context(), registers,
-            lambda reg, **kw: cloud_code_for_register(reg, test_mode=test_mode, **kw),
+            cloud_code_for_register,
             write=write, capture=self._is_firmware_capture_mode(), busy=self._control_cloud_busy(write=write))
 
     def control_can_read(self, *registers):
         return self._control_capability(registers)
 
-    def control_can_write(self, *registers, test_mode=False):
+    def control_can_write(self, *registers):
         if 2133 in registers:
             return ControlCapability(False, "SG Status ist read-only.")
         if 8801 in registers and self.control_transport() != "standard_modbus":
             return ControlCapability(False, "8801 ist nur am direkten Mainboard-Modbus bestätigt.")
-        return self._control_capability(registers, write=True, test_mode=test_mode)
+        return self._control_capability(registers, write=True)
 
     def control_write_register(self, register, raw_value, engineering_value=None, label="", *, expected_context=None):
         return self.control_write_registers(((register, raw_value, engineering_value),), label,
                                             expected_context=expected_context)
 
-    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350, test_mode=False):
+    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350):
         """Preflight the whole action, then use one fixed existing I/O path."""
         context = expected_context or self.control_context()
         if context != self.control_context():
             return "Steuerverbindung oder Geräteauswahl geändert; Schreiben abgebrochen."
         writes = tuple(writes)
-        capability = self.control_can_write(*(register for register, _raw, _value in writes), test_mode=test_mode)
+        capability = self.control_can_write(*(register for register, _raw, _value in writes))
         if not capability:
             return capability.reason
         try:
             validated = [(register, validate_register_write_value(int(raw), self.regmap.get(register)) & 0xFFFF, value)
                          for register, raw, value in writes]
             if context.transport == "cloud":
-                commands = tuple((cloud_code_for_register(register, require_write_allowed=True, test_mode=test_mode),
+                commands = tuple((cloud_code_for_register(register, require_write_allowed=True),
                                   cloud_write_value_from_register_value(
-                                      cloud_code_for_register(register, require_write_allowed=True, test_mode=test_mode), raw,
+                                      cloud_code_for_register(register, require_write_allowed=True), raw,
                                       self.regmap.get(register), value)) for register, raw, value in validated)
                 if commands:
                     return self.send_cloud_write(*commands[0], device_code=context.device_code, label=label,
@@ -7934,19 +7969,16 @@ class MainWindow(QMainWindow):
 
     def _notify_control_connection_changed(self):
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._is_firmware_capture_mode()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
-        update = getattr(getattr(self, "warmlink_cloud_dialog", None), "_update_write_controls", None)
-        if update is not None:
-            update()
 
     def _notify_cloud_register_update(self, reg_no: int):
         # New dialogs can opt in without changing the local register update path.
-        for attribute in ("parameter_dialog", "at_comp_dialog", "wp_control_dialog", "sg_dialog"):
+        for attribute in ("parameter_dialog", "at_comp_dialog", "wp_control_dialog", "sg_dialog", "fault_dialog"):
             dialog = getattr(self, attribute, None)
             callback = getattr(dialog, "update_from_cloud_register", None)
             if callback is not None:
@@ -8261,6 +8293,8 @@ class MainWindow(QMainWindow):
         return self.request_cloud_snapshot(request)
 
     def request_cloud_snapshot(self, request):
+        if getattr(self, "_warmlink_closing", False):
+            return "Programm wird beendet; Cloud-Abfrage abgebrochen."
         if self._is_firmware_capture_mode():
             return "Firmware-Capture aktiv – aktive Cloud-Abfragen sind gesperrt."
         if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code or request.username != str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip():
@@ -9834,6 +9868,8 @@ class MainWindow(QMainWindow):
         return text if text != "" else None
 
     def open_cloud_write_for_register(self, reg_no: int, user_value: str | None = None):
+        input_context = (self.control_context(), self.cloud_session_device_code,
+                         str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip())
         cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         if not cloud_code:
             QMessageBox.information(self, "WarmLink Cloud", f"Für Register {reg_no} ist kein freigegebener Cloud-Schreibcode gemappt.")
@@ -9861,21 +9897,40 @@ class MainWindow(QMainWindow):
                 "Cloud-Zugang fehlt. Bitte im Fenster 'WarmLink Cloud / LTE' Benutzername eintragen und das Passwort speichern.",
             )
             return
-        self.send_cloud_write(cloud_code, value, device_code=device_code, label=f"Register {reg_no}")
+        if input_context != (self.control_context(), self.cloud_session_device_code,
+                             str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip()):
+            QMessageBox.warning(self, "WarmLink Cloud", "Verbindung oder Cloud-Gerät während der Eingabe geändert; Schreiben abgebrochen.")
+            return
+        error = self.send_cloud_write(cloud_code, value, device_code=device_code or self.cloud_session_device_code, label=f"Register {reg_no}")
+        if error:
+            QMessageBox.warning(self, "WarmLink Cloud", error)
 
     def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None):
-        if control_context is not None:
-            if control_context != self.control_context() or self._control_cloud_busy(write=True):
-                return "Steuerverbindung geändert oder Cloudauftrag läuft; Schreiben abgebrochen."
+        origin_context = self.control_context()
+        direct_cloud_action = control_context is None
+        if direct_cloud_action:
+            control_context = ControlContext("cloud",
+                username=str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip(),
+                device_code=self.cloud_session_device_code)
+        if control_context.transport != "cloud" or not self.is_cloud_connected():
+            return "Keine gültige Cloud-Steuerverbindung."
+        from cloud.cloud_write_helpers import validate_cloud_commands
+        try:
+            validate_cloud_commands(commands or ((cloud_code, value),))
+        except ValueError as exc:
+            return str(exc)
         if self._is_firmware_capture_mode():
             QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Steuerbefehle sind gesperrt.")
             self._log("Firmware-Capture blockierte aktiven Cloud-Steuerbefehl.")
             return
-        if (self.cloud_write_thread is not None or
-                getattr(getattr(self, "warmlink_cloud_dialog", None), "command_thread", None) is not None):
+        if self.cloud_write_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Schreibbefehl.")
             return
+        if control_context is not None:
+            if (not direct_cloud_action and control_context != origin_context) or self._control_cloud_busy(write=True):
+                return "Steuerverbindung geändert oder Cloudauftrag läuft; Schreiben abgebrochen."
         user, pw, token, saved_device_code = self._cloud_write_credentials()
+        device_code = device_code or saved_device_code
         if control_context is not None and (user != control_context.username or device_code != control_context.device_code):
             return "Cloud-Gerät oder Account geändert; Schreiben abgebrochen."
         if not user:
@@ -9883,13 +9938,16 @@ class MainWindow(QMainWindow):
             return
         dev = str(device_code or saved_device_code or "").strip()
         self._control_cloud_write_context = control_context
+        self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else ""
+        self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
             import threading
             cancelled = self._control_cloud_write_cancelled = threading.Event()
             # Worker-side guard reads Python state only, never Qt widgets.
-            write_guard = lambda: (not cancelled.is_set() and not self.connected and self.is_cloud_connected()
+            write_guard = lambda: (not cancelled.is_set() and self.is_cloud_connected()
                 and self.cloud_session_device_code == control_context.device_code
                 and str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip() == control_context.username)
         self._log(f"WarmLink Cloud schreiben: {cloud_code}={value} ({label or 'Hauptfenster'})")
@@ -9920,7 +9978,7 @@ class MainWindow(QMainWindow):
 
     def _on_cloud_write_result_current(self, data: dict):
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
             self._log("Cloud-Schreibantwort nach Verbindungs-/Gerätewechsel verworfen.")
             return
         code = data.get("command_code", self.cloud_write_code)
@@ -9928,8 +9986,8 @@ class MainWindow(QMainWindow):
         if context is not None and data.get("readback_verified"):
             label = getattr(self, "_control_cloud_write_label", "")
             name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog"
-            dialog = getattr(self, name, None)
-            confirmed = getattr(dialog, "write_readback_confirmed", None)
+            dialog = getattr(self, "_control_cloud_write_dialog", None)
+            confirmed = getattr(dialog, "write_readback_confirmed", None) if dialog is not None and dialog.isVisible() else None
             if confirmed is not None:
                 confirmed(cloud_modbus_register(code))
         if context is not None:
@@ -9938,23 +9996,24 @@ class MainWindow(QMainWindow):
             if not text:
                 text = ("Cloud-Schreiben und Readback abgeschlossen: " if data.get("sequence_complete")
                         else "Cloud-Sequenz läuft; Readback bestätigt: ") + confirmed
+                if not data.get("api_success"):
+                    text += " · API-Antwort unklar/nicht bestätigt; Zustand durch Readback bestätigt."
             self._set_control_write_status(text)
 
     def _set_control_write_status(self, text):
-        label = getattr(self, "_control_cloud_write_label", "")
-        name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog"
-        dialog = getattr(self, name, None)
-        if dialog is not None:
+        self.statusBar().showMessage(str(text), 15000)
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and dialog.isVisible():
             dialog.set_write_status(text)
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
-        ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
+        ok = bool(data.get("readback_verified"))
         msg = translate_cloud_error_message(str(data.get("error_msg") or data.get("message") or ""))
         endpoint = str(data.get("endpoint") or "")
-        payload = data.get("payload")
         readback = data.get("readback") if isinstance(data, dict) else None
         rb_txt = ""
-        if isinstance(readback, dict) and readback.get("supported"):
+        if (isinstance(readback, dict) and readback.get("supported") and
+                not any(readback.get(flag) for flag in ("cached", "stale", "currentEmpty"))):
             readback = {**readback, "lastFetch": time.strftime("%Y-%m-%d %H:%M:%S"), "stale": False}
             self.apply_cloud_rows_to_main([readback])
             if self.warmlink_cloud_dialog is not None:
@@ -9964,7 +10023,7 @@ class MainWindow(QMainWindow):
             rb_status = readback.get("status") or ("OK" if readback.get("supported") else "")
             if rb_val not in (None, ""):
                 rb_txt = f"; Readback {cloud_code}: {rb_val} {rb_status}".rstrip()
-        log_txt = json.dumps({"ok": ok, "endpoint": endpoint, "message": msg, "payload": payload, "readback": readback}, ensure_ascii=False)
+        log_txt = json.dumps({"code": cloud_code, "sent": data.get("sent"), "api_success": data.get("api_success"), "readback_verified": ok, "endpoint": endpoint, "message": msg}, ensure_ascii=False)
         self._log("WarmLink Cloud Schreibantwort: " + log_txt)
         if data.get("validation_error"):
             self.statusBar().showMessage(data["validation_error"], 15000)
@@ -9972,15 +10031,18 @@ class MainWindow(QMainWindow):
         elif ok:
             # V0.2.44 fix4: Erfolg/Readback nur noch im Log. Kein Erfolgs-Popup,
             # damit Rechtsklick-Schreiben nicht am Ende wie "keine Rueckmeldung" wirkt.
-            self.statusBar().showMessage(f"Cloud-Schreiben OK: {cloud_code}={payload if payload is None else data.get('payload', '')}", 6000)
+            self.statusBar().showMessage(f"Cloud-Readback bestätigt: {cloud_code}", 6000)
             self._log(f"WarmLink Cloud schreiben OK: {cloud_code} via {endpoint}; {msg or 'Success'}{rb_txt}")
-        elif getattr(self, "_control_cloud_write_context", None) is None:
+        elif getattr(self, "_control_cloud_write_context", None) is None and not bool(
+                data.get("api_success", data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))):
             QMessageBox.warning(self, "WarmLink Cloud", f"Cloud-Schreiben nicht erfolgreich.\nEndpoint: {endpoint}\nMeldung: {msg or data.get('error_code') or 'unbekannt'}")
+        else:
+            self.statusBar().showMessage(f"Cloud: API bestätigt; Readback für {cloud_code} noch nicht bestätigt.", 15000)
 
     def _on_cloud_write_error(self, text: str):
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
             self._set_control_write_status("Cloud-Schreiben nach Verbindungs-/Gerätewechsel abgebrochen.")
             return
         lower = str(text).lower()
@@ -9999,6 +10061,8 @@ class MainWindow(QMainWindow):
         self.cloud_write_worker = None
         self.cloud_write_code = ""
         self._control_cloud_write_context = None
+        self._control_cloud_write_origin_context = None
+        self._control_cloud_write_dialog = None
         self._notify_control_connection_changed()
         if getattr(self, "_close_after_cloud_write", False):
             self.close()

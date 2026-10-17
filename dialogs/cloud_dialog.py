@@ -9,14 +9,14 @@ from typing import Any, Optional
 
 from PySide6.QtCore import QThread, QTimer, Slot
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
-    QDoubleSpinBox, QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
+    QAbstractItemView, QCheckBox, QComboBox, QDialog, QFileDialog,
+    QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
     QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
 )
 
 from cloud.warmlink_api import (
-    ENDPOINT_AUTO_WRITE, ENDPOINT_WRITE_MODEL_VALUE, translate_cloud_error_message,
+    translate_cloud_error_message,
 )
 from cloud.metadata import resolve_cloud_range
 from cloud.polling import CloudSession
@@ -25,17 +25,17 @@ from cloud.token_store import (
     set_password, set_token,
 )
 from cloud.warmlink_codes import (
-    WARMLINK_644_DISCOVERY_CODES, WARMLINK_CLOUD_WRITE_TEST_CODES, cloud_hint,
+    WARMLINK_644_DISCOVERY_CODES, cloud_hint,
     cloud_modbus_register, WARMLINK_CLOUD_CREDIT, code_confidence,
     code_display_name, code_unit,
 )
 from dialogs.cloud_table_helpers import (
     compare_source_rows, compare_table_values, data_table_values, device_combo_label,
-    filtered_cloud_rows, finder_cloud_row, finder_code_label,
-    local_display_value, mask_cloud_value, try_float, value_finder_matches,
+    filtered_cloud_rows,
+    local_display_value, mask_cloud_value, try_float,
 )
 from workers.warmlink_cloud_worker import (
-    WarmLinkCloudWorker, WarmLinkCloudCommandWorker, WarmLinkCloudDebugWorker,
+    WarmLinkCloudWorker, WarmLinkCloudDebugWorker,
     WarmLinkCloudSimWorker,
 )
 from cloud.device_metadata import (
@@ -47,8 +47,7 @@ from core.settings_manager import ensure_warmlink_cloud_defaults
 class WarmLinkCloudDialog(QDialog):
     """Optionale WarmLink/Linked-Go Cloud-Anbindung mit Overlay/Compare.
 
-    Standard bleibt lesend. Der Schreibtest ist getrennt, deaktiviert und nur
-    fuer wenige erlaubte Codes vorgesehen.
+    Anmeldung, Polling, Daten, Vergleich, Exporte und generischer API-Debugger.
     """
 
     DEVICE_COLUMNS = [
@@ -57,7 +56,6 @@ class WarmLinkCloudDialog(QDialog):
     ]
     DATA_COLUMNS = ["code", "name", "value", "dataType", "rangeStart", "rangeEnd", "letzter Abruf", "Status", "Mapping", "Mapping-Status", "Hinweis"]
     COMPARE_COLUMNS = ["Cloud-Code", "Reg", "Code", "Name", "Lokal", "Cloud", "Diff", "Einheit", "Confidence", "Status", "Hinweis"]
-    FINDER_COLUMNS = ["Cloud-Code", "Cloud-Wert", "Reg", "Code", "Name", "Lokal", "Match", "Hinweis"]
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -67,8 +65,6 @@ class WarmLinkCloudDialog(QDialog):
         self.resize(1240, 820)
         self.cloud_thread: Optional[QThread] = None
         self.cloud_worker: Optional[WarmLinkCloudWorker] = None
-        self.command_thread: Optional[QThread] = None
-        self.command_worker: Optional[WarmLinkCloudCommandWorker] = None
         self.debug_thread: Optional[QThread] = None
         self.debug_worker: Optional[WarmLinkCloudDebugWorker] = None
         self.sim_thread: Optional[QThread] = None
@@ -91,7 +87,7 @@ class WarmLinkCloudDialog(QDialog):
             self._keyring = main_window._cloud_keyring_store = AsyncKeyringStore(main_window)
         self._cached_password = credentials.get("password", "")
         self._credentials_username = credentials.get("password_user", "")
-        self._compare_dirty = self._finder_dirty = True
+        self._compare_dirty = True
         self._data_codes = []
         self._rendered_data = {}
         self._mapping_cache = {}
@@ -287,7 +283,7 @@ class WarmLinkCloudDialog(QDialog):
         self.compare_refresh_btn.clicked.connect(self.refresh_compare)
         compare_btn_row.addWidget(self.compare_refresh_btn)
         self.export_mapping_candidates_btn = QPushButton("Mapping-Kandidaten exportieren")
-        self.export_mapping_candidates_btn.setToolTip("Exportiert alle aktuellen Cloud-Daten mit bekannten lokalen Mappings und optionalen Wertefinder-Kandidaten als CSV.")
+        self.export_mapping_candidates_btn.setToolTip("Exportiert alle aktuellen Cloud-Daten mit bekannten lokalen Mappings ohne heuristische Kandidaten als CSV.")
         compare_btn_row.addStretch(1)
         compare_btn_row.addWidget(self.export_mapping_candidates_btn)
         compare_layout.addLayout(compare_btn_row)
@@ -298,65 +294,6 @@ class WarmLinkCloudDialog(QDialog):
         self.compare_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         compare_layout.addWidget(self.compare_table, 1)
         self.tabs.addTab(compare_tab, "Cloud ↔ Lokal")
-
-        finder_tab = QWidget()
-        finder_layout = QVBoxLayout(finder_tab)
-        finder_hint = QLabel("Wertefinder: sucht den ausgewählten Cloud-Wert in den aktuell bekannten lokalen Modbus-/Display-Werten. Gut für SG Status oder andere noch unbekannte Cloud-Codes.")
-        finder_hint.setWordWrap(True)
-        finder_layout.addWidget(finder_hint)
-        finder_controls = QHBoxLayout()
-        self.finder_code_combo = QComboBox()
-        self.finder_code_combo.setMinimumWidth(280)
-        self.finder_tolerance_spin = QDoubleSpinBox()
-        self.finder_tolerance_spin.setRange(0.0, 99999.0)
-        self.finder_tolerance_spin.setDecimals(3)
-        self.finder_tolerance_spin.setValue(0.0)
-        self.finder_nonzero_cb = QCheckBox("0-Werte ausblenden")
-        self.finder_nonzero_cb.setChecked(True)
-        self.finder_btn = QPushButton("lokale Kandidaten suchen")
-        finder_controls.addWidget(QLabel("Cloud-Code:"))
-        finder_controls.addWidget(self.finder_code_combo, 1)
-        finder_controls.addWidget(QLabel("Toleranz:"))
-        finder_controls.addWidget(self.finder_tolerance_spin)
-        finder_controls.addWidget(self.finder_nonzero_cb)
-        finder_controls.addWidget(self.finder_btn)
-        finder_layout.addLayout(finder_controls)
-        self.finder_table = QTableWidget(0, len(self.FINDER_COLUMNS))
-        self.finder_table.setHorizontalHeaderLabels(self.FINDER_COLUMNS)
-        self.finder_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.finder_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.finder_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        finder_layout.addWidget(self.finder_table, 1)
-        self.tabs.addTab(finder_tab, "Wertefinder")
-
-        write_tab = QWidget()
-        write_layout = QGridLayout(write_tab)
-        write_info = QLabel("Schreibtest: standardmäßig Dry-Run. Erst 'wirklich senden' aktivieren + Dialog bestätigen. Nur erlaubte Testcodes sind verfügbar.")
-        write_info.setWordWrap(True)
-        self.write_enable_cb = QCheckBox("Schreibtest freischalten")
-        self.write_send_cb = QCheckBox("wirklich senden (kein Dry-Run)")
-        self.write_code_combo = QComboBox()
-        for code, meta in WARMLINK_CLOUD_WRITE_TEST_CODES.items():
-            self.write_code_combo.addItem(f"{code} - {meta.get('name', code)}", code)
-        self.write_value_combo = QComboBox()
-        self.write_endpoint_edit = QLineEdit(ENDPOINT_AUTO_WRITE)
-        self.write_btn = QPushButton("Schreibtest ausführen")
-        self.write_btn.setEnabled(False)
-        self.write_result = QTextEdit()
-        self.write_result.setReadOnly(True)
-        write_layout.addWidget(write_info, 0, 0, 1, 3)
-        write_layout.addWidget(self.write_enable_cb, 1, 0)
-        write_layout.addWidget(self.write_send_cb, 1, 1)
-        write_layout.addWidget(QLabel("Code:"), 2, 0)
-        write_layout.addWidget(self.write_code_combo, 2, 1, 1, 2)
-        write_layout.addWidget(QLabel("Wert:"), 3, 0)
-        write_layout.addWidget(self.write_value_combo, 3, 1, 1, 2)
-        write_layout.addWidget(QLabel("Endpoint:"), 4, 0)
-        write_layout.addWidget(self.write_endpoint_edit, 4, 1, 1, 2)
-        write_layout.addWidget(self.write_btn, 5, 0, 1, 3)
-        write_layout.addWidget(self.write_result, 6, 0, 1, 3)
-        write_layout.setRowStretch(6, 1)
-        self.tabs.addTab(write_tab, "Schreibtest")
 
         codes_tab = QWidget()
         codes_layout = QVBoxLayout(codes_tab)
@@ -442,10 +379,6 @@ class WarmLinkCloudDialog(QDialog):
         self.export_mapping_check_btn.clicked.connect(self.export_mapping_check_csv)
         self.export_json_btn.clicked.connect(self.export_json)
         self.export_mapping_candidates_btn.clicked.connect(self.export_mapping_candidates_csv)
-        self.write_enable_cb.toggled.connect(self._update_write_controls)
-        self.write_code_combo.currentIndexChanged.connect(lambda _=None: self._refresh_write_values())
-        self.write_btn.clicked.connect(self.run_write_test)
-        self.finder_btn.clicked.connect(self.run_value_finder)
         self.debug_send_btn.clicked.connect(self.run_debug_request)
         self.debug_device_btn.clicked.connect(self._insert_debug_device_code)
         self.debug_template_btn.clicked.connect(self._prepare_debug_get_data)
@@ -453,7 +386,6 @@ class WarmLinkCloudDialog(QDialog):
         self.sim_refresh_btn.clicked.connect(self.refresh_sim_status)
         self.username_edit.textChanged.connect(lambda _text: self._update_device_controls())
         self.close_btn.clicked.connect(self.close)
-        self._refresh_write_values()
 
     def _initial_token_for_user(self, user: str) -> str | None:
         if self._cloud_token_username == user and self._cloud_token:
@@ -645,7 +577,7 @@ class WarmLinkCloudDialog(QDialog):
             self._pending_overlay.clear()
             self._pending_data_rows.clear()
             self._data_render_timer.stop()
-            self._compare_dirty = self._finder_dirty = True
+            self._compare_dirty = True
             self.refresh_data()
             if hasattr(self.main_window, "clear_cloud_device_values"):
                 self.main_window.clear_cloud_device_values()
@@ -697,7 +629,7 @@ class WarmLinkCloudDialog(QDialog):
             self._pending_overlay.clear()
             self._pending_data_rows.clear()
             self._data_render_timer.stop()
-            self._compare_dirty = self._finder_dirty = True
+            self._compare_dirty = True
             self.refresh_data()
             if hasattr(self.main_window, "clear_cloud_device_values"):
                 self.main_window.clear_cloud_device_values()
@@ -868,7 +800,7 @@ class WarmLinkCloudDialog(QDialog):
             self._pending_overlay.clear()
             self._pending_data_rows.clear()
             self._data_render_timer.stop()
-            self._compare_dirty = self._finder_dirty = True
+            self._compare_dirty = True
             self.refresh_data()
             if hasattr(self.main_window, "clear_cloud_device_values"):
                 self.main_window.clear_cloud_device_values()
@@ -923,7 +855,7 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str, int, list, str)
     def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
-        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog"}.get(purpose)
+        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog"}.get(purpose)
         if name is not None:
             dialog = getattr(self.main_window, name, None)
             if dialog is not None:
@@ -932,7 +864,7 @@ class WarmLinkCloudDialog(QDialog):
     def request_snapshot(self, request):
         if self._stopping:
             return "Cloud-Worker wird beendet; bitte danach erneut lesen."
-        if self.command_thread is not None or self.debug_thread is not None:
+        if self.debug_thread is not None:
             return "Ein Cloud-Schreib-/Debugbefehl läuft; bitte danach erneut lesen."
         if self.cloud_worker is not None:
             self.cloud_worker.request_logger_snapshot(request)
@@ -973,7 +905,7 @@ class WarmLinkCloudDialog(QDialog):
                 existing[code] = merged
         self.data_rows = list(existing.values())
         self.session.merge(rows)
-        self._compare_dirty = self._finder_dirty = True
+        self._compare_dirty = True
         self._tab_changed(self.tabs.currentIndex())
         self._apply_overlay_to_main(delta)
         good = [r for r in rows if r.get("supported") and not r.get("stale")]
@@ -990,8 +922,6 @@ class WarmLinkCloudDialog(QDialog):
             self.refresh_data()
         elif index == 2 and self._compare_dirty:
             self.refresh_compare()
-        elif index == 3 and self._finder_dirty:
-            self.refresh_finder_codes()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -1158,70 +1088,9 @@ class WarmLinkCloudDialog(QDialog):
         if structural:
             self.compare_table.resizeColumnsToContents()
 
-    def refresh_finder_codes(self):
-        self._finder_dirty = False
-        current = str(self.finder_code_combo.currentData() or self.finder_code_combo.currentText() or "") if hasattr(self, "finder_code_combo") else ""
-        self.finder_code_combo.blockSignals(True)
-        self.finder_code_combo.clear()
-        for row in sorted(self.data_rows, key=lambda r: str(r.get("code", ""))):
-            code = str(row.get("code", ""))
-            if not code:
-                continue
-            label_code = finder_code_label(row)
-            if label_code is None:
-                continue
-            label, code = label_code
-            self.finder_code_combo.addItem(label, code)
-        idx = self.finder_code_combo.findData(current)
-        if idx >= 0:
-            self.finder_code_combo.setCurrentIndex(idx)
-        self.finder_code_combo.blockSignals(False)
 
-    def _finder_cloud_row(self, code: str) -> dict[str, Any] | None:
-        return finder_cloud_row(self.data_rows, code)
 
-    def run_value_finder(self):
-        # V0.2.44 fix4: Button sofort deaktivieren und Suche per Timer starten,
-        # damit Qt den Klick/Status rendern kann und nicht wie "keine Rueckmeldung" wirkt.
-        if not self.finder_btn.isEnabled():
-            return
-        self.finder_btn.setEnabled(False)
-        self.finder_btn.setText("suche ...")
-        self.main_window.statusBar().showMessage("WarmLink Cloud Wertefinder: Suche läuft ...", 5000)
-        QTimer.singleShot(0, self._run_value_finder_now)
 
-    def _run_value_finder_now(self):
-        try:
-            code = str(self.finder_code_combo.currentData() or "")
-            row = self._finder_cloud_row(code)
-            if not code or row is None:
-                QMessageBox.information(self, "Wertefinder", "Kein Cloud-Code ausgewählt oder noch keine Cloud-Daten vorhanden.")
-                return
-            cloud_raw = row.get("value", "")
-            tolerance = float(self.finder_tolerance_spin.value())
-            hide_zero = bool(self.finder_nonzero_cb.isChecked())
-            regs_snapshot = list(sorted(self.main_window.latest_regs.items()))
-            matches = value_finder_matches(
-                code=code,
-                cloud_raw=cloud_raw,
-                latest_regs_items=regs_snapshot,
-                regmap=self.main_window.regmap,
-                display_parts_for_register=self.main_window._display_parts_for_register,
-                tolerance=tolerance,
-                hide_zero=hide_zero,
-            )
-            self.finder_table.setSortingEnabled(False)
-            self.finder_table.setRowCount(len(matches))
-            for r, vals in enumerate(matches):
-                for c, val in enumerate(vals):
-                    self.finder_table.setItem(r, c, QTableWidgetItem(str(val)))
-            self.finder_table.setSortingEnabled(True)
-            self.finder_table.resizeColumnsToContents()
-            self.main_window._log(f"WarmLink Cloud Wertefinder: {len(matches)} Kandidat(en) für {code}={cloud_raw}")
-            self.main_window.statusBar().showMessage(f"Wertefinder fertig: {len(matches)} Kandidat(en)", 5000)
-        finally:
-            self.finder_btn.setText("lokale Kandidaten suchen")
-            self.finder_btn.setEnabled(True)
 
     def _overlay_toggled(self):
         self._save_settings()
@@ -1263,103 +1132,12 @@ class WarmLinkCloudDialog(QDialog):
             self._overlay_structure_changed = False
             self.main_window._resize_name_column()
 
-    def _refresh_write_values(self):
-        self.write_value_combo.clear()
-        code = str(self.write_code_combo.currentData() or "")
-        meta = WARMLINK_CLOUD_WRITE_TEST_CODES.get(code, {})
-        vals = meta.get("values") or {}
-        if isinstance(vals, dict):
-            for val, label in vals.items():
-                self.write_value_combo.addItem(f"{val} - {label}", str(val))
-        self._update_write_controls()
 
-    def _update_write_controls(self):
-        enabled = bool(self.write_enable_cb.isChecked())
-        self.write_send_cb.setEnabled(enabled)
-        self.write_code_combo.setEnabled(enabled)
-        self.write_value_combo.setEnabled(enabled)
-        self.write_endpoint_edit.setEnabled(enabled)
-        busy = getattr(self.main_window, "_control_cloud_busy", None)
-        self.write_btn.setEnabled(enabled and self.command_thread is None and not (busy and busy(write=True)))
 
-    def run_write_test(self):
-        if self.command_thread is not None:
-            QMessageBox.information(self, "WarmLink Cloud", "Schreibtest läuft bereits.")
-            return
-        busy = getattr(self.main_window, "_control_cloud_busy", None)
-        if busy is not None and busy(write=True):
-            self.status_label.setText("Ein Cloudauftrag läuft; bitte danach erneut versuchen.")
-            return
-        if not self.write_enable_cb.isChecked():
-            return
-        user = self.username_edit.text().strip()
-        pw = self._password()
-        dev = self._selected_device_code()
-        code = str(self.write_code_combo.currentData() or "")
-        value = str(self.write_value_combo.currentData() or "")
-        endpoint = self.write_endpoint_edit.text().strip() or ENDPOINT_AUTO_WRITE
-        dry_run = not self.write_send_cb.isChecked()
-        if not user or not dev or not code:
-            QMessageBox.warning(self, "WarmLink Cloud", "Benutzername/Passwort/Gerät/Code fehlt.")
-            return
-        if not dry_run:
-            ret = QMessageBox.warning(
-                self,
-                "Cloud-Schreibtest wirklich senden?",
-                f"Wirklich an die Cloud senden?\n\nDevice: {self._mask(dev)}\nEndpoint: {endpoint}\nCode: {code}\nWert: {value}\n\nDas ist ein Test und kann die Wärmepumpe umschalten.",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if ret != QMessageBox.Yes:
-                return
-        self.write_btn.setEnabled(False)
-        self.write_result.append(f"Starte {'Dry-Run' if dry_run else 'SENDEN'}: {code}={value} via {endpoint}")
-        self.command_thread = QThread(self)
-        self.command_worker = WarmLinkCloudCommandWorker(
-            user, pw, dev, code, value, endpoint=endpoint, dry_run=dry_run, load_credentials=True,
-            initial_token=self._initial_token_for_user(user),
-            use_saved_token=bool(self._cloud_settings().get("save_token", True)),
-        )
-        self.command_worker.moveToThread(self.command_thread)
-        self.command_thread.started.connect(self.command_worker.run)
-        self.command_worker.log.connect(self._on_command_log)
-        self.command_worker.result.connect(self._on_command_result)
-        self.command_worker.error.connect(self._on_command_error)
-        self.command_worker.finished.connect(self.command_thread.quit)
-        self.command_worker.finished.connect(self.command_worker.deleteLater)
-        self.command_thread.finished.connect(self._command_finished)
-        self.command_thread.start()
-        notify = getattr(self.main_window, "_notify_control_connection_changed", None)
-        if notify is not None:
-            notify()
 
-    def _on_command_log(self, text: str):
-        text = str(text)
-        self.write_result.append(text)
-        self.main_window._log(text)
 
-    def _on_command_result(self, data: dict):
-        text = json.dumps(data, ensure_ascii=False, indent=2)
-        self.write_result.append(text)
-        self.main_window._log("WarmLink Cloud Schreibtest Antwort: " + text[:500].replace("\n", " "))
-        readback = data.get("readback")
-        if isinstance(readback, dict) and readback.get("supported"):
-            self._on_data([{**readback, "lastFetch": time.strftime("%Y-%m-%d %H:%M:%S"), "stale": False}])
 
-    def _on_command_error(self, text: str):
-        text = translate_cloud_error_message(str(text))
-        self.write_result.append("FEHLER: " + text)
-        self.main_window._log("WarmLink Cloud Schreibtest Fehler: " + text)
 
-    def _command_finished(self):
-        if self.command_thread is not None:
-            self.command_thread.deleteLater()
-        self.command_thread = None
-        self.command_worker = None
-        self._update_write_controls()
-        notify = getattr(self.main_window, "_notify_control_connection_changed", None)
-        if notify is not None:
-            notify()
 
     def run_debug_request(self):
         if self.debug_thread is not None:
@@ -1709,19 +1487,6 @@ class WarmLinkCloudDialog(QDialog):
             diff = f"{cloud_num - local_num:+.3g}"
         return [str(reg_no), local_code, local_name, raw, signed, display, diff]
 
-    def _unknown_mapping_candidates(self, row: dict[str, Any]) -> list[list[str]]:
-        code = str(row.get("code", ""))
-        if cloud_modbus_register(code) is not None or not row.get("supported"):
-            return []
-        return value_finder_matches(
-            code=code,
-            cloud_raw=row.get("value", ""),
-            latest_regs_items=list(sorted(self.main_window.latest_regs.items())),
-            regmap=self.main_window.regmap,
-            display_parts_for_register=self.main_window._display_parts_for_register,
-            tolerance=0.0,
-            hide_zero=True,
-        )[:20]
 
     def export_mapping_candidates_csv(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -1750,27 +1515,12 @@ class WarmLinkCloudDialog(QDialog):
                     )
                     exported_rows += 1
                     continue
-                matches = self._unknown_mapping_candidates(row)
-                if matches:
-                    for match in matches:
-                        candidate_reg = int(match[2])
-                        note = str(metadata_note or "")
-                        reason = str(match[6] or "")
-                        if reason:
-                            note = (note + "; " if note else "") + f"Wertefinder: {reason}"
-                        writer.writerow(
-                            cloud_values
-                            + self._mapping_candidate_local_values(candidate_reg, row.get("value", ""))
-                            + ["candidate", note]
-                        )
-                        exported_rows += 1
-                else:
-                    writer.writerow(
-                        cloud_values
-                        + self._mapping_candidate_local_values(None, row.get("value", ""))
-                        + [code_confidence(code) or str(hint.get("confidence") or "unknown"), metadata_note]
-                    )
-                    exported_rows += 1
+                writer.writerow(
+                    cloud_values
+                    + self._mapping_candidate_local_values(None, row.get("value", ""))
+                    + [code_confidence(code) or str(hint.get("confidence") or "unknown"), metadata_note]
+                )
+                exported_rows += 1
         self.main_window._log(f"WarmLink Cloud: Mapping-Kandidaten CSV exportiert: {path} ({exported_rows} Zeilen)")
 
     def export_json(self):

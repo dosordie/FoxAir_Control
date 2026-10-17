@@ -133,28 +133,29 @@ als Modbus skaliert. Lokale Werte haben bei aktivem lokalem Transport Vorrang
 und bleiben getrennt von Cloud. Nach lokalem Disconnect zeigt AT Cloudwerte,
 auch wenn alte lokale Werte im Cache bleiben; nach Reconnect gewinnt lokal wieder.
 
-**Cloud-Schreiben:** H36 bleibt separat schreibbar. Am **17.10.2026** wurde
-an einer GL9 **CP1-1 = 45.0 → 45.5 °C** per `app/device/control?lang=en`
-mit `appId: "16"` erfolgreich geschrieben und anschließend über
-`getDataByCode` als **45.5 °C** zurückgelesen. Ein zusätzlicher Mainboard-Abgleich
-dieses Schreibtests ist **nicht dokumentiert**. Das ist keine Schreibbestätigung
-für die übrigen CP-Codes oder die linearen Parameter.
+**Cloud-Schreiben:** Am **17.10.2026** hat der Betreiber an der GL9 alle sieben
+AT-Punkte einzeln und zusätzlich gemeinsam in einem 7-fach-Cloud-Write getestet.
+Der anschließende gemeinsame `getDataByCode`-Readback bestätigte alle sieben Werte
+exakt. Freigegeben sind die obigen sieben Codes, die lineare Kurve
+(`compensate_slope`/1234 und `compensate_offset`/1235) sowie H36 separat.
+Der tatsächliche 0-°C-Punkt bleibt `compensate_offset`, nicht CP1-4.
 
-CP1-1 ist regulär einzeln über den vorhandenen Register-Schreibweg nutzbar.
-Die vollständige 7-Punkt-Kurve und die lineare Kurve verwenden denselben
-seriellen Cloud-Worker. Solange nicht alle benötigten Codes einzeln
-schreibbestätigt sind, muss **„Experimentelle Cloud-Schreibcodes freigeben“**
-aktiviert und der jeweilige Schreibtest ausdrücklich bestätigt werden.
-`compensate_slope` (MAIN 1234) und `compensate_offset` (MAIN 1235) bleiben
-experimentell; der tatsächliche 0-°C-Punkt bleibt `compensate_offset`.
+Die Cloud-Schreibbuttons starten unmittelbar, ohne experimentelle Checkbox oder
+zusätzliche Nachfrage. Nur geänderte Kurvenwerte werden in **einem**
+`app/device/control?lang=en`-Request mit `appId: "16"` und `param[]` gesendet;
+die lineare Kurve verwendet bei zwei Änderungen ebenfalls einen gemeinsamen Batch.
+Alle geschriebenen Codes werden anschließend gemeinsam frisch gelesen. Nur ein
+Wert innerhalb einer halben Registerauflösung bestätigt das jeweilige Feld.
+Bei fehlenden, veralteten oder abweichenden Werten gibt es höchstens drei
+Readback-Versuche. Bestätigte Felder werden gespeichert; andere Änderungen bleiben
+offen. Neue manuelle Änderungen werden durch einen älteren Readback nicht gelöscht.
 
-Jeder Parameter wird nach dem API-Kommando gezielt zurückgelesen. Nur ein
-frischer Wert innerhalb einer halben Registerauflösung bestätigt die Änderung.
-Bei zunächst veralteten Werten gibt es höchstens drei Leseversuche; ein Write
-wird dabei nicht wiederholt. Fehlender oder abweichender Readback stoppt die
-Sequenz mit Soll-/Istwert und Liste der bestätigten Codes. Teiländerungen
-werden nicht automatisch zurückgesetzt. Geräte-/Accountwechsel beendet die
-weitere Sequenz. Diese automatisierten Prüfungen ersetzen keine Gerätetests.
+Ein Timeout oder eine unklare Schreibantwort führt zu gezieltem Nachlesen,
+niemals zu blindem erneutem Schreiben. Es gibt keinen automatischen Rollback;
+ein Serverbatch ist nicht als atomar garantiert. Account-/Gerätewechsel bricht
+Folgeschritte ab. Lokale Bestätigungen bleiben erhalten. Beim Öffnen erscheinen
+Cachewerte sofort, danach lädt ein asynchroner gezielter Cloud-Snapshot aktuelle
+Werte, ohne bereits bearbeitete Felder zu überschreiben.
 
 Der Dialog zeigt sieben kompakte Eingabefelder und eine passende berechnete
 Werteübersicht ohne Scrolltabellen. Die Grafik bleibt mit den Feldern

@@ -238,7 +238,6 @@ def test_ui_merges_partials_and_updates_existing_items_lazily(application, monke
     static_row = deepcopy(dialog.data_rows[0])
     calls = []
     monkeypatch.setattr(dialog, "refresh_compare", lambda: calls.append("compare"))
-    monkeypatch.setattr(dialog, "refresh_finder_codes", lambda: calls.append("finder"))
     monkeypatch.setattr(dialog.data_table, "resizeColumnsToContents", lambda: pytest.fail("No resize for a partial poll"))
     dialog._on_data([cloud_row(22, "T04")])
     assert len(dialog.data_rows) == 2 and dialog.data_rows[0] == static_row

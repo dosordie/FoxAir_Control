@@ -206,7 +206,7 @@ def test_other_workers_never_send_automatic_heartbeat(monkeypatch, mode):
                         lambda *_args: pytest.fail("Non-poll worker sent heartbeat"))
     monkeypatch.setattr(WarmLinkCloudApi, "get_data_by_code", lambda api, device, codes:
         success([{"code": code, "value": 55, "dataType": "FLOAT"} for code in codes]))
-    monkeypatch.setattr(WarmLinkCloudApi, "write_test_code", lambda *args, **kwargs: success({}))
+    monkeypatch.setattr(WarmLinkCloudApi, "write_control_batch", lambda *args, **kwargs: success({}))
     monkeypatch.setattr(WarmLinkCloudApi, "_debug_http_request", lambda *args, **kwargs:
         WarmLinkDebugResponse(url="https://example.test/device", status=200, headers={}, body="{}"))
     monkeypatch.setattr(workers.time, "sleep", lambda *_args: None)

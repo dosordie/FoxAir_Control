@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from typing import Optional
+import math
+import time
+
+from cloud.snapshot_request import CloudSnapshotRequest
+from cloud.warmlink_value_translator import parse_cloud_number
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon
@@ -579,23 +584,24 @@ class SystemIOStatusDecoderDialog(QDialog):
 class FaultDecoderDialog(QDialog):
     """Klartextanzeige fuer Fehlerbits und Sammelstoerung."""
 
-    FAULT_REGS = [2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083, 2084]
+    FAULT_REGS = [2081, 2082, 2083, 2084, 2085, 2086, 2087, 2088, 2089, 2090]
     FAULT_TITLES = {
-        2085: "Fehler 1",
-        2086: "Fehler 2",
-        2087: "Fehler 3",
-        2088: "Fehler 4",
-        2089: "Fehler 5",
-        2090: "Fehler 6",
-        2081: "Fehler 7",
-        2082: "Fehler 8",
-        2083: "Fehler 9",
-        2084: "Fehler 10",
+        2081: "Fehler 1", 2082: "Fehler 2", 2083: "Fehler 3", 2084: "Fehler 4", 2085: "Fehler 5",
+        2086: "Fehler 6", 2087: "Fehler 7", 2088: "Fehler 8", 2089: "Fehler 9", 2090: "Fehler 10",
     }
+    CLOUD_CODES = ("O01~023", "Fault1", "Fault2", "Fault3", "Fault4", "Fault5",
+                   "Fault6", "Fault7", "Fault8", "Fault9", "Fault10")
 
     def __init__(self, parent: "MainWindow"):
         super().__init__(parent)
         self.main_window = parent
+        self._control_identity = parent.control_context()
+        self.cloud_request = None
+        self._cloud_snapshot_values = None
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_timeout)
+
         self.setWindowTitle("Störungen / Fehlerdecoder")
         self.setWindowIcon(app_icon())
         self.resize(1120, 620)
@@ -648,6 +654,9 @@ class FaultDecoderDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
         self.refresh(update_status=False)
+        self.finished.connect(self._closed)
+        QTimer.singleShot(250, self, self._autoload_cloud)
+
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -656,6 +665,13 @@ class FaultDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self._read_cloud()
+            return
+        if self.main_window.control_transport() == "none":
+            self.read_status_label.setText("Keine Steuerverbindung.")
+            return
         self.read_status_label.setText("Lese Störungen ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -664,12 +680,125 @@ class FaultDecoderDialog(QDialog):
         self.main_window.send_read_request(2019, 1, slave_addr=slave_addr, label="Störung: Lastausgang 2019")
         self.main_window.send_read_request(2081, 10, slave_addr=slave_addr, label="Störung: Fehlerregister 2081-2090")
 
+    def _closed(self, *_args):
+        self.poll_timer.stop()
+        self._cancel_cloud_read()
+
+    def closeEvent(self, event):
+        self._closed()
+        super().closeEvent(event)
+
+    def _cancel_cloud_read(self):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def connection_changed(self):
+        context = self.main_window.control_context()
+        if context != self._control_identity:
+            self._cancel_cloud_read()
+            self._cloud_snapshot_values = None
+            self._control_identity = context
+            self.refresh(update_status=False)
+            if self.isVisible() and context.transport == "cloud":
+                QTimer.singleShot(0, self, self._autoload_cloud)
+
+    def _autoload_cloud(self):
+        if self.isVisible() and self.main_window.control_transport() == "cloud":
+            if self.main_window._control_cloud_busy():
+                QTimer.singleShot(250, self, self._autoload_cloud)
+                return
+            self.poll_once()
+
+    @staticmethod
+    def _parse_word(value, metadata=None):
+        if value in (None, ""):
+            return None
+        try:
+            binary = (str((metadata or {}).get("dataType") or "").upper() == "BINARY"
+                      and len(str(value).strip()) == 16)
+            number = parse_cloud_number(value, binary=binary)
+            if not math.isfinite(float(number)) or int(number) != number or not -32768 <= number <= 65535:
+                return None
+            return int(number) & 0xFFFF
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    def _raw_word(self, register):
+        if self.main_window.control_transport() == "cloud":
+            if self._cloud_snapshot_values is not None:
+                return self._cloud_snapshot_values.get(register)
+            overlay = self.main_window.cloud_overlay_by_reg.get(register, {})
+            metadata = overlay.get("metadata", {})
+            if any(metadata.get(flag) for flag in ("stale", "cached", "currentEmpty")) or metadata.get("supported") is False:
+                return None
+            return self._parse_word(overlay.get("raw_value"), metadata)
+        # Local transports keep their existing data priority.
+        return self.main_window.register_value_sources(register).local_raw
+
+    def update_from_cloud_register(self, register):
+        if register not in (2019, *self.FAULT_REGS):
+            return
+        if self.main_window.control_transport() != "cloud":
+            return
+        if self._cloud_snapshot_values is not None:
+            overlay = self.main_window.cloud_overlay_by_reg.get(register, {})
+            metadata = overlay.get("metadata", {})
+            if not any(metadata.get(flag) for flag in ("stale", "cached", "currentEmpty")):
+                value = self._parse_word(overlay.get("raw_value"), metadata)
+                if value is not None:
+                    self._cloud_snapshot_values[register] = value
+        self.refresh()
+
+    def _read_cloud(self):
+        if not self.isVisible() or self.cloud_request is not None:
+            return
+        owner = self.main_window
+        capability = owner.control_can_read(2019, *self.FAULT_REGS)
+        if not capability:
+            self.read_status_label.setText(capability.reason)
+            return
+        context = owner.control_context()
+        owner._fault_cloud_generation = getattr(owner, "_fault_cloud_generation", 0) + 1
+        self.cloud_request = CloudSnapshotRequest(owner._fault_cloud_generation, self.CLOUD_CODES,
+            time.monotonic() + 60, context.username, context.device_code, purpose="fault_decoder")
+        self.cloud_read_timer.start(60000)
+        self.read_status_label.setText("Lese aktuelle Cloud-Fehlerwörter …")
+        error = owner.control_request_snapshot(self.cloud_request)
+        if error:
+            self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+
+    def _cloud_timeout(self):
+        self._cancel_cloud_read()
+        self.read_status_label.setText("Cloud-Timeout; vorhandene Werte bleiben erhalten.")
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible() or self.main_window.control_context() != self._control_identity:
+            self._cancel_cloud_read()
+            return
+        if request.expired():
+            self._cloud_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and row.get("value") not in (None, "") and not any(
+                     row.get(flag) for flag in ("stale", "cached", "currentEmpty"))]
+        self._cancel_cloud_read()
+        if not error:
+            mapping = dict(zip(self.CLOUD_CODES, (2019, *self.FAULT_REGS)))
+            self._cloud_snapshot_values = {mapping[row["code"]]: self._parse_word(row["value"], row) for row in fresh}
+            self.main_window.apply_cloud_rows_to_main(fresh)
+            self.refresh(update_status=False)
+        count = sum(self._raw_word(register) is not None for register in (2019, *self.FAULT_REGS))
+        self.read_status_label.setText(f"Cloud: {count}/11 Fehlerwörter" + (f" · {error}" if error else " · Daten unvollständig" if count < 11 else " · erfolgreich gelesen"))
+
     def _fault_rows(self) -> list[tuple[int, str, int, int, str]]:
         rows: list[tuple[int, str, int, int, str]] = []
         for reg_no in self.FAULT_REGS:
-            raw = self.main_window.last_values.get(reg_no)
-            if raw is None:
-                raw = self.main_window.cloud_overlay_by_reg.get(reg_no, {}).get("raw")
+            raw = self._raw_word(reg_no)
             if raw is None:
                 continue
             raw_i = int(raw) & 0xFFFF
@@ -693,9 +822,7 @@ class FaultDecoderDialog(QDialog):
     def refresh(self, update_status: bool = True):
         if update_status:
             self.read_status_label.setText("Live-Wert aktualisiert.")
-        load_raw = self.main_window.last_values.get(2019)
-        if load_raw is None:
-            load_raw = self.main_window.cloud_overlay_by_reg.get(2019, {}).get("raw")
+        load_raw = self._raw_word(2019)
         alarm_active = bool((int(load_raw) & (1 << 10))) if load_raw is not None else False
         if load_raw is None:
             self.status_label.setText("Sammelstörung: unbekannt (2019 noch nicht gelesen)")
@@ -710,7 +837,7 @@ class FaultDecoderDialog(QDialog):
         rows = self._fault_rows()
         if not rows:
             self.table.setRowCount(1)
-            vals = ["--", "--", "--", "--", "Keine aktiven Fehlerbits in den bekannten Fehlerregistern." if load_raw is not None else "Noch keine Fehlerregister gelesen."]
+            vals = ["--", "--", "--", "--", "Keine aktiven Fehlerbits in den bekannten Fehlerregistern." if all(self._raw_word(r) is not None for r in [2019, *self.FAULT_REGS]) else "Daten unvollständig – Fehlerfreiheit nicht bestätigt."]
             for col, val in enumerate(vals):
                 item = QTableWidgetItem(val)
                 item.setBackground(QColor(245, 245, 245))

@@ -50,6 +50,28 @@ Die Funktion ist für Diagnose und spätere Firmware-Update-Erkennung vorbereite
 
 RAW-Captures können sensible Geräte-/Betriebsdaten enthalten und sollten nicht öffentlich geteilt werden.
 
+## Cloud-Steuerung (work, 17.10.2026)
+
+AT-Kompensation und SG Ready schreiben regulär ohne experimentelle Freigabe und
+starten Cloud-Writes direkt per Schreibbutton. Nur geänderte Kurven-/SG-Werte
+werden gesendet. Ein `app/device/control?lang=en`-Request mit `appId: "16"` und
+mehreren `param[]`-Einträgen ersetzt einzelne HTTP-Writes; alle geschriebenen Codes
+werden gemeinsam frisch zurückgelesen. Teiländerungen bleiben sichtbar und offen,
+soweit sie nicht bestätigt sind. Es gibt keinen automatischen Write-Retry oder Rollback.
+
+Der Betreiber hat alle sieben AT-Punkte einzeln und einen gemeinsamen 7-fach-Write
+mit gemeinsamem Readback am **17.10.2026 an der GL9** bestätigt. Lineare Kurve,
+H36 und SG01–SG08 sind ebenfalls für den bestätigten Cloudweg freigegeben.
+Eine atomare Übernahme durch den Server wird daraus nicht abgeleitet.
+
+SG02–SG08 werden gemeinsam geprüft, bevor SG01 aktiviert/umgeschaltet wird.
+SG01=0 wird zuerst geschrieben und bestätigt. SG08 ist eine Aus/Ein-Auswahl;
+SG Status bleibt read-only, 8801 bleibt ausschließlich direktem Mainboard-Modbus vorbehalten.
+AT, SG, Parameterblöcke und Störungsdecoder laden beim Öffnen gezielt aktuelle
+Cloudwerte. Der Decoder verwendet alle elf aktuellen Fehlerwörter einschließlich
+Sammelstörung, keine Fehlerhistorie. Schreibtest und Wertefinder wurden entfernt.
+Lokale Bestätigungen und LTE-Recovery bleiben erhalten.
+
 ## PUBLIC V0.2.46 – Struktur-Refactoring
 
 Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projektstruktur auf:
@@ -57,8 +79,8 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 - Cloud-Login mit gespeicherter E-Mail und Passwort im OS-Keyring (`keyring>=25.0`)
 - Cloud-Geräte-/Device-ID-Anzeige
 - Cloud-Polling, Overlay und Cloud-Spalten im Hauptfenster
-- Cloud-Wertefinder
-- Cloud-Schreibtest mit bestätigtem Endpunkt `app/device/control?lang=en`
+- Cloud-Batch-Steuerung für bestätigte AT-/SG-Parameter mit gemeinsamem Readback
+- Generischer API-Debugger; Exporte und Cloud ↔ Lokal bleiben verfügbar
 - Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
 - Cloudwerte können als Overlay im Hauptfenster erscheinen; optionale **Cloud-only Zeilen** zeigen bestätigte Mappings auch ohne zuvor gelesenen lokalen Wert
 - Der Doppelklickdialog bietet bei aktiver Cloud-Verbindung **Cloud lesen** und – nur für ausdrücklich freigegebene Schreibcodes – **Cloud schreiben**
@@ -85,7 +107,7 @@ Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projek
 ## Funktionen
 
 - Live-Registeranzeige mit bekannten FoxAir/Phnix-Datenpunkten
-- WarmLink/Linked-Go Cloud: Login, Geräteübersicht, Statuswerte, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes
+- WarmLink/Linked-Go Cloud: Login, Geräteübersicht, Statuswerte, Overlay, API-Debugger und Schreiben bestätigter Cloud-Codes
 - Lesen und Schreiben per Modbus Standart, Modbus Display und Modbus Warmlink LTE
 - TCP/IP/ser2net oder USB-RS485/COM-Port
 - F1 Hilfe/About mit Version, GitHub-Link und Update-Prüfung
