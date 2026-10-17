@@ -87,9 +87,7 @@ jobs:
           if [[ -n "$BASE_REF" ]]; then
             # Pull requests: check the full proposed change against the target.
             git diff --check "origin/$BASE_REF...HEAD"
-          elif [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] \\
-              && [[ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]] \\
-              && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+          elif [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]] && git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
             # Pushes to work/main: check the actual pushed range.
             git diff --check "$BEFORE_SHA" HEAD
           else
