@@ -63,10 +63,16 @@ def test_static_audit_reports_aliases_without_claiming_runtime_support():
     assert report["counts"]["supported"] is None
     assert report["counts"]["supported_unmapped"] is None
     assert all(entry["supported"] is None for entry in report["codes"])
+    # The new KG codes map to previously confirmed numeric Cloud aliases
+    # for MAIN 1256..1269. Keep this exact list an audited contract.
     assert report["aliases"] == [
         {"main_register": 1206, "codes": ["1206", "E03-3"]},
         {"main_register": 1208, "codes": ["1208", "E03-5"]},
         {"main_register": 1250, "codes": ["1250", "CP1-1"]},
+        *({"main_register": register, "codes": [str(register), f"KG{register - 1255}"]}
+          for register in range(1256, 1268)),
+        {"main_register": 1268, "codes": ["1268", "KG13~KG28"]},
+        {"main_register": 1269, "codes": ["1269", "KG29~KG44"]},
         {"main_register": 2029, "codes": ["2029", "InputCurrent1"]},
     ]
 
