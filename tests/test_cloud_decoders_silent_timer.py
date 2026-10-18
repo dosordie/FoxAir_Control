@@ -408,3 +408,177 @@ def test_decoder_cloud_snapshot_wins_over_old_local_updates_then_restores_local(
     window._notify_control_connection_changed()
     assert dialog.table.item(0, 1).text() == "0" and dialog.table.item(1, 1).text() == "1"
     dialog.close()
+
+
+# WP Ein/Aus Timer: KG1..KG12 and the three paired day words.
+from cloud.cloud_write_helpers import KG_TIMER_CODES, KG_MASK_CODES, kg_word
+from dialogs.timer_editor_dialog import encode_hhmm
+
+
+def _onoff_cloud(window, monkeypatch):
+    requests = capture(window, monkeypatch)
+    window.open_onoff_timer_editor()
+    dialog = window.onoff_timer_dialog
+    assert dialog is not None and dialog.tabs.count() == 7
+    dialog.initial_read_timer.stop()
+    dialog.read_from_wp()
+    request = requests[-1]
+    raw = {reg: 0 for reg in dialog.CLOUD_REGISTERS}
+    raw.update({1256: encode_hhmm(7, 13), 1257: encode_hhmm(21, 20),
+                1258: encode_hhmm(8, 0), 1259: encode_hhmm(21, 0),
+                1268: 0x8181, 1269: 0x8080, 1270: 0x0000})
+    rows = []
+    for reg, code in dialog.CLOUD_REGISTERS.items():
+        value = f"{raw[reg]:016b}" if code in KG_MASK_CODES else raw[reg]
+        rows.append(cloud_row(value, code, dataType="BINARY" if code in KG_MASK_CODES else "DIGI1"))
+    dialog.cloud_read_finished(request.cycle_id, rows, "")
+    return dialog, requests
+
+
+def test_wp_onoff_cloud_opens_original_combined_seven_tabs_and_autoloads(window, monkeypatch):
+    requests = capture(window, monkeypatch)
+    window.open_onoff_timer_editor()
+    dialog = window.onoff_timer_dialog
+    assert dialog is not None and dialog.isVisible() and window.silent_timer_dialog is None
+    assert [dialog.tabs.tabText(i) for i in range(7)] == [
+        "Timer 1", "Timer 2", "Timer 3", "Timer 4", "Timer 5", "Timer 6", "Silentmodus"
+    ]
+    QTest.qWait(300)
+    assert len(requests) == 1
+    assert set(requests[0].codes) == set(dialog.CLOUD_REGISTERS.values())
+    assert not dialog.send_btn.isEnabled()
+    dialog.close()
+
+
+def test_wp_onoff_cloud_snapshot_decodes_binary_partner_and_hhmm(window, monkeypatch):
+    dialog, _ = _onoff_cloud(window, monkeypatch)
+    assert dialog.fields[1]["start_hour"].value() == 7
+    assert dialog.fields[1]["start_min"].value() == 13
+    assert dialog.fields[1]["stop_hour"].value() == 21
+    assert dialog.fields[2]["start_hour"].value() == 8
+    assert dialog.fields[1]["active_cb"].isChecked() and dialog.fields[2]["active_cb"].isChecked()
+    assert dialog._pair_raw_from_controls(1) == 0x8181
+    assert len(dialog._cloud_baseline) == 21 and not dialog._cloud_dirty
+    dialog.close()
+
+
+@pytest.mark.parametrize("code,value", [
+    ("KG1", -1), ("KG1", 0x1800), ("KG1", 0x173C),
+    ("KG1", 0xFF00), ("KG13~KG28", 65536),
+])
+def test_wp_onoff_kg_invalid_packed_values_are_rejected(code, value):
+    with pytest.raises(ValueError):
+        validate_cloud_commands(((code, str(value)),))
+
+
+def test_wp_onoff_cloud_shared_mask_write_keeps_other_timer_byte(window, monkeypatch, command_api):
+    dialog, _ = _onoff_cloud(window, monkeypatch)
+    # Change Timer 1 without touching Timer 2; the partner high byte stays 0x81.
+    dialog.fields[1]["start_hour"].setValue(9)
+    dialog.fields[1]["active_cb"].setChecked(False)
+    assert dialog._pair_raw_from_controls(1) == 0x8101
+    assert dialog._cloud_dirty == {1256, 1268}
+    dialog.send_values()
+    wait_for(lambda: window.cloud_write_thread is None)
+    calls = [c for c in CommandApi.created[0].calls if c[0] == "write"]
+    # Lower bit 7 was disabled, high partner remains active; mask follows times.
+    assert calls == [("write", "device", (("KG1", str(encode_hhmm(9, 13))),)),
+                     ("write", "device", (("KG13~KG28", "1000000100000001"),))]
+    assert not dialog._cloud_dirty
+    dialog.close()
+
+
+def test_wp_onoff_cloud_all_writes_only_dirty_and_preserves_other_days(window, monkeypatch, command_api):
+    dialog, _ = _onoff_cloud(window, monkeypatch)
+    dialog.fields[3]["start_hour"].setValue(6)
+    dialog.fields[5]["stop_min"].setValue(45)
+    dialog.send_all_values()
+    wait_for(lambda: window.cloud_write_thread is None)
+    writes = [c[2] for c in CommandApi.created[0].calls if c[0] == "write"]
+    assert writes == [(("KG5", str(encode_hhmm(6, 0))), ("KG10", str(encode_hhmm(0, 45))))]
+    assert not dialog._cloud_dirty
+    dialog.close()
+
+
+def test_wp_onoff_cloud_silent_tab_remains_inside_combined_dialog(window, monkeypatch, command_api):
+    dialog, _ = _onoff_cloud(window, monkeypatch)
+    dialog.tabs.setCurrentIndex(6)
+    dialog.silent_start_hour.setValue(11)
+    dialog.send_values()
+    wait_for(lambda: window.cloud_write_thread is None)
+    assert CommandApi.created[0].calls == [
+        ("write", "device", (("TimerMuteOnHour", "11"),)),
+        ("readback", "device", ["TimerMuteOnHour"])
+    ]
+    assert dialog.tabs.count() == 7 and not dialog._cloud_dirty
+    dialog.close()
+
+
+@pytest.mark.parametrize("register,code", list(KG_TIMER_CODES.items()))
+def test_wp_onoff_exact_mapping_and_write_grants(register, code):
+    assert cloud_code_for_register(register, require_write_allowed=True) == code
+    assert cloud_hint(code)["write_allowed"]
+    value = "0000000000000001" if code in KG_MASK_CODES else "1"
+    assert validate_cloud_commands(((code, value),)) == ((code, value),)
+    assert cloud_readback_matches(code, value, cloud_row(value, code))
+
+
+def test_wp_onoff_cloud_incomplete_snapshot_blocks_default_writes(window, monkeypatch):
+    requests = capture(window, monkeypatch)
+    window.open_onoff_timer_editor()
+    dialog = window.onoff_timer_dialog
+    dialog.initial_read_timer.stop()
+    dialog.read_from_wp()
+    request = requests[-1]
+    dialog.cloud_read_finished(request.cycle_id, [cloud_row(encode_hhmm(9, 0), "KG1")], "")
+    assert not dialog.send_btn.isEnabled()
+    dialog.fields[1]["start_hour"].setValue(10)
+    dialog.send_values()
+    assert "unvollständig" in dialog.status_label.text()
+    assert dialog._cloud_dirty == {1256}
+    dialog.close()
+
+
+def test_wp_onoff_cloud_failed_readback_keeps_edit(window, monkeypatch, command_api):
+    dialog, _ = _onoff_cloud(window, monkeypatch)
+    original_read = CommandApi.get_data_by_code
+
+    def bad_read(self, device, codes):
+        out = original_read(self, device, codes)
+        out["objectResult"][0]["stale"] = True
+        return out
+
+    monkeypatch.setattr(CommandApi, "get_data_by_code", bad_read)
+    dialog.fields[1]["start_hour"].setValue(12)
+    dialog.send_values()
+    wait_for(lambda: window.cloud_write_thread is None)
+    assert 1256 in dialog._cloud_dirty
+    assert dialog.fields[1]["start_hour"].value() == 12
+    assert len([c for c in CommandApi.created[0].calls if c[0] == "write"]) == 1
+    dialog.close()
+
+
+def test_wp_onoff_cloud_device_switch_cancels_snapshot_and_preserves_local(window, monkeypatch):
+    requests = capture(window, monkeypatch)
+    window.open_onoff_timer_editor()
+    dialog = window.onoff_timer_dialog
+    dialog.initial_read_timer.stop()
+    dialog.read_from_wp()
+    request = requests[-1]
+    window.set_cloud_connection_state(True, "other")
+    dialog.cloud_read_finished(request.cycle_id, [cloud_row(1000, "KG1")], "")
+    assert request.cancelled.is_set()
+    assert not dialog._cloud_baseline
+    dialog.close()
+
+
+def test_wp_onoff_batch_keeps_kg_masks_after_time_readback(command_api):
+    commands = (("KG13~KG28", "1000000100000001"), ("KG1", str(encode_hhmm(9, 13))))
+    results, errors = run_commands(commands)
+    assert not errors and results[-1]["sequence_complete"]
+    assert CommandApi.created[0].calls == [
+        ("write", "device", (commands[1],)),
+        ("readback", "device", ["KG1"]),
+        ("write", "device", (commands[0],)),
+        ("readback", "device", ["KG13~KG28"]),
+    ]
