@@ -203,3 +203,64 @@ Diese Fixtures wurden korrigiert, ohne die zugehörige Produktlogik zu ändern.
 Cloud-Session, geteiltes Polling, GUI-Fortschritt und Warmlink-FC03-Readback
 werden zusätzlich in [WarmLink-Polling und Readback](warmlink_polling_and_readback.md)
 beschrieben und getestet.
+
+
+## Kontakt-/Lastausgangsdecoder und Silentmodus-Timer
+
+Die bestätigten Cloudcodes `S01~S10` (2034) und `O01~023` (2019) werden beim
+Öffnen gezielt frisch über `CloudSnapshotRequest` / `getDataByCode` geladen.
+Manuelles Lesen und optionales Polling verwenden denselben Worker. Der gemeinsame
+Translator interpretiert vollständige 16-stellige BINARY-Wörter sowie dezimale
+Werte als uint16; leere, ungültige und unvollständige Antworten bleiben unbekannt.
+Die Bitbeschriftungen und Kontakt-Bitänderungsanimation bleiben erhalten.
+Beide Decoder bleiben read-only. Cloud-only bevorzugt keine alten lokalen Werte;
+mit lokaler Verbindung bleibt die lokale Modbus-Priorität erhalten.
+
+| Register | Cloudcode | Bedeutung | Werte |
+| --- | --- | --- | --- |
+| 1244 | Timer_Mute_On_En | Start aktiv | 0/1 |
+| 1245 | TimerMuteOnHour | Start Stunde | 0–23 |
+| 1246 | TimerMuteOnMinute | Start Minute | 0–59 |
+| 1247 | Timer_Mute_Off_En | Stop aktiv | 0/1 |
+| 1248 | TimerMuteOffHour | Stop Stunde | 0–23 |
+| 1249 | TimerMuteOffMinute | Stop Minute | 0–59 |
+
+Alle sechs Lesezuordnungen sind bestätigt. Die sechs Cloud-Schreibfreigaben sind
+**neu implementiert und noch nicht live verifiziert**; es wird kein Livenachweis
+behauptet. Sie sind regulär nutzbar, ohne experimentelle Checkbox, zusätzliche
+Cloud-Schreibbestätigung oder verpflichtende Live-Testphase.
+
+Der Silent-Editor lädt alle sechs Werte gemeinsam und benötigt eine vollständige,
+gültige Antwort als Schreibbasis. Nur tatsächlich geänderte Werte werden gesendet.
+Das zentrale Verfahren aus PR #189 (`WarmLinkCloudCommandWorker`,
+`write_control_batch`, `appId: "16"`, `param[]`) bildet höchstens drei Stufen:
+
+1. Geänderte Freigaben auf 0 gemeinsam schreiben und frisch bestätigen.
+2. Geänderte Stunden/Minuten in einem gemeinsamen Batch schreiben und alle Codes
+   dieses Batches gemeinsam zurücklesen und einzeln prüfen.
+3. Geänderte Freigaben auf 1 gemeinsam schreiben und frisch bestätigen.
+
+Unveränderte Zeiten werden nicht erneut geschrieben; sie stammen aus dem frischen
+vollständigen Snapshot. Wenn nur eine Freigabe geändert wurde, entsteht ein Batch
+mit einem Parameter. Scheitert eine Stufe, folgen keine weiteren Schreibstufen.
+Ein Batch ist keine zugesicherte atomare Serveroperation. Readbacks werden begrenzt
+nachgelesen, Writes niemals automatisch wiederholt; es gibt keinen Rollback.
+API-Erfolg und frische Wertbestätigung werden getrennt berichtet. Fehlende,
+abweichende oder als `cached`, `stale` beziehungsweise `currentEmpty` markierte
+Readbacks lassen die betroffenen Änderungen offen. Neuere Eingaben werden durch
+alte Schreibantworten nicht bereinigt. Statusmeldungen nennen Erfolg, unvollständige
+Antworten, Timeout und Schreibabweichungen.
+
+Geräte-/Account-/Transportwechsel und geschlossene Dialoge verwerfen verspätete
+Antworten und stoppen Folgeschritte. Autoload wartet bei laufenden Cloudaufträgen.
+HTTP bleibt vollständig im vorhandenen Worker; Polling, Account-Sperre und
+LTE-Recovery bleiben bestehen. Der WP-Ein/Aus-Timer-Einstieg öffnet bei Cloud-only
+denselben Silent-Editor. Bereits offene kombinierte Dialoge verweisen für Cloud
+ebenfalls dorthin. Andere WP-Timer, Backup/Restore und unbekannte Register erhalten
+keinen neuen Cloud-Schreibweg. Lokale Modbus-, Display-Paket- und Pausenmechanismen
+bleiben unverändert; Cloud-only wartet nicht auf Display-Parameterblöcke.
+
+Offene Praxisprüfungen (keine Nutzungssperre): tatsächliche Übernahme der sechs
+Silent-Werte am Zielgerät, Aktivierung/Deaktivierung samt Zeitgrenzen, serverseitige
+Teilübernahme, Readback-Latenz und Gerätekontextwechsel während einer Sequenz.
+Die automatisierten Tests verwenden ausschließlich synthetische Geräte-/Accountdaten.

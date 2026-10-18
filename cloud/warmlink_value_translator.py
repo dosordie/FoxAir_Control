@@ -37,6 +37,23 @@ def parse_cloud_number(value: Any, *, binary: bool = False) -> int | float:
     return int(number) if number.is_integer() else number
 
 
+def parse_cloud_word(value: Any, metadata=None) -> int | None:
+    """Decode a complete 16-bit word; absent/invalid values stay unknown."""
+    import math
+    if value in (None, "") or isinstance(value, bool):
+        return None
+    try:
+        # Short BINARY strings from this API can still be decimal (e.g. "10").
+        binary = len(str(value).strip()) == 16 and str((metadata or {}).get(
+            "dataType", (metadata or {}).get("dataTypeAi", ""))).upper() in {"BINARY", "BITWORD16"}
+        number = parse_cloud_number(value, binary=binary)
+        if not math.isfinite(number) or int(number) != number or not -32768 <= number <= 65535:
+            return None
+        return int(number) & 0xFFFF
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 def cloud_values_equal(left: Any, right: Any) -> bool:
     """Compare observed payload values without units, types or other metadata."""
     def key(value):

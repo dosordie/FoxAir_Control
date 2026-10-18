@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from typing import Optional
-import math
 import time
 
 from cloud.snapshot_request import CloudSnapshotRequest
-from cloud.warmlink_value_translator import parse_cloud_number
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon
@@ -18,7 +16,10 @@ from core.foxair_phnix_core import (
     DEFAULT_BUS_ADDR, bitfield_states, decode_contact_bits, decode_system_io_status_2146,
     format_bitfield_details, format_value_by_type, s16,
 )
+from core.control_transport import LOCAL_TRANSPORTS
 from ui.paths import resource_path
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
+from cloud.warmlink_value_translator import parse_cloud_word
 from ui.theme import APP_ICON_FILE
 
 FLASH_CHANGED_ROW_MS = 2000
@@ -33,7 +34,28 @@ def app_icon() -> QIcon:
     return QIcon(resource_path(APP_ICON_FILE, __file__))
 
 
-class ContactDecoderDialog(QDialog):
+class _CloudWordDecoderMixin(TargetedCloudDialogMixin):
+    def _init_word_cloud(self, value):
+        self._init_cloud_snapshot()
+        self.set_value(None if self.main_window.control_transport() == "cloud" else value)
+
+    def _reset_cloud_source(self):
+        register = next(iter(self.CLOUD_REGISTERS))
+        value = None
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS:
+            value = self.main_window.register_value_sources(register).local_raw
+            if value is None:
+                value = self.main_window.last_values.get(register)
+        self.set_value(value)
+
+    def _apply_cloud_snapshot(self, values):
+        self.set_value(values.get(next(iter(self.CLOUD_REGISTERS))))
+
+
+class ContactDecoderDialog(_CloudWordDecoderMixin, QDialog):
+    CLOUD_REGISTERS = {2034: "S01~S10"}
+    CLOUD_PURPOSE = "contact_decoder"
+
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
         self.main_window = parent
@@ -82,7 +104,7 @@ class ContactDecoderDialog(QDialog):
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-        self.set_value(value)
+        self._init_word_cloud(value)
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -91,6 +113,13 @@ class ContactDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
+        if self.main_window.control_transport() == "none":
+            self.status_label.setText("Keine Steuerverbindung.")
+            return
         self.status_label.setText("Lese Register 2034 ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -145,6 +174,7 @@ class ContactDecoderDialog(QDialog):
         QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def set_value(self, value: Optional[int]):
+        value = parse_cloud_word(value)
         old_value = self._last_value
         changed_bits: set[int] = set()
         if value is not None and old_value is not None:
@@ -181,8 +211,11 @@ class ContactDecoderDialog(QDialog):
                 self._flash_contact_bit_row(bit, bit_value)
 
 
-class LoadOutputDecoderDialog(QDialog):
+class LoadOutputDecoderDialog(_CloudWordDecoderMixin, QDialog):
     """Decoder fuer Register 2019 / 0x07E3 Lastausgaenge."""
+
+    CLOUD_REGISTERS = {2019: "O01~023"}
+    CLOUD_PURPOSE = "load_output_decoder"
 
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
@@ -231,7 +264,7 @@ class LoadOutputDecoderDialog(QDialog):
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-        self.set_value(value)
+        self._init_word_cloud(value)
 
     def _bit_map(self) -> dict[int, str]:
         info = self.main_window.regmap.get(2019)
@@ -244,6 +277,13 @@ class LoadOutputDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
+        if self.main_window.control_transport() == "none":
+            self.status_label.setText("Keine Steuerverbindung.")
+            return
         self.status_label.setText("Lese Lastausgänge ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -255,6 +295,7 @@ class LoadOutputDecoderDialog(QDialog):
         self.status_label.setText("Timeout / keine Antwort.")
 
     def set_value(self, value: Optional[int], status_text: Optional[str] = None):
+        value = parse_cloud_word(value)
         if status_text is not None:
             self.status_label.setText(status_text)
         elif value is not None:
@@ -713,17 +754,7 @@ class FaultDecoderDialog(QDialog):
 
     @staticmethod
     def _parse_word(value, metadata=None):
-        if value in (None, ""):
-            return None
-        try:
-            binary = (str((metadata or {}).get("dataType") or "").upper() == "BINARY"
-                      and len(str(value).strip()) == 16)
-            number = parse_cloud_number(value, binary=binary)
-            if not math.isfinite(float(number)) or int(number) != number or not -32768 <= number <= 65535:
-                return None
-            return int(number) & 0xFFFF
-        except (TypeError, ValueError, OverflowError):
-            return None
+        return parse_cloud_word(value, metadata)
 
     def _raw_word(self, register):
         if self.main_window.control_transport() == "cloud":

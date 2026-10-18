@@ -12,6 +12,14 @@ from cloud.mapping_validation import register_code_from_definition
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
 
 
+SILENT_TIMER_CODES = {
+    1244: "Timer_Mute_On_En", 1245: "TimerMuteOnHour", 1246: "TimerMuteOnMinute",
+    1247: "Timer_Mute_Off_En", 1248: "TimerMuteOffHour", 1249: "TimerMuteOffMinute",
+}
+
+SILENT_TIMER_LIMITS = dict(zip(SILENT_TIMER_CODES.values(), (1, 23, 59, 1, 23, 59)))
+
+
 @lru_cache(maxsize=1)
 def _static_register_defs() -> dict[str, Any]:
     path = Path(__file__).resolve().parents[1] / "data" / "foxair_phnix_registers.json"
@@ -41,7 +49,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     best: tuple[int, str] | None = None
     # Use the exact configuration codes, even when a read-only numeric alias
     # for the same register is also present in the discovery catalog.
-    preferred = {1234: "compensate_slope", 1235: "compensate_offset",
+    preferred = {**SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
                  1250: "CP1-1", 1251: "CP1-2", 1252: "CP1-3",
                  1253: "CP1-5", 1254: "CP1-6", 1255: "CP1-7",
                  **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status"}
@@ -155,6 +163,8 @@ def cloud_readback_matches(code, requested, row):
         return False
     try:
         expected, actual = float(requested), float(row["value"])
+        if code in SILENT_TIMER_CODES.values() and not (expected.is_integer() and actual.is_integer()):
+            return False
         register = resolve_cloud_register(code, cloud_hint(code), _static_register_defs())
         definition = _static_register_defs().get(str(register), {})
         dtype = definition.get("type", "DIGI1")
@@ -185,6 +195,9 @@ def validate_cloud_commands(commands):
             raise ValueError(f"Ungültiger Cloud-Wert für {code}") from exc
         if not math.isfinite(number):
             raise ValueError(f"Cloud-Wert für {code} muss endlich sein.")
+        if code in SILENT_TIMER_LIMITS:
+            if not number.is_integer() or not 0 <= number <= SILENT_TIMER_LIMITS[code]:
+                raise ValueError(f"Cloud-Timerwert für {code} muss ganzzahlig zwischen 0 und {SILENT_TIMER_LIMITS[code]} liegen.")
         choices = cloud_write_values_for_code(code)
         if choices and number not in {float(key) for key in choices}:
             raise ValueError(f"Wert für {code} ist nicht freigegeben.")
@@ -203,11 +216,12 @@ def validate_cloud_commands(commands):
     return tuple(result)
 
 
+
+
 def cloud_command_batches(commands):
-    """SG01 is a verified barrier; all other parameters share one request."""
-    mode = tuple(item for item in commands if item[0] == "SG01")
-    if not mode:
-        return (tuple(commands),)
-    parameters = tuple(item for item in commands if item[0] != "SG01")
-    groups = (mode, parameters) if float(mode[0][1]) == 0 else (parameters, mode)
-    return tuple(group for group in groups if group)
+    """Verified barriers: disable first, parameters together, enable last."""
+    barriers = {"SG01", "Timer_Mute_On_En", "Timer_Mute_Off_En"}
+    disable = tuple(item for item in commands if item[0] in barriers and float(item[1]) == 0)
+    parameters = tuple(item for item in commands if item[0] not in barriers)
+    enable = tuple(item for item in commands if item[0] in barriers and float(item[1]) != 0)
+    return tuple(group for group in (disable, parameters, enable) if group)

@@ -1257,6 +1257,10 @@ class OnOffTimerEditorDialog(QDialog):
     TIMER_READ_STEP_DELAY_MS = 600
 
     def read_from_wp(self):
+        if self.main_window.control_transport() == "cloud":
+            self.main_window.open_silent_timer_editor()
+            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            return
         self._timer_read_sequence_active = True
         self._timer_read_sequence_step = "silent"
         self.main_window.remove_pending_read_requests_by_label(
@@ -1268,6 +1272,9 @@ class OnOffTimerEditorDialog(QDialog):
         self.main_window._log("WP Ein/Aus/Silent Timer Lesen angefordert: Sequenz startet mit Silentmodus Timer 1244-1249.")
 
     def _start_onoff_timer_read(self, status_text: str):
+        if self.main_window.control_transport() == "cloud":
+            self._timer_read_sequence_active = False
+            return
         if not self.isVisible():
             self._timer_read_sequence_active = False
             self._timer_read_sequence_step = ""
@@ -1304,6 +1311,10 @@ class OnOffTimerEditorDialog(QDialog):
             self.status_label.setText("WP Ein/Aus Timer Timeout. Vorhandene Live-Werte bleiben erhalten.")
 
     def send_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self.main_window.open_silent_timer_editor()
+            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            return
         try:
             if self._is_silent_tab():
                 self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.silent_timer_values(), int(self.timer_delay_ms.value()), title="Silentmodus Timer")
@@ -1314,6 +1325,9 @@ class OnOffTimerEditorDialog(QDialog):
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
     def send_all_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self.status_label.setText("WP-Ein/Aus-Timer benötigen lokalen Modbus.")
+            return
         try:
             self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), int(self.timer_delay_ms.value()), title="WP Ein/Aus Timer 1-6")
         except Exception as exc:
@@ -7886,7 +7900,7 @@ class MainWindow(QMainWindow):
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
@@ -7900,6 +7914,8 @@ class MainWindow(QMainWindow):
         return self._control_capability(registers)
 
     def control_can_write(self, *registers):
+        if any(register in (2019, 2034) for register in registers):
+            return ControlCapability(False, "Kontakt-/Lastausgangsstatus ist read-only.")
         if 2133 in registers:
             return ControlCapability(False, "SG Status ist read-only.")
         if 8801 in registers and self.control_transport() != "standard_modbus":
@@ -7974,7 +7990,7 @@ class MainWindow(QMainWindow):
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
@@ -8070,10 +8086,10 @@ class MainWindow(QMainWindow):
                 self.cloud_overlay_by_reg[reg_no] = info
                 changed_regs.append(reg_no)
                 if reg_no == 2034 and not self._has_local_register_entry(reg_no):
-                    if self.contact_dialog is not None and self.contact_dialog.isVisible():
+                    if self.contact_dialog is not None and self.contact_dialog.isVisible() and self.control_transport() != "cloud":
                         self.contact_dialog.set_value(int(translated.raw))
                 if reg_no == 2019 and not self._has_local_register_entry(reg_no):
-                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible() and self.control_transport() != "cloud":
                         self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
                 if show_cloud_only and not has_local_register and (old_info.get("value") != info["value"] or reg_no not in self.table_rows):
                     new_cloud_row = new_cloud_row or reg_no not in self.table_rows
@@ -8192,12 +8208,12 @@ class MainWindow(QMainWindow):
             active_bits = [str(bit) for bit, bit_value, _name, _state, _meaning in decode_contact_bits(value) if bit_value]
             active_text = ",".join(active_bits) if active_bits else "keine"
             self.contact_value_label.setText(f"2034: 0x{value:04X} / Bits: {active_text}")
-        if self.contact_dialog is not None and self.contact_dialog.isVisible():
+        if self.contact_dialog is not None and self.contact_dialog.isVisible() and self.control_transport() != "cloud":
             self.contact_dialog.set_value(value)
 
     def _update_load_output_decoder(self, value: Optional[int]):
         self.last_load_output_value = value
-        if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+        if self.load_output_dialog is not None and self.load_output_dialog.isVisible() and self.control_transport() != "cloud":
             self.load_output_dialog.set_value(value)
 
     def _fault_alarm_active(self) -> bool:
@@ -9944,7 +9960,7 @@ class MainWindow(QMainWindow):
         self._control_cloud_write_context = control_context
         self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
-        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else ""
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else ""
         self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
@@ -9981,6 +9997,10 @@ class MainWindow(QMainWindow):
         self._notify_control_connection_changed()
 
     def _on_cloud_write_result_current(self, data: dict):
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and not dialog.isVisible():
+            self._control_cloud_write_cancelled.set()
+            return
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
             self._log("Cloud-Schreibantwort nach Verbindungs-/Gerätewechsel verworfen.")
@@ -10044,6 +10064,9 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Cloud: API bestätigt; Readback für {cloud_code} noch nicht bestätigt.", 15000)
 
     def _on_cloud_write_error(self, text: str):
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and not dialog.isVisible():
+            return
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
@@ -11521,6 +11544,10 @@ class MainWindow(QMainWindow):
             self.timer_dialog.activateWindow()
 
     def open_onoff_timer_editor(self):
+        if self.control_transport() == "cloud":
+            self.open_silent_timer_editor()
+            self.silent_timer_dialog.status_label.setText("Cloud: Silentmodus Timer. WP-Ein/Aus-Timer benötigen lokalen Modbus.")
+            return
         if not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
             return
         if self.onoff_timer_dialog is None or not self.onoff_timer_dialog.isVisible():
@@ -11533,7 +11560,7 @@ class MainWindow(QMainWindow):
             self.onoff_timer_dialog.activateWindow()
 
     def open_silent_timer_editor(self):
-        if not self._display_wait_for_param_blocks_before_popup("Silentmodus Timer", [1181], self.open_silent_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("Silentmodus Timer", [1181], self.open_silent_timer_editor):
             return
         if self.silent_timer_dialog is None or not self.silent_timer_dialog.isVisible():
             self.silent_timer_dialog = SilentTimerDialog(self)

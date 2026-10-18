@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from cloud.cloud_write_helpers import SILENT_TIMER_CODES, SILENT_TIMER_LIMITS
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
+
 from typing import Any, Optional
 
 from PySide6.QtCore import QTimer
@@ -555,7 +558,9 @@ class TimerEditorDialog(QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
-class SilentTimerDialog(QDialog):
+class SilentTimerDialog(TargetedCloudDialogMixin, QDialog):
+    CLOUD_REGISTERS = SILENT_TIMER_CODES
+    CLOUD_PURPOSE = "silent_timer"
     TIMER_REGS = set(range(1244, 1250))
 
     def __init__(self, main_window: "MainWindow"):
@@ -564,8 +569,19 @@ class SilentTimerDialog(QDialog):
         self.setWindowTitle("Silentmodus Timer")
         self.setMinimumWidth(520)
         self.setMinimumHeight(280)
+        self._baseline = {}
+        self._dirty = set()
+        self._pending = {}
+        self._programmatic = False
         self._build_ui()
+        self._widgets = dict(zip(sorted(self.TIMER_REGS), (self.start_enable_cb, self.start_hour,
+            self.start_min, self.stop_enable_cb, self.stop_hour, self.stop_min)))
+        for register, widget in self._widgets.items():
+            signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
+            signal.connect(lambda _value, r=register: self._edited(r))
+        self._init_cloud_snapshot()
         self.load_from_live_values()
+        self._update_cloud_actions()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -617,14 +633,20 @@ class SilentTimerDialog(QDialog):
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
+        self._update_cloud_actions()
 
     def load_from_live_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         for reg_no in sorted(self.TIMER_REGS):
             reg = self.main_window.latest_regs.get(reg_no)
             if reg is not None:
                 self.update_from_live_register(reg)
 
     def update_from_live_register(self, reg):
+        if self.main_window.control_transport() == "cloud":
+            return
         reg_no = int(reg.reg)
         raw = int(reg.raw_value) & 0xFFFF
         if reg_no == 1244:
@@ -651,6 +673,9 @@ class SilentTimerDialog(QDialog):
         ]
 
     def _dry_run_lines(self) -> list[str]:
+        if self.main_window.control_transport() == "cloud":
+            return [f"Cloud {self.CLOUD_REGISTERS[r]} = {v}" for r, v, _ in self.timer_values()
+                    if r in self._dirty]
         lines = []
         for addr, value, label in self.timer_values():
             frame, wire_addr, wire_slave, note, fc_text = self.main_window._build_write_frame_for_backend(addr, value, DEFAULT_BUS_ADDR)
@@ -662,8 +687,109 @@ class SilentTimerDialog(QDialog):
         self.main_window._log("SILENT TIMER Dry-Run:\n" + "\n".join(self._dry_run_lines()))
 
     def read_from_wp(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         self.main_window.send_read_request(1244, 6, slave_addr=DEFAULT_BUS_ADDR, label="Silentmodus Timer 1244-1249")
         self.main_window._log("Silentmodus Timer Lesen angefordert.")
 
     def send_values(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self._send_cloud_values()
+            return
         self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.timer_values(), int(self.timer_delay_ms.value()), title="Silentmodus Timer")
+
+    def _widget_value(self, register):
+        widget = self._widgets[register]
+        return int(widget.isChecked()) if isinstance(widget, QCheckBox) else widget.value()
+
+    def _edited(self, register):
+        if self._programmatic:
+            return
+        if self._widget_value(register) == self._baseline.get(register):
+            self._dirty.discard(register)
+        else:
+            self._dirty.add(register)
+        self._update_cloud_actions()
+
+    def _validated_cloud_values(self, values):
+        return {r: v for r, v in values.items() if v is not None
+                and 0 <= v <= SILENT_TIMER_LIMITS[self.CLOUD_REGISTERS[r]]}
+
+    def _apply_cloud_snapshot(self, values):
+        # A partial fresh snapshot invalidates missing baselines, never edits.
+        self._baseline = dict(values)
+        self._programmatic = True
+        try:
+            for register, value in values.items():
+                if register in self._dirty:
+                    continue
+                widget = self._widgets[register]
+                if isinstance(widget, QCheckBox):
+                    widget.setChecked(bool(value))
+                else:
+                    widget.setValue(value)
+        finally:
+            self._programmatic = False
+        for register in list(self._dirty):
+            self._edited(register)
+        self._update_cloud_actions()
+
+    def _reset_cloud_source(self):
+        self._baseline.clear()
+        self._dirty.clear()
+        self._pending.clear()
+        self._programmatic = True
+        try:
+            for widget in self._widgets.values():
+                if isinstance(widget, QCheckBox):
+                    widget.setChecked(False)
+                else:
+                    widget.setValue(0)
+        finally:
+            self._programmatic = False
+
+    def connection_changed(self):
+        previous = self._control_identity
+        super().connection_changed()
+        if previous != self._control_identity and self._control_identity.transport != "cloud":
+            self.load_from_live_values()
+        self._update_cloud_actions()
+
+    def _update_cloud_actions(self):
+        cloud = self.main_window.control_transport() == "cloud"
+        self.timer_delay_ms.setEnabled(not cloud)
+        self.read_btn.setText("Cloud lesen" if cloud else "von WP lesen")
+        self.load_btn.setText("Cloud neu laden" if cloud else "Aus Live-Werten laden")
+        if cloud:
+            capability = self.main_window.control_can_write(*self.TIMER_REGS)
+            self.send_btn.setEnabled(bool(capability) and self.cloud_request is None
+                                     and len(self._baseline) == 6 and bool(self._dirty))
+            self.send_btn.setToolTip(capability.reason or "Alle sechs aktuellen Werte müssen geladen sein.")
+        else:
+            self.send_btn.setEnabled(True)
+
+    def _send_cloud_values(self):
+        if len(self._baseline) != 6 or self.cloud_request is not None:
+            self.status_label.setText("Daten unvollständig; zuerst alle sechs Cloudwerte frisch lesen.")
+            return
+        values = [(r, v, v) for r, v, _ in self.timer_values() if r in self._dirty]
+        if not values:
+            self.status_label.setText("Keine geänderten Werte.")
+            return
+        self._pending = {r: v for r, v, _ in values}
+        error = self.main_window.control_write_registers(values, "Silentmodus Timer",
+            expected_context=self._control_identity)
+        if error:
+            self._pending.clear()
+        self.status_label.setText(error or "Cloud-Batch gesendet; warte auf frischen Readback …")
+        self._update_cloud_actions()
+
+    def write_readback_confirmed(self, register):
+        value = self._pending.pop(register, None)
+        if value is None:
+            return
+        self._baseline[register] = value
+        self._edited(register)
