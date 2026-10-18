@@ -380,21 +380,25 @@ def test_silent_invalid_snapshot_range_blocks_write(window, monkeypatch, code, v
     dialog.close()
 
 
-def test_existing_combined_dialog_routes_cloud_silent_and_never_writes_other_timers(window, monkeypatch):
+def test_existing_combined_dialog_keeps_all_tabs_during_cloud_change(window, monkeypatch):
     monkeypatch.setattr(window, "_display_wait_for_param_blocks_before_popup", lambda *a: True)
-    window.open_onoff_timer_editor(); combined = window.onoff_timer_dialog
+    window.open_onoff_timer_editor()
+    combined = window.onoff_timer_dialog
     requests = capture(window, monkeypatch)
-    monkeypatch.setattr(window, "send_timer_values", lambda *a, **kw: pytest.fail("No unconfirmed Cloud timers"))
-    monkeypatch.setattr(window, "send_read_request", lambda *a, **kw: pytest.fail("No local Cloud-only reads"))
-    combined.tabs.setCurrentIndex(6); combined.send_values()
-    dialog = window.silent_timer_dialog
-    assert dialog.isVisible()
-    combined.read_from_wp(); combined.send_all_values()
-    assert "lokalen Modbus" in combined.status_label.text()
+    monkeypatch.setattr(window, "send_timer_values", lambda *a, **kw: pytest.fail("No local Cloud writes"))
+    monkeypatch.setattr(window, "send_read_request", lambda *a, **kw: pytest.fail("No local Cloud reads"))
+    combined.connection_changed()
+    combined.tabs.setCurrentIndex(6)
+    assert combined.tabs.count() == 7
+    combined.send_values()
+    assert "unvollständig" in combined.status_label.text()
+    assert window.silent_timer_dialog is None
+    combined.read_from_wp()
+    assert requests and requests[-1].purpose == "onoff_timer"
+    combined.send_all_values()
     combined._start_onoff_timer_read("late local response")
     assert not combined._timer_read_sequence_active
-    dialog.close(); combined.close()
-
+    combined.close()
 
 def test_decoder_cloud_snapshot_wins_over_old_local_updates_then_restores_local(window, monkeypatch):
     requests = capture(window, monkeypatch)
