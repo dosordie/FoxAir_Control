@@ -841,7 +841,8 @@ class WarmLinkCloudCommandWorker(QObject):
                     data["validation_error"] = (
                         f"Cloud: API bestätigt={data['api_success']}; Readback bestätigt: {', '.join(confirmed) or 'keine'}. "
                         f"Abweichend: {', '.join(mismatched) or 'keine'}; fehlt: {', '.join(missing) or 'keine'}; "
-                        f"veraltet: {', '.join(stale) or 'keine'}. Folgeschritte abgebrochen; kein Rollback.")
+                        f"veraltet: {', '.join(stale) or 'keine'}. Folgeschritte abgebrochen; kein Rollback."
+                        + (f" Readback-Fehler: {data['readback_error']}" if data.get("readback_error") else ""))
                 self.log.emit(f"Cloud Batch: gesendet={data['sent']}, API bestätigt={data['api_success']}, "
                               f"Readback bestätigt={batch_confirmed}, abweichend={mismatched}, fehlt={missing}, veraltet={stale}")
                 for code, value in batch:

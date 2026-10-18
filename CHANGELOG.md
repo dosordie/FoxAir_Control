@@ -1,5 +1,19 @@
 ## Unreleased
 
+- Kontaktdecoder (2034 / S01~S10) und Lastausgangsdecoder (2019 / O01~023):
+  frischer asynchroner Cloud-Autoload, Jetzt lesen, Polling und korrekte uint16-
+  BINARY-/Dezimalwerte. Fehlende/ungültige Werte bleiben unbekannt; beide bleiben read-only.
+- Silentmodus-Timer 1244–1249 vollständig über Cloud les- und schreibbar:
+  alle sechs Werte gemeinsam laden, nur geänderte Werte per zentralem Batch schreiben,
+  gemeinsamer frischer Readback mit Einzelprüfung und Schutz neuerer Eingaben.
+  Deaktivierungen zuerst bestätigen, geänderte Zeiten gemeinsam bestätigen,
+  Aktivierungen zuletzt. Keine experimentelle Freigabe oder zusätzliche Cloud-Rückfrage.
+- Cloud-only nutzt beim WP-Ein/Aus-Timer-Einstieg denselben Silent-Editor ohne
+  Display-Paketvoraussetzungen; die übrigen WP-Timer bleiben lokal. Lokale Modbus-
+  und Display-Schreibpfade samt Pausen bleiben erhalten.
+- Silent-Timer-Cloud-Writes sind neu implementiert und noch nicht live verifiziert.
+  Nutzung ist regulär möglich; gegebenenfalls sind Live-Nachbesserungen erforderlich.
+
 - AT-Kompensation: sieben kompakte Eingabefelder, berechnete Werteübersicht,
   kontextabhängiger Kurvenschreibbutton und Schutz ungespeicherter Live-Eingaben.
 - Cloud: zentrale Batch-API (`appId: "16"`, `param[]`) mit einem gemeinsamen

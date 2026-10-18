@@ -72,6 +72,25 @@ Cloudwerte. Der Decoder verwendet alle elf aktuellen Fehlerwörter einschließli
 Sammelstörung, keine Fehlerhistorie. Schreibtest und Wertefinder wurden entfernt.
 Lokale Bestätigungen und LTE-Recovery bleiben erhalten.
 
+## Cloud-Decoder und Silentmodus-Timer (work)
+
+Kontaktdecoder (2034 / `S01~S10`) und Lastausgangsdecoder (2019 / `O01~023`)
+laden beim Öffnen frische Cloudwerte. „jetzt lesen“ und optionales Polling nutzen
+denselben asynchronen Cloudweg; fehlende Werte bleiben `--`. Die Decoder sind read-only.
+Bei lokaler Modbus-Verbindung gilt weiterhin die lokale Datenpriorität.
+
+Der Silentmodus-Timer lädt alle sechs Werte (1244–1249) gemeinsam. Geänderte Werte
+werden ohne zusätzliche Cloud-Bestätigung als Batch geschrieben und gemeinsam
+frisch zurückgelesen. Deaktivierungen werden zuerst bestätigt, geänderte Zeiten
+vor Aktivierungen. Nicht bestätigte Änderungen und neuere Eingaben bleiben offen.
+Der WP-Ein/Aus-Timer-Einstieg verwendet bei Cloud-only denselben Silent-Editor;
+die übrigen Timer benötigen lokalen Modbus. Display-Paketvoraussetzungen entfallen
+bei Cloud-only, lokale Schreibverfahren und Pausen bleiben erhalten.
+
+**Silent-Timer-Cloud-Writes sind neu implementiert und noch nicht live verifiziert.**
+Die Funktion ist regulär nutzbar, ohne Testfreigabe oder verpflichtende Testphase.
+Details und offene Praxisprüfungen: [Cloud-Dokumentation](docs/warmlink_cloud_values.md#kontakt-lastausgangsdecoder-und-silentmodus-timer).
+
 ## PUBLIC V0.2.46 – Struktur-Refactoring
 
 Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projektstruktur auf:
