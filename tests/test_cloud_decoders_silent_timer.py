@@ -122,7 +122,8 @@ def test_silent_autoload_all_six_bypasses_display_prerequisites(window, monkeypa
     requests = capture(window, monkeypatch)
     monkeypatch.setattr(window, "_display_wait_for_param_blocks_before_popup",
                         lambda *_: pytest.fail("Cloud must bypass display prerequisites"))
-    window.open_onoff_timer_editor()
+    # Explicit Silent editor remains available beside the combined timer dialog.
+    window.open_silent_timer_editor()
     dialog = window.silent_timer_dialog
     assert window.onoff_timer_dialog is None
     assert not dialog.send_btn.isEnabled()
@@ -311,7 +312,9 @@ def test_exact_six_write_grants_and_integer_values(register, code):
 
 def test_no_other_timer_or_decoder_write_grants(window):
     cloud_only(window)
-    for register in (2019, 2034, *range(1256, 1326)):
+    # KG1..KG12 and KG13~KG28 etc (1256..1270) are now intentionally
+    # Cloud-writable; decoder outputs and the other timers remain read-only.
+    for register in (2019, 2034, *range(1271, 1326)):
         assert cloud_code_for_register(register, require_write_allowed=True) is None
         assert not window.control_can_write(register)
 
