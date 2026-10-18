@@ -860,7 +860,7 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str, int, list, str)
     def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
-        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog", "contact_decoder": "contact_dialog", "load_output_decoder": "load_output_dialog", "silent_timer": "silent_timer_dialog"}.get(purpose)
+        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog", "contact_decoder": "contact_dialog", "load_output_decoder": "load_output_dialog", "silent_timer": "silent_timer_dialog", "onoff_timer": "onoff_timer_dialog"}.get(purpose)
         if name is not None:
             dialog = getattr(self.main_window, name, None)
             if dialog is not None:
