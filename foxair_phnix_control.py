@@ -14,6 +14,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
+from types import SimpleNamespace
 from warmlink_raw_capture import (
     DEFAULT_CAPTURE_SETTINGS,
     WarmlinkRawCapture,
@@ -53,6 +54,7 @@ from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
 from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
 from core.display_protocol import (
@@ -86,6 +88,7 @@ from core.warmlink_request_scheduler import (
 from cloud.register_resolver import resolve_cloud_register
 from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
+    KG_TIMER_CODES, KG_TIME_CODES, KG_MASK_CODES, SILENT_TIMER_CODES, SILENT_TIMER_LIMITS, kg_word,
     cloud_code_for_register,
     cloud_write_choice_options,
     cloud_write_value_from_label,
@@ -919,7 +922,9 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
 
 
 
-class OnOffTimerEditorDialog(QDialog):
+class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
+    CLOUD_REGISTERS = {**SILENT_TIMER_CODES, **KG_TIMER_CODES}
+    CLOUD_PURPOSE = "onoff_timer"
     """Editor fuer WP Ein/Aus Timer 1..6.
 
     Registerschema:
@@ -939,11 +944,17 @@ class OnOffTimerEditorDialog(QDialog):
         self.fields: dict[int, dict[str, Any]] = {}
         self._timer_read_sequence_active = False
         self._timer_read_sequence_step = ""
+        self._cloud_baseline = {}
+        self._cloud_dirty = set()
+        self._cloud_pending = {}
         self.setWindowTitle("WP Ein/Aus / Silentmodus Timer")
         self.setMinimumWidth(650)
         self.setMinimumHeight(540)
         self._build_ui()
+        self._connect_cloud_dirty_signals()
+        self._init_cloud_snapshot()
         self.load_from_live_values()
+        self._update_cloud_actions()
 
     def _time_reg(self, timer_no: int, stop: bool = False) -> int:
         return 1256 + (timer_no - 1) * 2 + (1 if stop else 0)
@@ -1008,6 +1019,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
+        self._update_cloud_actions()
 
     def _add_timer_tab(self, timer_no: int):
         widget = QWidget()
@@ -1142,12 +1154,17 @@ class OnOffTimerEditorDialog(QDialog):
             self._programmatic = False
 
     def load_from_live_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         for reg_no in sorted(self.TIMER_REGS):
             reg = self.main_window.latest_regs.get(reg_no)
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
 
     def update_from_live_register(self, reg, force: bool = False):
+        if self.main_window.control_transport() == "cloud" and not force:
+            return
         reg_no = int(reg.reg)
         if reg_no not in self.TIMER_REGS:
             return
@@ -1258,8 +1275,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def read_from_wp(self):
         if self.main_window.control_transport() == "cloud":
-            self.main_window.open_silent_timer_editor()
-            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            self.read_cloud_snapshot()
             return
         self._timer_read_sequence_active = True
         self._timer_read_sequence_step = "silent"
@@ -1312,8 +1328,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def send_values(self):
         if self.main_window.control_transport() == "cloud":
-            self.main_window.open_silent_timer_editor()
-            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            self._send_cloud_values(all_timers=False)
             return
         try:
             if self._is_silent_tab():
@@ -1326,7 +1341,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def send_all_values(self):
         if self.main_window.control_transport() == "cloud":
-            self.status_label.setText("WP-Ein/Aus-Timer benötigen lokalen Modbus.")
+            self._send_cloud_values(all_timers=True)
             return
         try:
             self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), int(self.timer_delay_ms.value()), title="WP Ein/Aus Timer 1-6")
@@ -7900,7 +7915,7 @@ class MainWindow(QMainWindow):
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
@@ -7990,7 +8005,7 @@ class MainWindow(QMainWindow):
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
@@ -9960,7 +9975,7 @@ class MainWindow(QMainWindow):
         self._control_cloud_write_context = control_context
         self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
-        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else ""
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else "onoff_timer_dialog" if label.startswith("WP Ein/Aus Timer") else ""
         self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
@@ -11544,11 +11559,7 @@ class MainWindow(QMainWindow):
             self.timer_dialog.activateWindow()
 
     def open_onoff_timer_editor(self):
-        if self.control_transport() == "cloud":
-            self.open_silent_timer_editor()
-            self.silent_timer_dialog.status_label.setText("Cloud: Silentmodus Timer. WP-Ein/Aus-Timer benötigen lokalen Modbus.")
-            return
-        if not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
             return
         if self.onoff_timer_dialog is None or not self.onoff_timer_dialog.isVisible():
             self.onoff_timer_dialog = OnOffTimerEditorDialog(self)
