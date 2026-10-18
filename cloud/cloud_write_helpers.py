@@ -19,6 +19,36 @@ SILENT_TIMER_CODES = {
 
 SILENT_TIMER_LIMITS = dict(zip(SILENT_TIMER_CODES.values(), (1, 23, 59, 1, 23, 59)))
 
+# Engineering units for these codes are their raw packed Modbus words.
+# Do not infer that a KG Cloud write is live-confirmed from the mapping alone.
+KG_TIMER_CODES = {
+    **{1256 + i: f"KG{i + 1}" for i in range(12)},
+    1268: "KG13~KG28", 1269: "KG29~KG44", 1270: "KG45~KG60",
+}
+KG_TIME_CODES = frozenset(f"KG{i}" for i in range(1, 13))
+KG_MASK_CODES = frozenset(("KG13~KG28", "KG29~KG44", "KG45~KG60"))
+
+
+def kg_word(code, value):
+    """Normalize a KG HH:MM word or 16-bit day mask, without truncation."""
+    from cloud.warmlink_value_translator import parse_cloud_word
+    import math
+
+    if code in KG_MASK_CODES and isinstance(value, str):
+        value = value.strip()
+        if len(value) == 16 and set(value) <= {"0", "1"}:
+            return int(value, 2)
+    if isinstance(value, bool):
+        raise ValueError("Boolean is not a KG word")
+    word = parse_cloud_word(value)
+    if word is None or not isinstance(word, int) or not 0 <= word <= 0xFFFF:
+        raise ValueError(f"Ungültiges KG-Wort: {value}")
+    if code in KG_TIME_CODES and ((word >> 8) > 23 or (word & 0xFF) > 59):
+        raise ValueError(f"Ungültige KG-Uhrzeit: {value}")
+    return word
+
+
+
 
 @lru_cache(maxsize=1)
 def _static_register_defs() -> dict[str, Any]:
@@ -49,7 +79,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     best: tuple[int, str] | None = None
     # Use the exact configuration codes, even when a read-only numeric alias
     # for the same register is also present in the discovery catalog.
-    preferred = {**SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
+    preferred = {**KG_TIMER_CODES, **SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
                  1250: "CP1-1", 1251: "CP1-2", 1252: "CP1-3",
                  1253: "CP1-5", 1254: "CP1-6", 1255: "CP1-7",
                  **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status"}
@@ -146,6 +176,11 @@ def cloud_write_value_from_register_value(cloud_code, raw_value, register, engin
     from core.foxair_phnix_core import numeric_value_by_type
     import math
 
+    if cloud_code in KG_MASK_CODES:
+        word = kg_word(cloud_code, int(raw_value))
+        return f"{word:016b}"
+    if cloud_code in KG_TIME_CODES:
+        return str(kg_word(cloud_code, int(raw_value)))
     if engineering_value is None:
         engineering_value = numeric_value_by_type(int(raw_value), register.dtype)
     if not math.isfinite(float(engineering_value)):
@@ -161,6 +196,11 @@ def cloud_readback_matches(code, requested, row):
     if (not row.get("supported") or row.get("value") is None
             or any(row.get(flag) for flag in ("cached", "stale", "currentEmpty"))):
         return False
+    if code in KG_TIME_CODES or code in KG_MASK_CODES:
+        try:
+            return kg_word(code, requested) == kg_word(code, row["value"])
+        except (ValueError, TypeError):
+            return False
     try:
         expected, actual = float(requested), float(row["value"])
         if code in SILENT_TIMER_CODES.values() and not (expected.is_integer() and actual.is_integer()):
@@ -189,8 +229,12 @@ def validate_cloud_commands(commands):
             raise ValueError(f"Cloud-Schreiben für {code} ist nicht freigegeben.")
         if code in seen:
             raise ValueError(f"Doppelter Cloud-Schreibcode: {code}")
+        if code in KG_TIME_CODES or code in KG_MASK_CODES:
+            word = kg_word(code, value)
+            # Preserve canonical binary payload for grouped KG masks.
+            value = f"{word:016b}" if code in KG_MASK_CODES else str(word)
         try:
-            number = float(value)
+            number = float(kg_word(code, value)) if code in KG_MASK_CODES else float(value)
         except (ValueError, TypeError) as exc:
             raise ValueError(f"Ungültiger Cloud-Wert für {code}") from exc
         if not math.isfinite(number):
@@ -222,6 +266,13 @@ def cloud_command_batches(commands):
     """Verified barriers: disable first, parameters together, enable last."""
     barriers = {"SG01", "Timer_Mute_On_En", "Timer_Mute_Off_En"}
     disable = tuple(item for item in commands if item[0] in barriers and float(item[1]) == 0)
-    parameters = tuple(item for item in commands if item[0] not in barriers)
+    # The on/off pairs share a whole 16-bit day mask. All active flags off:
+    # disable first. Otherwise confirm fresh time readbacks before enabling.
+    mask_off = tuple(item for item in commands if item[0] in KG_MASK_CODES
+                     and not (kg_word(*item) & 0x8080))
+    parameters = tuple(item for item in commands if item[0] not in barriers
+                       and item[0] not in KG_MASK_CODES)
+    mask_on = tuple(item for item in commands if item[0] in KG_MASK_CODES
+                    and (kg_word(*item) & 0x8080))
     enable = tuple(item for item in commands if item[0] in barriers and float(item[1]) != 0)
-    return tuple(group for group in (disable, parameters, enable) if group)
+    return tuple(group for group in (disable, mask_off, parameters, mask_on, enable) if group)

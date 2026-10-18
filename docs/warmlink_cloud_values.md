@@ -254,13 +254,63 @@ Antworten, Timeout und Schreibabweichungen.
 Geräte-/Account-/Transportwechsel und geschlossene Dialoge verwerfen verspätete
 Antworten und stoppen Folgeschritte. Autoload wartet bei laufenden Cloudaufträgen.
 HTTP bleibt vollständig im vorhandenen Worker; Polling, Account-Sperre und
-LTE-Recovery bleiben bestehen. Der WP-Ein/Aus-Timer-Einstieg öffnet bei Cloud-only
-denselben Silent-Editor. Bereits offene kombinierte Dialoge verweisen für Cloud
-ebenfalls dorthin. Andere WP-Timer, Backup/Restore und unbekannte Register erhalten
-keinen neuen Cloud-Schreibweg. Lokale Modbus-, Display-Paket- und Pausenmechanismen
+LTE-Recovery bleiben bestehen. Der WP-Ein/Aus-Timer-Einstieg behält in Cloud-only seinen vollständigen
+kombinierten Dialog mit sechs Timer-Tabs und einem Silent-Tab. Die KG-Codes
+1256–1270 erhalten einen neuen, gezielt begrenzten Cloud-Schreibweg.
+Backup/Restore und andere unbekannte Register bleiben davon unberührt. Lokale Modbus-, Display-Paket- und Pausenmechanismen
 bleiben unverändert; Cloud-only wartet nicht auf Display-Parameterblöcke.
 
 Offene Praxisprüfungen (keine Nutzungssperre): tatsächliche Übernahme der sechs
 Silent-Werte am Zielgerät, Aktivierung/Deaktivierung samt Zeitgrenzen, serverseitige
 Teilübernahme, Readback-Latenz und Gerätekontextwechsel während einer Sequenz.
 Die automatisierten Tests verwenden ausschließlich synthetische Geräte-/Accountdaten.
+
+## WP-Ein-/Aus-Timer: neues KG-Cloud-Mapping (Entwicklungsstand)
+
+Die **lokale** KG-Zuordnung ist aus dem Registerschema bekannt. Für die
+**numerischen** Cloud-Aliase 1256–1269 sind bereits GL9-Read-Vergleiche vom
+12.10.2026 dokumentiert; die direkte Cloud-Erreichbarkeit der nachstehenden
+KG-Code-Bezeichnungen und das Schreiben sind **noch nicht am Gerät bestätigt**.
+Die Unterscheidung ist wichtig: Mapping-Identität ist kein Live-Write-Nachweis.
+
+| Cloudcode | MAIN-Register | Datentyp | Bedeutung |
+| --- | ---: | --- | --- |
+| KG1–KG12 | 1256–1267 | TIME_HHMM | Je zwei gepackte Start-/Stoppwörter für Timer 1–6 |
+| KG13~KG28 | 1268 | BINARY (16 Bit) | Timer 1+2 Tage/Aktiv |
+| KG29~KG44 | 1269 | BINARY (16 Bit) | Timer 3+4 Tage/Aktiv |
+| KG45~KG60 | 1270 | BINARY (16 Bit) | Timer 5+6 Tage/Aktiv |
+
+Die Zeitwörter verwenden `(Stunde << 8) | Minute`, gültig 00:00–23:59.
+Bei den drei Bitmasken ist das **Low-Byte Timer 1/3/5**, das
+**High-Byte Timer 2/4/6**, in jedem Byte Bit 7 Aktiv und Bits 0–6 Mo–So.
+Ganze 16-Bit-Masken werden geschrieben und frisch auf Gleichheit rückgelesen;
+ein unverändertes Partner-Byte muss erhalten bleiben. Ein Registerwrite ist kein
+atomarer Cloud-Servervorgang.
+
+Der Cloud-Editor zeigt wieder alle sieben Tabs. Er lädt die 15 KG-Werte und
+die sechs Silent-Werte asynchron, verändert nur ausdrücklich bearbeitete Werte
+und verwendet zentrale, gegen frische Readbacks geprüfte Batch-Writes. Bei
+teilweise fehlenden Cloudantworten bleibt der jeweilige Tab gesperrt; andere
+Tabs bleiben sichtbar. Cloud-Schreiben erfordert keine experimentelle Freigabe.
+
+## Noch nicht vollständig zugeordnete Cloud-Codefamilien
+
+Neben den KG-Timern enthält `ALL_WARMLINK_CLOUD_CODES` weitere Namen,
+die **nicht automatisch** einen bestätigten GL9-Modbusbezug oder eine
+Schreibfreigabe bedeuten:
+
+- `M1`–`M6` (je Mode, Start, End, Heizen, Kühlen, WW, Leistung)
+  und `M1_2 Enalbe` usw.: starke Kandidaten für die lokalen
+  Betriebsart-Timer 1281–1325; Mapping und Readback noch prüfen.
+- `W1`–`W3` Start/End/Enable und `DP1`–`DP6`:
+  benannte Timer-/Programmfamilien, Funktion/GL9-Verfügbarkeit offen.
+- Weitere Zonen- und Hydraulik-Codes (z.B. Zone 2 Mixing Temp,
+  Zone 2 Water Target, Zone 2 Curve Offset): teilweise bereits anderswo
+  als Projektion hinterlegt; kein neuer Write-Grant.
+- `E001` ff. und weitere Diagnose-/Gerätecodes:
+  Code-Existenz ist kein bestätigter GL9-Registerexport.
+
+Eine fehlende Inline-Hint-Definition bedeutet nicht zwingend
+„unbekannt“: weitere Overlay-/iOS308-Mappings werden im Modul nachträglich
+eingetragen. Vor einer Freigabe immer die **effektive** Mappingsicht und
+die reale Cloud-Antwort prüfen.

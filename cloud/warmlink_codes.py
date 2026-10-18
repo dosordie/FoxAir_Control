@@ -3271,6 +3271,36 @@ for _code, _reviewed in _IOS308_CONFIRMED_READ_MAPPINGS.items():
     WARMLINK_CLOUD_CODE_HINTS[_code].update(_reviewed)
 
 
+# WP on/off schedule: local KG register identity and independently live-matched
+# numeric Cloud aliases (1256..1269). The KG protocol spellings themselves
+# and Cloud writes are still awaiting an operator's live-device confirmation.
+# `confidence` refers to the KG -> local-register identity, NOT write testing.
+for _idx in range(12):
+    _code = f"KG{_idx + 1}"
+    _reg = 1256 + _idx
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "confirmed", "local_code": _code,
+        "modbus_register": _reg, "dataType": "TIME_HHMM",
+        "cloud_dataType": "DIGI1", "write_allowed": True,
+        "name": f"WP Ein/Aus Timer {_idx // 2 + 1} {'Start' if _idx % 2 == 0 else 'Stop'} (HH:MM Rohwort)",
+        "note": "Registeridentity KG/local documented; numeric Cloud 1256..1267 "
+                "read-matched 2026-10-12. KG-code Cloud read/write has not been "
+                "live-verified. Value is packed (hour << 8) | minute.",
+    }
+for _idx, _code in enumerate(("KG13~KG28", "KG29~KG44", "KG45~KG60")):
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "confirmed", "local_code": ("KG13-KG28", "KG29-KG44", "KG45-KG60")[_idx],
+        "modbus_register": 1268 + _idx,
+        "dataType": "bitword16", "cloud_dataType": "BINARY",
+        "write_allowed": True,
+        "name": f"WP Ein/Aus Timer {_idx * 2 + 1}+{_idx * 2 + 2} Aktiv/Tage",
+        "note": "KG-to-local identity and bit order follow the local timer layout. "
+                "Numeric Cloud 1268/1269 readback matched local bitwords on 2026-10-12; "
+                "KG protocol spelling and writes are NOT yet live-verified. "
+                "16-bit word: low byte first timer, high byte partner.",
+    }
+
+
 def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})
 

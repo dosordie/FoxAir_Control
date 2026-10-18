@@ -1,5 +1,8 @@
 ## Unreleased
 
+- Cloud WP Ein/Aus Timer: wieder vollständiger kombinierter Dialog mit Timer 1–6 und Silentmodus statt Silent-Umleitung. KG1–KG12 und KG13~KG28 / KG29~KG44 / KG45~KG60 den MAIN-Registern 1256–1270 zugeordnet; ganze HH:MM-/Tagesmasken, nur geänderte Werte, frische Readbacks und Schutz des Partner-Bytes. Cloud-Schreibpfad neu und noch nicht live bestätigt.
+- Cloud-Mapping-Inventar um M-/W-/DP-Kandidaten ergänzt; keine neuen Schreibfreigaben außerhalb der 15 KG-Timer-Register.
+
 - Kontaktdecoder (2034 / S01~S10) und Lastausgangsdecoder (2019 / O01~023):
   frischer asynchroner Cloud-Autoload, Jetzt lesen, Polling und korrekte uint16-
   BINARY-/Dezimalwerte. Fehlende/ungültige Werte bleiben unbekannt; beide bleiben read-only.
@@ -8,9 +11,7 @@
   gemeinsamer frischer Readback mit Einzelprüfung und Schutz neuerer Eingaben.
   Deaktivierungen zuerst bestätigen, geänderte Zeiten gemeinsam bestätigen,
   Aktivierungen zuletzt. Keine experimentelle Freigabe oder zusätzliche Cloud-Rückfrage.
-- Cloud-only nutzt beim WP-Ein/Aus-Timer-Einstieg denselben Silent-Editor ohne
-  Display-Paketvoraussetzungen; die übrigen WP-Timer bleiben lokal. Lokale Modbus-
-  und Display-Schreibpfade samt Pausen bleiben erhalten.
+- Stand von PR #191: Cloud-only leitete den WP-Ein/Aus-Timer zunächst zum Silent-Editor um; im aktuellen Unreleased-Stand ist der kombinierte Editor für Cloud wiederhergestellt.
 - Silent-Timer-Cloud-Writes sind neu implementiert und noch nicht live verifiziert.
   Nutzung ist regulär möglich; gegebenenfalls sind Live-Nachbesserungen erforderlich.
 

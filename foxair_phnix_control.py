@@ -14,6 +14,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
+from types import SimpleNamespace
 from warmlink_raw_capture import (
     DEFAULT_CAPTURE_SETTINGS,
     WarmlinkRawCapture,
@@ -53,6 +54,7 @@ from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
 from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
 from core.display_protocol import (
@@ -86,6 +88,7 @@ from core.warmlink_request_scheduler import (
 from cloud.register_resolver import resolve_cloud_register
 from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
+    KG_TIMER_CODES, KG_TIME_CODES, KG_MASK_CODES, SILENT_TIMER_CODES, SILENT_TIMER_LIMITS, kg_word,
     cloud_code_for_register,
     cloud_write_choice_options,
     cloud_write_value_from_label,
@@ -919,7 +922,9 @@ class ReaderWorker(DeviceIdentityIOMixin, QObject):
 
 
 
-class OnOffTimerEditorDialog(QDialog):
+class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
+    CLOUD_REGISTERS = {**SILENT_TIMER_CODES, **KG_TIMER_CODES}
+    CLOUD_PURPOSE = "onoff_timer"
     """Editor fuer WP Ein/Aus Timer 1..6.
 
     Registerschema:
@@ -939,11 +944,17 @@ class OnOffTimerEditorDialog(QDialog):
         self.fields: dict[int, dict[str, Any]] = {}
         self._timer_read_sequence_active = False
         self._timer_read_sequence_step = ""
+        self._cloud_baseline = {}
+        self._cloud_dirty = set()
+        self._cloud_pending = {}
         self.setWindowTitle("WP Ein/Aus / Silentmodus Timer")
         self.setMinimumWidth(650)
         self.setMinimumHeight(540)
         self._build_ui()
+        self._connect_cloud_dirty_signals()
+        self._init_cloud_snapshot()
         self.load_from_live_values()
+        self._update_cloud_actions()
 
     def _time_reg(self, timer_no: int, stop: bool = False) -> int:
         return 1256 + (timer_no - 1) * 2 + (1 if stop else 0)
@@ -1008,6 +1019,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
+        self._update_cloud_actions()
 
     def _add_timer_tab(self, timer_no: int):
         widget = QWidget()
@@ -1142,12 +1154,17 @@ class OnOffTimerEditorDialog(QDialog):
             self._programmatic = False
 
     def load_from_live_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         for reg_no in sorted(self.TIMER_REGS):
             reg = self.main_window.latest_regs.get(reg_no)
             if reg is not None:
                 self.update_from_live_register(reg, force=True)
 
     def update_from_live_register(self, reg, force: bool = False):
+        if self.main_window.control_transport() == "cloud" and not force:
+            return
         reg_no = int(reg.reg)
         if reg_no not in self.TIMER_REGS:
             return
@@ -1252,14 +1269,163 @@ class OnOffTimerEditorDialog(QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
+    def _connect_cloud_dirty_signals(self):
+        """Track edits by register, never by an individual byte of a pair."""
+        for timer_no, fld in self.fields.items():
+            for reg, widgets in (
+                (fld["start_reg"], (fld["start_hour"], fld["start_min"])),
+                (fld["stop_reg"], (fld["stop_hour"], fld["stop_min"])),
+                (fld["mask_reg"], (fld["active_cb"], fld["day_raw"], *fld["day_checks"])),
+            ):
+                for widget in widgets:
+                    signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
+                    signal.connect(lambda _value, r=reg: self._cloud_edited(r))
+        for reg, widget in (
+            (1244, self.silent_start_enable_cb), (1245, self.silent_start_hour),
+            (1246, self.silent_start_min), (1247, self.silent_stop_enable_cb),
+            (1248, self.silent_stop_hour), (1249, self.silent_stop_min),
+        ):
+            signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
+            signal.connect(lambda _value, r=reg: self._cloud_edited(r))
+        self.tabs.currentChanged.connect(lambda _index: self._update_cloud_actions())
+
+    def _cloud_value(self, register):
+        if register in SILENT_TIMER_CODES:
+            return next(value for reg, value, _ in self.silent_timer_values() if reg == register)
+        if register in (1268, 1269, 1270):
+            first = (register - 1268) * 2 + 1
+            return self._pair_raw_from_controls(first)
+        timer_no = (register - 1256) // 2 + 1
+        fld = self.fields[timer_no]
+        pair = ("start_hour", "start_min") if register % 2 == 0 else ("stop_hour", "stop_min")
+        return encode_hhmm(fld[pair[0]].value(), fld[pair[1]].value())
+
+    def _cloud_edited(self, register):
+        if self._programmatic or self.main_window.control_transport() != "cloud":
+            return
+        if self._cloud_value(register) == self._cloud_baseline.get(register):
+            self._cloud_dirty.discard(register)
+        else:
+            self._cloud_dirty.add(register)
+        self._update_cloud_actions()
+
+    def _validated_cloud_values(self, values):
+        valid = {}
+        for reg, raw in values.items():
+            try:
+                if reg in KG_TIMER_CODES:
+                    valid[reg] = kg_word(KG_TIMER_CODES[reg], raw)
+                elif reg in SILENT_TIMER_CODES and isinstance(raw, int) and (
+                    0 <= raw <= SILENT_TIMER_LIMITS[SILENT_TIMER_CODES[reg]]
+                ):
+                    valid[reg] = raw
+            except (TypeError, ValueError):
+                continue
+        return valid
+
+    def _apply_cloud_snapshot(self, values):
+        # An incomplete read invalidates missing baselines but never sends 0.
+        self._cloud_baseline = dict(values)
+        self._programmatic = True
+        try:
+            for reg, raw in values.items():
+                if reg not in self._cloud_dirty:
+                    self.update_from_live_register(SimpleNamespace(reg=reg, raw_value=raw), force=True)
+        finally:
+            self._programmatic = False
+        for reg in tuple(self._cloud_dirty):
+            self._cloud_edited(reg)
+        self._update_cloud_actions()
+
+    def _reset_cloud_source(self):
+        self._cloud_baseline.clear()
+        self._cloud_dirty.clear()
+        self._cloud_pending.clear()
+        self._programmatic = True
+        try:
+            for reg in sorted(self.CLOUD_REGISTERS):
+                self.update_from_live_register(SimpleNamespace(reg=reg, raw_value=0), force=True)
+        finally:
+            self._programmatic = False
+        self._update_cloud_actions()
+
+    def connection_changed(self):
+        old = self._control_identity
+        super().connection_changed()
+        if old != self._control_identity and self._control_identity.transport != "cloud":
+            self.load_from_live_values()
+        self._update_cloud_actions()
+
+    def _active_cloud_registers(self):
+        if self._is_silent_tab():
+            return frozenset(SILENT_TIMER_CODES)
+        fld = self.fields[self._current_timer_no()]
+        return frozenset((fld["start_reg"], fld["stop_reg"], fld["mask_reg"]))
+
+    def _update_cloud_actions(self):
+        if not hasattr(self, "tabs"):
+            return
+        cloud = self.main_window.control_transport() == "cloud"
+        self.timer_delay_ms.setEnabled(not cloud)
+        self.load_btn.setText("Cloud neu laden" if cloud else "Aus Live-Werten laden")
+        self.read_btn.setText("Cloud lesen" if cloud else "Timer von WP lesen")
+        if not cloud:
+            self.send_btn.setEnabled(True)
+            self.send_all_btn.setEnabled(True)
+            return
+        current = self._active_cloud_registers()
+        all_wp = frozenset(KG_TIMER_CODES)
+        valid = self.cloud_request is None and self.main_window.control_can_write()
+        self.send_btn.setEnabled(bool(valid and current <= self._cloud_baseline.keys()
+                                      and current & self._cloud_dirty))
+        self.send_all_btn.setEnabled(bool(valid and all_wp <= self._cloud_baseline.keys()
+                                          and all_wp & self._cloud_dirty))
+        self.send_btn.setToolTip("Nur geänderte Werte; alle Register des Tabs müssen vorher frisch gelesen sein.")
+        self.send_all_btn.setToolTip("Alle sechs Timer, nur geänderte Werte und ganze 16-Bit-Tagesmasken.")
+
+    def _send_cloud_values(self, *, all_timers=False):
+        if self.cloud_request is not None:
+            self.status_label.setText("Cloud-Lesen läuft; bitte anschließend schreiben.")
+            return
+        needed = frozenset(KG_TIMER_CODES) if all_timers else self._active_cloud_registers()
+        missing = needed - self._cloud_baseline.keys()
+        if missing:
+            self.status_label.setText("Cloud: Daten unvollständig für " +
+                                      ", ".join(str(r) for r in sorted(missing)) + "; zuerst lesen.")
+            return
+        items = (self.all_timer_values() if all_timers else
+                 self.silent_timer_values() if self._is_silent_tab() else self.timer_values())
+        # For a shared register always compose BOTH timer bytes from their UI
+        # controls; do not reuse a stale day_raw from just one timer tab.
+        writes = [(reg, self._cloud_value(reg), self._cloud_value(reg))
+                  for reg, _raw, _label in items if reg in self._cloud_dirty]
+        if not writes:
+            self.status_label.setText("Keine geänderten Timerwerte.")
+            return
+        self._cloud_pending = {reg: value for reg, _raw, value in writes}
+        error = self.main_window.control_write_registers(
+            writes, "WP Ein/Aus Timer Cloud", expected_context=self._control_identity)
+        if error:
+            self._cloud_pending.clear()
+        self.status_label.setText(error or "Cloud-Batch gesendet; frischen Readback abwarten …")
+        self._update_cloud_actions()
+
+    def write_readback_confirmed(self, register):
+        # A newer edit remains dirty when an older submitted word is confirmed.
+        value = self._cloud_pending.pop(register, None)
+        if value is None:
+            return
+        self._cloud_baseline[register] = value
+        self._cloud_edited(register)
+
+
     TIMER_READ_LABEL_SILENT = "Silentmodus Timer 1244-1249"
     TIMER_READ_LABEL_ONOFF = "WP Ein/Aus Timer 1256-1270"
     TIMER_READ_STEP_DELAY_MS = 600
 
     def read_from_wp(self):
         if self.main_window.control_transport() == "cloud":
-            self.main_window.open_silent_timer_editor()
-            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            self.read_cloud_snapshot()
             return
         self._timer_read_sequence_active = True
         self._timer_read_sequence_step = "silent"
@@ -1312,8 +1478,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def send_values(self):
         if self.main_window.control_transport() == "cloud":
-            self.main_window.open_silent_timer_editor()
-            self.status_label.setText("Cloud-Silentmodus im gemeinsamen Silent-Editor; WP-Timer bleiben lokal.")
+            self._send_cloud_values(all_timers=False)
             return
         try:
             if self._is_silent_tab():
@@ -1326,7 +1491,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def send_all_values(self):
         if self.main_window.control_transport() == "cloud":
-            self.status_label.setText("WP-Ein/Aus-Timer benötigen lokalen Modbus.")
+            self._send_cloud_values(all_timers=True)
             return
         try:
             self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), int(self.timer_delay_ms.value()), title="WP Ein/Aus Timer 1-6")
@@ -7900,7 +8065,7 @@ class MainWindow(QMainWindow):
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
@@ -7990,7 +8155,7 @@ class MainWindow(QMainWindow):
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
@@ -9960,7 +10125,7 @@ class MainWindow(QMainWindow):
         self._control_cloud_write_context = control_context
         self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
-        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else ""
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else "onoff_timer_dialog" if label.startswith("WP Ein/Aus Timer") else ""
         self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
@@ -11544,11 +11709,7 @@ class MainWindow(QMainWindow):
             self.timer_dialog.activateWindow()
 
     def open_onoff_timer_editor(self):
-        if self.control_transport() == "cloud":
-            self.open_silent_timer_editor()
-            self.silent_timer_dialog.status_label.setText("Cloud: Silentmodus Timer. WP-Ein/Aus-Timer benötigen lokalen Modbus.")
-            return
-        if not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
             return
         if self.onoff_timer_dialog is None or not self.onoff_timer_dialog.isVisible():
             self.onoff_timer_dialog = OnOffTimerEditorDialog(self)

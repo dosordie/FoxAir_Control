@@ -18,6 +18,8 @@ und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
 
+**WP Ein/Aus Timer:** Unter WarmLink Cloud zeigt der kombinierte Timer-Editor alle sechs Ein-/Aus-Timer und den Silentmodus. Die KG-Zeit-/Tagescodes werden über den zentralen Cloud-Batch-/Readback-Weg verarbeitet; Cloud-Writes dieser KG-Codes sind als Entwicklungsfunktion noch nicht live an der GL9 bestätigt. [Cloud-Timermapping](docs/warmlink_cloud_values.md#wp-ein-aus-timer-neues-kg-cloud-mapping-entwicklungsstand).
+
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
 
 ## Firmware-Übersicht
