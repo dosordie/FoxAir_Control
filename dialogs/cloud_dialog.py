@@ -19,10 +19,10 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.metadata import resolve_cloud_range
-from cloud.polling import CloudSession
+from cloud.polling import CloudSession, CloudTimingState
 from cloud.token_store import (
     AsyncKeyringStore, KEYRING_SERVICE, delete_password, delete_token,
-    set_password, set_token,
+    set_password, set_token, load_cloud_credentials,
 )
 from cloud.warmlink_codes import (
     WARMLINK_644_DISCOVERY_CODES, cloud_hint,
@@ -102,6 +102,11 @@ class WarmLinkCloudDialog(QDialog):
         self._data_render_timer.timeout.connect(self._render_data_chunk)
         self._data_resize_pending = False
         self._stopping = False
+        self._quick_connect_pending = False
+        self._quick_connect_id = 0
+        self._disconnect_timer = QTimer(self)
+        self._disconnect_timer.setInterval(100)
+        self._disconnect_timer.timeout.connect(self._finish_disconnect_if_idle)
         self._build_ui()
         self._load_settings()
 
@@ -593,16 +598,114 @@ class WarmLinkCloudDialog(QDialog):
     def _update_device_controls(self) -> None:
         """Keep device mutation locked to a stopped cloud polling session."""
         self._sync_sim_identity()
-        running = self.cloud_thread is not None
+        transition = self._quick_connect_pending or getattr(self.main_window, "_cloud_disconnect_pending", False)
+        running = self.cloud_thread is not None or transition
+        for button in (self.test_btn, self.poll_once_btn, self.start_poll_btn):
+            button.setEnabled(not running)
+        self.debug_send_btn.setEnabled(not transition and self.debug_thread is None)
+        if transition:
+            self.sim_refresh_btn.setEnabled(False)
         self.device_combo.setEnabled(not running)
         self.rediscover_btn.setEnabled(not running)
         self.username_edit.setEnabled(not running)
         self.password_edit.setEnabled(not running)
         self.delete_btn.setEnabled(not running)
         self.interval_spin.setEnabled(not running)
-        self.reload_static_btn.setEnabled(bool(self.session.scanned and self.session.static_codes) and not self._stopping)
+        self.reload_static_btn.setEnabled(bool(self.session.scanned and self.session.static_codes) and not self._stopping and not transition)
+
+    def quick_connect(self):
+        """Use the existing worker; credential preflight stays off the GUI thread."""
+        main = self.main_window
+        if self._quick_connect_pending or self.cloud_thread is not None or getattr(main, "_cloud_disconnect_pending", False):
+            return
+        cfg = self._cloud_settings()
+        user = str(cfg.get("username") or "").strip()
+        device = str(cfg.get("selected_device_code") or "").strip()
+        if (not user or not device or self.username_edit.text().strip() != user
+                or self._devices_username != user or self.device_combo.findData(device) < 0):
+            main.open_warmlink_cloud_dialog()
+            return
+        self.device_combo.setCurrentIndex(self.device_combo.findData(device))
+        password, token = self._password(), self._initial_token_for_user(user)
+        if password or token:
+            self._start_worker(poll_once=False)
+            return
+        self._quick_connect_pending = True
+        self._quick_connect_id += 1
+        request_id = self._quick_connect_id
+        main._cloud_manually_disconnected = False
+        main.set_cloud_ui_state("CONNECTING")
+        self._update_device_controls()
+
+        def loaded(credentials, error):
+            if not self._quick_connect_pending or request_id != self._quick_connect_id:
+                return
+            self._quick_connect_pending = False
+            if getattr(main, "_warmlink_closing", False):
+                return
+            self._update_device_controls()
+            if (self.username_edit.text().strip(), self._selected_device_code()) != (user, device):
+                main.set_cloud_ui_state("DISCONNECTED")
+                main.open_warmlink_cloud_dialog()
+                return
+            if error:
+                main.set_cloud_ui_state("DISCONNECTED")
+                self.status_label.setText("Gespeicherter Cloud-Zugang fehlt oder ist nicht verfügbar.")
+                main.open_warmlink_cloud_dialog()
+                return
+            password, token = credentials
+            self._cached_password, self._credentials_username = password, user
+            if token:
+                self._cloud_token, self._cloud_token_username = token, user
+            self._remember_credentials()
+            self._start_worker(poll_once=False)
+
+        self._keyring.submit(lambda: load_cloud_credentials(user, use_saved_token=bool(cfg.get("save_token", True))), loaded)
+
+    def disconnect_session(self):
+        """Deactivate access now and finish outstanding workers without terminating I/O."""
+        main = self.main_window
+        if getattr(main, "_cloud_disconnect_pending", False):
+            return
+        main._cloud_manually_disconnected = True
+        main._cloud_disconnect_pending = True
+        cancelled = getattr(main, "_control_cloud_write_cancelled", None)
+        if cancelled is not None:
+            cancelled.set()
+        main.set_cloud_connection_state(False)
+        main.set_cloud_timing_state(CloudTimingState())
+        for dialog in main.findChildren(WarmLinkCloudDialog):
+            dialog._quick_connect_pending = False
+            dialog._quick_connect_id += 1
+            dialog._sim_context = None
+            dialog._pending_overlay.clear()
+            dialog._overlay_timer.stop()
+            dialog.stop_worker()
+            dialog._update_device_controls()
+        self.session.validated = False
+        self.status_label.setText("Cloud-Sitzung wird getrennt …")
+        self._disconnect_timer.start()
+        self._finish_disconnect_if_idle()
+
+    def _finish_disconnect_if_idle(self):
+        main = self.main_window
+        jobs = [getattr(main, name, None) for name in ("cloud_read_thread", "cloud_write_thread")]
+        jobs.extend(getattr(dialog, name, None) for dialog in main.findChildren(WarmLinkCloudDialog)
+                    for name in ("cloud_thread", "debug_thread", "sim_thread"))
+        if any(job is not None for job in jobs):
+            return  # Finished signals must complete their normal cleanup first.
+        self._disconnect_timer.stop()
+        main._cloud_disconnect_pending = False
+        main.set_cloud_ui_state("DISCONNECTED")
+        self._update_device_controls()
+        self.status_label.setText("Cloud-Sitzung getrennt.")
+        self.progress_bar.setRange(0, 1)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("Cloud getrennt")
 
     def _start_worker(self, poll_once: bool, just_login: bool = False, *, force_discovery=False, reload_static=False, discovery_only=False, full_scan=False, logger_request=None):
+        if getattr(self.main_window, "_cloud_disconnect_pending", False) or getattr(self.main_window, "_warmlink_closing", False):
+            return
         if self.cloud_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Cloud-Worker läuft bereits.")
             return
@@ -635,6 +738,7 @@ class WarmLinkCloudDialog(QDialog):
                 self.main_window.clear_cloud_device_values()
             elif hasattr(self.main_window, "clear_cloud_overlay"):
                 self.main_window.clear_cloud_overlay()
+        self.main_window._cloud_manually_disconnected = False
         self._stopping = False
         self._on_progress("CONNECTING", 0, 0)
         self._on_connection_state("CONNECTING")
@@ -720,6 +824,9 @@ class WarmLinkCloudDialog(QDialog):
             self.progress_bar.setFormat("Cloud verbunden")
         # Resume only after all poll-worker references/UI state are cleaned up.
         # This also covers a finished signal queued before closeEvent ran.
+        update = getattr(self.main_window, "_update_cloud_quick_button", None)
+        if update:
+            update()
         if getattr(self.main_window, "_close_after_cloud_poll", False):
             self.main_window._close_after_cloud_poll = False
             self.main_window.close()
@@ -730,6 +837,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str)
     def _on_token_updated(self, token: str):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         token = str(token or "").strip()
         if not token:
             return
@@ -745,6 +854,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str)
     def _on_login_method(self, method: str):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         method = str(method or "").strip()
         if not method:
             return
@@ -755,10 +866,14 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str)
     def _on_worker_status(self, text: str):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         self.status_label.setText(str(text))
 
     @Slot(str)
     def _on_worker_error(self, text: str):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         text = translate_cloud_error_message(str(text))
         self.status_label.setText("Fehler: " + text)
         self.main_window._log("WarmLink Cloud Fehler: " + text)
@@ -776,6 +891,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(list)
     def _on_devices(self, devices: list):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         self.devices = cached_device_metadata(devices)
         self._devices_username = self.username_edit.text().strip()
         cfg = self._cloud_settings()
@@ -798,6 +915,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(object)
     def _on_session_updated(self, session):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         device_changed = bool(self.session.device_code and (
             self.session.username != session.username or self.session.device_code != session.device_code))
         if device_changed or (self.session.scanned and not session.scanned and not session.validated):
@@ -821,6 +940,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str)
     def _on_connection_state(self, state):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         if self._stopping and state == "POLLING":
             state = "CONNECTED"
         device = next((d for d in self.devices if d.get("deviceCode") == self._selected_device_code()), {})
@@ -835,12 +956,16 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(object)
     def _on_timing_updated(self, state):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         setter = getattr(self.main_window, "set_cloud_timing_state", None)
         if setter:
             setter(state)
 
     @Slot(str, int, int)
     def _on_progress(self, phase, done, total):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         labels = {"CONNECTING": "Cloud-Verbindung wird aufgebaut ...", "LOADING_TOKEN": "Token wird geladen ...",
                   "DISCOVERING": "Geräte werden gesucht ...", "READING_INITIAL": "Cloudwerte werden gelesen",
                   "READING_STATIC": "Konfigurationswerte werden gelesen", "READING_LIVE": "Livewerte werden gelesen",
@@ -898,6 +1023,8 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(list)
     def _on_data(self, rows: list):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         started = time.perf_counter()
         existing = {str(row.get("code")): row for row in self.data_rows}
         delta = []
@@ -1145,6 +1272,8 @@ class WarmLinkCloudDialog(QDialog):
 
 
     def run_debug_request(self):
+        if getattr(self.main_window, "_cloud_disconnect_pending", False):
+            return
         if self.debug_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "API-Anfrage läuft bereits.")
             return
@@ -1190,6 +1319,8 @@ class WarmLinkCloudDialog(QDialog):
         self.debug_thread.start()
 
     def _on_debug_result(self, response):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         body = str(response.body or "")
         try:
             body = json.dumps(json.loads(body), ensure_ascii=False, indent=2)
@@ -1242,6 +1373,8 @@ class WarmLinkCloudDialog(QDialog):
         self.sim_refresh_btn.setEnabled(bool(identity) and self.sim_thread is None)
 
     def refresh_sim_status(self):
+        if getattr(self.main_window, "_cloud_disconnect_pending", False):
+            return
         self._sync_sim_identity()
         identity = self._current_sim_identity()
         if identity is None:
@@ -1353,6 +1486,8 @@ class WarmLinkCloudDialog(QDialog):
         }, ensure_ascii=False, indent=2))
 
     def _on_debug_error(self, text: str):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         current = self.debug_result_edit.toPlainText().split("\n\nSende ...", 1)[0]
         self.debug_result_edit.setPlainText(f"{current}\n\nFEHLER\n{translate_cloud_error_message(str(text))}")
         self.main_window._log("Cloud API Debugger Fehler: " + str(text))
@@ -1543,6 +1678,10 @@ class WarmLinkCloudDialog(QDialog):
         self.main_window._log(f"WarmLink Cloud: JSON exportiert: {path}")
 
     def closeEvent(self, event):
+        if self._disconnect_timer.isActive() or self._quick_connect_pending:
+            self.hide()
+            event.ignore()
+            return
         self._save_settings()
         if self.cloud_worker is not None and not getattr(self, "_force_close", False):
             # Dialog nur ausblenden, Polling laeuft weiter im Hintergrund.

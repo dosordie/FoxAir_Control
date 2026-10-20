@@ -936,6 +936,7 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
     TIMER_REGS = set(range(1256, 1271)) | set(range(1244, 1250))
     DAY_BITS = TimerEditorDialog.DAY_BITS
     ACTIVE_BIT = TimerEditorDialog.ACTIVE_BIT
+    LOCAL_WRITE_DELAY_MS = 1200
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -944,6 +945,9 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         self.fields: dict[int, dict[str, Any]] = {}
         self._timer_read_sequence_active = False
         self._timer_read_sequence_step = ""
+        self._local_baseline = {}
+        self._local_dirty = set()
+        self._local_dirty_days = set()
         self._cloud_baseline = {}
         self._cloud_dirty = set()
         self._cloud_pending = {}
@@ -951,7 +955,7 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         self.setMinimumWidth(650)
         self.setMinimumHeight(540)
         self._build_ui()
-        self._connect_cloud_dirty_signals()
+        self._connect_edit_signals()
         self._init_cloud_snapshot()
         self.load_from_live_values()
         self._update_cloud_actions()
@@ -972,13 +976,10 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         layout.addWidget(hint)
 
         top = QHBoxLayout()
-        self.auto_update_cb = QCheckBox("live aktualisieren")
-        self.auto_update_cb.setChecked(True)
         self.status_label = QLabel("Bereit.")
         self.status_label.setMinimumWidth(220)
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #666;")
-        top.addWidget(self.auto_update_cb)
         top.addStretch(1)
         top.addWidget(self.status_label)
         layout.addLayout(top)
@@ -988,17 +989,6 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         for timer_no in range(1, 7):
             self._add_timer_tab(timer_no)
         self._add_silent_tab()
-
-        bottom = QHBoxLayout()
-        self.timer_delay_ms = QSpinBox()
-        self.timer_delay_ms.setRange(0, 10000)
-        self.timer_delay_ms.setSingleStep(100)
-        self.timer_delay_ms.setValue(1200)
-        self.timer_delay_ms.setSuffix(" ms")
-        bottom.addWidget(QLabel("Pause zwischen Writes:"))
-        bottom.addWidget(self.timer_delay_ms)
-        bottom.addStretch(1)
-        layout.addLayout(bottom)
 
         buttons = QHBoxLayout()
         self.load_btn = QPushButton("Aus Live-Werten laden")
@@ -1027,7 +1017,6 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         start_reg = self._time_reg(timer_no, False)
         stop_reg = self._time_reg(timer_no, True)
         mask_reg = self._mask_reg(timer_no)
-        byte_label = "High-Byte" if self._uses_high_byte(timer_no) else "Low-Byte"
 
         start_hour = QSpinBox(); start_hour.setRange(0, 23)
         start_min = QSpinBox(); start_min.setRange(0, 59)
@@ -1038,10 +1027,10 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         stop_layout = QHBoxLayout(); stop_layout.addWidget(stop_hour); stop_layout.addWidget(QLabel(":")); stop_layout.addWidget(stop_min); stop_layout.addStretch(1)
 
         active_cb = QCheckBox("Timer aktiv")
-        day_raw = QSpinBox(); day_raw.setRange(0, 0xFFFF)
-        day_raw.setToolTip(f"Register {mask_reg}: {byte_label} = Timer {timer_no}, Partner-Byte wird erhalten.")
         day_layout = QVBoxLayout()
-        day_top = QHBoxLayout(); day_top.addWidget(active_cb); day_top.addWidget(QLabel(f"Reg {mask_reg}, {byte_label}, Raw:")); day_top.addWidget(day_raw); day_top.addStretch(1)
+        day_top = QHBoxLayout()
+        day_top.addWidget(active_cb)
+        day_top.addStretch(1)
         day_layout.addLayout(day_top)
         checks = []
         day_bits_layout = QHBoxLayout()
@@ -1059,16 +1048,11 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
 
         fld = {
             "start_reg": start_reg, "stop_reg": stop_reg, "mask_reg": mask_reg,
-            "byte_high": self._uses_high_byte(timer_no),
             "start_hour": start_hour, "start_min": start_min,
             "stop_hour": stop_hour, "stop_min": stop_min,
-            "active_cb": active_cb, "day_raw": day_raw, "day_checks": checks,
+            "active_cb": active_cb, "day_checks": checks,
         }
         self.fields[timer_no] = fld
-        active_cb.stateChanged.connect(lambda _=None, t=timer_no: self._day_controls_changed(t))
-        day_raw.valueChanged.connect(lambda value, t=timer_no: self._day_raw_changed(t, int(value)))
-        for cb in checks:
-            cb.stateChanged.connect(lambda _=None, t=timer_no: self._day_controls_changed(t))
         self.tabs.addTab(widget, f"Timer {timer_no}")
 
     def _add_silent_tab(self):
@@ -1127,40 +1111,32 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         for cb in fld["day_checks"]:
             cb.setChecked(bool(byte & int(cb.property("day_bit"))))
 
-    def _day_controls_changed(self, timer_no: int):
-        if self._programmatic:
-            return
-        fld = self.fields[timer_no]
-        raw = int(fld["day_raw"].value()) & 0xFFFF
+    def _local_mask_for_timer(self, timer_no):
+        """Change this timer's byte only; its partner comes from the last read."""
+        reg = self._mask_reg(timer_no)
+        if reg not in self._local_baseline:
+            raise ValueError(f"Partner-Byte von Register {reg} unbekannt; zuerst Timer lesen.")
+        raw = self._local_baseline[reg]
         byte = self._timer_day_byte_from_controls(timer_no)
-        if fld["byte_high"]:
-            raw = (raw & 0x00FF) | ((byte & 0xFF) << 8)
-        else:
-            raw = (raw & 0xFF00) | (byte & 0xFF)
-        self._programmatic = True
-        try:
-            fld["day_raw"].setValue(raw)
-        finally:
-            self._programmatic = False
+        return ((raw & 0x00FF) | (byte << 8)) if self._uses_high_byte(timer_no) else ((raw & 0xFF00) | byte)
 
-    def _day_raw_changed(self, timer_no: int, raw: int):
-        if self._programmatic:
+    def _autoload_cloud(self):
+        # Use the existing initial-read timer for either supported transport.
+        if not self.isVisible():
             return
-        byte = self._byte_from_pair_raw(timer_no, raw)
-        self._programmatic = True
-        try:
-            self._set_day_controls_from_byte(timer_no, byte)
-        finally:
-            self._programmatic = False
+        if self.main_window.control_transport() == "cloud":
+            super()._autoload_cloud()
+        elif self.main_window.control_transport() in LOCAL_TRANSPORTS and self.main_window.control_can_read():
+            self.read_from_wp()
 
-    def load_from_live_values(self):
+    def load_from_live_values(self, *, preserve_edits=False):
         if self.main_window.control_transport() == "cloud":
             self.read_cloud_snapshot()
             return
         for reg_no in sorted(self.TIMER_REGS):
             reg = self.main_window.latest_regs.get(reg_no)
-            if reg is not None:
-                self.update_from_live_register(reg, force=True)
+            if reg is not None and getattr(reg, "value_source", "local") != "cloud":
+                self.update_from_live_register(reg, force=not preserve_edits)
 
     def update_from_live_register(self, reg, force: bool = False):
         if self.main_window.control_transport() == "cloud" and not force:
@@ -1168,9 +1144,16 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         reg_no = int(reg.reg)
         if reg_no not in self.TIMER_REGS:
             return
-        if not force and not self.auto_update_cb.isChecked():
-            return
         raw = int(reg.raw_value) & 0xFFFF
+        local = self.main_window.control_transport() != "cloud"
+        if local:
+            self._local_baseline[reg_no] = raw
+            if reg_no not in (1268, 1269, 1270):
+                if force or self._cloud_value(reg_no) == raw:
+                    self._local_dirty.discard(reg_no)
+                if reg_no in self._local_dirty:
+                    return
+        previous = self._programmatic
         self._programmatic = True
         try:
             if 1244 <= reg_no <= 1249:
@@ -1201,12 +1184,15 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
                     fld = self.fields.get(timer_no)
                     if not fld:
                         continue
-                    if not (force or not self._has_focus(fld["active_cb"], fld["day_raw"], *fld["day_checks"])):
-                        continue
-                    fld["day_raw"].setValue(raw)
-                    self._set_day_controls_from_byte(timer_no, self._byte_from_pair_raw(timer_no, raw))
+                    byte = self._byte_from_pair_raw(timer_no, raw)
+                    if local:
+                        if force or self._timer_day_byte_from_controls(timer_no) == byte:
+                            self._local_dirty_days.discard(timer_no)
+                        if timer_no in self._local_dirty_days:
+                            continue
+                    self._set_day_controls_from_byte(timer_no, byte)
         finally:
-            self._programmatic = False
+            self._programmatic = previous
 
     def _pair_raw_from_controls(self, first_timer_no: int) -> int:
         low = self._timer_day_byte_from_controls(first_timer_no)
@@ -1220,7 +1206,7 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         return [
             (fld["start_reg"], encode_hhmm(int(fld["start_hour"].value()), int(fld["start_min"].value())), f"WP Ein/Aus Timer {timer_no} Start"),
             (fld["stop_reg"], encode_hhmm(int(fld["stop_hour"].value()), int(fld["stop_min"].value())), f"WP Ein/Aus Timer {timer_no} Stop"),
-            (fld["mask_reg"], int(fld["day_raw"].value()) & 0xFFFF, f"WP Ein/Aus Timer {timer_no} Aktiv/Tage + Partner-Byte erhalten"),
+            (fld["mask_reg"], self._cloud_value(fld["mask_reg"]) if self.main_window.control_transport() == "cloud" else self._local_mask_for_timer(timer_no), f"WP Ein/Aus Timer {timer_no} Aktiv/Tage + Partner-Byte erhalten"),
         ]
 
     def all_timer_values(self) -> list[tuple[int, int, str]]:
@@ -1269,25 +1255,42 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
-    def _connect_cloud_dirty_signals(self):
+    def _connect_edit_signals(self):
         """Track edits by register, never by an individual byte of a pair."""
         for timer_no, fld in self.fields.items():
             for reg, widgets in (
                 (fld["start_reg"], (fld["start_hour"], fld["start_min"])),
                 (fld["stop_reg"], (fld["stop_hour"], fld["stop_min"])),
-                (fld["mask_reg"], (fld["active_cb"], fld["day_raw"], *fld["day_checks"])),
+                (fld["mask_reg"], (fld["active_cb"], *fld["day_checks"])),
             ):
                 for widget in widgets:
                     signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
-                    signal.connect(lambda _value, r=reg: self._cloud_edited(r))
+                    signal.connect(lambda _value, r=reg, t=timer_no: self._edited(r, t))
         for reg, widget in (
             (1244, self.silent_start_enable_cb), (1245, self.silent_start_hour),
             (1246, self.silent_start_min), (1247, self.silent_stop_enable_cb),
             (1248, self.silent_stop_hour), (1249, self.silent_stop_min),
         ):
             signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
-            signal.connect(lambda _value, r=reg: self._cloud_edited(r))
+            signal.connect(lambda _value, r=reg: self._edited(r))
         self.tabs.currentChanged.connect(lambda _index: self._update_cloud_actions())
+
+    def _edited(self, register, timer_no=None):
+        if self._programmatic:
+            return
+        if self.main_window.control_transport() == "cloud":
+            self._cloud_edited(register)
+            return
+        if register in (1268, 1269, 1270):
+            baseline = self._local_baseline.get(register)
+            if baseline is not None and self._timer_day_byte_from_controls(timer_no) == self._byte_from_pair_raw(timer_no, baseline):
+                self._local_dirty_days.discard(timer_no)
+            else:
+                self._local_dirty_days.add(timer_no)
+        elif self._cloud_value(register) == self._local_baseline.get(register):
+            self._local_dirty.discard(register)
+        else:
+            self._local_dirty.add(register)
 
     def _cloud_value(self, register):
         if register in SILENT_TIMER_CODES:
@@ -1338,6 +1341,9 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         self._update_cloud_actions()
 
     def _reset_cloud_source(self):
+        self._local_baseline.clear()
+        self._local_dirty.clear()
+        self._local_dirty_days.clear()
         self._cloud_baseline.clear()
         self._cloud_dirty.clear()
         self._cloud_pending.clear()
@@ -1366,7 +1372,6 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         if not hasattr(self, "tabs"):
             return
         cloud = self.main_window.control_transport() == "cloud"
-        self.timer_delay_ms.setEnabled(not cloud)
         self.load_btn.setText("Cloud neu laden" if cloud else "Aus Live-Werten laden")
         self.read_btn.setText("Cloud lesen" if cloud else "Timer von WP lesen")
         if not cloud:
@@ -1396,7 +1401,7 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
         items = (self.all_timer_values() if all_timers else
                  self.silent_timer_values() if self._is_silent_tab() else self.timer_values())
         # For a shared register always compose BOTH timer bytes from their UI
-        # controls; do not reuse a stale day_raw from just one timer tab.
+        # controls; the UI contains no manually editable raw byte.
         writes = [(reg, self._cloud_value(reg), self._cloud_value(reg))
                   for reg, _raw, _label in items if reg in self._cloud_dirty]
         if not writes:
@@ -1482,10 +1487,10 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
             return
         try:
             if self._is_silent_tab():
-                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.silent_timer_values(), int(self.timer_delay_ms.value()), title="Silentmodus Timer")
+                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.silent_timer_values(), self.LOCAL_WRITE_DELAY_MS, title="Silentmodus Timer")
             else:
                 timer_no = self._current_timer_no()
-                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.timer_values(timer_no), int(self.timer_delay_ms.value()), title=f"WP Ein/Aus Timer {timer_no}")
+                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.timer_values(timer_no), self.LOCAL_WRITE_DELAY_MS, title=f"WP Ein/Aus Timer {timer_no}")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
@@ -1494,7 +1499,9 @@ class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
             self._send_cloud_values(all_timers=True)
             return
         try:
-            self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), int(self.timer_delay_ms.value()), title="WP Ein/Aus Timer 1-6")
+            for timer_no in (1, 3, 5):
+                self._local_mask_for_timer(timer_no)
+            self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), self.LOCAL_WRITE_DELAY_MS, title="WP Ein/Aus Timer 1-6")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
@@ -5115,6 +5122,8 @@ class MainWindow(QMainWindow):
         self.cloud_read_code = ""
         self._cloud_read_token = None
         self._cloud_read_token_username = ""
+        self._cloud_manually_disconnected = False
+        self._cloud_disconnect_pending = False
         self.cloud_session_authenticated = False
         self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
@@ -5242,15 +5251,52 @@ class MainWindow(QMainWindow):
         self.send_read_request(2001, 8, slave_addr=0x63, label="Geräte-Info WiFi-ID", delay_ms=pause_ms)
         self.send_read_request(50500, 13, slave_addr=0x63, label="Geräte-Info C544")
 
-    def open_warmlink_cloud_dialog(self):
+    def _ensure_warmlink_cloud_dialog(self):
         if self.warmlink_cloud_dialog is None:
             self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
             self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
+        return self.warmlink_cloud_dialog
+
+    def open_warmlink_cloud_dialog(self):
+        dialog = self._ensure_warmlink_cloud_dialog()
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def toggle_cloud_connection(self):
+        if getattr(self, "_cloud_disconnect_pending", False):
+            return
+        dialog = self._ensure_warmlink_cloud_dialog()
+        if self.is_cloud_connected():
+            dialog.disconnect_session()
+        else:
+            dialog.quick_connect()
+
+    def _update_cloud_quick_button(self):
+        button = getattr(self, "cloud_quick_btn", None)
+        if button is None:
+            return
+        dialog = getattr(self, "warmlink_cloud_dialog", None)
+        state = getattr(self, "cloud_ui_state", "DISCONNECTED")
+        if getattr(self, "_cloud_disconnect_pending", False):
+            text, enabled = "Trenne …", False
+        elif getattr(dialog, "_quick_connect_pending", False) or state == "CONNECTING":
+            text, enabled = "Verbinde …", False
+        elif self.is_cloud_connected():
+            text, enabled = "Trennen", True
+        elif getattr(dialog, "cloud_thread", None) is not None:
+            text, enabled = "Verbinde …", False
+        else:
+            text, enabled = "Verbinden", True
+        button.setText(text)
+        button.setEnabled(enabled and not getattr(self, "_warmlink_closing", False))
 
     def _autostart_warmlink_cloud_if_enabled(self):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
+        dialog = self.warmlink_cloud_dialog
+        if dialog is not None and (dialog.cloud_thread is not None or dialog._quick_connect_pending):
+            return
         cfg = self.settings.get("warmlink_cloud", {})
         if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
             return
@@ -5380,6 +5426,10 @@ class MainWindow(QMainWindow):
         self.display_translate_cb.setChecked(False)
         self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
+        self.cloud_quick_btn = QPushButton("Verbinden")
+        self.cloud_quick_btn.setMaximumWidth(100)
+        self.cloud_quick_btn.setAccessibleName("Cloud verbinden oder trennen")
+        self.cloud_quick_btn.setToolTip("WarmLink Cloud mit gespeichertem Zugang verbinden oder Sitzung trennen.")
         self.cloud_btn = CloudStatusButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
         self.comm_summary_label = QLabel("")
@@ -5428,6 +5478,7 @@ class MainWindow(QMainWindow):
         top.addWidget(self.comm_settings_btn)
         self.set_cloud_ui_state("DISCONNECTED")
         top.addWidget(self.cloud_btn)
+        top.addWidget(self.cloud_quick_btn)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
         top.addWidget(self.disconnect_btn)
@@ -5721,6 +5772,7 @@ class MainWindow(QMainWindow):
         self.about_btn.clicked.connect(self.open_about_dialog)
         self.device_info_btn.clicked.connect(self.open_device_info_dialog)
         self.cloud_btn.clicked.connect(self.open_warmlink_cloud_dialog)
+        self.cloud_quick_btn.clicked.connect(self.toggle_cloud_connection)
         self.connect_btn.clicked.connect(self.connect_to_device)
         self.disconnect_btn.clicked.connect(self.disconnect_from_device)
         self.write_dry_btn.clicked.connect(self.show_write_frame)
@@ -9784,6 +9836,8 @@ class MainWindow(QMainWindow):
 
 
     def set_cloud_ui_state(self, state, *, device_name=None, last_success_at=None):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            state = "DISCONNECTING" if getattr(self, "_cloud_disconnect_pending", False) else "DISCONNECTED"
         self.cloud_ui_state = state
         if device_name is not None:
             self.cloud_ui_device_name = device_name
@@ -9798,13 +9852,15 @@ class MainWindow(QMainWindow):
         styles = {
             "DISCONNECTED": "border-left: 4px solid #808080;",
             "CONNECTING": "border-left: 4px solid #d69b23;",
+            "DISCONNECTING": "border-left: 4px solid #d69b23;",
             "CONNECTED": "border-left: 4px solid #38965b;",
             "POLLING": "border-left: 4px solid #38965b;",
             "ERROR": "border-left: 4px solid #c84b4b;",
         }
         button.setStyleSheet(styles.get(state, styles["DISCONNECTED"]))
         text = {"DISCONNECTED": "Nicht verbunden", "CONNECTING": "Verbindung wird aufgebaut / erneuert",
-                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen"}
+                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen",
+                "DISCONNECTING": "Cloud-Sitzung wird getrennt; laufende Anfragen werden beendet"}
         lines = ["WarmLink Cloud", text.get(state, state)]
         name = getattr(self, "cloud_ui_device_name", "")
         if name:
@@ -9813,6 +9869,7 @@ class MainWindow(QMainWindow):
         if last:
             lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
         button.setToolTip("\n".join(lines))
+        self._update_cloud_quick_button()
 
     def set_cloud_timing_state(self, state: CloudTimingState) -> None:
         """Render worker scheduling without initiating or rescheduling requests."""
@@ -9849,6 +9906,8 @@ class MainWindow(QMainWindow):
 
     def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
         """Record a proven session, independently of whether polling is active."""
+        if authenticated and getattr(self, "_cloud_manually_disconnected", False):
+            return
         previous_device = self.cloud_session_device_code
         self.cloud_session_authenticated = bool(authenticated)
         self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
@@ -9861,6 +9920,7 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        self._update_cloud_quick_button()
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
         # Register-Refresh sichtbar bzw. unsichtbar bleiben.
@@ -9924,6 +9984,8 @@ class MainWindow(QMainWindow):
         self._on_cloud_read_data(self.cloud_read_code, rows)
 
     def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
         if self.warmlink_cloud_dialog is not None:
             self.warmlink_cloud_dialog._on_data(rows)
@@ -9940,6 +10002,8 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_token(self, token: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self._cloud_read_token = token
         self._cloud_read_token_username = self._cloud_read_username
         cache = getattr(self, "cloud_credentials_cache", {})
@@ -9957,6 +10021,8 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_login_method(self, method: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self.settings.setdefault("warmlink_cloud", {})["login_method"] = method
 
     @Slot()
@@ -9975,6 +10041,8 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_error(self, text: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self._log("WarmLink Cloud lesen: " + str(text))
         self._complete_cloud_read_dialogs(str(text))
         lower = str(text).lower()
@@ -11716,7 +11784,7 @@ class MainWindow(QMainWindow):
             self.onoff_timer_dialog.finished.connect(lambda _=None: setattr(self, "onoff_timer_dialog", None))
             self.onoff_timer_dialog.show()
         else:
-            self.onoff_timer_dialog.load_from_live_values()
+            self.onoff_timer_dialog.load_from_live_values(preserve_edits=True)
             self.onoff_timer_dialog.raise_()
             self.onoff_timer_dialog.activateWindow()
 
