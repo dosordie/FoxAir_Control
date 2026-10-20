@@ -5288,7 +5288,12 @@ class MainWindow(QMainWindow):
             text, enabled = "Verbinde …", False
         else:
             text, enabled = "Verbinden", True
-        button.setText(text)
+        button.setText(text)  # Text fallback if the bundled SVG is unavailable.
+        disconnect = self.is_cloud_connected() or getattr(self, "_cloud_disconnect_pending", False)
+        action = "disconnect" if disconnect else "connect"
+        tooltip = f"WarmLink Cloud: {text}"
+        apply_button_icon(button, f"assets/icons/cloud_{action}.svg", tooltip, f"Cloud: {text}")
+        button.setMaximumWidth(40 if not button.text() else 100)
         button.setEnabled(enabled and not getattr(self, "_warmlink_closing", False))
 
     def _autostart_warmlink_cloud_if_enabled(self):

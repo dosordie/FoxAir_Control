@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Cloud-Schnellverbindung als kompakter SVG-Iconbutton: Wolke mit grünem Stecker
+  zum Verbinden bzw. rotem getrennten Stecker zum Trennen. Tooltips, zugängliche
+  Zustandsbeschriftung und deaktivierte Übergänge bleiben erhalten.
+
 - Hauptfenster: kompakter Cloud-Verbinden/Trennen-Button direkt neben dem
   animierten Statusbutton. Gespeicherter Zugang und Geräteauswahl nutzen den
   vorhandenen Cloud-Worker; bei fehlendem Zugang öffnet sich der Cloud-Dialog.
