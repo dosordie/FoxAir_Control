@@ -1,5 +1,16 @@
 ## Unreleased
 
+- GL9 V3.5: direkte Engineering-RAM-Register 8802–8808 ergänzt; signed int16,
+  8802–8804 mit /10 °C, übrige Einheiten offen. Standardmäßig Engineering-Ansicht;
+  Korrekturquellenwahl über 1334/1540 und flüchtige Werte dokumentiert.
+- Effektiver Heiz-Wassersollwert auf MAIN:2017 korrigiert (V3.5+, FC03, TEMP1);
+  ungültigen Alias 1557 entfernt. 2014/2016 als Spiegel derselben Quelle und
+  2013 als eigenes internes Feld präzisiert. Keine neuen Cloud-/Display-Mappings.
+
+- Cloud-Schnellverbindung als kompakter SVG-Iconbutton: Wolke mit grünem Stecker
+  zum Verbinden bzw. rotem getrennten Stecker zum Trennen. Tooltips, zugängliche
+  Zustandsbeschriftung und deaktivierte Übergänge bleiben erhalten.
+
 - Hauptfenster: kompakter Cloud-Verbinden/Trennen-Button direkt neben dem
   animierten Statusbutton. Gespeicherter Zugang und Geräteauswahl nutzen den
   vorhandenen Cloud-Worker; bei fehlendem Zugang öffnet sich der Cloud-Dialog.
@@ -96,7 +107,7 @@
 
 
 ### V3.5 Remote-Regelwertkorrektur
-- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt; die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
+- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt (historische Fehlzuordnung, jetzt auf MAIN:2017 korrigiert); die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
 - Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschließlich gruppenbezogener TTL, Cooling-/Heating-/DHW-Caps und bestätigter Heiz-/Kühlvorzeichen.
 - MAIN:1492 und MAIN:1430 als optional sichtbare Engineeringparameter aufgenommen; Warmlink 8055 bleibt in der read-only Diagnose sichtbar und für Schreibzugriffe gesperrt.
 

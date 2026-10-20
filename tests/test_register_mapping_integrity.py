@@ -241,7 +241,8 @@ def test_v35_remote_main_register_metadata():
     assert gate["value_map"] == {"0": "Aus", "1": "Ein"}
     assert "Warmlink" in gate["app_label"]
 
-    effective_target = main["1557"]
+    assert "1557" not in main
+    effective_target = main["2017"]
     assert effective_target["mode"] == "read"
     assert effective_target["type"] == "TEMP1"
     assert effective_target["firmware"] == "V3.5+"

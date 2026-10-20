@@ -47,8 +47,10 @@ def update(dialog, register, raw):
 def test_shortcut_is_compact_and_immediately_after_existing_status_button(window, monkeypatch):
     layout = window.cloud_btn.parentWidget().layout().itemAt(0).layout()
     assert layout.itemAt(layout.indexOf(window.cloud_btn) + 1).widget() is window.cloud_quick_btn
-    assert window.cloud_quick_btn.maximumWidth() <= 100
-    assert window.cloud_quick_btn.text() == "Verbinden" and window.cloud_quick_btn.isEnabled()
+    assert window.cloud_quick_btn.maximumWidth() <= 40
+    assert not window.cloud_quick_btn.icon().isNull()
+    assert window.cloud_quick_btn.text() == ""
+    assert window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden" and window.cloud_quick_btn.isEnabled()
     window.cloud_btn.click()
     assert window.warmlink_cloud_dialog.isVisible()
     for state in ("CONNECTING", "CONNECTED", "POLLING", "ERROR", "DISCONNECTED"):
@@ -58,12 +60,15 @@ def test_shortcut_is_compact_and_immediately_after_existing_status_button(window
             window.set_cloud_connection_state(False)
         window.set_cloud_ui_state(state)
         if state == "CONNECTING":
-            assert not window.cloud_quick_btn.isEnabled() and "Verbinde" in window.cloud_quick_btn.text()
+            assert not window.cloud_quick_btn.isEnabled() and "Verbinde" in window.cloud_quick_btn.accessibleName()
         elif state in ("CONNECTED", "POLLING"):
-            assert window.cloud_quick_btn.text() == "Trennen" and window.cloud_quick_btn.isEnabled()
+            assert window.cloud_quick_btn.accessibleName() == "Cloud: Trennen" and window.cloud_quick_btn.isEnabled()
         else:
-            assert window.cloud_quick_btn.text() == "Verbinden"
+            assert window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
         assert window.cloud_btn.animation_timer.isActive() == (state == "POLLING")
+        assert window.cloud_quick_btn.text() == ""
+        assert not window.cloud_quick_btn.icon().isNull()
+        assert window.cloud_quick_btn.toolTip() == window.cloud_quick_btn.accessibleDescription()
 
 
 @pytest.mark.parametrize("memory", [True, False])
@@ -94,7 +99,7 @@ def test_missing_saved_configuration_opens_original_cloud_dialog(window, monkeyp
     window.cloud_quick_btn.click()
     wait_for(dialog.isVisible)
     assert not dialog._quick_connect_pending
-    assert window.cloud_quick_btn.text() == "Verbinden"
+    assert window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
 
 
 def test_slow_keyring_keeps_gui_responsive_and_disconnect_discards_callback(window, monkeypatch):
@@ -117,7 +122,7 @@ def test_slow_keyring_keeps_gui_responsive_and_disconnect_discards_callback(wind
         release.set()
     wait_for(lambda: not dialog._quick_connect_pending)
     QTest.qWait(30)
-    assert not window.is_cloud_connected() and window.cloud_quick_btn.text() == "Verbinden"
+    assert not window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
 
 
 def test_disconnect_preserves_credentials_tokens_settings_and_cannot_be_revived(window, monkeypatch):
@@ -129,7 +134,7 @@ def test_disconnect_preserves_credentials_tokens_settings_and_cannot_be_revived(
     saved_cfg = copy.deepcopy(window.settings["warmlink_cloud"])
     saved_cache = copy.deepcopy(window.cloud_credentials_cache)
     window.cloud_quick_btn.click()
-    assert not window.is_cloud_connected() and window.cloud_quick_btn.text() == "Verbinden"
+    assert not window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
     assert not window._cloud_disconnect_pending and window._cloud_manually_disconnected
     assert window.settings["warmlink_cloud"] == saved_cfg
     assert window.cloud_credentials_cache == saved_cache
@@ -175,7 +180,7 @@ def test_disconnect_waits_for_normal_thread_cleanup_including_closed_dialog(wind
         coordinator = window._ensure_warmlink_cloud_dialog()
         coordinator.disconnect_session()
         assert window._cloud_disconnect_pending and not window.is_cloud_connected()
-        assert not window.cloud_quick_btn.isEnabled() and "Trenne" in window.cloud_quick_btn.text()
+        assert not window.cloud_quick_btn.isEnabled() and "Trenne" in window.cloud_quick_btn.accessibleName()
         assert window.cloud_ui_state == "DISCONNECTING"
         coordinator.close()
         assert window.warmlink_cloud_dialog is coordinator
@@ -185,7 +190,7 @@ def test_disconnect_waits_for_normal_thread_cleanup_including_closed_dialog(wind
         release.set()
         wait_for(lambda: getattr(owner, job_name) is None)
         wait_for(lambda: not window._cloud_disconnect_pending)
-    assert window.cloud_quick_btn.isEnabled() and window.cloud_quick_btn.text() == "Verbinden"
+    assert window.cloud_quick_btn.isEnabled() and window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
     assert bool(stopped) == (job_name == "cloud_thread")
 
 
@@ -376,10 +381,10 @@ def test_stopping_polling_keeps_session_and_shortcut_disconnects_it(window, fake
     wait_for(lambda: window.cloud_ui_state == "POLLING")
     dialog.stop_worker()
     wait_for(lambda: dialog.cloud_thread is None)
-    assert window.is_cloud_connected() and window.cloud_quick_btn.text() == "Trennen"
+    assert window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Trennen"
     assert not window.cloud_btn.animation_timer.isActive()
     window.cloud_quick_btn.click()
-    assert not window.is_cloud_connected() and window.cloud_quick_btn.text() == "Verbinden"
+    assert not window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
 
 
 def test_cancelled_keyring_reply_cannot_satisfy_a_new_connect_attempt(window, monkeypatch):

@@ -5288,7 +5288,12 @@ class MainWindow(QMainWindow):
             text, enabled = "Verbinde …", False
         else:
             text, enabled = "Verbinden", True
-        button.setText(text)
+        button.setText(text)  # Text fallback if the bundled SVG is unavailable.
+        disconnect = self.is_cloud_connected() or getattr(self, "_cloud_disconnect_pending", False)
+        action = "disconnect" if disconnect else "connect"
+        tooltip = f"WarmLink Cloud: {text}"
+        apply_button_icon(button, f"assets/icons/cloud_{action}.svg", tooltip, f"Cloud: {text}")
+        button.setMaximumWidth(40 if not button.text() else 100)
         button.setEnabled(enabled and not getattr(self, "_warmlink_closing", False))
 
     def _autostart_warmlink_cloud_if_enabled(self):
@@ -5345,14 +5350,29 @@ class MainWindow(QMainWindow):
                 if block:
                     _data["block"] = block
         # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
+        # These obsolete bundled descriptions were also copied into user files
+        # when saving unrelated notes. Keep custom notes, but use the corrected
+        # catalog text/source instead of importing the old known mistakes.
+        retired_status_descriptions = {
+            "2016": "Solltemperatur wie 2013/2014, °C, Skalierung /10.",
+            "2017": "0",
+        }
         for key, extra in getattr(self, "knowledge_defs", {}).items():
             if not isinstance(extra, dict):
                 continue
             skey = str(key)
+            # Old user knowledge files may still contain the invalid V3.5
+            # buffer-offset alias. It must not reappear as a readable register.
+            if skey == "1557":
+                continue
             base = defs.setdefault(skey, {})
             if not isinstance(base, dict):
                 continue
             for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
+                if (skey in retired_status_descriptions
+                        and extra.get("description") == retired_status_descriptions[skey]
+                        and field in ("description", "source")):
+                    continue
                 if field in extra and str(extra.get(field, "")).strip():
                     base[field] = extra[field]
             if isinstance(extra.get("default_by_device"), dict):
