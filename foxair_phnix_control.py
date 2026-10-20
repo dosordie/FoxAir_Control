@@ -5350,6 +5350,13 @@ class MainWindow(QMainWindow):
                 if block:
                     _data["block"] = block
         # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
+        # These obsolete bundled descriptions were also copied into user files
+        # when saving unrelated notes. Keep custom notes, but use the corrected
+        # catalog text/source instead of importing the old known mistakes.
+        retired_status_descriptions = {
+            "2016": "Solltemperatur wie 2013/2014, °C, Skalierung /10.",
+            "2017": "0",
+        }
         for key, extra in getattr(self, "knowledge_defs", {}).items():
             if not isinstance(extra, dict):
                 continue
@@ -5362,6 +5369,10 @@ class MainWindow(QMainWindow):
             if not isinstance(base, dict):
                 continue
             for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
+                if (skey in retired_status_descriptions
+                        and extra.get("description") == retired_status_descriptions[skey]
+                        and field in ("description", "source")):
+                    continue
                 if field in extra and str(extra.get(field, "")).strip():
                     base[field] = extra[field]
             if isinstance(extra.get("default_by_device"), dict):

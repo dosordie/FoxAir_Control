@@ -150,3 +150,27 @@ def test_existing_direct_fc06_write_path_encodes_signed_engineering_input(window
     assert wire[0:2] == b'\x01\x06'
     assert int.from_bytes(wire[2:4], 'big') == reg
     assert int.from_bytes(wire[4:6], 'big') == expected
+
+
+@pytest.mark.parametrize('reg,old_description', [
+    ('2016', 'Solltemperatur wie 2013/2014, °C, Skalierung /10.'), ('2017', '0'),
+])
+def test_old_bundled_status_text_in_user_knowledge_cannot_hide_catalog_correction(reg, old_description):
+    owner = SimpleNamespace(regmap_path=str(MAP_PATH), knowledge_defs={reg: {
+        'description': old_description, 'source': 'Alte gebündelte Quelle',
+        'notes': 'Eigene Anlagenbeobachtung',
+    }})
+    item = gui.MainWindow._load_register_defs(owner)[reg]
+    assert item['description'] == DEFS[reg]['description']
+    assert item['source'] == DEFS[reg]['source']
+    assert item['notes'] == 'Eigene Anlagenbeobachtung'
+
+
+@pytest.mark.parametrize('reg', ['2016', '2017'])
+def test_custom_status_knowledge_remains_editable(reg):
+    owner = SimpleNamespace(regmap_path=str(MAP_PATH), knowledge_defs={reg: {
+        'description': 'Eigene Beschreibung', 'source': 'Eigene Messung',
+    }})
+    item = gui.MainWindow._load_register_defs(owner)[reg]
+    assert item['description'] == 'Eigene Beschreibung'
+    assert item['source'] == 'Eigene Messung'
