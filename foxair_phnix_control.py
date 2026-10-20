@@ -5354,6 +5354,10 @@ class MainWindow(QMainWindow):
             if not isinstance(extra, dict):
                 continue
             skey = str(key)
+            # Old user knowledge files may still contain the invalid V3.5
+            # buffer-offset alias. It must not reappear as a readable register.
+            if skey == "1557":
+                continue
             base = defs.setdefault(skey, {})
             if not isinstance(base, dict):
                 continue

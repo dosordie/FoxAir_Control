@@ -754,7 +754,12 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
         for idx, raw_value in enumerate(words):
             reg = base + idx
             info = regmap.get(reg)
-            service_meta = warmlink_service_metadata(slave_addr, reg)
+            # Explicit direct-mainboard definitions in the 8xxx range are not
+            # unknown Warmlink service words, even when observed on slave 0x63.
+            service_meta = (
+                None if (info.metadata or {}).get("interface") == "direct_user_modbus"
+                else warmlink_service_metadata(slave_addr, reg)
+            )
             name = str(service_meta["name"]) if service_meta else info.name
             dtype = str(service_meta["type"]) if service_meta else info.dtype
             registers.append(DecodedRegister(
@@ -828,7 +833,10 @@ def decode_read_response_registers(frame: DecodedFrame, start_reg: int, regmap: 
     for idx, raw_value in enumerate(words):
         reg_no = start_reg + idx
         info = regmap.get(reg_no)
-        service_meta = warmlink_service_metadata(frame.slave_addr, reg_no)
+        service_meta = (
+            None if (info.metadata or {}).get("interface") == "direct_user_modbus"
+            else warmlink_service_metadata(frame.slave_addr, reg_no)
+        )
         name = str(service_meta["name"]) if service_meta else info.name
         dtype = str(service_meta["type"]) if service_meta else info.dtype
         regs.append(DecodedRegister(

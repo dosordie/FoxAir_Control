@@ -2533,18 +2533,25 @@
     "description": "Aktueller Betriebsstatus: 0=Kühlen, 1=Heizen, 2=Abtauen, 3=Sterilisieren, 4=Warmwasser. Nicht identisch mit Modus-Setzregister 1012.",
     "source": "ASM DEMONS.ASM"
   },
-  "2013": {},
-  "2014": {},
+  "2013": {
+    "description": "V3.5: Gesondert aufbereiteter interner Regelsollwert aus 0x200164C8 +0x06, signed int16, RAW / 10 °C. Eigenes internes Feld; nicht pauschal identisch mit 2014/2016. Eine weitergehende Regelstufe oder Begrenzungssemantik ist nicht abschließend bewiesen.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
+  "2014": {
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Je nach ausgewählter Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad; echte Spiegelquelle von MAIN:2016. MAIN:2013 stammt aus einem anderen internen Feld.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
   "2015": {
     "description": "0-nein/1-Abtau-Modus verfügbar",
     "source": "v36 Beschreibung/App-Review"
   },
   "2016": {
-    "description": "Solltemperatur wie 2013/2014, °C, Skalierung /10.",
-    "source": "User correction 2026-06-19"
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Identische Quelle wie MAIN:2014 (echter Spiegel), je nach Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad. Nicht pauschal identisch mit MAIN:2013.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2017": {
-    "description": "0"
+    "description": "Ab V3.5: Effektiver berechneter Heiz-Wassersollwert aus Getter 0x0808261C, signed int16, RAW / 10 °C. Enthält wirksame Regelkorrekturen, Heizkurven-/Timerpfade und die normale Heiztemperaturbegrenzung (R10/R11). Wird unabhängig davon berechnet, ob Heizen aktuell aktiv ist; nicht in jeder Betriebsart mit einem aktuell aktiven Vorlaufsollwert gleichzusetzen. Statuspuffer 0x20012790 +0x840; 0x820 + 2*(2017-2001). Ersetzt die ungültige frühere Zuordnung MAIN:1557. In V3.3 reserviert/unbenutzt.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2018": {
     "description": "0 Aus 1 Ein Read-only Statusregister (>2000), nicht als WP-Schreibregister verwenden.",
@@ -3160,10 +3167,6 @@
   },
   "1540": {
     "knowledge": "V3.5-Gate (effektiv uint8) fuer externe Warmlink-Remote-Korrekturen; persistent im 32-Byte-Record 0x218, ueberlebt normalen Power-Cycle, Factory-/Fallback-Default 0. Verbraucher pruefen 0/!=0; die UI bietet 0/1. Es gibt keinen bestaetigten Setter SG01=4 -> MAIN1540=1: AI Saving (SG01/MAIN1334=4; aelterer Komplex 8001/8004/8006, 0x20016A54, MAIN1691/1692) ist nicht MAIN1540. Die Frequenz wird nicht hart auf 30/36/42/48 Hz quantisiert: liegt der bisherige Befehl ausreichend ueber der Remote-/Adaptivreferenz, wird er um hoechstens 6 Hz abgesenkt, ohne die Referenz zu unterschreiten (47 Hz darf 47 Hz bleiben). Erst danach entsteht ein Bin-Index: f<30 => 0, sonst (f-30)/6. C02, C03 und dynamische Grenzen bleiben wirksam.",
-    "source": "Reverse Engineering V3.5"
-  },
-  "1557": {
-    "knowledge": "Read-only V3.5-Export des effektiven intern berechneten Heiz-Wassersollwerts als signed int16 RAW / 10 °C. RAW bleibt verfuegbar; die normalen Heiz-Min-/Max-Grenzen gelten.",
     "source": "Reverse Engineering V3.5"
   },
   "2152": {
