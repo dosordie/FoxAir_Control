@@ -37,8 +37,6 @@ Bekannte Änderungen gegenüber V3.3:
 
 ### V3.5
 
-V3.5 ist inzwischen als **`82400644 / 0035`** bestätigt. Die untersuchte Firmware stammt von einer **FoxAir BlueLine (BL)**, gehört aber zur selben `82400644`-Mainboard-Firmwarelinie wie die entsprechenden **GreenLine-/GL-Geräte**.
-
 Wichtige Erkenntnisse gegenüber V3.4:
 
 - die bekannte Grundregelung, SG-/PV-State-Machine, externe-AT-Umschaltung und Pumpenregelung bleiben grundsätzlich erhalten
