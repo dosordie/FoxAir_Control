@@ -293,15 +293,140 @@ und verwendet zentrale, gegen frische Readbacks geprüfte Batch-Writes. Bei
 teilweise fehlenden Cloudantworten bleibt der jeweilige Tab gesperrt; andere
 Tabs bleiben sichtbar. Cloud-Schreiben erfordert keine experimentelle Freigabe.
 
+## Betriebsart Timer 1-6 über Cloud (M-Codes)
+
+Stand 21.10.2026: Alle 45 Codes wurden laut übermitteltem GL9-V3.5-Liveabruf
+über `POST app/device/getDataByCode` erfolgreich gelesen (HTTP 200,
+`error_code=0`, `error_msg=Success`, alle 45 Antworten). Codeexistenz,
+Cloud-Datentypen und Leseformate sind damit live bestätigt. Die Zuordnung zu
+MAIN:1281–1325 ist **aus lokalem Schema und Cloudcode-Struktur abgeleitet**;
+der direkte Modbus-Gleichheitsvergleich steht aus. Die Routing-Metadaten
+tragen deshalb `confidence=derived`, getrennt von der gezielten Schreibfreigabe.
+**Cloud-Schreiben ist neu implementiert und noch nicht live getestet.**
+Es gibt keine experimentelle Freigabecheckbox und keine vorgeschaltete Hardwarepflicht.
+
+Für Timer n gilt `base = 1281 + (n-1)*7`. Die Schreibweise **Enalbe** bleibt
+exakt erhalten. Keine Freigaben für W-, DP- oder andere unbekannte Codes.
+
+| Cloudcode | MAIN | Cloudtyp | Wertedarstellung |
+|---|---:|---|---|
+| `M1 Start` | 1281 | DIGI1 | gepacktes HH:MM-Wort |
+| `M1 End` | 1282 | DIGI1 | gepacktes HH:MM-Wort |
+| `M1 Hot Water Target` | 1283 | TEMP | °C, bereits skaliert |
+| `M1 Heating Target` | 1284 | TEMP | °C, bereits skaliert |
+| `M1 Cooling Target` | 1285 | TEMP | °C, bereits skaliert |
+| `M1 Mode` | 1286 | ENUM | Moduscode 0–4 oder 9 |
+| `M1 Max. Power` | 1287 | DIGI5 | kW, bereits skaliert |
+| `M2 Start` | 1288 | DIGI1 | gepacktes HH:MM-Wort |
+| `M2 End` | 1289 | DIGI1 | gepacktes HH:MM-Wort |
+| `M2 Hot Water Target` | 1290 | TEMP | °C, bereits skaliert |
+| `M2 Heating Target` | 1291 | TEMP | °C, bereits skaliert |
+| `M2 Cooling Target` | 1292 | TEMP | °C, bereits skaliert |
+| `M2 Mode` | 1293 | ENUM | Moduscode 0–4 oder 9 |
+| `M2 Max. Power` | 1294 | DIGI5 | kW, bereits skaliert |
+| `M3 Start` | 1295 | DIGI1 | gepacktes HH:MM-Wort |
+| `M3 End` | 1296 | DIGI1 | gepacktes HH:MM-Wort |
+| `M3 Hot Water Target` | 1297 | TEMP | °C, bereits skaliert |
+| `M3 Heating Target` | 1298 | TEMP | °C, bereits skaliert |
+| `M3 Cooling Target` | 1299 | TEMP | °C, bereits skaliert |
+| `M3 Mode` | 1300 | ENUM | Moduscode 0–4 oder 9 |
+| `M3 Max. Power` | 1301 | DIGI5 | kW, bereits skaliert |
+| `M4 Start` | 1302 | DIGI1 | gepacktes HH:MM-Wort |
+| `M4 End` | 1303 | DIGI1 | gepacktes HH:MM-Wort |
+| `M4 Hot Water Target` | 1304 | TEMP | °C, bereits skaliert |
+| `M4 Heating Target` | 1305 | TEMP | °C, bereits skaliert |
+| `M4 Cooling Target` | 1306 | TEMP | °C, bereits skaliert |
+| `M4 Mode` | 1307 | ENUM | Moduscode 0–4 oder 9 |
+| `M4 Max. Power` | 1308 | DIGI5 | kW, bereits skaliert |
+| `M5 Start` | 1309 | DIGI1 | gepacktes HH:MM-Wort |
+| `M5 End` | 1310 | DIGI1 | gepacktes HH:MM-Wort |
+| `M5 Hot Water Target` | 1311 | TEMP | °C, bereits skaliert |
+| `M5 Heating Target` | 1312 | TEMP | °C, bereits skaliert |
+| `M5 Cooling Target` | 1313 | TEMP | °C, bereits skaliert |
+| `M5 Mode` | 1314 | ENUM | Moduscode 0–4 oder 9 |
+| `M5 Max. Power` | 1315 | DIGI5 | kW, bereits skaliert |
+| `M6 Start` | 1316 | DIGI1 | gepacktes HH:MM-Wort |
+| `M6 End` | 1317 | DIGI1 | gepacktes HH:MM-Wort |
+| `M6 Hot Water Target` | 1318 | TEMP | °C, bereits skaliert |
+| `M6 Heating Target` | 1319 | TEMP | °C, bereits skaliert |
+| `M6 Cooling Target` | 1320 | TEMP | °C, bereits skaliert |
+| `M6 Mode` | 1321 | ENUM | Moduscode 0–4 oder 9 |
+| `M6 Max. Power` | 1322 | DIGI5 | kW, bereits skaliert |
+| `M1_2 Enalbe` | 1323 | BINARY | 16-stelliger Binärstring |
+| `M3_4 Enalbe` | 1324 | BINARY | 16-stelliger Binärstring |
+| `M5_6 Enalbe` | 1325 | BINARY | 16-stelliger Binärstring |
+
+### Darstellung und Validierung
+
+- Zeiten sind `(Stunde << 8) | Minute`: 0=00:00, 1024=04:00,
+  1536=06:00, 5947=23:59. Stunde 0–23 und Minute 0–59 werden geprüft.
+- Temperaturen kommen in °C: 50.5 entspricht lokal signed TEMP1 RAW 505.
+  Negative Temperaturen werden im lokalen Wort als Zweierkomplement kodiert.
+- Maximale Leistung kommt in kW: 1.2 entspricht lokal POWER_KW_X10 RAW 12.
+  Null ist gültig. Cloud-Writes senden °C/kW, niemals den lokalen ×10-Wert.
+- Masken sind ganze 16-Bit-Wörter: `0000000011111111`=0x00FF,
+  `0000000001101111`=0x006F, `0000000000000000`=0x0000.
+  Low-Byte ist der erste Timer, High-Byte sein Partner; Bit 7 aktiv,
+  Bits 0–6 Mo–So. Einzeltimer-Writes erhalten das gelesene Partner-Byte,
+  einschließlich eines anderen, noch offenen Partner-Entwurfs.
+- Modus 9 wurde live gelesen und bedeutet „keinen Modus ändern“.
+  Unbekannte gelesene Codes bleiben sichtbar und unverändert, werden aber
+  nicht als neue Schreibwerte angeboten. Ein reiner Lesevorgang schreibt nichts.
+- Fehlende/ungültige Zeiten, Masken oder Werte bleiben unbekannt, sperren
+  die betroffene Schreibaktion und erscheinen als „—“/„Nicht gelesen“.
+
+Die Cloud-Metadatengrenzen widersprechen teilweise dem gelieferten Bestand:
+Warmwasser 55.0 °C bei Maximum 53.0 °C, Kühlen 7.0/8.0 °C bei Minimum 13.5 °C.
+Deshalb werden Bestand und Spinboxwerte nicht an diesen Grenzen abgeschnitten.
+Unveränderte Altwerte werden nicht geschrieben. Für neue Werte gelten die
+nachvollziehbaren **technischen Darstellungsgrenzen** des lokalen Schemas:
+0,1-Schritte in signed int16 (Temperatur −3276,8…3276,7 °C,
+Leistung 0…3276,7 kW), gültige gepackte Uhrzeiten, bekannte neue Moduscodes,
+und vollständige uint16-Masken. Das sind **keine bestätigten Herstellergrenzen**;
+die widersprüchlichen Cloud-Ranges werden nicht als harte Schreibgrenzen benutzt.
+
+### Lesen, Entwürfe und Schreiben
+
+Der bestehende `TimerEditorDialog` heißt exakt „Betriebsart Timer 1-6“.
+Alle 45 Codes werden beim Öffnen asynchron als gemeinsamer
+`CloudSnapshotRequest` angefordert. Neu lesen bleibt möglich. In Cloud-only
+werden alte lokale Werte und Display-Parameterblock-Voraussetzungen nicht verwendet.
+Lokal bleiben der Leseweg 1281/45, die Display-Voraussetzung 1271ff, die zentrale
+Display-/ACK-/Readback-Sequenz und die feste Schreibpause von 1.200 ms erhalten.
+Es gibt keine Raw-Eingaben, Live-Checkbox oder einstellbare Schreibpause mehr.
+
+Baselines stammen im Cloud-Dialog ausschließlich aus frischen gültigen
+Snapshot-/Readback-Antworten. Alle acht benötigten Werte eines Timers bzw. alle
+45 Werte für „Alle 6 schreiben“ müssen vollständig sein. Nur tatsächlich
+geänderte Werte werden über den bestehenden CommandWorker und die zentrale
+Batch-API geschrieben. Die drei gemeinsamen Maskencodes kommen dabei jeweils
+höchstens einmal vor; Einzeltimer-Writes übernehmen den Partner aus der Baseline.
+Reine Deaktivierungen werden zuerst geschrieben und gelesen, Parameter zusammen,
+Aktivierungen zuletzt nach erfolgreichem Parameter-Readback. Enthält ein gemeinsames
+Wort zugleich Deaktivierung und Aktivierung, wird es einmal nach den Parametern
+übertragen: die neue Aktivierung darf nicht vor bestätigten Parametern starten.
+Unveränderte Partner-Freigaben werden nicht temporär ausgeschaltet.
+
+Die gesamte Änderungsliste wird vor dem ersten Netzwerkaufruf validiert.
+Readbacks sind frisch und pro Code: exakte Wörter/Modi/Masken, bei °C/kW
+0,1-Auflösung mit höchstens einer halben Schrittweite als Vergleichstoleranz.
+Fehlende, veraltete oder abweichende Readbacks bleiben offen; folgende
+Aktivierungsbatches werden dann nicht ausgeführt. Es gibt keine Write-Wiederholung,
+keinen Rollback und keine zusätzlichen Cloud-Bestätigungsdialoge.
+Entwürfe bleiben auch nach Fokusverlust, erneutem Anzeigen und späteren älteren
+Readbacks erhalten. Geräte-/Account-/Verbindungswechsel und Dialogschluss
+verwerfen verspätete Antworten und stoppen weitere Writes über die bestehenden Guards.
+
+Offen bleiben der direkte MAIN-/Cloud-Gleichheitsvergleich und Live-Writes
+(Zeiten, Ziele, Modus, Leistung, Masken, Reihenfolge und Teilfehler). Diese
+Praxistests sind dokumentierte Folgeschritte und blockieren die Nutzung nicht.
+
 ## Noch nicht vollständig zugeordnete Cloud-Codefamilien
 
-Neben den KG-Timern enthält `ALL_WARMLINK_CLOUD_CODES` weitere Namen,
+Neben den KG- und M-Timern enthält `ALL_WARMLINK_CLOUD_CODES` weitere Namen,
 die **nicht automatisch** einen bestätigten GL9-Modbusbezug oder eine
 Schreibfreigabe bedeuten:
 
-- `M1`–`M6` (je Mode, Start, End, Heizen, Kühlen, WW, Leistung)
-  und `M1_2 Enalbe` usw.: starke Kandidaten für die lokalen
-  Betriebsart-Timer 1281–1325; Mapping und Readback noch prüfen.
 - `W1`–`W3` Start/End/Enable und `DP1`–`DP6`:
   benannte Timer-/Programmfamilien, Funktion/GL9-Verfügbarkeit offen.
 - Weitere Zonen- und Hydraulik-Codes (z.B. Zone 2 Mixing Temp,

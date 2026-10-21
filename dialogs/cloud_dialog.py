@@ -985,7 +985,7 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(str, int, list, str)
     def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
-        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog", "contact_decoder": "contact_dialog", "load_output_decoder": "load_output_dialog", "silent_timer": "silent_timer_dialog", "onoff_timer": "onoff_timer_dialog"}.get(purpose)
+        name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog", "contact_decoder": "contact_dialog", "load_output_decoder": "load_output_dialog", "silent_timer": "silent_timer_dialog", "onoff_timer": "onoff_timer_dialog", "operating_timer": "timer_dialog"}.get(purpose)
         if name is not None:
             dialog = getattr(self.main_window, name, None)
             if dialog is not None:
@@ -1527,7 +1527,9 @@ class WarmLinkCloudDialog(QDialog):
         reg_no, register_json_code, error = self.main_window._validated_cloud_modbus_register(code, hint)
         if reg_no is None:
             return {"mapping_status": "Cloud-only" if not hint else "Kein Register", "modbus_register": "", "local_code_hint": local_code_hint, "register_json_code": "", "confidence": confidence, "write_allowed": write_allowed}
-        if confidence != "confirmed":
+        if confidence == "derived" and hint.get("cloud_read_live_confirmed"):
+            status = "Schema-abgeleitet; Modbusvergleich offen"
+        elif confidence != "confirmed":
             status = "Nicht bestätigt"
         elif error:
             status = "Kein Register"

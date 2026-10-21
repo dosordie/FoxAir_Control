@@ -3301,6 +3301,25 @@ for _idx, _code in enumerate(("KG13~KG28", "KG29~KG44", "KG45~KG60")):
     }
 
 
+# Live Cloud formats (GL9 V3.5, 2026-10-21); MAIN identity is schema-derived.
+# Write authorization is intentional development-tool scope, NOT live write proof.
+from cloud.operating_timer import (M_TIMER_CODES, M_TIME_CODES, M_MASK_CODES,
+                                  M_MODE_CODES, M_POWER_CODES)
+for _reg, _code in M_TIMER_CODES.items():
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "derived", "modbus_register": _reg, "write_allowed": True,
+        "cloud_read_live_confirmed": True, "gl9_tested_supported": True,
+        "cloud_write_live_confirmed": False, "modbus_comparison_confirmed": False,
+        "mapping_evidence": "local schema + Cloud code structure; Modbus comparison pending",
+        "cloud_dataType": ("DIGI1" if _code in M_TIME_CODES else "BINARY" if _code in M_MASK_CODES
+                           else "ENUM" if _code in M_MODE_CODES else "DIGI5" if _code in M_POWER_CODES else "TEMP"),
+        "unit": "kW" if _code in M_POWER_CODES else "°C" if _code not in M_TIME_CODES | M_MASK_CODES | M_MODE_CODES else "",
+        "note": "GL9 V3.5: all 45 codes read live on 2026-10-21. Packed HH:MM words, "
+                "16-bit binary masks, engineering Celsius/kW. MAIN mapping derived; "
+                "Modbus equality and Cloud writes not live verified. Live metadata limits "
+                "conflict with observed temperatures; never clamp existing values.",
+    }
+
 def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})
 
@@ -3330,7 +3349,7 @@ def merged_cloud_metadata(code: str) -> dict[str, object]:
     merged["cloud_hint_known"] = bool(confirmed) and not confirmed.get("app_observation_only", False)
     merged["cloud_supported"] = None
     merged["modbus_mapped"] = confirmed.get("modbus_register") is not None
-    merged["write_confirmed"] = bool(confirmed.get("write_allowed", False))
+    merged["write_confirmed"] = bool(confirmed.get("cloud_write_live_confirmed", confirmed.get("write_allowed", False)))
     if app and not confirmed:
         merged["write_allowed"] = False
     return merged
@@ -3352,7 +3371,7 @@ def is_known_code(code: str) -> bool:
 
 
 def code_modbus_register(code: str) -> int | None:
-    """Resolve a confirmed cloud code against the current local register map."""
+    """Resolve reviewed or explicitly authorized schema-derived Cloud routes."""
     from cloud.register_resolver import resolve_cloud_register
 
     return resolve_cloud_register(code, cloud_hint(code))

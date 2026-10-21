@@ -7,6 +7,11 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
+from cloud.operating_timer import (
+    M_TIMER_CODES, M_CODE_REGISTERS, M_MASK_CODES, M_SCALED_CODES,
+    m_timer_word, m_timer_write_value, m_mask_batches,
+)
+
 from cloud.register_resolver import CONFIRMED_REGISTER_ALIASES, resolve_cloud_register
 from cloud.mapping_validation import register_code_from_definition
 from cloud.warmlink_codes import WARMLINK_CLOUD_CODE_HINTS, cloud_hint
@@ -65,7 +70,7 @@ def cloud_code_is_write_candidate(code: str, hint: Mapping[str, Any]) -> bool:
     """Return whether a mapped cloud code is safe to offer for writing."""
     if resolve_cloud_register(str(code), hint, _static_register_defs()) is None:
         return False
-    if str(hint.get("confidence") or "").lower() != "confirmed":
+    if str(hint.get("confidence") or "").lower() != "confirmed" and code not in M_CODE_REGISTERS:
         return False
     return bool(hint.get("write_allowed"))
 
@@ -79,7 +84,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     best: tuple[int, str] | None = None
     # Use the exact configuration codes, even when a read-only numeric alias
     # for the same register is also present in the discovery catalog.
-    preferred = {**KG_TIMER_CODES, **SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
+    preferred = {**M_TIMER_CODES, **KG_TIMER_CODES, **SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
                  1250: "CP1-1", 1251: "CP1-2", 1252: "CP1-3",
                  1253: "CP1-5", 1254: "CP1-6", 1255: "CP1-7",
                  **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status"}
@@ -91,7 +96,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         # A dialog refresh needs only this register. Avoid resolving the entire
         # catalog (each resolution scans the map) on every UI update.
         hinted_code = str(hint.get("local_code") or "").strip().upper()
-        if not (local_code and hinted_code == local_code) and CONFIRMED_REGISTER_ALIASES.get(str(code)) != target:
+        if not (local_code and hinted_code == local_code) and CONFIRMED_REGISTER_ALIASES.get(str(code), M_CODE_REGISTERS.get(str(code))) != target:
             continue
         mapped = resolve_cloud_register(str(code), hint, definitions)
         if mapped != target:
@@ -99,7 +104,7 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
         if require_write_allowed and not cloud_code_is_write_candidate(str(code), hint):
             continue
         confidence = str(hint.get("confidence") or "")
-        if confidence != "confirmed":
+        if confidence != "confirmed" and code not in M_CODE_REGISTERS:
             continue
         item = (0, str(code))
         if best is None or item < best:
@@ -151,6 +156,8 @@ def cloud_write_value_from_user_input(
     text = str(user_text).strip()
     if not text:
         raise ValueError("Der Cloud-Schreibwert ist leer.")
+    if cloud_code in M_CODE_REGISTERS:
+        return m_timer_write_value(cloud_code, m_timer_word(cloud_code, text, for_write=True))
     raw = int(parse_local_raw(text))
     values = cloud_write_values_for_code(cloud_code)
     if isinstance(values, Mapping) and values:
@@ -176,6 +183,10 @@ def cloud_write_value_from_register_value(cloud_code, raw_value, register, engin
     from core.foxair_phnix_core import numeric_value_by_type
     import math
 
+    if cloud_code in M_CODE_REGISTERS:
+        raw = (int(raw_value) if engineering_value is None else
+               m_timer_word(cloud_code, engineering_value, for_write=True))
+        return m_timer_write_value(cloud_code, raw)
     if cloud_code in KG_MASK_CODES:
         word = kg_word(cloud_code, int(raw_value))
         return f"{word:016b}"
@@ -196,6 +207,14 @@ def cloud_readback_matches(code, requested, row):
     if (not row.get("supported") or row.get("value") is None
             or any(row.get(flag) for flag in ("cached", "stale", "currentEmpty"))):
         return False
+    if code in M_CODE_REGISTERS:
+        try:
+            if code in M_SCALED_CODES:
+                same_step = m_timer_word(code, requested) == m_timer_word(code, row["value"], row)
+                return same_step and math.isclose(float(requested), float(row["value"]), rel_tol=0, abs_tol=0.05 + 1e-9)
+            return m_timer_word(code, requested) == m_timer_word(code, row["value"], row)
+        except (ValueError, TypeError):
+            return False
     if code in KG_TIME_CODES or code in KG_MASK_CODES:
         try:
             return kg_word(code, requested) == kg_word(code, row["value"])
@@ -229,12 +248,14 @@ def validate_cloud_commands(commands):
             raise ValueError(f"Cloud-Schreiben für {code} ist nicht freigegeben.")
         if code in seen:
             raise ValueError(f"Doppelter Cloud-Schreibcode: {code}")
+        if code in M_CODE_REGISTERS:
+            value = m_timer_write_value(code, m_timer_word(code, value, for_write=True))
         if code in KG_TIME_CODES or code in KG_MASK_CODES:
             word = kg_word(code, value)
             # Preserve canonical binary payload for grouped KG masks.
             value = f"{word:016b}" if code in KG_MASK_CODES else str(word)
         try:
-            number = float(kg_word(code, value)) if code in KG_MASK_CODES else float(value)
+            number = float(m_timer_word(code, value)) if code in M_MASK_CODES else float(kg_word(code, value)) if code in KG_MASK_CODES else float(value)
         except (ValueError, TypeError) as exc:
             raise ValueError(f"Ungültiger Cloud-Wert für {code}") from exc
         if not math.isfinite(number):
@@ -246,7 +267,7 @@ def validate_cloud_commands(commands):
         if choices and number not in {float(key) for key in choices}:
             raise ValueError(f"Wert für {code} ist nicht freigegeben.")
         bounds = resolve_cloud_range(code, hint, {})
-        for limit, lower in ((bounds.minimum, True), (bounds.maximum, False)) if bounds.confirmed else ():
+        for limit, lower in ((bounds.minimum, True), (bounds.maximum, False)) if bounds.confirmed and code not in M_CODE_REGISTERS else ():
             try:
                 outside = number < float(limit) if lower else number > float(limit)
             except (ValueError, TypeError):
@@ -262,8 +283,12 @@ def validate_cloud_commands(commands):
 
 
 
-def cloud_command_batches(commands):
+def cloud_command_batches(commands, *, mask_baselines=None):
     """Verified barriers: disable first, parameters together, enable last."""
+    if any(code in M_CODE_REGISTERS for code, _ in commands):
+        if any(code not in M_CODE_REGISTERS for code, _ in commands):
+            raise ValueError("Betriebsart-Timerauftrag darf keine fremden Codes enthalten")
+        return m_mask_batches(commands, mask_baselines or {})
     barriers = {"SG01", "Timer_Mute_On_En", "Timer_Mute_Off_En"}
     disable = tuple(item for item in commands if item[0] in barriers and float(item[1]) == 0)
     # The on/off pairs share a whole 16-bit day mask. All active flags off:
