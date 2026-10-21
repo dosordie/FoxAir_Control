@@ -11,14 +11,11 @@ Das ist beispielsweise interessant, wenn ein externer Regler die Heizwassertempe
 | Register | Bedeutung | Praktische Nutzung |
 | ---: | --- | --- |
 | **8802** | Warmwasser-Sollwertkorrektur (wird addiert) | Warmwasserziel vorübergehend anpassen |
-| **8803** | Heizsollwertkorrektur (wird addiert) | Heiztemperatur über einen externen Regler beeinflussen |
+| **8803** | Heizsollwertkorrektur (wird addiert) | Heiztemperatur vorübergehend beeinflussen |
 | **8804** | Kühlsollwertkorrektur (wird abgezogen) | Kühltemperatur vorübergehend beeinflussen |
-| **8805** | Zonen-Korrektur A | Funktion grundsätzlich erkannt, Einheit noch nicht sicher geklärt |
-| **8806** | Zonen-Korrektur B | Funktion grundsätzlich erkannt, Einheit noch nicht sicher geklärt |
-| **8807** | weiterer interner Korrekturwert | genaue Wirkung noch unbekannt – vorerst nicht verwenden |
-| **8808** | weiterer interner Korrekturwert | genaue Wirkung noch unbekannt – vorerst nicht verwenden |
+| **8805** | Zonen-Korrektur A | Zonenwertkorrektur (wird addiert) | Zonentemperatur vorübergehend beeinflussent|
+| **8806** | Zonen-Korrektur B |  Zonenwertkorrektur (wird addiert) | Zonentemperatur vorübergehend beeinflussent|
 
-Die Bedeutung von **8802–8804** ist aus der Firmwareanalyse bekannt, die praktische Wirkung und die genaue RAW-Skalierung sind aber noch nicht am Gerät vollständig überprüft. Besonders bei **8805–8808** sollten deshalb keine Werte auf Verdacht geschrieben werden.
 
 ## Beispiel: Heiztemperatur mit einem Raumregler nachführen
 
@@ -55,11 +52,10 @@ Wer die normale externe Heizkorrektur nutzen möchte, benötigt daher nach dem u
 
 Für die untersuchten Register den **direkten Benutzer-Modbus am Mainboard** verwenden (in FoxAir Control: **„Modbus Standard“**). Den Display-Bus oder den Warmlink-/LTE-Bus nicht einfach als gleichwertig voraussetzen.
 
-- **V3.5 / 82400644:** Engineering-Korrekturpfad per Firmwareanalyse bestätigt, noch keine vollständige Livevalidierung.
-- **V3.4 / 82400644:** Im untersuchten Korrekturselektor fehlt dieser normale Engineering-Zweig. Die hier beschriebene Nutzung ist daher **nicht für V3.4 belegt**.
+- **V3.5 / 82400644:**Korrekturpfad per Firmwareanalyse bestätigt, Livevalidierung von 8802 erfolgreich.
+- **V3.4 / 82400644:** Im untersuchten Korrekturselektor fehlt dieser normale Zweig. Die hier beschriebene Nutzung ist daher **nicht für V3.4 belegt**.
 - **V3.3 und älter:** Nicht als funktionsfähig nachgewiesen.
 
-Vor dem ersten produktiven Einsatz zunächst mit kleinen Korrekturen testen, den tatsächlichen Sollwert und das Verhalten der Anlage beobachten und die Werte anschließend wieder auf **0** zurücksetzen. Vorhandene Temperatur- und Sicherheitsgrenzen bleiben dabei zu beachten.
 
 ## Weitere Informationen
 
