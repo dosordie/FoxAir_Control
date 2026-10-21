@@ -19,7 +19,6 @@ Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spen
 ## Dokumentation
 
 - [FoxAir FAQ – Anleitungen und häufige Fragen](docs/FAQ/FAQ.md)
-- [Solltemperaturen extern korrigieren – speicherschonend über RAM-Register 8802–8808](docs/FAQ/externe_sollwertkorrektur.md)
 
 
 ## Firmware-Übersicht
@@ -31,7 +30,6 @@ Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmw
 Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3`, `V3.4` oder `V3.5` gleichzeitig installiert sein.
 
 Die analysierte **Mainboard-V3.5 stammt von einer FoxAir BlueLine (BL)**. BlueLine und GreenLine (GL) mit Mainboard-Softwarecode **`82400644`** verwenden dieselbe Mainboard-Firmwarelinie; die V3.5 ist für entsprechende Geräte dieser Familie untereinander kompatibel.
-
 
 
 ### Warmlink RAW / Firmware-Logging
@@ -84,25 +82,6 @@ Der kombinierte WP-Ein/Aus-Timer-Editor zeigt über Cloud alle sechs WP-Timer
 und den Silentmodus. Auch die Betriebsart-Timer 1–6 laden ihre 45 M-Codes
 über Cloud und schreiben nur geänderte Werte mit Readback. Lokale Modbus- und
 Display-Abläufe bleiben erhalten; Cloud-only erfordert keine Display-Pakete.
-
-**Hinweis:** Cloud-Writes der Silent-, WP-Ein/Aus- und Betriebsart-Timer sind
-implementiert, aber noch nicht sämtlich live an der GL9 verifiziert.
-Details und offene Praxisprüfungen: [Cloud-Dokumentation](docs/warmlink_cloud_values.md#kontakt-lastausgangsdecoder-und-silentmodus-timer).
-
-## PUBLIC V0.2.46 – Struktur-Refactoring
-
-Diese Public-Version behält das Verhalten aus V0.2.45 bei und räumt die Projektstruktur auf:
-
-- Cloud-Login mit gespeicherter E-Mail und Passwort im OS-Keyring (`keyring>=25.0`)
-- Cloud-Geräte-/Device-ID-Anzeige
-- Cloud-Polling, Overlay und Cloud-Spalten im Hauptfenster
-- Cloud-Batch-Steuerung für bestätigte AT-/SG-Parameter mit gemeinsamem Readback
-- Generischer API-Debugger; Exporte und Cloud ↔ Lokal bleiben verfügbar
-- Rechtsklick **Wert per Cloud schreiben ...** für bekannte schreibbare Cloud-Codes
-- Cloudwerte können als Overlay im Hauptfenster erscheinen; optionale **Cloud-only Zeilen** zeigen bestätigte Mappings auch ohne zuvor gelesenen lokalen Wert
-- Der Doppelklickdialog bietet bei aktiver Cloud-Verbindung **Cloud lesen** und – nur für ausdrücklich freigegebene Schreibcodes – **Cloud schreiben**
-- Log-Spam-Reduktion für stark wiederholte Display-Bus-Frames bleibt aktiv
-- Runtime-Code ist in `core/`, `workers/`, `cloud/`, `dialogs/`, `ui/` und `data/` gegliedert
 
 
 ## Screenshots
@@ -178,17 +157,3 @@ Beispielausgabe:
 
 ## Lizenz
 [GPLv3](LICENSE)
-
-
-### WarmLink iOS 3.0.8: zusätzliche Diagnose
-
-Die Cloud-Codeabdeckung enthält additiv die 108 in der Original-App beobachteten
-Codebezeichnungen. Leere Werte bleiben erneut abfragbar; insbesondere die drei
-PWM-Codes brauchen noch einen Gegencheck bei laufender Wärmepumpe.
-Der Bereich **Geräte → SIM / LTE-Vertragsstatus** liest die Vertragsdaten nur
-auf **Aktualisieren**. Er benötigt die ICCID aus der vorhandenen Geräteübersicht;
-Statuscodes werden als Rohwerte angezeigt, Zahlungsfunktionen gibt es nicht.
-**API-Debugger → OTA-Updateprüfung vorbereiten** befüllt lediglich einen
-editierbaren Request. Das ist keine Firmware-Updatefunktion; erst **Senden**
-führt die Abfrage aus. HTTP 404 bleibt eine Serverantwort und bedeutet nicht
-„kein Update verfügbar“.
