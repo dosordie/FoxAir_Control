@@ -1,14 +1,14 @@
-# FoxAir / Phnix Control PUBLIC V0.3.4
+# FoxAir / Phnix Control PUBLIC V0.4.0
 
 **CSV Logger:** Register **2001–2090** periodisch als UTF-8-CSV aufzeichnen,
 über die bestehende lokale Modbusverbindung oder ausschließlich über WarmLink
 Cloud. Lokale Verbindung hat beim Start Vorrang; fehlende frische Werte bleiben
 leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
 
-V0.3.4 erweitert die Cloud-Steuerung für WP und AT mit **Modbus vor Cloud**,
-verbessert Geräteauswahl und Polling sowie die Darstellung der Haupttabelle.
-Spaltenbreiten werden gespeichert, aktives Cloud-Polling ist am animierten
-Cloud-Button erkennbar und **Hauptfenster leeren** entfernt jetzt auch Cloud-Werte.
+V0.4.0 erweitert die WarmLink-Cloudsteuerung für AT-Kurve, SG Ready, WP- und
+Betriebsart-Timer einschließlich Batch-Writes und Readbacks. Die Cloud lässt sich
+jetzt direkt im Hauptfenster verbinden oder trennen; die Timer-Dialoge sind
+übersichtlicher gestaltet. Die lokale Modbusverbindung hat weiterhin Vorrang.
 Details: [Steuertransport](docs/warmlink_polling_and_readback.md#gemeinsamer-steuertransport-für-wp-und-at)
 und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
 
@@ -47,7 +47,7 @@ Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spen
 
 ### Warmlink RAW / Firmware-Logging
 
-Ab Version `0.5.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
+Ab Version `0.2.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
 Damit können RX/TX-Rohdaten des Modbus-Warmlink/LTE-Datenstroms als Binärdateien gespeichert und über `events.jsonl` sowie `frame_complete` Events für spätere Offline-Analysen indexiert werden.
 
 Die Funktion ist für Diagnose und spätere Firmware-Update-Erkennung vorbereitet:
@@ -58,7 +58,7 @@ Die Funktion ist für Diagnose und spätere Firmware-Update-Erkennung vorbereite
 
 RAW-Captures können sensible Geräte-/Betriebsdaten enthalten und sollten nicht öffentlich geteilt werden.
 
-## Cloud-Steuerung (work, 17.10.2026)
+## Cloud-Steuerung
 
 AT-Kompensation und SG Ready schreiben regulär ohne experimentelle Freigabe und
 starten Cloud-Writes direkt per Schreibbutton. Nur geänderte Kurven-/SG-Werte
@@ -80,7 +80,7 @@ Cloudwerte. Der Decoder verwendet alle elf aktuellen Fehlerwörter einschließli
 Sammelstörung, keine Fehlerhistorie. Schreibtest und Wertefinder wurden entfernt.
 Lokale Bestätigungen und LTE-Recovery bleiben erhalten.
 
-## Cloud-Decoder und Silentmodus-Timer (work)
+## Cloud-Decoder und Timer
 
 Kontaktdecoder (2034 / `S01~S10`) und Lastausgangsdecoder (2019 / `O01~023`)
 laden beim Öffnen frische Cloudwerte. „jetzt lesen“ und optionales Polling nutzen
@@ -91,12 +91,13 @@ Der Silentmodus-Timer lädt alle sechs Werte (1244–1249) gemeinsam. Geänderte
 werden ohne zusätzliche Cloud-Bestätigung als Batch geschrieben und gemeinsam
 frisch zurückgelesen. Deaktivierungen werden zuerst bestätigt, geänderte Zeiten
 vor Aktivierungen. Nicht bestätigte Änderungen und neuere Eingaben bleiben offen.
-Der WP-Ein/Aus-Timer-Einstieg verwendet bei Cloud-only denselben Silent-Editor;
-die übrigen Timer benötigen lokalen Modbus. Display-Paketvoraussetzungen entfallen
-bei Cloud-only, lokale Schreibverfahren und Pausen bleiben erhalten.
+Der kombinierte WP-Ein/Aus-Timer-Editor zeigt über Cloud alle sechs WP-Timer
+und den Silentmodus. Auch die Betriebsart-Timer 1–6 laden ihre 45 M-Codes
+über Cloud und schreiben nur geänderte Werte mit Readback. Lokale Modbus- und
+Display-Abläufe bleiben erhalten; Cloud-only erfordert keine Display-Pakete.
 
-**Silent-Timer-Cloud-Writes sind neu implementiert und noch nicht live verifiziert.**
-Die Funktion ist regulär nutzbar, ohne Testfreigabe oder verpflichtende Testphase.
+**Hinweis:** Cloud-Writes der Silent-, WP-Ein/Aus- und Betriebsart-Timer sind
+implementiert, aber noch nicht sämtlich live an der GL9 verifiziert.
 Details und offene Praxisprüfungen: [Cloud-Dokumentation](docs/warmlink_cloud_values.md#kontakt-lastausgangsdecoder-und-silentmodus-timer).
 
 ## PUBLIC V0.2.46 – Struktur-Refactoring
