@@ -22,6 +22,12 @@ Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wär
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
 
+## Dokumentation
+
+- [FoxAir FAQ – Anleitungen und häufige Fragen](docs/FAQ/FAQ.md)
+- [Solltemperaturen extern korrigieren – speicherschonend über RAM-Register 8802–8808](docs/FAQ/externe_sollwertkorrektur.md)
+
+
 ## Firmware-Übersicht
 
 Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmwarestände**, Softwarecodes und Gerätezuordnungen gibt es hier:
