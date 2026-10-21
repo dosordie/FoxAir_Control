@@ -1,9 +1,7 @@
 """Live GL9 examples as synthetic values; no account, network or hardware."""
-import copy
 from types import SimpleNamespace
 
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QLabel, QMessageBox
 
@@ -25,16 +23,30 @@ from test_csv_logger_transport import wait_for
 from test_warmlink_request_scheduler import window
 
 
+# Independent specification anchors, not values generated from production hints.
+SPEC_BASES = (1281, 1288, 1295, 1302, 1309, 1316)
+SPEC_FIELDS = ('Start', 'End', 'Hot Water Target', 'Heating Target',
+               'Cooling Target', 'Mode', 'Max. Power')
+EXPECTED_CODES = {
+    **{base + offset: f'M{timer} {suffix}' for timer, base in enumerate(SPEC_BASES, 1)
+       for offset, suffix in enumerate(SPEC_FIELDS)},
+    1323: 'M1_2 Enalbe', 1324: 'M3_4 Enalbe', 1325: 'M5_6 Enalbe',
+}
+LIVE_EXAMPLES = {
+    'Start': (1024, 'DIGI1'), 'End': (5947, 'DIGI1'),
+    'Hot Water Target': (55.0, 'TEMP'), 'Heating Target': (41.0, 'TEMP'),
+    'Cooling Target': (7.0, 'TEMP'), 'Mode': (9, 'ENUM'), 'Max. Power': (1.2, 'DIGI5'),
+}
+
+
 def rows():
     result = []
-    for reg, code in M_TIMER_CODES.items():
+    for reg, code in EXPECTED_CODES.items():
         if reg >= 1323:
             value = {1323: '0000000011111111', 1324: '0000000001101111', 1325: '0000000000000000'}[reg]
             dtype = 'BINARY'
         else:
-            off = (reg-1281)%7
-            value = (1024, 5947, 55.0, 41.0, 7.0, 9, 1.2)[off]
-            dtype = ('DIGI1', 'DIGI1', 'TEMP', 'TEMP', 'TEMP', 'ENUM', 'DIGI5')[off]
+            value, dtype = LIVE_EXAMPLES[code.split(' ', 1)[1]]
         result.append(cloud_row(value, code, dataType=dtype, rangeStart=13.5 if code.endswith('Cooling Target') else 0,
                                 rangeEnd=53 if code.endswith('Hot Water Target') else 10000))
     return result
@@ -51,7 +63,7 @@ def opened(window, monkeypatch, supplied=None):
     return dialog, requests
 
 
-@pytest.mark.parametrize('reg,code', list(M_TIMER_CODES.items()))
+@pytest.mark.parametrize('reg,code', list(EXPECTED_CODES.items()))
 def test_all_45_explicit_schema_routes_and_grants_have_honest_evidence(reg, code):
     assert cloud_code_for_register(reg) == cloud_code_for_register(reg, True) == code
     hint = cloud_hint(code)
