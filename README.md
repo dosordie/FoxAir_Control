@@ -1,16 +1,4 @@
-# FoxAir / Phnix Control PUBLIC V0.4.0
-
-**CSV Logger:** Register **2001–2090** periodisch als UTF-8-CSV aufzeichnen,
-über die bestehende lokale Modbusverbindung oder ausschließlich über WarmLink
-Cloud. Lokale Verbindung hat beim Start Vorrang; fehlende frische Werte bleiben
-leer. Bedienung und Grenzen: [CSV Logger](docs/csv_logger.md).
-
-V0.4.0 erweitert die WarmLink-Cloudsteuerung für AT-Kurve, SG Ready, WP- und
-Betriebsart-Timer einschließlich Batch-Writes und Readbacks. Die Cloud lässt sich
-jetzt direkt im Hauptfenster verbinden oder trennen; die Timer-Dialoge sind
-übersichtlicher gestaltet. Die lokale Modbusverbindung hat weiterhin Vorrang.
-Details: [Steuertransport](docs/warmlink_polling_and_readback.md#gemeinsamer-steuertransport-für-wp-und-at)
-und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
+# FoxAir / Phnix Control
 
 <p align="center">
   <img src="app_icon.png" alt="FoxAir / Phnix Control Logo" width="160">
@@ -18,9 +6,15 @@ und [Heizkurve](docs/FAQ/regelung_heizkurve.md).
 
 Inoffizielles Diagnose- und Parametrierwerkzeug für FoxAir-/Phnix-basierte Wärmepumpen.
 
-**WP Ein/Aus Timer:** Unter WarmLink Cloud zeigt der kombinierte Timer-Editor alle sechs Ein-/Aus-Timer und den Silentmodus. Die KG-Zeit-/Tagescodes werden über den zentralen Cloud-Batch-/Readback-Weg verarbeitet; Cloud-Writes dieser KG-Codes sind als Entwicklungsfunktion noch nicht live an der GL9 bestätigt. [Cloud-Timermapping](docs/warmlink_cloud_values.md#wp-ein-aus-timer-neues-kg-cloud-mapping-entwicklungsstand).
 
 > **Wichtig:** Dieses Projekt ist kein offizielles FoxAir- oder Phnix-Tool. Das Schreiben von Registern oder Cloud-Werten kann Betriebsparameter verändern. Nutzung auf eigene Verantwortung. Vor Änderungen immer ein Backup erstellen.
+
+## 💙 Unterstützung
+
+Ich bastle an diesem Tool in meiner Freizeit.  
+Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
+
+[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
 
 ## Dokumentation
 
@@ -38,12 +32,7 @@ Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Ge
 
 Die analysierte **Mainboard-V3.5 stammt von einer FoxAir BlueLine (BL)**. BlueLine und GreenLine (GL) mit Mainboard-Softwarecode **`82400644`** verwenden dieselbe Mainboard-Firmwarelinie; die V3.5 ist für entsprechende Geräte dieser Familie untereinander kompatibel.
 
-## 💙 Unterstützung
 
-Ich bastle an diesem Tool in meiner Freizeit.  
-Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spende:
-
-[![Spenden via PayPal](https://img.shields.io/badge/Spenden-PayPal-blue.svg?logo=paypal)](https://www.paypal.com/paypalme/AuhuberD)
 
 ### Warmlink RAW / Firmware-Logging
 
