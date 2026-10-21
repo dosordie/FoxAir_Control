@@ -33,6 +33,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 - [WarmLink-App, LTE-Modem und SIM-Karte](warmlink_lte.md)
 - [Modbus-Anschluss am Klemmfeld](modbus.md)
 - [SG Ready und PV-Überschusssteuerung](sg_ready.md)
+- [Solltemperaturen extern korrigieren – RAM-Register 8802–8808](externe_sollwertkorrektur.md)
 - [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
 ## Bedienung und Fehlersuche
