@@ -1,4 +1,4 @@
-"""A display-only activity border for the existing Cloud button."""
+"""A display-only activity border for the Cloud connect/disconnect button."""
 from PySide6.QtCore import QRectF, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QPushButton

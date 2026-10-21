@@ -5446,11 +5446,11 @@ class MainWindow(QMainWindow):
         self.display_translate_cb.setChecked(False)
         self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
-        self.cloud_quick_btn = QPushButton("Verbinden")
+        self.cloud_quick_btn = CloudStatusButton("Verbinden")
         self.cloud_quick_btn.setMaximumWidth(100)
         self.cloud_quick_btn.setAccessibleName("Cloud verbinden oder trennen")
         self.cloud_quick_btn.setToolTip("WarmLink Cloud mit gespeichertem Zugang verbinden oder Sitzung trennen.")
-        self.cloud_btn = CloudStatusButton("WarmLink Cloud / LTE ...")
+        self.cloud_btn = QPushButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
@@ -5487,7 +5487,7 @@ class MainWindow(QMainWindow):
         self.about_btn.setMaximumWidth(86)
         self.device_info_btn = QPushButton("Geräte-Info")
         apply_button_icon(self.comm_settings_btn, "assets/icons/settings.svg", "Programmeinstellungen öffnen", "Einstellungen", "Programmeinstellungen öffnen")
-        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "Warmlink Cloud öffnen", "Warmlink Cloud", "Warmlink Cloud öffnen")
+        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "WarmLink Cloud-Einstellungen öffnen", "WarmLink Cloud-Einstellungen", "WarmLink Cloud-Einstellungen öffnen")
         apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
@@ -9863,7 +9863,7 @@ class MainWindow(QMainWindow):
             self.cloud_ui_device_name = device_name
         if last_success_at is not None:
             self.cloud_last_success_at = last_success_at
-        button = getattr(self, "cloud_btn", None)
+        button = getattr(self, "cloud_quick_btn", None)
         if button is None:
             return
         button.setProperty("cloudState", state)
@@ -9888,8 +9888,13 @@ class MainWindow(QMainWindow):
         last = getattr(self, "cloud_last_success_at", None)
         if last:
             lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
-        button.setToolTip("\n".join(lines))
+        settings_button = getattr(self, "cloud_btn", None)
+        if settings_button is not None:
+            settings_button.setToolTip("WarmLink Cloud-Einstellungen öffnen\n" + "\n".join(lines[1:]))
         self._update_cloud_quick_button()
+        tooltip = button.toolTip() + "\n" + "\n".join(lines[1:])
+        button.setToolTip(tooltip)
+        button.setAccessibleDescription(tooltip)
 
     def set_cloud_timing_state(self, state: CloudTimingState) -> None:
         """Render worker scheduling without initiating or rescheduling requests."""
@@ -12329,7 +12334,7 @@ class MainWindow(QMainWindow):
         self._update_main_window_settings()
         self.main_table_columns.stop_pending_save()
         self._save_settings()
-        self.cloud_btn.setPollingActive(False)
+        self.cloud_quick_btn.setPollingActive(False)
         if self.warmlink_cloud_dialog is not None:
             try:
                 setattr(self.warmlink_cloud_dialog, "_force_close", True)

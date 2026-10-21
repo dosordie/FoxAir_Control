@@ -65,7 +65,7 @@ def test_clear_main_window_drops_cloud_display_cache_without_stopping_polling(wi
         assert window.connected and window.worker is local_worker and local_worker.running
         assert window.is_cloud_connected() and window.cloud_session_device_code == "device"
         assert window.warmlink_cloud_dialog is polling and polling.cloud_worker is cloud_worker
-        assert window.cloud_ui_state == "POLLING" and window.cloud_btn.animation_timer.isActive()
+        assert window.cloud_ui_state == "POLLING" and window.cloud_quick_btn.animation_timer.isActive()
         assert window.cloud_timing_state is timing and window.cloud_countdown_timer.isActive()
 
         # Only the next fresh poll repopulates the table; cached R02 stays in the session.

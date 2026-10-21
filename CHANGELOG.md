@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Cloud-Einstellungen mit Wolke-/Zahnrad-SVG gekennzeichnet. Der animierte
+  Polling-Rahmen und die farbige Statusmarkierung liegen jetzt am
+  Verbinden-/Trennen-Icon; Einstellungen öffnen weiterhin den Cloud-Dialog.
+
 - GL9 V3.5: direkte Engineering-RAM-Register 8802–8808 ergänzt; signed int16,
   8802–8804 mit /10 °C, übrige Einheiten offen. Standardmäßig Engineering-Ansicht;
   Korrekturquellenwahl über 1334/1540 und flüchtige Werte dokumentiert.

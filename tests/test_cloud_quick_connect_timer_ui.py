@@ -65,7 +65,7 @@ def test_shortcut_is_compact_and_immediately_after_existing_status_button(window
             assert window.cloud_quick_btn.accessibleName() == "Cloud: Trennen" and window.cloud_quick_btn.isEnabled()
         else:
             assert window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
-        assert window.cloud_btn.animation_timer.isActive() == (state == "POLLING")
+        assert window.cloud_quick_btn.animation_timer.isActive() == (state == "POLLING")
         assert window.cloud_quick_btn.text() == ""
         assert not window.cloud_quick_btn.icon().isNull()
         assert window.cloud_quick_btn.toolTip() == window.cloud_quick_btn.accessibleDescription()
@@ -361,11 +361,11 @@ def test_real_poll_worker_can_quick_connect_disconnect_and_reconnect(window, mon
     window.cloud_quick_btn.click()
     wait_for(lambda: window.is_cloud_connected() and window.cloud_ui_state == "POLLING")
     assert dialog.cloud_thread is not None and not dialog.isVisible()
-    assert window.cloud_btn.animation_timer.isActive()
+    assert window.cloud_quick_btn.animation_timer.isActive()
     window.cloud_quick_btn.click()
     assert not window.is_cloud_connected() and window._cloud_disconnect_pending
     wait_for(lambda: not window._cloud_disconnect_pending)
-    assert dialog.cloud_thread is None and not window.cloud_btn.animation_timer.isActive()
+    assert dialog.cloud_thread is None and not window.cloud_quick_btn.animation_timer.isActive()
     window.cloud_quick_btn.click()
     wait_for(lambda: window.is_cloud_connected() and window.cloud_ui_state == "POLLING")
     assert not window._cloud_manually_disconnected
@@ -382,7 +382,7 @@ def test_stopping_polling_keeps_session_and_shortcut_disconnects_it(window, fake
     dialog.stop_worker()
     wait_for(lambda: dialog.cloud_thread is None)
     assert window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Trennen"
-    assert not window.cloud_btn.animation_timer.isActive()
+    assert not window.cloud_quick_btn.animation_timer.isActive()
     window.cloud_quick_btn.click()
     assert not window.is_cloud_connected() and window.cloud_quick_btn.accessibleName() == "Cloud: Verbinden"
 
