@@ -35,7 +35,7 @@ def sim_dialog(application):
     yield owner, dialog
     assert dialog.sim_thread is None
     dialog.close()
-    owner.cloud_btn.setPollingActive(False)
+    owner.cloud_quick_btn.setPollingActive(False)
     owner.deleteLater()
     application.processEvents()
 
@@ -191,7 +191,7 @@ def test_sim_is_manual_keeps_zero_null_and_unknown_status_raw(sim_dialog, monkey
         for row in range(dialog.sim_raw_table.rowCount())
     }
     assert raw["cardType"] == "IoT-SIM-Karte (物联卡)"
-    assert owner.cloud_btn.property("pollingActive") is True
+    assert owner.cloud_quick_btn.property("pollingActive") is True
 
 
 def test_sim_without_metadata_iccid_creates_no_thread_or_request(sim_dialog, monkeypatch):

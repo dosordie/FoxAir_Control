@@ -6,7 +6,7 @@ from copy import deepcopy
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PySide6.QtCore import QEventLoop, QThread, QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QPushButton
 
 from cloud.polling import CloudSession, classify_cloud_codes
 from cloud.warmlink_api import WarmLinkCloudApi, WarmLinkCloudError, WarmLinkAuthError
@@ -223,7 +223,8 @@ class DialogWindow(CloudWindow):
     def __init__(self):
         super().__init__()
         self.settings = {"warmlink_cloud": {"username": "user", "save_token": False, "selected_device_code": "device"}}
-        self.cloud_btn = CloudStatusButton(self)
+        self.cloud_btn = QPushButton(self)
+        self.cloud_quick_btn = CloudStatusButton(self)
         self.user_data_dir = "."
     def _save_settings(self, **kwargs): pass
 
@@ -255,16 +256,16 @@ def test_ui_merges_partials_and_updates_existing_items_lazily(application, monke
     dialog.close()
 
 
-@pytest.mark.parametrize("state", ["DISCONNECTED", "CONNECTING", "CONNECTED", "POLLING", "ERROR"])
+@pytest.mark.parametrize("state", ["DISCONNECTED", "CONNECTING", "DISCONNECTING", "CONNECTED", "POLLING", "ERROR"])
 def test_cloud_button_distinct_states_and_safe_tooltip(application, state):
     window = DialogWindow()
     window.set_cloud_ui_state(state, device_name="FoxAir GL9", last_success_at=100000)
-    assert window.cloud_btn.property("cloudState") == state
-    assert window.cloud_btn.property("pollingActive") == (state == "POLLING")
-    assert window.cloud_btn.animation_timer.isActive() == (state == "POLLING")
+    assert window.cloud_quick_btn.property("cloudState") == state
+    assert window.cloud_quick_btn.property("pollingActive") == (state == "POLLING")
+    assert window.cloud_quick_btn.animation_timer.isActive() == (state == "POLLING")
     assert "FoxAir GL9" in window.cloud_btn.toolTip()
     assert "device" not in window.cloud_btn.toolTip()
-    assert window.cloud_btn.styleSheet()
+    assert window.cloud_quick_btn.styleSheet()
 
 
 def test_credential_work_does_not_block_qt_heartbeat(application):
