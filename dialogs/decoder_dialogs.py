@@ -1,16 +1,25 @@
 from __future__ import annotations
 
 from typing import Optional
+import time
+
+from cloud.snapshot_request import CloudSnapshotRequest
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QPushButton,
-    QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget,
 )
 
-from core.foxair_phnix_core import DEFAULT_BUS_ADDR, decode_contact_bits, decode_system_io_status_2146, s16
+from core.foxair_phnix_core import (
+    DEFAULT_BUS_ADDR, bitfield_states, decode_contact_bits, decode_system_io_status_2146,
+    format_bitfield_details, format_value_by_type, s16,
+)
+from core.control_transport import LOCAL_TRANSPORTS
 from ui.paths import resource_path
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
+from cloud.warmlink_value_translator import parse_cloud_word
 from ui.theme import APP_ICON_FILE
 
 FLASH_CHANGED_ROW_MS = 2000
@@ -25,7 +34,28 @@ def app_icon() -> QIcon:
     return QIcon(resource_path(APP_ICON_FILE, __file__))
 
 
-class ContactDecoderDialog(QDialog):
+class _CloudWordDecoderMixin(TargetedCloudDialogMixin):
+    def _init_word_cloud(self, value):
+        self._init_cloud_snapshot()
+        self.set_value(None if self.main_window.control_transport() == "cloud" else value)
+
+    def _reset_cloud_source(self):
+        register = next(iter(self.CLOUD_REGISTERS))
+        value = None
+        if self.main_window.control_transport() in LOCAL_TRANSPORTS:
+            value = self.main_window.register_value_sources(register).local_raw
+            if value is None:
+                value = self.main_window.last_values.get(register)
+        self.set_value(value)
+
+    def _apply_cloud_snapshot(self, values):
+        self.set_value(values.get(next(iter(self.CLOUD_REGISTERS))))
+
+
+class ContactDecoderDialog(_CloudWordDecoderMixin, QDialog):
+    CLOUD_REGISTERS = {2034: "S01~S10"}
+    CLOUD_PURPOSE = "contact_decoder"
+
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
         self.main_window = parent
@@ -74,7 +104,7 @@ class ContactDecoderDialog(QDialog):
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-        self.set_value(value)
+        self._init_word_cloud(value)
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -83,6 +113,13 @@ class ContactDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
+        if self.main_window.control_transport() == "none":
+            self.status_label.setText("Keine Steuerverbindung.")
+            return
         self.status_label.setText("Lese Register 2034 ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -137,6 +174,7 @@ class ContactDecoderDialog(QDialog):
         QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
 
     def set_value(self, value: Optional[int]):
+        value = parse_cloud_word(value)
         old_value = self._last_value
         changed_bits: set[int] = set()
         if value is not None and old_value is not None:
@@ -173,8 +211,11 @@ class ContactDecoderDialog(QDialog):
                 self._flash_contact_bit_row(bit, bit_value)
 
 
-class LoadOutputDecoderDialog(QDialog):
+class LoadOutputDecoderDialog(_CloudWordDecoderMixin, QDialog):
     """Decoder fuer Register 2019 / 0x07E3 Lastausgaenge."""
+
+    CLOUD_REGISTERS = {2019: "O01~023"}
+    CLOUD_PURPOSE = "load_output_decoder"
 
     def __init__(self, parent: "MainWindow", value: Optional[int]):
         super().__init__(parent)
@@ -223,7 +264,7 @@ class LoadOutputDecoderDialog(QDialog):
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-        self.set_value(value)
+        self._init_word_cloud(value)
 
     def _bit_map(self) -> dict[int, str]:
         info = self.main_window.regmap.get(2019)
@@ -236,6 +277,13 @@ class LoadOutputDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
+        if self.main_window.control_transport() == "none":
+            self.status_label.setText("Keine Steuerverbindung.")
+            return
         self.status_label.setText("Lese Lastausgänge ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -247,6 +295,7 @@ class LoadOutputDecoderDialog(QDialog):
         self.status_label.setText("Timeout / keine Antwort.")
 
     def set_value(self, value: Optional[int], status_text: Optional[str] = None):
+        value = parse_cloud_word(value)
         if status_text is not None:
             self.status_label.setText(status_text)
         elif value is not None:
@@ -277,16 +326,25 @@ class LoadOutputDecoderDialog(QDialog):
 
 
 class SystemIOStatusDecoderDialog(QDialog):
-    """Practical decoder for MAIN:2146 plus its adjacent HYD61 value 2147."""
+    """MAIN status groups sharing the formatter and scheduled read path."""
 
     READ_LABEL = "System-/I/O-Status 2146-2147"
+    DIAGNOSTIC_GROUPS = (
+        (2139, "Frequenzbegrenzungen"), (2152, "EMS / Remote"),
+        (2109, "Parameteränderungen"), (2080, "Inverterstatus"),
+    )
+    STATUS_REGISTERS = frozenset((2146, 2147, *(reg for reg, _ in DIAGNOSTIC_GROUPS)))
+    READ_LABELS = frozenset((READ_LABEL, *(f"System-/I/O-Status {reg}" for reg, _ in DIAGNOSTIC_GROUPS)))
 
     def __init__(self, parent: "MainWindow"):
         super().__init__(parent)
         self.main_window = parent
         self._value_2146: Optional[int] = None
         self._value_2147: Optional[int] = None
-        self.setWindowTitle("System-/I/O-Status Register 2146 / 2147")
+        self._diagnostic_values = {}
+        self._read_status = {}
+        self._source_slave = self._selected_slave()
+        self.setWindowTitle("System-/I/O-Status und Registerdiagnose")
         self.setWindowIcon(app_icon())
         self.resize(1040, 470)
         layout = QVBoxLayout(self)
@@ -309,12 +367,17 @@ class SystemIOStatusDecoderDialog(QDialog):
         top.addWidget(self.read_now_btn)
         layout.addLayout(top)
 
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs, 1)
+        io_page = QWidget()
+        io_layout = QVBoxLayout(io_page)
+        self.tabs.addTab(io_page, "System / I/O 2146–2147")
         self.info_label = QLabel(
             "2146 ist ein System-/I/O-Statuswort, kein Temperaturwert. "
             "Die praktische Ansicht blendet feste Basisbits aus; der volle Rohwert bleibt oben sichtbar."
         )
         self.info_label.setWordWrap(True)
-        layout.addWidget(self.info_label)
+        io_layout.addWidget(self.info_label)
 
         self.table = QTableWidget(6, 4)
         self.table.verticalHeader().setVisible(False)
@@ -324,23 +387,95 @@ class SystemIOStatusDecoderDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        layout.addWidget(self.table, 1)
+        io_layout.addWidget(self.table, 1)
+
+        self.diagnostic_tables = {}
+        self.diagnostic_summaries = {}
+        for reg_no, title in self.DIAGNOSTIC_GROUPS:
+            page = QWidget()
+            page_layout = QVBoxLayout(page)
+            summary = QLabel("–")
+            summary.setWordWrap(True)
+            page_layout.addWidget(summary)
+            description = QLabel("Gesetzte Statusbits belegen nicht automatisch eine aktuell messbare Regelauswirkung. Details im Tooltip.")
+            description.setToolTip(self.main_window.register_defs.get(str(reg_no), {}).get("description", ""))
+            description.setWordWrap(True)
+            page_layout.addWidget(description)
+            table = QTableWidget(16, 4)
+            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            table.verticalHeader().setVisible(False)
+            table.setHorizontalHeaderLabels(["Bit / Maske", "Zustand", "Status", "Bedeutung"])
+            for col in range(3):
+                table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
+            table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+            page_layout.addWidget(table, 1)
+            self.tabs.addTab(page, f"{title} {reg_no}")
+            self.diagnostic_tables[reg_no] = table
+            self.diagnostic_summaries[reg_no] = summary
+            self._refresh_diagnostic_group(reg_no)
 
         self.poll_timer = QTimer(self)
         self.poll_timer.timeout.connect(self.poll_once)
         self.poll_cb.stateChanged.connect(lambda _=None: self._apply_poll_state())
         self.poll_interval_spin.valueChanged.connect(lambda _=None: self._apply_poll_state())
         self.read_now_btn.clicked.connect(self.poll_once)
+        self.tabs.currentChanged.connect(self._show_current_group)
+        self.finished.connect(lambda _=None: self.poll_timer.stop())
 
         close_btn = QPushButton("Schließen")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
 
-        self.set_values(
-            self.main_window.last_values.get(2146),
-            self.main_window.last_values.get(2147),
-            status_text="Vorhandene Live-Werte geladen.",
-        )
+        self.set_values(None, None)
+        # Only a local MAIN word from the selected bus may seed this dialog.
+        # Cloud projections never carry a local Modbus raw word.
+        for reg_no in self.STATUS_REGISTERS:
+            reg = self.main_window.latest_regs.get(reg_no)
+            if reg is not None:
+                self.update_from_live_register(reg)
+        self._show_current_group()
+
+    def _selected_slave(self):
+        try:
+            return self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
+        except (AttributeError, TypeError, ValueError):
+            return DEFAULT_BUS_ADDR
+
+    def _current_group(self):
+        index = self.tabs.currentIndex()
+        return 2146 if index == 0 else self.DIAGNOSTIC_GROUPS[index - 1][0]
+
+    def _show_current_group(self, _index=None):
+        group = self._current_group()
+        if group == 2146:
+            self.set_values(self._value_2146, self._value_2147)
+        else:
+            raw = self._diagnostic_values.get(group)
+            info = self.main_window.regmap.get(group)
+            self.value_label.setText(f"{group}: " + format_bitfield_details(raw, info).split("\n")[0])
+        self.status_label.setText(self._read_status.get(group, "Bereit. Nur lokale MAIN-Werte."))
+
+    def _refresh_diagnostic_group(self, reg_no):
+        raw = self._diagnostic_values.get(reg_no)
+        info = self.main_window.regmap.get(reg_no)
+        self.diagnostic_summaries[reg_no].setText(format_value_by_type(raw, info.dtype, bit_map=info.bit_map, compact=True))
+        table = self.diagnostic_tables[reg_no]
+        for row, (bit, label, description, active) in enumerate(bitfield_states(raw, info.bit_map, info.bit_descriptions)):
+            values = [f"B{bit} / 0x{1 << bit:04X}", "–" if active is None else "gesetzt" if active else "aus", label, description]
+            for col, text in enumerate(values):
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
+                item.setBackground(QColor(220, 240, 255) if active else QColor(245, 245, 245))
+                table.setItem(row, col, item)
+
+    def clear_values(self, status_text="Werte geleert."):
+        self._value_2146 = self._value_2147 = None
+        self._diagnostic_values.clear()
+        self._read_status = {reg: status_text for reg in self.STATUS_REGISTERS}
+        self.set_values(None, None)
+        for reg, _title in self.DIAGNOSTIC_GROUPS:
+            self._refresh_diagnostic_group(reg)
+        self._show_current_group()
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -349,25 +484,57 @@ class SystemIOStatusDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
-        self.status_label.setText("Lese Register 2146-2147 ...")
-        try:
-            slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
-        except Exception:
-            slave_addr = DEFAULT_BUS_ADDR
-        self.main_window.send_read_request(2146, 2, slave_addr=slave_addr, label=self.READ_LABEL)
+        slave_addr = self._selected_slave()
+        if slave_addr != self._source_slave:
+            self._source_slave = slave_addr
+            self.clear_values("Bus gewechselt; noch keine neuen Werte.")
+        group = self._current_group()
+        self._read_status[group] = f"Lese MAIN:{group} ..."
+        self._show_current_group()
+        if group == 2146:
+            self.main_window.send_read_request(2146, 2, slave_addr=slave_addr, label=self.READ_LABEL)
+        else:
+            self.main_window.send_read_request(group, 1, slave_addr=slave_addr, label=f"System-/I/O-Status {group}")
 
-    def show_read_timeout(self):
-        self.status_label.setText("Timeout / keine Antwort.")
+    def _group_for_label(self, label):
+        return 2146 if label == self.READ_LABEL else int(label.rsplit(" ", 1)[-1])
+
+    def show_read_timeout(self, label=READ_LABEL):
+        self._read_status[self._group_for_label(label)] = "Timeout / keine Antwort; letzter Wert bleibt sichtbar."
+        self._show_current_group()
+
+    def show_read_response(self, label, registers):
+        accepted = any([self.update_from_live_register(reg) for reg in registers])
+        if accepted:
+            self._read_status[self._group_for_label(label)] = "Erfolgreich gelesen."
+            self._show_current_group()
 
     def update_from_live_register(self, reg):
+        if getattr(reg, "value_source", "modbus") != "modbus":
+            return False
+        wire_slave = self._source_slave
+        if hasattr(self.main_window, "_wire_slave_addr"):
+            wire_slave = self.main_window._wire_slave_addr(wire_slave)
+        if reg.slave_addr != wire_slave:
+            is_main_broadcast = (
+                reg.slave_addr == 0 and reg.frame_type in (2001, 2091)
+                and self.main_window.current_backend_key() == "display_modbus"
+            )
+            if not is_main_broadcast:
+                return False
         reg_no = int(reg.reg)
         if reg_no == 2146:
             self._value_2146 = int(reg.raw_value) & 0xFFFF
         elif reg_no == 2147:
             self._value_2147 = s16(int(reg.raw_value) & 0xFFFF)
+        elif reg_no in self.diagnostic_tables:
+            self._diagnostic_values[reg_no] = int(reg.raw_value) & 0xFFFF
+            self._refresh_diagnostic_group(reg_no)
         else:
-            return
-        self.set_values(self._value_2146, self._value_2147, status_text="Live-Wert aktualisiert.")
+            return False
+        self._read_status[2146 if reg_no == 2147 else reg_no] = "Lokaler Live-Wert aktualisiert."
+        self._show_current_group()
+        return True
 
     def set_values(self, value_2146: Optional[int], value_2147: Optional[int], status_text: Optional[str] = None):
         if value_2146 is not None:
@@ -458,23 +625,24 @@ class SystemIOStatusDecoderDialog(QDialog):
 class FaultDecoderDialog(QDialog):
     """Klartextanzeige fuer Fehlerbits und Sammelstoerung."""
 
-    FAULT_REGS = [2085, 2086, 2087, 2088, 2089, 2090, 2081, 2082, 2083, 2084]
+    FAULT_REGS = [2081, 2082, 2083, 2084, 2085, 2086, 2087, 2088, 2089, 2090]
     FAULT_TITLES = {
-        2085: "Fehler 1",
-        2086: "Fehler 2",
-        2087: "Fehler 3",
-        2088: "Fehler 4",
-        2089: "Fehler 5",
-        2090: "Fehler 6",
-        2081: "Fehler 7",
-        2082: "Fehler 8",
-        2083: "Fehler 9",
-        2084: "Fehler 10",
+        2081: "Fehler 1", 2082: "Fehler 2", 2083: "Fehler 3", 2084: "Fehler 4", 2085: "Fehler 5",
+        2086: "Fehler 6", 2087: "Fehler 7", 2088: "Fehler 8", 2089: "Fehler 9", 2090: "Fehler 10",
     }
+    CLOUD_CODES = ("O01~023", "Fault1", "Fault2", "Fault3", "Fault4", "Fault5",
+                   "Fault6", "Fault7", "Fault8", "Fault9", "Fault10")
 
     def __init__(self, parent: "MainWindow"):
         super().__init__(parent)
         self.main_window = parent
+        self._control_identity = parent.control_context()
+        self.cloud_request = None
+        self._cloud_snapshot_values = None
+        self.cloud_read_timer = QTimer(self)
+        self.cloud_read_timer.setSingleShot(True)
+        self.cloud_read_timer.timeout.connect(self._cloud_timeout)
+
         self.setWindowTitle("Störungen / Fehlerdecoder")
         self.setWindowIcon(app_icon())
         self.resize(1120, 620)
@@ -527,6 +695,9 @@ class FaultDecoderDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
         self.refresh(update_status=False)
+        self.finished.connect(self._closed)
+        QTimer.singleShot(250, self, self._autoload_cloud)
+
 
     def _apply_poll_state(self):
         if self.poll_cb.isChecked():
@@ -535,6 +706,13 @@ class FaultDecoderDialog(QDialog):
             self.poll_timer.stop()
 
     def poll_once(self):
+        self.connection_changed()
+        if self.main_window.control_transport() == "cloud":
+            self._read_cloud()
+            return
+        if self.main_window.control_transport() == "none":
+            self.read_status_label.setText("Keine Steuerverbindung.")
+            return
         self.read_status_label.setText("Lese Störungen ...")
         try:
             slave_addr = self.main_window._parse_int_text(self.main_window.write_bus_edit.text())
@@ -543,12 +721,115 @@ class FaultDecoderDialog(QDialog):
         self.main_window.send_read_request(2019, 1, slave_addr=slave_addr, label="Störung: Lastausgang 2019")
         self.main_window.send_read_request(2081, 10, slave_addr=slave_addr, label="Störung: Fehlerregister 2081-2090")
 
+    def _closed(self, *_args):
+        self.poll_timer.stop()
+        self._cancel_cloud_read()
+
+    def closeEvent(self, event):
+        self._closed()
+        super().closeEvent(event)
+
+    def _cancel_cloud_read(self):
+        self.cloud_read_timer.stop()
+        if self.cloud_request is not None:
+            self.cloud_request.cancelled.set()
+        self.cloud_request = None
+
+    def connection_changed(self):
+        context = self.main_window.control_context()
+        if context != self._control_identity:
+            self._cancel_cloud_read()
+            self._cloud_snapshot_values = None
+            self._control_identity = context
+            self.refresh(update_status=False)
+            if self.isVisible() and context.transport == "cloud":
+                QTimer.singleShot(0, self, self._autoload_cloud)
+
+    def _autoload_cloud(self):
+        if self.isVisible() and self.main_window.control_transport() == "cloud":
+            if self.main_window._control_cloud_busy():
+                QTimer.singleShot(250, self, self._autoload_cloud)
+                return
+            self.poll_once()
+
+    @staticmethod
+    def _parse_word(value, metadata=None):
+        return parse_cloud_word(value, metadata)
+
+    def _raw_word(self, register):
+        if self.main_window.control_transport() == "cloud":
+            if self._cloud_snapshot_values is not None:
+                return self._cloud_snapshot_values.get(register)
+            overlay = self.main_window.cloud_overlay_by_reg.get(register, {})
+            metadata = overlay.get("metadata", {})
+            if any(metadata.get(flag) for flag in ("stale", "cached", "currentEmpty")) or metadata.get("supported") is False:
+                return None
+            return self._parse_word(overlay.get("raw_value"), metadata)
+        # Local transports keep their existing data priority.
+        return self.main_window.register_value_sources(register).local_raw
+
+    def update_from_cloud_register(self, register):
+        if register not in (2019, *self.FAULT_REGS):
+            return
+        if self.main_window.control_transport() != "cloud":
+            return
+        if self._cloud_snapshot_values is not None:
+            overlay = self.main_window.cloud_overlay_by_reg.get(register, {})
+            metadata = overlay.get("metadata", {})
+            if not any(metadata.get(flag) for flag in ("stale", "cached", "currentEmpty")):
+                value = self._parse_word(overlay.get("raw_value"), metadata)
+                if value is not None:
+                    self._cloud_snapshot_values[register] = value
+        self.refresh()
+
+    def _read_cloud(self):
+        if not self.isVisible() or self.cloud_request is not None:
+            return
+        owner = self.main_window
+        capability = owner.control_can_read(2019, *self.FAULT_REGS)
+        if not capability:
+            self.read_status_label.setText(capability.reason)
+            return
+        context = owner.control_context()
+        owner._fault_cloud_generation = getattr(owner, "_fault_cloud_generation", 0) + 1
+        self.cloud_request = CloudSnapshotRequest(owner._fault_cloud_generation, self.CLOUD_CODES,
+            time.monotonic() + 60, context.username, context.device_code, purpose="fault_decoder")
+        self.cloud_read_timer.start(60000)
+        self.read_status_label.setText("Lese aktuelle Cloud-Fehlerwörter …")
+        error = owner.control_request_snapshot(self.cloud_request)
+        if error:
+            self.cloud_read_finished(self.cloud_request.cycle_id, [], error)
+
+    def _cloud_timeout(self):
+        self._cancel_cloud_read()
+        self.read_status_label.setText("Cloud-Timeout; vorhandene Werte bleiben erhalten.")
+
+    def cloud_read_finished(self, cycle_id, rows, error):
+        request = self.cloud_request
+        if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible() or self.main_window.control_context() != self._control_identity:
+            self._cancel_cloud_read()
+            return
+        if request.expired():
+            self._cloud_timeout()
+            return
+        fresh = [row for row in rows if row.get("code") in request.codes and row.get("supported")
+                 and row.get("value") not in (None, "") and not any(
+                     row.get(flag) for flag in ("stale", "cached", "currentEmpty"))]
+        self._cancel_cloud_read()
+        if not error:
+            mapping = dict(zip(self.CLOUD_CODES, (2019, *self.FAULT_REGS)))
+            self._cloud_snapshot_values = {mapping[row["code"]]: self._parse_word(row["value"], row) for row in fresh}
+            self.main_window.apply_cloud_rows_to_main(fresh)
+            self.refresh(update_status=False)
+        count = sum(self._raw_word(register) is not None for register in (2019, *self.FAULT_REGS))
+        self.read_status_label.setText(f"Cloud: {count}/11 Fehlerwörter" + (f" · {error}" if error else " · Daten unvollständig" if count < 11 else " · erfolgreich gelesen"))
+
     def _fault_rows(self) -> list[tuple[int, str, int, int, str]]:
         rows: list[tuple[int, str, int, int, str]] = []
         for reg_no in self.FAULT_REGS:
-            raw = self.main_window.last_values.get(reg_no)
-            if raw is None:
-                raw = self.main_window.cloud_overlay_by_reg.get(reg_no, {}).get("raw")
+            raw = self._raw_word(reg_no)
             if raw is None:
                 continue
             raw_i = int(raw) & 0xFFFF
@@ -572,9 +853,7 @@ class FaultDecoderDialog(QDialog):
     def refresh(self, update_status: bool = True):
         if update_status:
             self.read_status_label.setText("Live-Wert aktualisiert.")
-        load_raw = self.main_window.last_values.get(2019)
-        if load_raw is None:
-            load_raw = self.main_window.cloud_overlay_by_reg.get(2019, {}).get("raw")
+        load_raw = self._raw_word(2019)
         alarm_active = bool((int(load_raw) & (1 << 10))) if load_raw is not None else False
         if load_raw is None:
             self.status_label.setText("Sammelstörung: unbekannt (2019 noch nicht gelesen)")
@@ -589,7 +868,7 @@ class FaultDecoderDialog(QDialog):
         rows = self._fault_rows()
         if not rows:
             self.table.setRowCount(1)
-            vals = ["--", "--", "--", "--", "Keine aktiven Fehlerbits in den bekannten Fehlerregistern." if load_raw is not None else "Noch keine Fehlerregister gelesen."]
+            vals = ["--", "--", "--", "--", "Keine aktiven Fehlerbits in den bekannten Fehlerregistern." if all(self._raw_word(r) is not None for r in [2019, *self.FAULT_REGS]) else "Daten unvollständig – Fehlerfreiheit nicht bestätigt."]
             for col, val in enumerate(vals):
                 item = QTableWidgetItem(val)
                 item.setBackground(QColor(245, 245, 245))

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from cloud.mapping_validation import register_code_from_definition
+from cloud.operating_timer import M_CODE_REGISTERS
 
 
 # Confirmed cloud aliases whose target has no suitable ``code`` field in the
@@ -49,6 +50,8 @@ CONFIRMED_REGISTER_ALIASES: dict[str, int] = {
     "CP1-5": 1253,
     "CP1-6": 1254,
     "CP1-7": 1255,
+    "1250": 1250,
+    "T57": 2023,
 }
 
 
@@ -80,13 +83,22 @@ def resolve_cloud_register(
     hint: Mapping[str, Any],
     register_defs: Mapping[str, Any] | None = None,
 ) -> int | None:
-    """Resolve a confirmed cloud hint against the *current* register map.
+    """Resolve reviewed routing against the *current* register map.
+
+    M-timer routes are explicitly authorized schema derivations; their
+    confidence remains derived until the direct Modbus comparison.
 
     A unique ``local_code`` match takes precedence over the historical address
     stored in the hint.  Only reviewed aliases may bypass that code lookup.
     """
     code = str(cloud_code or "").strip()
     if str(hint.get("confidence") or "").strip().lower() != "confirmed":
+        # Explicitly authorized M schema routing is derived, not Modbus-live verified.
+        reg = M_CODE_REGISTERS.get(code)
+        definitions = register_defs if register_defs is not None else current_register_definitions()
+        if (reg is not None and hint.get("confidence") == "derived"
+                and hint.get("modbus_register") == reg and str(reg) in definitions):
+            return reg
         return None
     definitions = register_defs if register_defs is not None else current_register_definitions()
     local_code = str(hint.get("local_code") or "").strip().upper()

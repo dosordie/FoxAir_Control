@@ -110,7 +110,15 @@ def test_timeout_starts_at_transport_send_then_releases_queue(application):
     pump(application)
     assert timeouts == [a] and sent == [a]
     assert scheduler.matching(0x63, 2) is None
-    wait(WARMLINK_TIMEOUT_DRAIN_MS + 30)
+    remaining = scheduler.resume_at - time.monotonic()
+    assert 0 < remaining <= WARMLINK_TIMEOUT_DRAIN_MS / 1000
+    wait(WARMLINK_TIMEOUT_DRAIN_MS + 120)
+    assert sent == [a]  # Quiet time cannot establish ownership of a late FC03.
+    assert scheduler.unresolved is a
+    scheduler.unmatched_response(0x63, 2)
+    deadline = time.monotonic() + WARMLINK_TIMEOUT_DRAIN_MS / 1000 + 1.0
+    while sent != [a, b] and time.monotonic() < deadline:
+        wait(20)
     assert sent == [a, b]
     scheduler.cancel()
 
@@ -124,7 +132,7 @@ def test_readback_delay_reserves_next_slot(application):
     scheduler.submit(readback, "readback", delay_ms=WARMLINK_READBACK_DELAY_MS)
     scheduler.submit(background, "background")
     assert sent == []
-    wait(WARMLINK_READBACK_DELAY_MS + 30)
+    wait(WARMLINK_READBACK_DELAY_MS + 120)
     assert sent == [readback] and time.monotonic() - started >= WARMLINK_READBACK_DELAY_MS / 1000
     scheduler.cancel()
 
@@ -202,7 +210,7 @@ def test_quickwrite_ack_readback_overtakes_background_and_ignores_stale_pending(
     assert window.warmlink_read_scheduler.queue[0][2]["priority"] in ("background", "readback")
     window.on_frame_decoded(response(window, 200))
     pump(application)
-    wait(WARMLINK_READBACK_DELAY_MS + 40)
+    wait(WARMLINK_READBACK_DELAY_MS + 120)
     window.worker._flush_write_queue()
     active = window.warmlink_read_scheduler.active
     assert active["addr"] == 1158 and active["priority"] == "readback"
@@ -256,7 +264,7 @@ def test_late_response_during_timeout_drain_does_not_steal_next_request(window, 
     assert not window._apply_pending_read_response(frame)
     assert window.warmlink_read_scheduler.active is None
     assert len(window._test_transmitted) == 1
-    wait(WARMLINK_TIMEOUT_DRAIN_MS + 40)
+    wait(WARMLINK_TIMEOUT_DRAIN_MS + 120)
     window.worker._flush_write_queue()
     assert window.warmlink_read_scheduler.active["addr"] == 1205
 

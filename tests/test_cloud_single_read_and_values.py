@@ -31,6 +31,8 @@ class CloudWindow(gui.MainWindow):
         QMainWindow.__init__(self)
         self.register_defs = current_register_definitions()
         self.regmap = RegisterMap(str(Path(__file__).parents[1] / "data/foxair_phnix_registers.json"))
+        self.connected = False
+        self.worker = None
         self.latest_regs = {}
         self.last_values = {}
         self.previous_value_texts = {}

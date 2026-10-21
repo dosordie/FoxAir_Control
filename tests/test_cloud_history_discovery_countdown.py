@@ -65,7 +65,7 @@ def test_clear_main_window_drops_cloud_display_cache_without_stopping_polling(wi
         assert window.connected and window.worker is local_worker and local_worker.running
         assert window.is_cloud_connected() and window.cloud_session_device_code == "device"
         assert window.warmlink_cloud_dialog is polling and polling.cloud_worker is cloud_worker
-        assert window.cloud_ui_state == "POLLING" and window.cloud_btn.animation_timer.isActive()
+        assert window.cloud_ui_state == "POLLING" and window.cloud_quick_btn.animation_timer.isActive()
         assert window.cloud_timing_state is timing and window.cloud_countdown_timer.isActive()
 
         # Only the next fresh poll repopulates the table; cached R02 stays in the session.
@@ -143,7 +143,7 @@ def test_local_and_cloud_histories_stay_separate_even_after_cloud_only_promotion
     assert window.register_change_highlights == set()
 
 
-@pytest.mark.parametrize("path", ["single", "main_write", "dialog_write", "static_reload"])
+@pytest.mark.parametrize("path", ["single", "main_write", "static_reload"])
 def test_all_cloud_readback_paths_update_history(application, monkeypatch, path):
     window = DialogWindow()
     dialog = WarmLinkCloudDialog(window)
@@ -157,8 +157,6 @@ def test_all_cloud_readback_paths_update_history(application, monkeypatch, path)
         window._on_cloud_read_data("R02", [cloud_row(54)])
     elif path == "main_write":
         window._on_cloud_write_result("R02", {"isReusltSuc": True, "readback": cloud_row(54)})
-    elif path == "dialog_write":
-        dialog._on_command_result({"isReusltSuc": True, "readback": cloud_row(54)})
     else:
         dialog._on_data([cloud_row(54)])  # The static worker emits this same data signal.
     assert window.cloud_previous_value_by_reg[register] == "55 °C"
@@ -251,7 +249,7 @@ def test_device_merge_keeps_authoritative_zero_false_and_fills_only_gaps():
     assert merged[1] == {"deviceCode": "manual", "discoverySource": "manual"}
 
 
-def test_full_device_table_keeps_unknown_fields_and_unmasked_ids(application):
+def test_full_device_table_keeps_metadata_and_unmasked_sim_identifiers(application):
     dialog = WarmLinkCloudDialog(DialogWindow())
     dialog._on_devices([{"deviceCode": "device", "deviceId": "short", "deviceName": "Shared",
         "isShared": True, "isFault": False, "houseName": "Zuhause", "roomId": "R", "areaId": "A",
@@ -264,7 +262,9 @@ def test_full_device_table_keeps_unknown_fields_and_unmasked_ids(application):
     assert values["isFault"] == "False" and values["faultState"] == "0"
     assert values["dtuSignalIntensity"] == "—"
     assert values["deviceId"] == "short" and values["deviceCode"] == "device"
-    assert values["sn"] == "SN123" and values["dtuIccid"] == "123456"
+    assert values["sn"] == "SN123"
+    assert values["dtuIccid"] == "123456"
+    assert dialog.devices[0]["dtuIccid"] == "123456"  # Available internally for the manual read.
     assert values["houseRoleType"] == "1" and values["productKey"] == "P"
     assert values["MAC"] == "new-field" and "deviceSecret" not in values
     assert not hasattr(dialog, "device_details_table") and not hasattr(dialog, "ids_cb")

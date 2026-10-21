@@ -1,5 +1,95 @@
 ## Unreleased
 
+- Betriebsart Timer 1-6: bestehenden Editor modernisiert und um Cloud-Autoload
+  aller 45 M-Codes, geänderte Batch-Writes und frische Einzel-Readbacks erweitert.
+  HH:MM-Wörter, bereits skalierte °C/kW und 16-Bit-Masken werden getrennt behandelt;
+  Partner-Bytes und offene Eingaben bleiben erhalten. Unbekannte Modi und fehlende
+  Werte werden nicht durch 0 ersetzt. Raw-Felder, Live-Checkbox und Schreibpause
+  entfernt; lokale Writes weiter mit fest 1.200 ms über bestehende Modbus-/Displaypfade.
+- M-Timer: Cloud-Leseformate am 21.10.2026 auf GL9 V3.5 live bestätigt,
+  MAIN:1281–1325-Zuordnung schemaabgeleitet, Modbusvergleich noch offen.
+  Cloud-Writes neu und noch nicht live getestet; regulär ohne Testfreigabe nutzbar.
+  Widersprüchliche Cloud-Metadatengrenzen werden dokumentiert und beim Lesen nicht geklemmt.
+
+- Cloud-Einstellungen mit Wolke-/Zahnrad-SVG gekennzeichnet. Der animierte
+  Polling-Rahmen und die farbige Statusmarkierung liegen jetzt am
+  Verbinden-/Trennen-Icon; Einstellungen öffnen weiterhin den Cloud-Dialog.
+
+- GL9 V3.5: direkte Engineering-RAM-Register 8802–8808 ergänzt; signed int16,
+  8802–8804 mit /10 °C, übrige Einheiten offen. Standardmäßig Engineering-Ansicht;
+  Korrekturquellenwahl über 1334/1540 und flüchtige Werte dokumentiert.
+- Effektiver Heiz-Wassersollwert auf MAIN:2017 korrigiert (V3.5+, FC03, TEMP1);
+  ungültigen Alias 1557 entfernt. 2014/2016 als Spiegel derselben Quelle und
+  2013 als eigenes internes Feld präzisiert. Keine neuen Cloud-/Display-Mappings.
+
+- Cloud-Schnellverbindung als kompakter SVG-Iconbutton: Wolke mit grünem Stecker
+  zum Verbinden bzw. rotem getrennten Stecker zum Trennen. Tooltips, zugängliche
+  Zustandsbeschriftung und deaktivierte Übergänge bleiben erhalten.
+
+- Hauptfenster: kompakter Cloud-Verbinden/Trennen-Button direkt neben dem
+  animierten Statusbutton. Gespeicherter Zugang und Geräteauswahl nutzen den
+  vorhandenen Cloud-Worker; bei fehlendem Zugang öffnet sich der Cloud-Dialog.
+  Manuelles Trennen deaktiviert die Sitzung, sperrt neue Aufträge und wartet auf
+  geordnetes Worker-Cleanup. Zugangsdaten, Tokens und Autostart bleiben gespeichert.
+- Kombinierter WP-Ein/Aus-/Silent-Timer: einstellbare Schreibpause, Raw-Eingaben
+  und „live aktualisieren“ entfernt. Lokale Writes verwenden fest 1.200 ms;
+  Partner-Bytes werden intern erhalten. Automatischer Initialread und manuelles
+  Neuladen bleiben verfügbar; lokale wie Cloud-Updates schützen offene Eingaben.
+  KG-Codes, Cloud-Freigaben, ACK-/Readback- und Display-Sequenzen bleiben unverändert.
+
+- Cloud WP Ein/Aus Timer: wieder vollständiger kombinierter Dialog mit Timer 1–6 und Silentmodus statt Silent-Umleitung. KG1–KG12 und KG13~KG28 / KG29~KG44 / KG45~KG60 den MAIN-Registern 1256–1270 zugeordnet; ganze HH:MM-/Tagesmasken, nur geänderte Werte, frische Readbacks und Schutz des Partner-Bytes. Cloud-Schreibpfad neu und noch nicht live bestätigt.
+- Cloud-Mapping-Inventar: M-Timer sind inzwischen separat zugeordnet und freigegeben; W-/DP-Familien bleiben Kandidaten ohne neue Schreibfreigabe.
+
+- Kontaktdecoder (2034 / S01~S10) und Lastausgangsdecoder (2019 / O01~023):
+  frischer asynchroner Cloud-Autoload, Jetzt lesen, Polling und korrekte uint16-
+  BINARY-/Dezimalwerte. Fehlende/ungültige Werte bleiben unbekannt; beide bleiben read-only.
+- Silentmodus-Timer 1244–1249 vollständig über Cloud les- und schreibbar:
+  alle sechs Werte gemeinsam laden, nur geänderte Werte per zentralem Batch schreiben,
+  gemeinsamer frischer Readback mit Einzelprüfung und Schutz neuerer Eingaben.
+  Deaktivierungen zuerst bestätigen, geänderte Zeiten gemeinsam bestätigen,
+  Aktivierungen zuletzt. Keine experimentelle Freigabe oder zusätzliche Cloud-Rückfrage.
+- Stand von PR #191: Cloud-only leitete den WP-Ein/Aus-Timer zunächst zum Silent-Editor um; im aktuellen Unreleased-Stand ist der kombinierte Editor für Cloud wiederhergestellt.
+- Silent-Timer-Cloud-Writes sind neu implementiert und noch nicht live verifiziert.
+  Nutzung ist regulär möglich; gegebenenfalls sind Live-Nachbesserungen erforderlich.
+
+- AT-Kompensation: sieben kompakte Eingabefelder, berechnete Werteübersicht,
+  kontextabhängiger Kurvenschreibbutton und Schutz ungespeicherter Live-Eingaben.
+- Cloud: zentrale Batch-API (`appId: "16"`, `param[]`) mit einem gemeinsamen
+  Readback, höchstens drei Leseversuchen, Einzelcode-Ergebnissen und gesondertem
+  Status für gesendet / API bestätigt / Readback bestätigt. Kein Write-Replay,
+  kein Rollback; Account-I/O ist zwischen Poll-, Snapshot- und CommandWorker serialisiert.
+- GL9-Livenachweis vom 17.10.2026: sieben AT-Punkte einzeln und gemeinsam als
+  7-fach-Write/-Readback erfolgreich. AT linear, H36 und SG01–SG08 regulär freigegeben;
+  experimentelle Checkboxen und zusätzliche Cloud-Schreibbestätigungen entfernt.
+- AT schreibt nur geänderte Cloud-Kurvenwerte und bereinigt nur bestätigte Editorversionen.
+- SG-Editor: Reihenfolge SG01–SG08, SG08 als Aus/Ein; geänderte SG02–SG08 als Batch.
+  Aktivierung SG01 erst nach bestätigtem Parameterbatch; Deaktivierung SG01=0 zuerst.
+  Lokale 500-ms-Abstände und Display-Paketsync bleiben erhalten; Status ist read-only,
+  8801 bleibt auf direkten Mainboard-Modbus beschränkt.
+- Gezielter asynchroner Cloud-Autoload für AT, SG, sichtbare Parameterblöcke und
+  Störungsdecoder. Editorentwürfe, Geräte-/Accountkontext und Abbruch bei Schließen geschützt.
+- Störungsdecoder liest elf aktuelle Cloudwörter gemeinsam, dekodiert BINARY/Dezimal,
+  verwendet Fault1→2081 bis Fault10→2090 und zeigt fehlende Daten ausdrücklich an.
+- Cloud-Schreibtest und Wertefinder samt exklusiven Helfern/Threads entfernt;
+  bekannte Mapping-Exporte, Cloud ↔ Lokal, SIM und generischer API-Debugger bleiben erhalten.
+- LTE: automatische Readbacks mit 800 ms Settle und 12 s Timeout ab tatsächlichem TX;
+  ein Deadlinebesitzer. Nach verlorenen FC03-Antworten kontrollierte TCP-Neuverbindung
+  nach 2 s Wartephase, maximal drei Versuche (1/2/4 s). Alte Verbindungsgenerationen
+  werden verworfen; Scheduler und Hintergrund-Polling laufen auf dem frischen Stream
+  weiter. Kein Write-Replay; manueller Abbruch, Capture und App-Ende stoppen die Wiederherstellung.
+
+- Display-Modbus: DWIN-Version/RTC, Anzeigeobjekte und Sichtbarkeitsflags anhand V1.7 präzisiert;
+  Unit-1-Telemetrie mit korrekten Skalierungen und eigener virtueller Browsergruppe.
+- Display-Parametersynchronisation erfordert alle sechs frischen, gültigen Pflichtpakete;
+  Teilstände und fehlende Pakete bleiben sichtbar. MAIN1017 ist kein Logo und wird nicht automatisch restauriert.
+
+- Register-Audit: MAIN2080/2109/2139/2152 mit kompakten aktiven Statusbits,
+  ausführlichen Tooltips und eigenen Tabs im System-/I/O-Dialog; RAW/HEX/Binär bleiben verfügbar.
+- INV1-Rohwerte 2026–2028 und optionales Frostschutzfeld 2056 präzisiert.
+- Bestätigte Cloud-Aliasse T49/T50/T51 ergänzt; Überhitzungen bleiben Kelvin,
+  lokale T-Diag-Codes und bisherige Cloud-Zuordnungen erhalten.
+- Diagnoseantworten und Timeouts korrigiert; keine zusätzlichen Schreibfreigaben.
+
 ## 0.3.4
 
 - WP- und AT-Steuerung nutzen einen gemeinsamen Steuertransport mit **Modbus vor Cloud**.
@@ -32,7 +122,7 @@
 
 
 ### V3.5 Remote-Regelwertkorrektur
-- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt; die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
+- MAIN:1540 als V3.5+-Gate fuer extern eingespeiste, zeitbegrenzte Warmlink-Korrekturen und MAIN:1557 als effektiven Heiz-Wassersollwert ergaenzt (historische Fehlzuordnung, jetzt auf MAIN:2017 korrigiert); die fruehere adaptive/AI-Arbeitshypothese wurde auf den bestaetigten Remote-Pfad praezisiert.
 - Warmlink-Servicewerte 8021–8028 am Slave `0x63` getrennt von den normalen MAIN-Registern dokumentiert, einschließlich gruppenbezogener TTL, Cooling-/Heating-/DHW-Caps und bestätigter Heiz-/Kühlvorzeichen.
 - MAIN:1492 und MAIN:1430 als optional sichtbare Engineeringparameter aufgenommen; Warmlink 8055 bleibt in der read-only Diagnose sichtbar und für Schreibzugriffe gesperrt.
 

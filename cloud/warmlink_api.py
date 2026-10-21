@@ -4,9 +4,8 @@
 WarmLink/Linked-Go API mapping inspired by srbjessen/ha-warmlink, licensed
 under MIT. Original reverse engineering credited there to zyznos321/warmlink.
 
-V0.2.46: Lesen bleibt Standard. Login ist robuster (plain, md5, md5md5,
-optionale App-Payload-Felder). Schreibtests koennen mehrere bekannte Endpoint-
-Varianten testen, bleiben aber im UI explizit freizuschalten.
+Control writes use the confirmed appId/param[] batch format with no automatic
+write replay. The existing login and targeted read paths remain shared.
 """
 
 from __future__ import annotations
@@ -21,7 +20,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from cloud.warmlink_codes import WARMLINK_PRODUCT_IDS
-from cloud.device_metadata import safe_device_metadata
+from cloud.io_coordinator import serialized_cloud_io
+from cloud.device_metadata import debug_sim_status, safe_device_metadata
+from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODE_SET
 
 SERVICE_ROOT = "https://cloud.linked-go.com:449"
 BASE_URL = SERVICE_ROOT + "/crmservice/api"
@@ -41,27 +42,7 @@ ENDPOINT_HOUSE_DEVICES = "houseRelDevice/v4/selectHouseToDeviceData"
 ENDPOINT_DEVICE_CONTROL = "app/device/control"
 ENDPOINT_DEVICE_CONTROL_LANG = "app/device/control?lang=en"
 
-# Schreib-/Control-Endpunkte:
-# Fuer normale App-Accounts ist der relevante Control-Endpunkt nach Repo-/Log-
-# Abgleich app/device/control unter der crmservice/api-Base. Die cloudservice-
-# Endpunkte liefern mit normalem App-Token HTTP 401 und bleiben nur als
-# explizite Expert-Fallbacks erhalten.
-ENDPOINT_WRITE_MODEL_VALUE = "cloudservice/api/device/updateDeviceControlModelValue"
-ENDPOINT_WRITE_MODEL_DATA = "cloudservice/api/device/updateDeviceControlModelData"
-ENDPOINT_WRITE_SWITCH_STATE = "cloudservice/api/device/updateDeviceControlSwithSate"
-ENDPOINT_WRITE_APP_MODEL_VALUE = "app/device/updateDeviceControlModelValue"
 ENDPOINT_AUTO_WRITE = "auto"
-
-WRITE_ENDPOINT_CANDIDATES = [
-    ENDPOINT_DEVICE_CONTROL_LANG,
-    ENDPOINT_DEVICE_CONTROL,
-]
-EXPERT_WRITE_ENDPOINT_CANDIDATES = [
-    ENDPOINT_WRITE_MODEL_VALUE,
-    ENDPOINT_WRITE_MODEL_DATA,
-    ENDPOINT_WRITE_SWITCH_STATE,
-    ENDPOINT_WRITE_APP_MODEL_VALUE,
-]
 
 
 _CLOUD_ERROR_TRANSLATIONS: tuple[tuple[tuple[str, ...], str], ...] = (
@@ -95,6 +76,10 @@ def translate_cloud_error_message(msg: str) -> str:
 
 class WarmLinkCloudError(RuntimeError):
     pass
+
+
+class WarmLinkSimStatusError(WarmLinkCloudError):
+    """Only locally constructed safe messages; never a server body or identifier."""
 
 
 class WarmLinkAuthError(WarmLinkCloudError):
@@ -191,11 +176,12 @@ class WarmLinkCloudApi:
             return False
         return isinstance(data, dict) and self._token_expired(data)
 
+    @serialized_cloud_io
     def _debug_http_request(self, method: str, endpoint: str, body: Any) -> WarmLinkDebugResponse:
         raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.4.0",
         }
         if raw_body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -230,7 +216,7 @@ class WarmLinkCloudApi:
         body = None if verb == "GET" else json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.4.0",
         }
         if body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -313,6 +299,7 @@ class WarmLinkCloudApi:
             })
         return payload
 
+    @serialized_cloud_io
     def login(self, preferred_method: str | None = "md5", use_fallbacks: bool = True) -> bool:
         if not self.username:
             raise WarmLinkAuthError("Benutzername fehlt")
@@ -379,6 +366,7 @@ class WarmLinkCloudApi:
     def get(self, endpoint: str, relogin: bool = True) -> dict[str, Any]:
         return self.request(endpoint, None, method="GET", relogin=relogin)
 
+    @serialized_cloud_io
     def request(self, endpoint: str, payload: dict[str, Any] | None, *, method: str,
                 relogin: bool = True) -> dict[str, Any]:
         if self.token:
@@ -422,6 +410,24 @@ class WarmLinkCloudApi:
             "houseId": str(house_id),
             "level": 0,
         })
+
+    def get_sim_status(self, icc_id: str) -> dict[str, Any]:
+        """Read SIM contract details through the existing session transport."""
+        identifier = str(icc_id or "").strip()
+        if not identifier:
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: ICCID fehlt.")
+        try:
+            data = self.post("dtuIccId/getInfoByIccId", {"iccId": identifier})
+        except Exception:
+            # HTTP/JSON/credential exceptions can contain response PII.
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: Anfrage fehlgeschlagen.") from None
+        status = data.get("http_status") if isinstance(data, dict) else None
+        if type(status) is int and status >= 400:
+            raise WarmLinkSimStatusError(f"SIM-/LTE-Status: HTTP {status}.") from None
+        if not isinstance(data, dict) or not (
+                self.success(data) or str(data.get("error_code")) == "0"):
+            raise WarmLinkSimStatusError("SIM-/LTE-Status: Cloud-Anfrage abgelehnt.") from None
+        return debug_sim_status(data.get("objectResult"))
 
     def get_user_info(self) -> dict[str, Any]:
         """Return the official app user model (including userId, if supplied)."""
@@ -559,6 +565,19 @@ class WarmLinkCloudApi:
         last.setdefault("attempts", attempts)
         return last
 
+    def write_control_batch(self, device_code, commands):
+        """Send the confirmed param[] format once, never replay a control write."""
+        from cloud.cloud_write_helpers import validate_cloud_commands
+        commands = validate_cloud_commands(commands)
+        if not str(device_code or "").strip():
+            raise ValueError("deviceCode fehlt für Cloud-Schreiben")
+        payload = {"appId": "16", "param": [
+            {"deviceCode": str(device_code), "protocolCode": code, "value": value}
+            for code, value in commands
+        ]}
+        data = self.post(ENDPOINT_DEVICE_CONTROL_LANG, payload, relogin=False)
+        return {**data, "endpoint": ENDPOINT_DEVICE_CONTROL_LANG}
+
     def _write_control_primary_payload(self, device_code: str, code: str, value: str | int | float) -> dict[str, Any]:
         """Bestaetigtes Payloadformat fuer den normalen App-Control-Endpunkt."""
         return {
@@ -570,113 +589,16 @@ class WarmLinkCloudApi:
             }],
         }
 
-    def _write_control_payload_variants(self, device_code: str, code: str, value: str | int | float, debug_fallbacks: bool = False) -> list[dict[str, Any]]:
-        """Payloads fuer den normalen App-Control-Endpunkt.
-
-        Live bestaetigt: app/device/control?lang=en, HTTP 200, error_code 0,
-        mit {"appId":"16","param":[{"deviceCode", "protocolCode", "value"}]}.
-        Alte Varianten bleiben nur fuer Debug-/Expert-Testlaeufe erhalten.
-        """
-        dc = str(device_code)
-        c = str(code)
-        v = str(value)
-        primary = self._write_control_primary_payload(dc, c, v)
-        if not debug_fallbacks:
-            return [primary]
-        return [
-            primary,
-            {"appId": "16", "param": [{"deviceCode": dc, "protocalCode": c, "value": v}]},
-            {"appId": 16, "param": [{"deviceCode": dc, "protocolCode": c, "value": v}]},
-            {"appId": 16, "param": [{"deviceCode": dc, "protocalCode": c, "value": v}]},
-            {"deviceCode": dc, "appId": "16", "param": c, "value": v},
-            {"deviceCode": dc, "appId": 16, "param": c, "value": v},
-        ]
-
-    def _write_legacy_payload_variants(self, device_code: str, code: str, value: str | int | float) -> list[dict[str, Any]]:
-        """Alte/unsichere Payloads fuer Expert-Fallbacks."""
-        dc = str(device_code)
-        c = str(code)
-        v = str(value)
-        return [
-            {"deviceCode": dc, "protocalCode": c, "protocolCode": c, "code": c, "value": v},
-            {"deviceCode": dc, "protocalCode": c, "value": v},
-            {"deviceCode": dc, "protocolCode": c, "value": v},
-            {"deviceCode": dc, "code": c, "value": v},
-            {"deviceCode": dc, "dataCode": c, "value": v},
-            {"deviceCode": dc, "model": c, "value": v},
-            {"deviceCode": dc, "controlCode": c, "controlValue": v},
-        ]
-
-    def _payloads_for_write_endpoint(self, endpoint: str, device_code: str, code: str, value: str | int | float, debug_fallbacks: bool = False) -> list[dict[str, Any]]:
-        ep = str(endpoint or "").strip().lower()
-        if ep.startswith("app/device/control"):
-            return self._write_control_payload_variants(device_code, code, value, debug_fallbacks=debug_fallbacks)
-        return self._write_legacy_payload_variants(device_code, code, value)
-
-    def write_test_code(
-        self,
-        device_code: str,
-        code: str,
-        value: str | int | float,
-        endpoint: str = ENDPOINT_AUTO_WRITE,
-        dry_run: bool = False,
-    ) -> dict[str, Any]:
-        """Expliziter Cloud-Schreibtest fuer einzelne erlaubte Codes.
-
-        Die Linked-Go App nutzt fuer Steuerwerte nicht getDataByCode. Je App/
-        Account wurden unterschiedliche Control-Endpunkte beobachtet. Bei
-        endpoint='auto' nutzt nur den bestaetigten App-Control-Pfad.
-        Alte Payload-Varianten werden nur mit endpoint='debug' oder 'expert' getestet.
-        """
-        endpoint_text = str(endpoint or "").strip() or ENDPOINT_AUTO_WRITE
-        endpoint_lower = endpoint_text.lower()
-        debug_fallbacks = endpoint_lower in ("debug", "debug-auto", "expert", "expert-auto")
-        if endpoint_lower in ("", "auto"):
-            endpoints = list(WRITE_ENDPOINT_CANDIDATES)
-        elif endpoint_lower in ("debug", "debug-auto"):
-            endpoints = list(WRITE_ENDPOINT_CANDIDATES)
-        elif endpoint_lower in ("expert", "expert-auto"):
-            endpoints = list(WRITE_ENDPOINT_CANDIDATES) + list(EXPERT_WRITE_ENDPOINT_CANDIDATES)
-        else:
-            endpoints = [endpoint_text]
-
-        payloads_by_endpoint = [
-            {"endpoint": ep, "payloads": self._payloads_for_write_endpoint(ep, device_code, code, value, debug_fallbacks=debug_fallbacks)}
-            for ep in endpoints
-        ]
+    def write_test_code(self, device_code, code, value, endpoint=ENDPOINT_AUTO_WRITE, dry_run=False):
+        """Compatibility single-write interface using the central batch path."""
+        from cloud.cloud_write_helpers import validate_cloud_commands
+        if endpoint not in (ENDPOINT_AUTO_WRITE, ENDPOINT_DEVICE_CONTROL, ENDPOINT_DEVICE_CONTROL_LANG):
+            raise ValueError("Nur der bestätigte Cloud-Control-Endpunkt ist freigegeben.")
+        commands = validate_cloud_commands(((code, value),))
         if dry_run:
-            return {
-                "isReusltSuc": True,
-                "dryRun": True,
-                "endpoint": endpoint_text,
-                "endpoints": endpoints,
-                "payloadsByEndpoint": payloads_by_endpoint,
-            }
-
-        attempts: list[dict[str, Any]] = []
-        last: dict[str, Any] = {}
-        for ep in endpoints:
-            payloads = self._payloads_for_write_endpoint(ep, device_code, code, value, debug_fallbacks=debug_fallbacks)
-            for payload in payloads:
-                data = self.post(ep, payload)
-                last = data
-                attempts.append({
-                    "endpoint": ep,
-                    "payload": payload,
-                    "http_status": data.get("http_status"),
-                    "error_code": data.get("error_code"),
-                    "ok": self._success(data),
-                    "message": self._message(data),
-                })
-                if self._success(data):
-                    data.setdefault("endpoint", ep)
-                    data.setdefault("payload", payload)
-                    data.setdefault("attempts", attempts)
-                    return data
-        last.setdefault("attempts", attempts)
-        if endpoints:
-            last.setdefault("endpoint", endpoints[-1])
-        return last
+            return {"dryRun": True, "sent": False, "endpoint": ENDPOINT_DEVICE_CONTROL_LANG,
+                    "payload": self._write_control_primary_payload(device_code, *commands[0])}
+        return self.write_control_batch(device_code, commands)
 
 
 def normalize_device_list(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -793,7 +715,9 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
             continue
         seen.add(code)
         value = item.get("value", item.get("dataValue", item.get("val", item.get("currentValue"))))
-        live_supported = value not in (None, "")
+        live_supported = (value not in (None, "") and item.get("supported") is not False
+                          and item.get("cloud_supported") is not False)
+        retry_when_empty = not live_supported and code in WARMLINK_IOS308_CODE_SET
         rows.append({
             **item,  # Preserve optional live metadata (unit, dataTypeAi, tmJson, ...).
             "code": code,
@@ -803,7 +727,8 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
             "rangeEnd": item.get("rangeEnd", item.get("max")),
             "raw": original_item,
             "supported": live_supported,
-            "cloud_supported": live_supported,
+            "cloud_supported": None if retry_when_empty else live_supported,
+            "retry_when_empty": retry_when_empty,
         })
 
     for code in requested_codes:
@@ -816,6 +741,7 @@ def normalize_data_values(response: dict[str, Any], requested_codes: list[str]) 
                 "rangeEnd": "",
                 "raw": {},
                 "supported": False,
-                "cloud_supported": False,
+                "cloud_supported": None if code in WARMLINK_IOS308_CODE_SET else False,
+                "retry_when_empty": code in WARMLINK_IOS308_CODE_SET,
             })
     return rows

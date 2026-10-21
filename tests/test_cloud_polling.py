@@ -6,7 +6,7 @@ from copy import deepcopy
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
 from PySide6.QtCore import QEventLoop, QThread, QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QPushButton
 
 from cloud.polling import CloudSession, classify_cloud_codes
 from cloud.warmlink_api import WarmLinkCloudApi, WarmLinkCloudError, WarmLinkAuthError
@@ -223,7 +223,8 @@ class DialogWindow(CloudWindow):
     def __init__(self):
         super().__init__()
         self.settings = {"warmlink_cloud": {"username": "user", "save_token": False, "selected_device_code": "device"}}
-        self.cloud_btn = CloudStatusButton(self)
+        self.cloud_btn = QPushButton(self)
+        self.cloud_quick_btn = CloudStatusButton(self)
         self.user_data_dir = "."
     def _save_settings(self, **kwargs): pass
 
@@ -238,7 +239,6 @@ def test_ui_merges_partials_and_updates_existing_items_lazily(application, monke
     static_row = deepcopy(dialog.data_rows[0])
     calls = []
     monkeypatch.setattr(dialog, "refresh_compare", lambda: calls.append("compare"))
-    monkeypatch.setattr(dialog, "refresh_finder_codes", lambda: calls.append("finder"))
     monkeypatch.setattr(dialog.data_table, "resizeColumnsToContents", lambda: pytest.fail("No resize for a partial poll"))
     dialog._on_data([cloud_row(22, "T04")])
     assert len(dialog.data_rows) == 2 and dialog.data_rows[0] == static_row
@@ -256,16 +256,16 @@ def test_ui_merges_partials_and_updates_existing_items_lazily(application, monke
     dialog.close()
 
 
-@pytest.mark.parametrize("state", ["DISCONNECTED", "CONNECTING", "CONNECTED", "POLLING", "ERROR"])
+@pytest.mark.parametrize("state", ["DISCONNECTED", "CONNECTING", "DISCONNECTING", "CONNECTED", "POLLING", "ERROR"])
 def test_cloud_button_distinct_states_and_safe_tooltip(application, state):
     window = DialogWindow()
     window.set_cloud_ui_state(state, device_name="FoxAir GL9", last_success_at=100000)
-    assert window.cloud_btn.property("cloudState") == state
-    assert window.cloud_btn.property("pollingActive") == (state == "POLLING")
-    assert window.cloud_btn.animation_timer.isActive() == (state == "POLLING")
+    assert window.cloud_quick_btn.property("cloudState") == state
+    assert window.cloud_quick_btn.property("pollingActive") == (state == "POLLING")
+    assert window.cloud_quick_btn.animation_timer.isActive() == (state == "POLLING")
     assert "FoxAir GL9" in window.cloud_btn.toolTip()
     assert "device" not in window.cloud_btn.toolTip()
-    assert window.cloud_btn.styleSheet()
+    assert window.cloud_quick_btn.styleSheet()
 
 
 def test_credential_work_does_not_block_qt_heartbeat(application):
@@ -276,7 +276,11 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
     loop = QEventLoop()
     timer = QTimer()
     timer.setInterval(5)
-    timer.timeout.connect(lambda: beats.append(1))
+    def heartbeat():
+        beats.append(1)
+        if len(beats) >= 3:
+            gate.set()
+    timer.timeout.connect(heartbeat)
     timer.start()
     def os_provider():
         thread_ids.append(threading.get_ident())
@@ -286,7 +290,6 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
         results.append((value, error, threading.get_ident()))
         loop.quit()
     store.submit(os_provider, done)
-    QTimer.singleShot(60, gate.set)
     QTimer.singleShot(2000, loop.quit)
     loop.exec()
     timer.stop()
@@ -296,28 +299,68 @@ def test_credential_work_does_not_block_qt_heartbeat(application):
 
 
 def test_cloud_start_has_heartbeat_and_stop_during_slow_keyring(application, monkeypatch, fake_api):
-    gate = threading.Event()
+    entered, release = threading.Event(), threading.Event()
+
     def load(*args, **kwargs):
-        gate.wait(1)
+        entered.set()
+        # Stay inside the slow keyring call until the GUI has proved responsive.
+        # A bounded wait also lets this test fail safely if the GUI is blocked.
+        release.wait(3)
         return "password", "token"
+
     monkeypatch.setattr(workers, "load_cloud_credentials", load)
     window = DialogWindow()
     dialog = WarmLinkCloudDialog(window)
     dialog.password_edit.clear()
+
     loop, beats = QEventLoop(), []
+    stop_requested = False
     timer = QTimer()
-    timer.setInterval(5)
-    timer.timeout.connect(lambda: beats.append(1))
+    timer.setInterval(10)
+
+    def on_heartbeat():
+        nonlocal stop_requested
+        # Do not measure timer ticks before the worker actually enters keyring.
+        if not entered.is_set() or stop_requested:
+            return
+        beats.append(1)
+        if len(beats) >= 3:
+            stop_requested = True
+            dialog.stop_worker()
+            release.set()
+
+    timer.timeout.connect(on_heartbeat)
+    deadline = QTimer()
+    deadline.setSingleShot(True)
+    deadline.timeout.connect(loop.quit)
+
     dialog._start_worker(False)
     assert dialog.cloud_thread is not None and dialog.stop_poll_btn.isEnabled()
     dialog.cloud_thread.finished.connect(loop.quit)
     timer.start()
-    QTimer.singleShot(30, dialog.stop_worker)
-    QTimer.singleShot(80, gate.set)
-    QTimer.singleShot(2000, loop.quit)
-    loop.exec()
-    timer.stop()
-    assert len(beats) >= 3 and fake_api.created == []
+    deadline.start(5000)
+    try:
+        loop.exec()
+    finally:
+        timer.stop()
+        deadline.stop()
+        release.set()
+        # Ensure a failing assertion cannot leave a QThread running at teardown.
+        if dialog.cloud_worker is not None:
+            dialog.stop_worker()
+        if dialog.cloud_thread is not None:
+            cleanup = QEventLoop()
+            cleanup_timeout = QTimer()
+            cleanup_timeout.setSingleShot(True)
+            cleanup_timeout.timeout.connect(cleanup.quit)
+            dialog.cloud_thread.finished.connect(cleanup.quit)
+            cleanup_timeout.start(3000)
+            cleanup.exec()
+            cleanup_timeout.stop()
+
+    assert entered.is_set(), "Keyring-Arbeit wurde nicht gestartet."
+    assert stop_requested and len(beats) >= 3, "Qt-GUI reagierte nicht während des Keyring-Zugriffs."
+    assert fake_api.created == [], "Cloud-API wurde trotz Stop während Keyring gestartet."
     assert dialog.cloud_thread is None
     assert dialog.start_poll_btn.isEnabled()
     dialog.close()

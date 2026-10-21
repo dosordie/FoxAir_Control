@@ -27,7 +27,7 @@ def test_mode7_status_2133_uses_pv_stage_meanings():
 def test_classic_virtual_mode_keeps_four_existing_stages():
     assert [value for _label, value in virtual_stage_options(3)] == [1, 2, 3, 4]
     assert sg_status_description(3, 4) == "SG Mode 4 / High PV"
-    assert sg_status_description(3, 0) == "WP Aus / SG Ready Aus"
+    assert sg_status_description(3, 0) == "Wärmepumpe aus oder SG Ready deaktiviert"
 
 
 @pytest.mark.parametrize("mode", [0, 1, 2, 4, 5, 6])
@@ -50,3 +50,8 @@ def test_cloud_backend_never_writes_8801(mode):
 def test_physical_extended_status_is_left_uninterpreted():
     assert sg_status_description(5, 2).startswith("Status RAW 2")
     assert sg_status_description(6, 3).startswith("Status RAW 3")
+
+
+@pytest.mark.parametrize("mode", range(8))
+def test_status_zero_precedes_all_mode_specific_interpretation(mode):
+    assert sg_status_description(mode, 0) == "Wärmepumpe aus oder SG Ready deaktiviert"

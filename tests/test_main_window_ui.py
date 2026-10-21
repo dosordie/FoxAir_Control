@@ -110,23 +110,27 @@ def test_live_rows_preserve_manual_name_width_and_long_cloud_values(window):
     assert table.item(row, 11).toolTip() == table.item(row, 12).toolTip() == ""
 
 
-@pytest.mark.parametrize("stopped_state", ["CONNECTED", "DISCONNECTED", "ERROR", "CONNECTING"])
+@pytest.mark.parametrize("stopped_state", ["CONNECTED", "DISCONNECTED", "ERROR", "CONNECTING", "DISCONNECTING"])
 def test_cloud_border_animation_follows_state_and_preserves_layout(window, stopped_state, monkeypatch):
     monkeypatch.setattr(window, "request_cloud_snapshot", lambda *a, **kw: pytest.fail("UI must not request Cloud data"))
-    button = window.cloud_btn
+    button = window.cloud_quick_btn
     timing = window.cloud_timing_state
     window.set_cloud_ui_state("CONNECTED", device_name="GL9", last_success_at=100000)
-    size, icon, text = button.sizeHint(), button.icon().cacheKey(), button.text()
+    size, icon_size, text = button.sizeHint(), button.iconSize(), button.text()
     assert not button.animation_timer.isActive()
     assert "Verbunden · Polling gestoppt" in button.toolTip()
     window.set_cloud_ui_state("POLLING")
     assert button.animation_timer.isActive()
     assert button.property("pollingActive") is True
+    assert not isinstance(window.cloud_btn, gui.CloudStatusButton)
+    assert window.cloud_btn.styleSheet() == ""
+    assert window.cloud_btn.property("pollingActive") is None
+    assert "Cloud-Einstellungen" in window.cloud_btn.accessibleName()
     assert "Verbunden · Polling aktiv" in button.toolTip()
     assert "Letzter erfolgreicher Abruf:" in button.toolTip()
     assert "Gerät: GL9" in button.toolTip()
     assert button.sizeHint() == size
-    assert button.icon().cacheKey() == icon and button.text() == text
+    assert not button.icon().isNull() and button.iconSize() == icon_size and button.text() == text
     button.animation_timer.timeout.emit()
     window.set_cloud_ui_state(stopped_state)
     assert not button.animation_timer.isActive()
@@ -139,10 +143,10 @@ def test_cloud_border_animation_follows_state_and_preserves_layout(window, stopp
 def test_close_stops_animation_and_pending_column_save(window):
     window.set_cloud_ui_state("POLLING")
     window.register_table.setColumnWidth(11, 175)
-    assert window.cloud_btn.animation_timer.isActive()
+    assert window.cloud_quick_btn.animation_timer.isActive()
     assert window.main_table_columns.save_timer.isActive()
     window.close()
-    assert not window.cloud_btn.animation_timer.isActive()
+    assert not window.cloud_quick_btn.animation_timer.isActive()
     assert not window.main_table_columns.save_timer.isActive()
     with open(window.settings_path, encoding="utf-8") as file:
         assert json.load(file)["main_table_column_widths"]["Cloud Wert"] == 175

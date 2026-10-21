@@ -3,178 +3,258 @@
   "3001": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W1 Anzeige-/Status 1",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3001",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3002": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W2 Anzeige-/Status 2",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3002",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3003": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W3 Anzeige-/Status 3",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3003",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3004": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W4 Anzeige-/Status 4",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3004",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3005": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W5 Anzeige-/Status 5",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3005",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3006": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W6 Anzeige-/Status 6",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3006",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3007": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W7 Anzeige-/Status 7",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3007",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3008": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W8 Anzeige-/Status 8",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3008",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3009": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W9 Anzeige-/Status 9",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3009",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3010": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 3001ff W10 Anzeige-/Status 10",
-    "note": "PRIVATE fix12: 3001ff wird im Display-Backend im Hauptfenster sichtbar gemacht.",
-    "type": "RAW"
+    "name": "DWIN Anzeige-/Statuswort 3010",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Statuswort. Individuelle Bedeutung weiterhin offen; keine MAIN-Zuordnung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3011": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0BC3 Parameter-Sync-/Änderungsflag",
-    "note": "0BC3H im DWIN/ASM: Parameter-Sync-/Änderungsflag. Bit 15 = Init/Reboot; 0x0002 = Paket 1001 geändert.",
-    "type": "RAW",
-    "value_map": {
-      "0": "kein Änderungsflag",
-      "128": "Paket 1541 geändert",
-      "16": "Paket 1271 geändert",
-      "2": "Paket 1001 geändert",
-      "32": "Paket 1361 geändert",
-      "32768": "Initial/Reboot: Parameterpakete neu laden",
-      "4": "Paket 1091 geändert",
-      "64": "Paket 1451 geändert",
-      "8": "Paket 1181 geändert"
-    }
+    "name": "DWIN Parameter-Synchronisations-/Änderungsmaske",
+    "type": "BITFIELD",
+    "description": "DWIN V1.7: 0x8000 Initialisierung/erneutes Laden. Bits1–7 markieren Parameterpakete. Mehrere Bits können gleichzeitig gesetzt sein. Eigenständiges DWIN-Wort, nicht MAIN:2109.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "bit_map": {
+      "1": "Parameterpaket ab 1001",
+      "2": "Parameterpaket ab 1091",
+      "3": "Parameterpaket ab 1181",
+      "4": "Parameterpaket ab 1271",
+      "5": "Parameterpaket ab 1361",
+      "6": "Parameterpaket ab 1451",
+      "7": "Parameterpaket ab 1541",
+      "15": "Initialisierung / Parameter neu laden"
+    },
+    "bitfield_compact": true,
+    "source_slave": 3
   },
   "3012": {
-    "name": "Display Nr.",
-    "type": "RAW",
+    "name": "Display-Softwarecode",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Direkter V1.7-ASM-Writer setzt 463. Versionsabhängiges Beispiel, kein fester Wert für andere Displayversionen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "firmware_examples": {
+      "V1.7": 463
+    },
+    "source_slave": 3
   },
   "3013": {
-    "name": "Display Version",
+    "name": "Display-Firmwareversion",
     "type": "VERSION_X10",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet. Anzeige: V[RAW/10], Beispiel raw 17 → V1.7.",
-    "value_map": {
-      "17": "V1.7 Display-Software"
-    }
+    "description": "Direkter V1.7-ASM-Writer setzt RAW 17 = V1.7. Andere Versionen dynamisch als RAW/10 darstellen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "firmware_examples": {
+      "V1.7": 17
+    },
+    "source_slave": 3
   },
   "3014": {
-    "name": "Nr.",
-    "type": "RAW",
+    "name": "DWIN Kennungs-/Statusfeld (Bedeutung offen)",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Individuelle Bedeutung offen; keine gesicherte Geräte- oder Versionskennung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3015": {
-    "name": "Nr.",
-    "type": "RAW",
+    "name": "DWIN Kennungs-/Statusfeld (Bedeutung offen)",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Individuelle Bedeutung offen; keine gesicherte Geräte- oder Versionskennung.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3016": {
-    "name": "Wochentag",
-    "type": "RAW",
+    "name": "RTC-Wochentag",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "value_map": {
-      "0": "Sonntag"
-    },
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol liest RTC-Byte 0x23 und erhöht um 1 (V1.7). Exportbereich 1..7, nicht 0=Sonntag. Zuordnung der sieben Werte zu Wochentagsnamen aus diesem Pfad allein nicht belegt.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "raw_range": [
+      1,
+      7
+    ],
+    "source_slave": 3
   },
   "3017": {
-    "name": "Jahr + 2000",
-    "type": "RAW",
+    "name": "RTC-Jahr (Basis 2000)",
+    "type": "YEAR_2000",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol konvertiert RTC-BCD in dezimale Protokollwörter; Jahr relativ zu 2000, übrige Werte numerisch. Keine Schreibfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3018": {
-    "name": "Monat",
-    "type": "RAW",
+    "name": "RTC-Monat",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol konvertiert RTC-BCD in dezimale Protokollwörter; Jahr relativ zu 2000, übrige Werte numerisch. Keine Schreibfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3019": {
-    "name": "Tag",
-    "type": "RAW",
+    "name": "RTC-Tag",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol konvertiert RTC-BCD in dezimale Protokollwörter; Jahr relativ zu 2000, übrige Werte numerisch. Keine Schreibfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3020": {
-    "name": "Stunde",
-    "type": "RAW",
+    "name": "RTC-Stunde",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol konvertiert RTC-BCD in dezimale Protokollwörter; Jahr relativ zu 2000, übrige Werte numerisch. Keine Schreibfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "3021": {
-    "name": "Minute",
-    "type": "RAW",
+    "name": "RTC-Minute",
+    "type": "UINT16",
     "mode": "read",
     "function": "03",
-    "note": "Quelle: Forum / Endif; Status: experimentell; selbst ungetestet."
+    "description": "Time_2Protocol konvertiert RTC-BCD in dezimale Protokollwörter; Jahr relativ zu 2000, übrige Werte numerisch. Keine Schreibfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "4544": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 11C0 Abtau-/Status-Icon (ASM-Kandidat)",
-    "type": "RAW"
+    "name": "Abtau-Icon sichtbar",
+    "type": "UINT16",
+    "description": "HomePage_Defrost_Icon: MAIN:2012=2 setzt 1, sonst 0. Reiner DWIN-Anzeigestatus.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Icon ausgeblendet",
+      "1": "Icon sichtbar"
+    },
+    "source_slave": 3
   },
   "4720": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1270 Temperatur-/Anzeige-Kandidatenblock",
-    "type": "RAW"
+    "name": "Mischventil-Anzeigewert",
+    "type": "UINT16",
+    "description": "MultiZoneControl_MixValvePercent: DWIN 0x1270 = 100 − MAIN:2163 (0x0873). Bereits invertierter Anzeigewert; nicht nochmals invertieren. Physikalische Öffnungsrichtung nicht belegt.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "unit": "%",
+    "source_slave": 3
   },
   "4721": {
     "function": "03",
@@ -185,86 +265,186 @@
   "4722": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x1272 WW-Tanktemperatur Anzeige (Korrelation zu WREG 2047)",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "WW-Tanktemperatur – Displayanzeige",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2047, mit Temp_Col_Feh_Status_Display. Sensorfehlerpfad setzt Ersatzanzeige 0; ein angezeigter Nullwert ist kein sicherer Temperaturmesswert. Anzeige kann der Celsius-/Fahrenheit-Einstellung folgen.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2047
+    ],
+    "source_slave": 3
   },
   "4723": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1273 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Pufferspeichertemperatur – Displayanzeige",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2052, mit Temp_Col_Feh_Status_Display. Sensorfehlerpfad setzt Ersatzanzeige 0; ein angezeigter Nullwert ist kein sicherer Temperaturmesswert. Anzeige kann der Celsius-/Fahrenheit-Einstellung folgen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2052
+    ],
+    "source_slave": 3
   },
   "4724": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x1274 Einlasswassertemperatur Anzeige (Korrelation zu WREG 2045)",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "Einlasswassertemperatur – Displayanzeige",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2045, mit Temp_Col_Feh_Status_Display. Sensorfehlerpfad setzt Ersatzanzeige 0; ein angezeigter Nullwert ist kein sicherer Temperaturmesswert. Anzeige kann der Celsius-/Fahrenheit-Einstellung folgen.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2045
+    ],
+    "source_slave": 3
   },
   "4725": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x1275 Auslasswassertemperatur Anzeige (Kandidat, Korrelation zu WREG 2046)",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "Auslasswassertemperatur – Displayanzeige",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2046, mit Temp_Col_Feh_Status_Display. Sensorfehlerpfad setzt Ersatzanzeige 0; ein angezeigter Nullwert ist kein sicherer Temperaturmesswert. Anzeige kann der Celsius-/Fahrenheit-Einstellung folgen.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2046
+    ],
+    "source_slave": 3
   },
   "4726": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1276 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 1 – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "DWIN-Sichtbarkeitsflag aus Z01; kein Hardware-Ausgang oder allgemeines Freigabebit.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "anzeigen",
+      "1": "ausblenden"
+    },
+    "source_slave": 3
   },
   "4727": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1277 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 2 – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "DWIN-Sichtbarkeitsflag aus Z01; kein Hardware-Ausgang oder allgemeines Freigabebit.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "anzeigen",
+      "1": "ausblenden"
+    },
+    "source_slave": 3
   },
   "4728": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x1278 Anzeige-Sollwert/Kandidat 45.0",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "Zone 1 – AT-kompensierter Wassersollwert",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2164. Skalierung des Anzeigewerts TEMP1; von MAIN getrennt halten.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2164
+    ],
+    "source_slave": 3
   },
   "4729": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x1279 Anzeige-Sollwert/Grenzwert Kandidat 35.0",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "Zone 2 – AT-kompensierter Wassersollwert",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2165. Skalierung des Anzeigewerts TEMP1; von MAIN getrennt halten.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2165
+    ],
+    "source_slave": 3
   },
   "4730": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x127A Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 1 – Bedarf/Stop-Anzeigestatus",
+    "type": "UINT16",
+    "description": "DWIN V1.7 erzeugt diese Anzeige für Z01=7/8/9 aus Passivkontakten, sonst 0. Keine universelle Heizkreisfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "in diesem Modus ausgeblendet",
+      "1": "Stop / kein Bedarf",
+      "2": "Run / Bedarf"
+    },
+    "source_slave": 3
   },
   "4731": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x127B Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 2 – Bedarf/Stop-Anzeigestatus",
+    "type": "UINT16",
+    "description": "DWIN V1.7 erzeugt diese Anzeige für Z01=7/8/9 aus Passivkontakten, sonst 0. Keine universelle Heizkreisfreigabe.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "in diesem Modus ausgeblendet",
+      "1": "Stop / kein Bedarf",
+      "2": "Run / Bedarf"
+    },
+    "source_slave": 3
   },
   "4732": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 0x127C Heiz-Soll / berechneter Heiz-Sollwert Anzeige",
-    "source": "Display/DWIN Diagnose; per aktiver DWIN-Korrelation gefunden, nicht Warmlink-Register",
-    "type": "TEMP1"
+    "name": "Allgemeiner AT-kompensierter Wassersollwert",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "type": "TEMP1",
+    "description": "DWIN-Anzeige aus MAIN:2014. Skalierung des Anzeigewerts TEMP1; von MAIN getrennt halten.",
+    "namespace": "dwin",
+    "unit": "°C",
+    "main_aliases": [
+      2014
+    ],
+    "source_slave": 3
   },
   "4733": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x127D Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 1 – Temperaturkompensation für Anzeige aktiv",
+    "type": "UINT16",
+    "description": "Aus Z01 und Zonen-Kompensationskonfiguration gebildeter DWIN-Anzeigestatus.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeige-Kompensation inaktiv",
+      "1": "Anzeige-Kompensation aktiv"
+    },
+    "source_slave": 3
   },
   "4734": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x127E Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Zone 2 – Temperaturkompensation für Anzeige aktiv",
+    "type": "UINT16",
+    "description": "Aus Z01 und Zonen-Kompensationskonfiguration gebildeter DWIN-Anzeigestatus.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeige-Kompensation inaktiv",
+      "1": "Anzeige-Kompensation aktiv"
+    },
+    "source_slave": 3
   },
   "4735": {
     "function": "03",
@@ -275,50 +455,122 @@
   "4736": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1280 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "System-2-Kompressor – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4737": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1281 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Hochgeschwindigkeitslüfter – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x2423 == 1 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x2423 == 1 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4738": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1282 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Lüfter 1 – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x2423 == 0 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x2423 == 0 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4739": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1283 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Niedriggeschwindigkeitslüfter – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x2423 == 1 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x2423 == 1 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4740": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1284 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "Lüfter 2 – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x2423 == 0 und 0x2432 != 0 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x2423 == 0 und 0x2432 != 0 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4741": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1285 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "System-1-EVI-/Zusatzfunktion – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. V1.7 setzt in beiden Systemzweigen 0 (Anzeigeobjekt sichtbar); keine Aussage über realen EVI-Betrieb.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "V1.7 setzt in beiden Systemzweigen 0 (Anzeigeobjekt sichtbar); keine Aussage über realen EVI-Betrieb",
+    "source_slave": 3
   },
   "4742": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1286 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "System-2-Ventil – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4743": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN Wertebereich 0x1287 Temperatur-/Anzeige-Kandidat",
-    "type": "RAW"
+    "name": "System-2-EVI-/Zusatzfunktion – Anzeige ausblenden",
+    "type": "UINT16",
+    "description": "Status_Show_Hide_Load: abhängig von Systemanzahl, Fan-Typ/-Anzahl und EVI-Konfiguration. 0=Anzeigeobjekt aktiv/sichtbar, 1=Objekt ausgeblendet (Pointer FFFF). Kein realer Hardware-Ausgangszustand. DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "value_map": {
+      "0": "Anzeigeobjekt sichtbar",
+      "1": "Anzeigeobjekt ausgeblendet"
+    },
+    "visibility_condition": "DWIN 0x23FB != 1 → sichtbar, sonst ausgeblendet",
+    "source_slave": 3
   },
   "4744": {
     "function": "03",
@@ -1049,20 +1301,36 @@
   "5920": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1720 Modus-Anzeige / Textpointer-Kandidat",
-    "type": "RAW"
+    "name": "Betriebsart-Textzeiger auf der Statusseite",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Textpointer, kein gewöhnliches MAIN-Betriebsmodus-Enum. Rohwert als Objektparameter erhalten.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "5936": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1730 Betriebsstatus-Anzeige / Textpointer-Kandidat",
-    "type": "RAW"
+    "name": "Sonderbetriebszustand-Textzeiger (Abtauung/Desinfektion)",
+    "type": "UINT16",
+    "description": "DWIN-Anzeige-/Textpointer, kein gewöhnliches MAIN-Betriebsmodus-Enum. Rohwert als Objektparameter erhalten.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM",
+    "namespace": "dwin",
+    "source_slave": 3
   },
   "6144": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1800 Anzeigeobjekt-/Layoutblock (kein Warmlink-Register)",
-    "type": "RAW"
+    "name": "Sensorfehler-Anzeigeobjekt T01",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6144,
+      6256
+    ],
+    "description": "Fault_Status_Display_T01: dynamischer Anzeigeobjekt-/Pointerblock 0x1800–0x1870, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
   },
   "6145": {
     "function": "03",
@@ -1097,94 +1365,1254 @@
   "6272": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1880 Anzeige-/Temperatur-Kandidatenblock",
-    "type": "RAW"
+    "name": "Sensorfehler-Anzeigeobjekt T02",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6272,
+      6384
+    ],
+    "description": "Fault_Status_Display_T02: dynamischer Anzeigeobjekt-/Pointerblock 0x1880–0x18F0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
   },
   "6656": {
     "function": "03",
     "mode": "read",
-    "name": "DWIN 1A00 Anzeige-/Temperatur-Kandidatenblock",
-    "type": "RAW"
+    "name": "Sensorfehler-Anzeigeobjekt T03",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6656,
+      6656
+    ],
+    "description": "Fault_Status_Display_T03: dynamischer Anzeigeobjekt-/Pointerblock 0x1A00–0x1A00, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
   },
   "_comment_virtual_raw_status_91099_91149": "Der virtuelle Bereich 91099–91149 bildet Wörter eines Displaybus-Rohstatusblocks ab. Die virtuelle Nummerierung verhindert Kollisionen mit echten WP-Registern im Bereich 2099–2149. Diese Register gelten ausschließlich für das Backend Modbus Display.",
   "91099": {
-    "name": "Displaybus-Wort 2099 / 0x0833",
-    "type": "RAW",
-    "unit": "raw",
+    "name": "Inverter-/Driverstatus",
+    "type": "BITFIELD",
     "mode": "read",
-    "function": "03",
-    "block": "DWRAW",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2099",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Virtueller Spiegel von Register 2080; identische Änderungsanzahl und identischer Wertebereich 0 bis 531. Möglicherweise Bitfeld oder zusammengesetzter Status."
+    "notes": "Künstliche FoxAir-ID 91099, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2099 → MAIN:2080. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2099,
+    "main_aliases": [
+      2080
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "bit_map": {
+      "7": "Driverstatus Bit 7",
+      "14": "Driverstatus Bit 14"
+    },
+    "bit_descriptions": {
+      "7": "INV1:2099 Bit 7: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung.",
+      "14": "INV1:2099 Bit 14: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung."
+    }
   },
   "91102": {
-    "name": "Displaybus-Wort 2102 / 0x0836 / Kompressorfrequenz-Spiegel (Kandidat)",
-    "type": "HZ",
-    "unit": "Hz",
+    "name": "Kompressor-Istfrequenz",
+    "type": "HZ_LOW8",
     "mode": "read",
-    "function": "03",
-    "block": "DWRAW",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2102",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Verläuft wie Register 2072, Betriebsfrequenz des Kompressors; Rohwert 0 bis 54. Zuordnung und Einheit Hz bleiben Kandidat."
+    "notes": "Künstliche FoxAir-ID 91102, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2102 → MAIN:2072. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Nur Low-Byte ist tatsächliche Frequenz; High-Byte bleibt im Rohwort sichtbar.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2102,
+    "main_aliases": [
+      2072
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91105": {
-    "name": "AC-Eingangsspannung, Displaybus-Spiegel von 2062",
+    "name": "AC-Eingangsspannung",
     "type": "VOLT",
-    "unit": "V",
     "mode": "read",
-    "function": "03",
-    "block": "DWINV",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2105",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Beobachtet 224 bis 233 V; sehr starke Übereinstimmung mit Register 2062."
+    "notes": "Künstliche FoxAir-ID 91105, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2105 → MAIN:2062. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2105,
+    "main_aliases": [
+      2062
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91106": {
-    "name": "Displaybus-Wort 2106 / 0x083A",
-    "type": "RAW",
-    "unit": "raw",
+    "name": "AC-Eingangsstrom",
+    "type": "AMP_X10",
     "mode": "read",
-    "function": "03",
-    "block": "DWRAW",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2106",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Verläuft identisch zu Register 2057; Funktion daher ebenfalls unbestätigt."
+    "notes": "Künstliche FoxAir-ID 91106, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2106 → MAIN:2057. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2106,
+    "main_aliases": [
+      2057
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91107": {
-    "name": "Kompressor-Phasenstrom, Displaybus-Spiegel von 2042",
+    "name": "Kompressor-Phasenstrom",
     "type": "AMP_X10",
-    "unit": "A",
     "mode": "read",
-    "function": "03",
-    "block": "DWINV",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2107",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Rohwert 0 bis 56, Skalierung voraussichtlich 0,1 A; entspricht damit 0,0 bis 5,6 A."
+    "notes": "Künstliche FoxAir-ID 91107, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2107 → MAIN:2042. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2107,
+    "main_aliases": [
+      2042
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91108": {
-    "name": "DC-Zwischenkreisspannung, Displaybus-Spiegel von 2043",
+    "name": "DC-Zwischenkreisspannung",
     "type": "VOLT",
-    "unit": "V",
     "mode": "read",
-    "function": "03",
-    "block": "DWINV",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2108",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Beobachtet 298 bis 348 V; sehr starke Übereinstimmung mit Register 2043."
+    "notes": "Künstliche FoxAir-ID 91108, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2108 → MAIN:2043. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2108,
+    "main_aliases": [
+      2043
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91110": {
-    "name": "Displaybus-Wort 2110 / 0x083E",
-    "type": "RAW",
-    "unit": "raw",
+    "name": "IPM-Temperatur",
+    "type": "TEMP_OFFSET55_LOW8",
     "mode": "read",
-    "function": "03",
-    "block": "DWRAW",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2110",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Beobachtet 61 Änderungen, Rohwert 95 bis 107. Keine belastbare Zuordnung; nicht mit Register 2110 gleichsetzen, bevor die Paketbelegung bestätigt ist."
+    "notes": "Künstliche FoxAir-ID 91110, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2110 → MAIN:2044. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Unit-1-Temperatur = RAW − 55 °C (Low-Byte); MAIN führt (RAW − 55) × 10.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2110,
+    "main_aliases": [
+      2044
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
   },
   "91130": {
-    "name": "Lüfterdrehzahl, Displaybus-Spiegel von 2074 (Kandidat)",
+    "name": "Lüfter 1 – Drehzahl/Istwert",
     "type": "RPM",
-    "unit": "rpm",
     "mode": "read",
-    "function": "03",
-    "block": "DWRAW",
+    "function": "virtual",
+    "block": "INV1",
     "code": "DV2130",
-    "notes": "Virtuelle Displaybus-Diagnose-ID, kein direkt adressierbares Modbus-Register. Rohwert 0 bis 605; Änderungsverlauf und Wertebereich stimmen nahezu vollständig mit Register 2074 überein."
+    "notes": "Künstliche FoxAir-ID 91130, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2130 → MAIN:2074. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2130,
+    "main_aliases": [
+      2074
+    ],
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md"
+  },
+  "91100": {
+    "name": "Inverter-Fehlerwort 1",
+    "type": "FAULT_BITS",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2100,
+    "main_aliases": [
+      2081
+    ],
+    "block": "INV1",
+    "code": "DV2100",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91100, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2100 → MAIN:2081. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. MAIN:2081 kann lokal zusätzlich Kommunikationsbit15 erzeugen; dieses wird nicht auf das Driver-Wort übertragen.",
+    "bit_map": {
+      "0": "F00 – IPM-Überstromfehler",
+      "1": "F01 – Kompressortreiberfehler",
+      "2": "Kompressor Überstrom",
+      "3": "Phasenverlust Eingangsspannung",
+      "4": "IPM Stromabtastfehler",
+      "5": "F26 – IGBT-Überhitzungsfehler",
+      "6": "Vorladefehler",
+      "7": "DC-Sammelschienen-Überspannung",
+      "8": "DC-Sammelschienen-Unterspannung",
+      "9": "AC-Eingangsspannung Unterspannung",
+      "10": "AC-Eingangs-Überstromabschaltung",
+      "11": "Eingangsspannungs-Abtastfehler",
+      "12": "DSP ↔ PFC Kommunikationsfehler",
+      "13": "F17 – Temperatursensorfehler Kompressortreiber",
+      "14": "F11 – Kommunikation DSP ↔ Kompressortreiber gestört"
+    },
+    "bit_descriptions": {}
+  },
+  "91101": {
+    "name": "Inverter-Rohwort 2101 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2101,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2101",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91101, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2101. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91103": {
+    "name": "Maximalfrequenz vom Driver",
+    "type": "HZ",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2103,
+    "main_aliases": [
+      2073
+    ],
+    "block": "INV1",
+    "code": "DV2103",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91103, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2103 → MAIN:2073. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91104": {
+    "name": "IPM-Hochfehler-Temperatur",
+    "type": "TEMP_OFFSET55",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2104,
+    "main_aliases": [
+      2061
+    ],
+    "block": "INV1",
+    "code": "DV2104",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91104, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2104 → MAIN:2061. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Unit-1-Temperatur = RAW − 55 °C; MAIN führt (RAW − 55) × 10."
+  },
+  "91109": {
+    "name": "Inverter-Fehlerwort 2",
+    "type": "FAULT_BITS",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2109,
+    "main_aliases": [
+      2082
+    ],
+    "block": "INV1",
+    "code": "DV2109",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91109, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2109 → MAIN:2082. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. MAIN:2082 kann versionsabhängig gefiltert/bearbeitet sein; das virtuelle Wort bleibt roh.",
+    "bit_map": {
+      "0": "IPM Überhitzungsstopp",
+      "1": "F14 – Kompressor-Phasenausfall",
+      "3": "Eingangsstrom-Abtastfehler",
+      "6": "EEPROM-Fehler",
+      "7": "F10 – AC-Eingangsüberspannungsfehler",
+      "15": "Kompressor-Übergeschwindigkeitsschutz"
+    },
+    "bit_descriptions": {}
+  },
+  "91111": {
+    "name": "Inverter-Rohwort 2111 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2111,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2111",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91111, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2111. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren.",
+    "description": "Das Mainboard übernimmt das Low-Byte in ein internes Diagnosebyte. Physikalische Bedeutung offen; Anzeige bleibt vollständiges unsigned Rohwort."
+  },
+  "91112": {
+    "name": "Inverter-Rohwort 2112 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2112,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2112",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91112, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2112. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91113": {
+    "name": "Gepacktes Inverter-Diagnosewort",
+    "type": "BYTE_PAIR",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2113,
+    "main_aliases": [
+      2026,
+      2027
+    ],
+    "block": "INV1",
+    "code": "DV2113",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91113, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2113 → MAIN:2026,2027. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. High-Byte → MAIN:2026; Low-Byte → MAIN:2027. Physikalische Bedeutung offen."
+  },
+  "91114": {
+    "name": "Inverter-Rohwort 2114 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2114,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2114",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91114, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2114. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91115": {
+    "name": "Inverter-Rohwort 2115 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2115,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2115",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91115, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2115. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91116": {
+    "name": "Inverter-Rohwort 2116 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2116,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2116",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91116, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2116. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91117": {
+    "name": "Inverter-Rohwort 2117 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2117,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2117",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91117, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2117. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91118": {
+    "name": "Signierter Inverter-Diagnosewert",
+    "type": "INT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2118,
+    "main_aliases": [
+      2028
+    ],
+    "block": "INV1",
+    "code": "DV2118",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91118, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2118 → MAIN:2028. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91119": {
+    "name": "Inverter-Rohwort 2119 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2119,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2119",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91119, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2119. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91120": {
+    "name": "Inverter-Rohwort 2120 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2120,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2120",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91120, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2120. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91121": {
+    "name": "Inverter-Rohwort 2121 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2121,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2121",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91121, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2121. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91122": {
+    "name": "Inverter-Rohwort 2122 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2122,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2122",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91122, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2122. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91123": {
+    "name": "Externer Fan-Driver-Strom (profilabhängig)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2123,
+    "main_aliases": [
+      2132
+    ],
+    "block": "INV1",
+    "code": "DV2123",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91123, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2123. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Nur bei F01/config4 im dokumentierten Mainboardpfad verwendet; keine pauschale Stromskalierung für andere Profile. Dokumentierter MAIN-Bezug: 2132.",
+    "description": "Nur bei F01/config4 im dokumentierten Mainboardpfad verwendet; keine pauschale Stromskalierung für andere Profile."
+  },
+  "91124": {
+    "name": "Inverter-Rohwort 2124 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2124,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2124",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91124, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2124. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91125": {
+    "name": "Inverter-Rohwort 2125 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2125,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2125",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91125, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2125. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91126": {
+    "name": "Inverter-Rohwort 2126 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2126,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2126",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91126, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2126. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91127": {
+    "name": "Inverter-Rohwort 2127 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2127,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2127",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91127, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2127. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91128": {
+    "name": "Inverter-Rohwort 2128 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2128,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2128",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91128, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2128. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91129": {
+    "name": "Inverter-Rohwort 2129 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2129,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2129",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91129, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2129. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91131": {
+    "name": "Inverter-Rohwort 2131 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2131,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2131",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91131, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2131. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91132": {
+    "name": "Inverter-Rohwort 2132 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2132,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2132",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91132, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2132. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91133": {
+    "name": "Fan-Driver-Diagnosebyte (profilabhängig)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2133,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2133",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91133, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2133. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Config4 verwendet das High-Byte als Fan-Driver-Telemetrie. Fachliche Einzelbedeutung offen; vollständiges Rohwort bleibt erhalten.",
+    "description": "Config4 verwendet das High-Byte als Fan-Driver-Telemetrie. Fachliche Einzelbedeutung offen; vollständiges Rohwort bleibt erhalten."
+  },
+  "91134": {
+    "name": "Inverter-Rohwort 2134 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2134,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2134",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91134, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2134. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91135": {
+    "name": "Externe Fan-Driver-IPM-Temperatur (profilabhängig)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2135,
+    "main_aliases": [
+      2130
+    ],
+    "block": "INV1",
+    "code": "DV2135",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91135, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2135. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Config4 verwendet das Low-Byte. Temperaturkodierung dieses externen Profils nicht pauschal aus Unit-1-IPM ableiten. Dokumentierter MAIN-Bezug: 2130.",
+    "description": "Config4 verwendet das Low-Byte. Temperaturkodierung dieses externen Profils nicht pauschal aus Unit-1-IPM ableiten."
+  },
+  "91136": {
+    "name": "Fan-Driver-Leistungsrohwert (profilabhängig)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2136,
+    "main_aliases": [
+      2131
+    ],
+    "block": "INV1",
+    "code": "DV2136",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91136, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2136. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren. Im Fan-Block verwendet, bei config4 zusätzlich im Inverterblock. Keine unbelegte Einheit oder Skalierung. Dokumentierter MAIN-Bezug: 2131.",
+    "description": "Im Fan-Block verwendet, bei config4 zusätzlich im Inverterblock. Keine unbelegte Einheit oder Skalierung."
+  },
+  "91137": {
+    "name": "Inverter-Rohwort 2137 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2137,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2137",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91137, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2137. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91138": {
+    "name": "Inverter-Rohwort 2138 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2138,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2138",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91138, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2138. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91139": {
+    "name": "Inverter-Rohwort 2139 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2139,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2139",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91139, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2139. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91140": {
+    "name": "Inverter-Rohwort 2140 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2140,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2140",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91140, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2140. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91141": {
+    "name": "Inverter-Rohwort 2141 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2141,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2141",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91141, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2141. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91142": {
+    "name": "Lüfter 2 – Drehzahl/Istwert",
+    "type": "RPM",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2142,
+    "main_aliases": [
+      2075
+    ],
+    "block": "INV1",
+    "code": "DV2142",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91142, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2142 → MAIN:2075. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91143": {
+    "name": "Inverter-Rohwort 2143 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2143,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2143",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91143, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2143. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91144": {
+    "name": "Inverter-Rohwort 2144 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2144,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2144",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91144, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2144. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91145": {
+    "name": "Inverter-Rohwort 2145 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2145,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2145",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91145, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2145. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91146": {
+    "name": "Inverter-Rohwort 2146 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2146,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2146",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91146, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2146. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91147": {
+    "name": "Inverter-Rohwort 2147 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2147,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2147",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91147, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2147. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91148": {
+    "name": "Inverter-Rohwort 2148 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2148,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2148",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91148, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2148. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "91149": {
+    "name": "Inverter-Rohwort 2149 (Bedeutung offen)",
+    "type": "UINT16",
+    "mode": "read",
+    "function": "virtual",
+    "write_allowed": false,
+    "virtual": true,
+    "namespace": "unit1",
+    "group": "Unit-1-Telemetrie",
+    "source_slave": 1,
+    "source_register": 2149,
+    "main_aliases": [],
+    "block": "INV1",
+    "code": "DV2149",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-UNIT1-INVERTER-PROTOKOLL.md",
+    "notes": "Künstliche FoxAir-ID 91149, nicht direkt per Modbus adressierbar. Quelle Unit 0x01 / INV1:2149. MAIN-Aliasse sind nur Herkunftsbezüge; keine Werte in MAIN-Register kopieren."
+  },
+  "6528": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T04",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6528,
+      6640
+    ],
+    "description": "Fault_Status_Display_T04: dynamischer Anzeigeobjekt-/Pointerblock 0x1980–0x19F0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6688": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T05",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6688,
+      6688
+    ],
+    "description": "Fault_Status_Display_T05: dynamischer Anzeigeobjekt-/Pointerblock 0x1A20–0x1A20, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6720": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T06",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6720,
+      6720
+    ],
+    "description": "Fault_Status_Display_T06: dynamischer Anzeigeobjekt-/Pointerblock 0x1A40–0x1A40, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6752": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T07",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6752,
+      6752
+    ],
+    "description": "Fault_Status_Display_T07: dynamischer Anzeigeobjekt-/Pointerblock 0x1A60–0x1A60, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6400": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T08",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6400,
+      6480
+    ],
+    "description": "Fault_Status_Display_T08: dynamischer Anzeigeobjekt-/Pointerblock 0x1900–0x1950, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6000": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T09",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6000,
+      6096
+    ],
+    "description": "Fault_Status_Display_T09: dynamischer Anzeigeobjekt-/Pointerblock 0x1770–0x17D0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6784": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T10",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6784,
+      6784
+    ],
+    "description": "Fault_Status_Display_T10: dynamischer Anzeigeobjekt-/Pointerblock 0x1A80–0x1A80, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6816": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T11",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6816,
+      6816
+    ],
+    "description": "Fault_Status_Display_T11: dynamischer Anzeigeobjekt-/Pointerblock 0x1AA0–0x1AA0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6848": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T12",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6848,
+      6848
+    ],
+    "description": "Fault_Status_Display_T12: dynamischer Anzeigeobjekt-/Pointerblock 0x1AC0–0x1AC0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6912": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T15",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6912,
+      6912
+    ],
+    "description": "Fault_Status_Display_T15: dynamischer Anzeigeobjekt-/Pointerblock 0x1B00–0x1B00, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6944": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T18",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6944,
+      6944
+    ],
+    "description": "Fault_Status_Display_T18: dynamischer Anzeigeobjekt-/Pointerblock 0x1B20–0x1B20, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "6976": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T19",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      6976,
+      6976
+    ],
+    "description": "Fault_Status_Display_T19: dynamischer Anzeigeobjekt-/Pointerblock 0x1B40–0x1B40, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7008": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T20",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7008,
+      7008
+    ],
+    "description": "Fault_Status_Display_T20: dynamischer Anzeigeobjekt-/Pointerblock 0x1B60–0x1B60, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7040": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T21",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7040,
+      7040
+    ],
+    "description": "Fault_Status_Display_T21: dynamischer Anzeigeobjekt-/Pointerblock 0x1B80–0x1B80, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7072": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T22",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7072,
+      7072
+    ],
+    "description": "Fault_Status_Display_T22: dynamischer Anzeigeobjekt-/Pointerblock 0x1BA0–0x1BA0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7104": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T23",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7104,
+      7104
+    ],
+    "description": "Fault_Status_Display_T23: dynamischer Anzeigeobjekt-/Pointerblock 0x1BC0–0x1BC0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7136": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T24",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7136,
+      7136
+    ],
+    "description": "Fault_Status_Display_T24: dynamischer Anzeigeobjekt-/Pointerblock 0x1BE0–0x1BE0, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7200": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T26",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7200,
+      7200
+    ],
+    "description": "Fault_Status_Display_T26: dynamischer Anzeigeobjekt-/Pointerblock 0x1C20–0x1C20, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7232": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T27",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7232,
+      7232
+    ],
+    "description": "Fault_Status_Display_T27: dynamischer Anzeigeobjekt-/Pointerblock 0x1C40–0x1C40, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
+  },
+  "7264": {
+    "function": "03",
+    "mode": "read",
+    "name": "Sensorfehler-Anzeigeobjekt T28",
+    "type": "UINT16",
+    "namespace": "dwin",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L16760-L16980",
+    "object_range": [
+      7264,
+      7264
+    ],
+    "description": "Fault_Status_Display_T28: dynamischer Anzeigeobjekt-/Pointerblock 0x1C60–0x1C60, in 0x10-Schritten beschrieben. FFFF blendet Objekte aus; rohes Objektwort, keine Temperatur oder MAIN-Sensoradresse.",
+    "source_slave": 3
   }
 }

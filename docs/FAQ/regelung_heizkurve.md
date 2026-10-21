@@ -100,7 +100,7 @@ Nach der Kurvenberechnung wird das Ergebnis durch **R10 (Register 1164, minimale
 
 Die aktuell für die Kurve verwendete Außentemperatur steht in **Register 2048**, die daraus resultierende kompensierte Solltemperatur in **Register 2014**. Diese beiden Werte sind Laufzeitwerte und werden in FoxAir Control nur angezeigt, nicht als Kurvenparameter geschrieben.
 
-### WarmLink 3.0.5: 7-Punkt-Kurve über Cloud lesen
+### WarmLink: AT-Kurve über Cloud lesen und schreiben
 
 Die WarmLink-Android-App **3.0.5 / Family 416, Softwarecode 644** bestätigt
 dieselben festen Stützstellen wie die GL9-Mainboard-Firmware:
@@ -120,10 +120,10 @@ dieselben festen Stützstellen wie die GL9-Mainboard-Firmware:
 Es erhält keine lokale Projektion auf 1235 oder ein anderes Register. Für Zone 2
 fragt die App analog `CP2-1`…`CP2-7` ab; der tatsächliche Mittelpunkt stammt
 aus **`Zone 2 Curve Offset`**, ebenfalls nicht aus `CP2-4`. Alle CP-Codes stehen
-im Cloudkatalog und sind read-only verfügbar. Die lokalen Zone-2-Register bleiben
+im Cloudkatalog; Schreibfreigaben werden getrennt von der Lesbarkeit behandelt. Die lokalen Zone-2-Register bleiben
 unbestätigt und werden nicht geraten.
 
-Ab FoxAir Control **0.3.3** funktioniert **AT-Kompensation → von WP lesen**
+Ab FoxAir Control **0.3.3** funktioniert **AT-Kompensation → Werte lesen**
 auch Cloud-only. Der vorhandene Worker liest gezielt H36, Steigung/Offset,
 die sechs CP1-Stützwerte, R10/R11, T04, 2014 und 2146 über
 `app/device/getDataByCode` (`protocalCodes`), ohne Fullscan. Die Abfrage wird
@@ -133,10 +133,37 @@ als Modbus skaliert. Lokale Werte haben bei aktivem lokalem Transport Vorrang
 und bleiben getrennt von Cloud. Nach lokalem Disconnect zeigt AT Cloudwerte,
 auch wenn alte lokale Werte im Cache bleiben; nach Reconnect gewinnt lokal wieder.
 
-**Schreiben der AT-Kurve bleibt lokal.** Im Cloud-only-Betrieb sind H36-/Linear-/
-7-Punkt-Schreibbuttons gesperrt. Die CP1-Codes bekommen keine Cloud-Schreibfreigabe.
-Cloud-Schreiben erfordert einen späteren separaten PR mit bestätigtem Endpoint,
-Payload, Reihenfolge und Readback am realen Gerät.
+**Cloud-Schreiben:** Am **17.10.2026** hat der Betreiber an der GL9 alle sieben
+AT-Punkte einzeln und zusätzlich gemeinsam in einem 7-fach-Cloud-Write getestet.
+Der anschließende gemeinsame `getDataByCode`-Readback bestätigte alle sieben Werte
+exakt. Freigegeben sind die obigen sieben Codes, die lineare Kurve
+(`compensate_slope`/1234 und `compensate_offset`/1235) sowie H36 separat.
+Der tatsächliche 0-°C-Punkt bleibt `compensate_offset`, nicht CP1-4.
+
+Die Cloud-Schreibbuttons starten unmittelbar, ohne experimentelle Checkbox oder
+zusätzliche Nachfrage. Nur geänderte Kurvenwerte werden in **einem**
+`app/device/control?lang=en`-Request mit `appId: "16"` und `param[]` gesendet;
+die lineare Kurve verwendet bei zwei Änderungen ebenfalls einen gemeinsamen Batch.
+Alle geschriebenen Codes werden anschließend gemeinsam frisch gelesen. Nur ein
+Wert innerhalb einer halben Registerauflösung bestätigt das jeweilige Feld.
+Bei fehlenden, veralteten oder abweichenden Werten gibt es höchstens drei
+Readback-Versuche. Bestätigte Felder werden gespeichert; andere Änderungen bleiben
+offen. Neue manuelle Änderungen werden durch einen älteren Readback nicht gelöscht.
+
+Ein Timeout oder eine unklare Schreibantwort führt zu gezieltem Nachlesen,
+niemals zu blindem erneutem Schreiben. Es gibt keinen automatischen Rollback;
+ein Serverbatch ist nicht als atomar garantiert. Account-/Gerätewechsel bricht
+Folgeschritte ab. Lokale Bestätigungen bleiben erhalten. Beim Öffnen erscheinen
+Cachewerte sofort, danach lädt ein asynchroner gezielter Cloud-Snapshot aktuelle
+Werte, ohne bereits bearbeitete Felder zu überschreiben.
+
+Der Dialog zeigt sieben kompakte Eingabefelder und eine passende berechnete
+Werteübersicht ohne Scrolltabellen. Die Grafik bleibt mit den Feldern
+synchronisiert und per Maus bearbeitbar. Der Schreibbutton folgt dem ausgewählten
+Kurvenmodus; H36 bleibt eine eigene Aktion. Automatisches Nachlesen und
+Cloud-Polling überschreiben keine ungespeicherten Eingaben. **„Live-Werte
+übernehmen“** verwirft die eigenen Änderungen bewusst zugunsten des aktuellen
+Wertestands. R10/R11 und die bestehende Interpolation gelten weiterhin.
 
 ## Warum startet die Wärmepumpe manchmal nicht?
 

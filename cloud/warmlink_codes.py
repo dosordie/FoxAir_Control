@@ -15,6 +15,8 @@ zusätzliche Cloud-Aliase/Livewerte aus direkten getDataByCode-Gegenchecks ergä
 
 from __future__ import annotations
 
+from cloud.warmlink_ios308_catalog import WARMLINK_IOS308_CODES, ios308_code_metadata
+
 from cloud.warmlink_644_catalog import (
     WARMLINK_644_APP_PARAMETERS,
     app_644_cloud_code,
@@ -427,12 +429,17 @@ ALL_WARMLINK_CLOUD_CODES: list[str] = ['A03',
  'Fault9',
  'Fault10']
 
+# Add the exact iOS request list without replacing prior codes or changing order.
+ALL_WARMLINK_CLOUD_CODES = list(dict.fromkeys([*ALL_WARMLINK_CLOUD_CODES, *WARMLINK_IOS308_CODES]))
+
 # Default = alles, was der dump_all-Lauf sinnvoll abgefragt hat.
 DEFAULT_WARMLINK_CLOUD_CODES: list[str] = list(ALL_WARMLINK_CLOUD_CODES)
 
 # Live-Test FoxAir GL9 / Linked-Go Cloud 2026-10-03.
 # Reine Dokumentationsliste: beeinflusst DEFAULT_WARMLINK_CLOUD_CODES nicht.
 # Diese Codes wurden explizit abgefragt und kamen auf der GL9 leer zurück.
+# Historische Leerbeobachtung, kein dauerhafter Unsupported-Nachweis; der
+# Kompatibilitätsname schließt iOS-App-Kandidaten nicht von weiteren Reads aus.
 WARMLINK_GL9_TESTED_UNSUPPORTED_CODES: tuple[str, ...] = (
     "Manual-mute",
     "F14", "F15", "F17", "H43", "O01~014",
@@ -460,9 +467,16 @@ WARMLINK_PRODUCT_IDS: list[str] = [
 # sind absichtlich von den normalen MAIN- und Cloud-Code-Mappings getrennt.
 WARMLINK_SERVICE_SLAVE = 0x63
 WARMLINK_SERVICE_REGISTERS: dict[int, dict[str, object]] = {
-    8001: {"name": "Remote-Control-Mode-Selector", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Remote-Control-Modus 1..4; übernommener Modus wird als MAIN:1691 exportiert"},
-    8004: {"name": "Remote-Control Schwellwert / MAIN1427", "type": "int16", "mode": "service-observed", "write_allowed": False, "effect": "Wird im Remote-Control-Modus 4 im 8004/MAIN1427-Schwellautomaten verwendet; physikalische Einheit noch offen"},
-    8006: {"name": "Remote-Control Change-/Generation-Token", "type": "uint16", "mode": "service-observed", "write_allowed": False, "effect": "Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an"},
+    8001: {"name":"EMS-/Remote-Strategiekommando","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Remote-Modus / Strategy Command 0..4; 0 = kein Modus; fachliche Namen 1..4 offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2151},
+    8002: {"name":"Strompreis / Electricity Price","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Externer Strompreis; Einheit und Skalierung unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2153},
+    8003: {"name":"Batterieleistung / Battery Power","type":"int16","mode":"service-observed","write_allowed":False,"effect":"Signed Batterieleistungs-Rohwert; Einheit und Polarität offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2156},
+    8004: {"name":"Netzleistung / OnGrid Power","type":"int16","mode":"service-observed","write_allowed":False,"effect":"Signed int16 Netzleistungs-Rohwert; MAIN1427 ist ein separater lokaler Schwellwert, kein Spiegel von 8004; Einheit und Polarität offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2154},
+    8005: {"name":"Batterieladezustand / Battery SoC","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Batterieladezustand als RAW; Skalierung offen, keine bestätigte Prozentdarstellung","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2155},
+    8006: {"name":"Remote-Synchronisations-/Generation-Token","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Bidirektionales Synchronisations-/Generation-Token; Änderung stößt Remote-Control-Sync/Handshake an; kein gleichnummerierter MAIN-Spiegel","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
+    8007: {"name":"Warmlink-EMS-Rohwert 8007","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer EMS-Rohwert; Semantik offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2157},
+    8008: {"name":"Warmlink-EMS-Rohwert 8008","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer EMS-Rohwert; Semantik offen","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE","main_mirror":2158},
+    8009: {"name":"Warmlink-Rohwert 8009","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer Rohwert; Semantik unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
+    8010: {"name":"Warmlink-Rohwert 8010","type":"uint16","mode":"service-observed","write_allowed":False,"effect":"Lesbarer Rohwert; Semantik unbekannt","source":"Issue #180; GoHeating Pro Android 1.0.0 / Mainboard RE"},
     8021: {"name": "Cooling Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Cooling", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8022: {"name": "Heating Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "Heating", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
     8023: {"name": "DHW Compressor Frequency Cap", "type": "uint16", "mode": "service-write", "write_allowed": False, "operating_mode": "DHW", "ttl_minutes": 20, "ttl_group": "frequency_caps", "effect": "effective_reference = min(normal_frequency_reference, remote_cap)"},
@@ -1738,9 +1752,8 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
          'local_code': 'H36',
          'modbus_register': 1236,
          'name': 'H36 / Anlagenparameter',
-         'note': 'Auto-confirmed by mapping export: cloud_code == local_code and value diff=0; Confirmed by static '
-                 'cleanup: cloud_code == local register code',
-         'rangeEnd': '10',
+         'note': 'Confirmed MAIN:1236 mapping; GL9 live Cloud read shows ENUM range 0..2. Cloud control write 1->0 confirmed with readback in WarmLink iOS 3.0.8 capture.',
+         'rangeEnd': '2',
          'rangeStart': '0',
          'write_allowed': True},
  'H37': {'cloud_dataType': 'DIGI1',
@@ -2760,55 +2773,55 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                             'confidence': 'confirmed',
                             'modbus_register': 1248,
                             'name': 'Silentmodus Timer Stop Stunde',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '23',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'TimerMuteOffMinute': {'allow_code_mismatch': True,
                             'cloud_dataType': 'DIGI1',
                             'confidence': 'confirmed',
                             'modbus_register': 1249,
                             'name': 'Silentmodus Timer Stop Minute',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '59',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'TimerMuteOnHour': {'allow_code_mismatch': True,
                             'cloud_dataType': 'DIGI1',
                             'confidence': 'confirmed',
                             'modbus_register': 1245,
                             'name': 'Silentmodus Timer Start Stunde',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '23',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'TimerMuteOnMinute': {'allow_code_mismatch': True,
                             'cloud_dataType': 'DIGI1',
                             'confidence': 'confirmed',
                             'modbus_register': 1246,
                             'name': 'Silentmodus Timer Start Minute',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '59',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'Timer_Mute_Off_En': {'allow_code_mismatch': True,
                             'cloud_dataType': 'ENUM',
                             'confidence': 'confirmed',
                             'modbus_register': 1247,
                             'name': 'Silentmodus Timer Stop aktivieren',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '1',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'Timer_Mute_On_En': {'allow_code_mismatch': True,
                             'cloud_dataType': 'ENUM',
                             'confidence': 'confirmed',
                             'modbus_register': 1244,
                             'name': 'Silentmodus Timer Start aktivieren',
-                            'note': 'GL9 live-confirmed 2026-10-03 by exact Cloud/local value match',
+                            'note': 'Read mapping live-confirmed; Cloud writes implemented, not yet live verified',
                             'rangeEnd': '1',
                             'rangeStart': '0',
-                            'write_allowed': False},
+                            'write_allowed': True},
  'Z01': {'cloud_dataType': 'TEMP',
          'confidence': 'confirmed',
          'local_code': 'Z01',
@@ -3076,7 +3089,7 @@ for _curve_code in WARMLINK_305_CURVE_CODES:
         "mapping_intentionally_absent": not bool(_point),
         "cloud_dataType": "TEMP", "unit": "°C", "write_allowed": False,
         "confidence": "confirmed" if _point else "unknown",
-        "name": f"7-Punkt-AT-Kurve {_curve_code}",
+        "name": f"7-Punkt-AT-Kurve {_curve_code}" if _point else _curve_code,
         "note": "WarmLink 3.0.5 / Family 416/644: read-only curve code; CP1-4/CP2-4 are not the 0 C point; Zone-2 MAIN mapping remains unconfirmed",
         **({"modbus_register": _point[0], "allow_code_mismatch": True,
             "note": f"WarmLink 3.0.5 app structure and confirmed GL9 firmware: {_point[1]:+d} C point -> MAIN:{_point[0]}"} if _point else {}),
@@ -3107,6 +3120,206 @@ WARMLINK_CLOUD_CODE_HINTS["Switch2168"] = {
 }
 
 
+# Keep reviewed mappings/units/write grants. App-only entries remain neutral.
+for _ios_code in WARMLINK_IOS308_CODES:
+    WARMLINK_CLOUD_CODE_HINTS.setdefault(_ios_code, ios308_code_metadata(_ios_code))
+
+# GL9 live mapping audit 2026-10-12. These read mappings were confirmed by
+# simultaneous/near-simultaneous Cloud <-> local values. Cloud writeability is
+# deliberately NOT inferred from local Modbus writeability.
+_IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
+    "T49": {
+        "confidence": "confirmed", "local_code": "T-Diag1", "modbus_register": 2065,
+        "name": "Verdampfungstemperatur", "cloud_dataType": "TEMP", "unit": "°C",
+        "note": "GL9 live-confirmed 2026-10-14: T49 matches MAIN:2065 / T-Diag1. Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
+    "T50": {
+        "confidence": "confirmed", "local_code": "T-Diag2", "modbus_register": 2066,
+        "name": "Abgasüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
+        "note": "GL9 live-confirmed 2026-10-14: T50 matches MAIN:2066 / T-Diag2. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
+    "T51": {
+        "confidence": "confirmed", "local_code": "T-Diag3", "modbus_register": 2067,
+        "name": "Rückgas-/Saugüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
+        "note": "GL9 live-confirmed 2026-10-14: T51 matches MAIN:2067 / T-Diag3. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "write_allowed": False,
+    },
+    "H41": {
+        "confidence": "confirmed", "local_code": "H41", "modbus_register": 1346,
+        "name": "Supervisor-Passwort / H41",
+        "note": "GL9 live 2026-10-12: Cloud H41=66 matches local H41/MAIN:1346=66.",
+        "write_allowed": False,
+    },
+    "R40": {
+        "confidence": "confirmed", "local_code": "R40", "modbus_register": 1193,
+        "name": "R40 Temperaturparameter",
+        "note": "GL9 live 2026-10-12: exact R40 code match; Cloud value 0.0 and range -10..60 agree with local MAIN:1193.",
+        "write_allowed": False,
+    },
+    "R41": {
+        "confidence": "confirmed", "local_code": "R41", "modbus_register": 1194,
+        "name": "R41 Temperaturparameter",
+        "note": "GL9 live 2026-10-12: exact R41 code match; Cloud value 0.0 and range -10..60 agree with local MAIN:1194.",
+        "write_allowed": False,
+    },
+    "T14": {
+        "confidence": "confirmed", "local_code": "T14", "modbus_register": 2050,
+        "name": "Verteilerrohrtemperatur / T14",
+        "note": "GL9 live 2026-10-12: Cloud T14=17.6 C equals local T14/MAIN:2050=17.6 C.",
+        "unit": "°C", "write_allowed": False,
+    },
+    "T57": {
+        "confidence": "confirmed", "modbus_register": 2023,
+        "name": "Anzahl Verdichter-Starts",
+        "note": "GL9 live 2026-10-12: Cloud T57 tracked compressor starts 609->610 while local MAIN:2023 was 610.",
+        "write_allowed": False,
+    },
+    "1250": {
+        "confidence": "confirmed", "modbus_register": 1250,
+        "name": "7P-Heiz-Sollwert bei -20 °C / Alias zu CP1-1",
+        "note": "GL9 live 2026-10-12: Cloud 1250=45.0 C equals local MAIN:1250=45.0 C and CP1-1=45.0 C.",
+        "unit": "°C", "write_allowed": False,
+    },
+    "1256": {
+        "confidence": "confirmed", "local_code": "KG1", "modbus_register": 1256,
+        "name": "WP Timer 1 Start / Alias zu KG1",
+        "note": "GL9 live 2026-10-12: Cloud 1256 raw 1805 equals local MAIN:1256/KG1 raw 1805.",
+        "write_allowed": False,
+    },
+    "1257": {
+        "confidence": "confirmed", "local_code": "KG2", "modbus_register": 1257,
+        "name": "WP Timer 1 Stop / Alias zu KG2",
+        "note": "GL9 live 2026-10-12: Cloud 1257 raw 5396 equals local MAIN:1257/KG2 raw 5396.",
+        "write_allowed": False,
+    },
+    "1258": {
+        "confidence": "confirmed", "local_code": "KG3", "modbus_register": 1258,
+        "name": "WP Timer 2 Start / Alias zu KG3",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1258 observed 0.",
+        "write_allowed": False,
+    },
+    "1259": {
+        "confidence": "confirmed", "local_code": "KG4", "modbus_register": 1259,
+        "name": "WP Timer 2 Stop / Alias zu KG4",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1259 observed 0.",
+        "write_allowed": False,
+    },
+    "1260": {
+        "confidence": "confirmed", "local_code": "KG5", "modbus_register": 1260,
+        "name": "WP Timer 3 Start / Alias zu KG5",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1260 observed 0.",
+        "write_allowed": False,
+    },
+    "1261": {
+        "confidence": "confirmed", "local_code": "KG6", "modbus_register": 1261,
+        "name": "WP Timer 3 Stop / Alias zu KG6",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1261 observed 0.",
+        "write_allowed": False,
+    },
+    "1262": {
+        "confidence": "confirmed", "local_code": "KG7", "modbus_register": 1262,
+        "name": "WP Timer 4 Start / Alias zu KG7",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1262 observed 0.",
+        "write_allowed": False,
+    },
+    "1263": {
+        "confidence": "confirmed", "local_code": "KG8", "modbus_register": 1263,
+        "name": "WP Timer 4 Stop / Alias zu KG8",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1263 observed 0.",
+        "write_allowed": False,
+    },
+    "1264": {
+        "confidence": "confirmed", "local_code": "KG9", "modbus_register": 1264,
+        "name": "WP Timer 5 Start / Alias zu KG9",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1264 observed 0.",
+        "write_allowed": False,
+    },
+    "1265": {
+        "confidence": "confirmed", "local_code": "KG10", "modbus_register": 1265,
+        "name": "WP Timer 5 Stop / Alias zu KG10",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1265 observed 0.",
+        "write_allowed": False,
+    },
+    "1266": {
+        "confidence": "confirmed", "local_code": "KG11", "modbus_register": 1266,
+        "name": "WP Timer 6 Start / Alias zu KG11",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1266 observed 0.",
+        "write_allowed": False,
+    },
+    "1267": {
+        "confidence": "confirmed", "local_code": "KG12", "modbus_register": 1267,
+        "name": "WP Timer 6 Stop / Alias zu KG12",
+        "note": "GL9 live 2026-10-12: numeric Cloud timer block 1256..1267 mirrors local KG1..KG12; 1267 observed 0.",
+        "write_allowed": False,
+    },
+    "1268": {
+        "confidence": "confirmed", "local_code": "KG13-KG28", "modbus_register": 1268,
+        "name": "WP Timer 1+2 Aktiv/Tage / Alias zu KG13~KG28",
+        "note": "GL9 live 2026-10-12: Cloud 1268 binary 0000000100011111 exactly matches local MAIN:1268 timer bitmask.",
+        "write_allowed": False,
+    },
+    "1269": {
+        "confidence": "confirmed", "local_code": "KG29-KG44", "modbus_register": 1269,
+        "name": "WP Timer 3+4 Aktiv/Tage / Alias zu KG29~KG44",
+        "note": "GL9 live 2026-10-12: Cloud 1269 binary 0000000000000000 matches local MAIN:1269 timer bitmask.",
+        "write_allowed": False,
+    },
+}
+for _code, _reviewed in _IOS308_CONFIRMED_READ_MAPPINGS.items():
+    WARMLINK_CLOUD_CODE_HINTS[_code].update(_reviewed)
+
+
+# WP on/off schedule: local KG register identity and independently live-matched
+# numeric Cloud aliases (1256..1269). The KG protocol spellings themselves
+# and Cloud writes are still awaiting an operator's live-device confirmation.
+# `confidence` refers to the KG -> local-register identity, NOT write testing.
+for _idx in range(12):
+    _code = f"KG{_idx + 1}"
+    _reg = 1256 + _idx
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "confirmed", "local_code": _code,
+        "modbus_register": _reg, "dataType": "TIME_HHMM",
+        "cloud_dataType": "DIGI1", "write_allowed": True,
+        "name": f"WP Ein/Aus Timer {_idx // 2 + 1} {'Start' if _idx % 2 == 0 else 'Stop'} (HH:MM Rohwort)",
+        "note": "Registeridentity KG/local documented; numeric Cloud 1256..1267 "
+                "read-matched 2026-10-12. KG-code Cloud read/write has not been "
+                "live-verified. Value is packed (hour << 8) | minute.",
+    }
+for _idx, _code in enumerate(("KG13~KG28", "KG29~KG44", "KG45~KG60")):
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "confirmed", "local_code": ("KG13-KG28", "KG29-KG44", "KG45-KG60")[_idx],
+        "modbus_register": 1268 + _idx,
+        "dataType": "bitword16", "cloud_dataType": "BINARY",
+        "write_allowed": True,
+        "name": f"WP Ein/Aus Timer {_idx * 2 + 1}+{_idx * 2 + 2} Aktiv/Tage",
+        "note": "KG-to-local identity and bit order follow the local timer layout. "
+                "Numeric Cloud 1268/1269 readback matched local bitwords on 2026-10-12; "
+                "KG protocol spelling and writes are NOT yet live-verified. "
+                "16-bit word: low byte first timer, high byte partner.",
+    }
+
+
+# Live Cloud formats (GL9 V3.5, 2026-10-21); MAIN identity is schema-derived.
+# Write authorization is intentional development-tool scope, NOT live write proof.
+from cloud.operating_timer import (M_TIMER_CODES, M_TIME_CODES, M_MASK_CODES,
+                                  M_MODE_CODES, M_POWER_CODES)
+for _reg, _code in M_TIMER_CODES.items():
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "derived", "modbus_register": _reg, "write_allowed": True,
+        "cloud_read_live_confirmed": True, "gl9_tested_supported": True,
+        "cloud_write_live_confirmed": False, "modbus_comparison_confirmed": False,
+        "mapping_evidence": "local schema + Cloud code structure; Modbus comparison pending",
+        "cloud_dataType": ("DIGI1" if _code in M_TIME_CODES else "BINARY" if _code in M_MASK_CODES
+                           else "ENUM" if _code in M_MODE_CODES else "DIGI5" if _code in M_POWER_CODES else "TEMP"),
+        "unit": "kW" if _code in M_POWER_CODES else "°C" if _code not in M_TIME_CODES | M_MASK_CODES | M_MODE_CODES else "",
+        "note": "GL9 V3.5: all 45 codes read live on 2026-10-21. Packed HH:MM words, "
+                "16-bit binary masks, engineering Celsius/kW. MAIN mapping derived; "
+                "Modbus equality and Cloud writes not live verified. Live metadata limits "
+                "conflict with observed temperatures; never clamp existing values.",
+    }
+
 def cloud_hint(code: str) -> dict[str, object]:
     return WARMLINK_CLOUD_CODE_HINTS.get(code, {})
 
@@ -3133,10 +3346,10 @@ def merged_cloud_metadata(code: str) -> dict[str, object]:
     merged.update(confirmed)  # stronger, existing reverse engineering wins
     # Static mapping knowledge is not evidence that this particular device
     # returned the code. Runtime rows carry the actual ``supported`` result.
-    merged["cloud_hint_known"] = bool(confirmed)
+    merged["cloud_hint_known"] = bool(confirmed) and not confirmed.get("app_observation_only", False)
     merged["cloud_supported"] = None
     merged["modbus_mapped"] = confirmed.get("modbus_register") is not None
-    merged["write_confirmed"] = bool(confirmed.get("write_allowed", False))
+    merged["write_confirmed"] = bool(confirmed.get("cloud_write_live_confirmed", confirmed.get("write_allowed", False)))
     if app and not confirmed:
         merged["write_allowed"] = False
     return merged
@@ -3158,7 +3371,7 @@ def is_known_code(code: str) -> bool:
 
 
 def code_modbus_register(code: str) -> int | None:
-    """Resolve a confirmed cloud code against the current local register map."""
+    """Resolve reviewed or explicitly authorized schema-derived Cloud routes."""
     from cloud.register_resolver import resolve_cloud_register
 
     return resolve_cloud_register(code, cloud_hint(code))
@@ -3183,3 +3396,28 @@ def code_confidence(code: str) -> str:
 
 
 cloud_modbus_register = code_modbus_register
+
+# GL9 operator tests, 2026-10-17: all seven AT points, a shared seven-value
+# write/readback, linear compensation, H36 and SG01–SG08 are confirmed.
+# This grant deliberately excludes CP1-4, Zone 2, SG Status and register 8801.
+CONFIRMED_CONFIGURATION_WRITE_CODES = frozenset({
+    "CP1-1", "CP1-2", "CP1-3", "CP1-5", "CP1-6", "CP1-7",
+    "compensate_slope", "compensate_offset", "H36",
+    *(f"SG{i:02}" for i in range(1, 9)),
+})
+for _code in CONFIRMED_CONFIGURATION_WRITE_CODES:
+    WARMLINK_CLOUD_CODE_HINTS[_code].update(
+        write_allowed=True,
+        note="GL9 2026-10-17: Cloud write and fresh Cloud readback confirmed by operator. "
+             "Seven AT points also confirmed in one batch; no server atomicity guarantee.",
+    )
+
+# Production enum metadata is shared by quick writes and configuration dialogs.
+WARMLINK_CLOUD_CODE_HINTS["Mode"]["write_values"] = {
+    "0": "Warmwasser", "1": "Heizen", "2": "Kühlen", "3": "WW+Heizen", "4": "WW+Kühlen",
+}
+WARMLINK_CLOUD_CODE_HINTS["Power"]["write_values"] = {"0": "Aus", "1": "Ein"}
+WARMLINK_CLOUD_CODE_HINTS["H36"]["write_values"] = {"0": "Aus", "1": "Linear", "2": "7-Punkt"}
+WARMLINK_CLOUD_CODE_HINTS["SG01"]["write_values"] = {str(i): str(i) for i in range(8)}
+WARMLINK_CLOUD_CODE_HINTS["SG01"]["rangeEnd"] = "7"
+WARMLINK_CLOUD_CODE_HINTS["SG08"]["write_values"] = {"0": "Aus", "1": "Ein"}

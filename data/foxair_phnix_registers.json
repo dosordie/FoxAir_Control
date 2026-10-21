@@ -254,8 +254,9 @@
   "1017": {
     "function": "03/06",
     "mode": "r/w",
-    "name": "Logo-Auswahl",
-    "type": "RAW"
+    "name": "Unbekannter Parameter",
+    "type": "RAW",
+    "description": "Funktion und Seiteneffekte ungeklärt. Die bisherige Logo-Zuordnung ist widerlegt: DWIN V1.7 liest MAIN:1026 / H39 für die Logo-Auswahl. MAIN:1017 darf bis zur Klärung nicht automatisch wiederhergestellt werden."
   },
   "1018": {
     "app_label": "Auto start",
@@ -2425,16 +2426,26 @@
     "code": "R40",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1"
+    "name": "Temperaturparameter R40 – Funktion unbekannt",
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "R40"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R40 → MAIN:1193; #178 / PR #183 (bisherige Zuordnungen).",
+    "description": "Temperaturparameter R40, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt."
   },
   "1194": {
     "block": "R",
     "code": "R41",
     "function": "03/16",
     "mode": "r/w",
-    "name": "Temperaturparameter, Celsius-Grenze 60 °C (ASM V1.3)",
-    "type": "TEMP1"
+    "name": "Temperaturparameter R41 – Funktion unbekannt",
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "R41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R41 → MAIN:1194; #178 / PR #183 (bisherige Zuordnungen).",
+    "description": "Temperaturparameter R41, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt."
   },
   "1195": {
     "app_current_video_value": "2.0 °C",
@@ -3096,7 +3107,12 @@
     "name": "7P-Heiz-Sollwert bei -20 °C Außentemperatur",
     "type": "TEMP1",
     "unit": "°C",
-    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“."
+    "description": "GL9 V3.4/V3.5 bestätigt: Heiz-Solltemperatur am festen -20-°C-Stützpunkt der 7-Punkt-AT-Kennlinie (H36=2). Zwischen Stützpunkten wird linear interpoliert. Alternative/ältere PHNIX-Metadatenbezeichnung: „Systemzeit aktivieren“.",
+    "cloud_aliases": [
+      "1250",
+      "CP1-1"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1250, CP1-1 → MAIN:1250; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1251": {
     "function": "03/16",
@@ -3145,7 +3161,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1256"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1256 → MAIN:1256; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1257": {
     "block": "KG",
@@ -3154,7 +3174,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1257"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1257 → MAIN:1257; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1258": {
     "block": "KG",
@@ -3163,7 +3187,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1258"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1258 → MAIN:1258; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1259": {
     "block": "KG",
@@ -3172,7 +3200,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 2 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1259"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1259 → MAIN:1259; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1260": {
     "block": "KG",
@@ -3181,7 +3213,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1260"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1260 → MAIN:1260; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1261": {
     "block": "KG",
@@ -3190,7 +3226,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1261"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1261 → MAIN:1261; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1262": {
     "block": "KG",
@@ -3199,7 +3239,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1262"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1262 → MAIN:1262; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1263": {
     "block": "KG",
@@ -3208,7 +3252,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 4 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1263"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1263 → MAIN:1263; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1264": {
     "block": "KG",
@@ -3217,7 +3265,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1264"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1264 → MAIN:1264; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1265": {
     "block": "KG",
@@ -3226,7 +3278,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 5 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1265"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1265 → MAIN:1265; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1266": {
     "block": "KG",
@@ -3235,7 +3291,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Startzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1266"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1266 → MAIN:1266; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1267": {
     "block": "KG",
@@ -3244,7 +3304,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Zeitformat High-Byte=Stunde, Low-Byte=Minute.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 6 Stopzeit",
-    "type": "TIME_HHMM"
+    "type": "TIME_HHMM",
+    "cloud_aliases": [
+      "1267"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1267 → MAIN:1267; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1268": {
     "block": "KG",
@@ -3253,7 +3317,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 1+2 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR"
+    "type": "TIMER_BITPAIR",
+    "cloud_aliases": [
+      "1268"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1268 → MAIN:1268; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1269": {
     "block": "KG",
@@ -3262,7 +3330,11 @@
     "info": "Quelle: ASM V1.3 / User-Test. Pro Byte: Bit7 aktiv, Bit0-6 Mo-So; Low-Byte erster Timer im Paar, High-Byte zweiter Timer.",
     "mode": "r/w",
     "name": "WP Ein/Aus Timer 3+4 Aktiv/Tage Bitmaske",
-    "type": "TIMER_BITPAIR"
+    "type": "TIMER_BITPAIR",
+    "cloud_aliases": [
+      "1269"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1269 → MAIN:1269; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1270": {
     "block": "KG",
@@ -3875,7 +3947,11 @@
     "name": "Supervisor-Passwort: 66",
     "type": "RAW",
     "last_review": "v0.2.41 fix8 user confirmed",
-    "notes": "H41 bestätigt."
+    "notes": "H41 bestätigt.",
+    "cloud_aliases": [
+      "H41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: H41 → MAIN:1346; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1347": {
     "app_current_video_value": "90 Hz",
@@ -4190,9 +4266,11 @@
   "1422": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Verdichter-Frequenz-Derating in %, Default 70 % / Erforschen!",
-    "notes": "Interessant, genau anschauen!.",
-    "type": "RAW"
+    "name": "Remote-Kompressor-Frequenzobergrenze (%)",
+    "notes": "Bestätigter V3.5-Frequenzcap-Pfad; kein Beleg für eine aktuell greifende Begrenzung allein aus Bit4.",
+    "type": "PERCENT",
+    "description": "V3.5 bestätigt: prozentualer Frequenzdeckel im Remote-Regelpfad, aktiviert durch MAIN:2152 Bit4. Default 70 %. Effektive Grenze hängt von Frequenzanforderung und Mindestfrequenz ab. 0 und Werte >100 werden in diesem Rechenpfad funktional wie 100 % behandelt. Keine neuen Schreibgrenzen.",
+    "unit": "%"
   },
   "1427": {
     "function": "03/16",
@@ -4409,16 +4487,18 @@
   "1466": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Qualifikations-/Entprellzeit einer zentralen Betriebs-State-Machine / Erforschen",
-    "notes": "Interessant, genau anschauen!",
-    "type": "RAW"
+    "name": "Erweiterter Konfigurationsparameter – Funktion unbekannt",
+    "notes": "Aktiver Konfigurationswert; keine bestätigte Einheit.",
+    "type": "RAW",
+    "description": "Aktiver Konfigurationswert, live RAW 300. Funktion, Einheit und zeitliche Bedeutung nicht bestätigt. Frühere Entprellzeit-/Qualifikationsannahme ist keine gesicherte Bezeichnung."
   },
   "1476": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "aktiver Regelparameter des speziellen internen Mode-8-Algorithmus / Erforschen",
-    "notes": "Interessant, genau anschauen!, MAIN:2146 Bit4; 3 K Hysterese",
-    "type": "RAW"
+    "name": "R-/Temperaturregelparameter – Funktion unbekannt",
+    "notes": "Historische Mode-8-/3-K-/2146-Hypothesen sind nicht als bestätigte Funktion belegt.",
+    "type": "RAW",
+    "description": "Aktiver Konfigurationswert, live RAW 5. Hinweise auf eine spezielle Regelungsfamilie; endgültige OEM-Funktion und Einheit offen. Keine gesicherte Sekunden-, Kelvin-, °C- oder Prozentangabe."
   },
   "1541": {
     "function": "03",
@@ -4582,7 +4662,9 @@
     "value_map": {
       "0": "Aus",
       "1": "Ein"
-    }
+    },
+    "app_label_goheating_pro": "Power State",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2012": {
     "function": "16",
@@ -4596,19 +4678,27 @@
       "3": "Sterilisieren",
       "4": "Warmwasser"
     },
-    "description": "Aktueller Lauf-/Ist-Modus der WP."
+    "description": "Aktueller Lauf-/Ist-Modus der WP.",
+    "app_label_goheating_pro": "Mode State",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2013": {
     "function": "16",
     "mode": "read",
     "name": "Temperaturwert nach Begrenzung",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "app_label_goheating_pro": "Compensate Limit Temp",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)",
+    "description": "V3.5: Gesondert aufbereiteter interner Regelsollwert aus 0x200164C8 +0x06, signed int16, RAW / 10 °C. Eigenes internes Feld; nicht pauschal identisch mit 2014/2016. Eine weitergehende Regelstufe oder Begrenzungssemantik ist nicht abschließend bewiesen.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2014": {
     "function": "16",
     "mode": "read",
     "name": "Temperaturwert nach Wetterkompensation während des Heizens",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Je nach ausgewählter Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad; echte Spiegelquelle von MAIN:2016. MAIN:2013 stammt aus einem anderen internen Feld.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2015": {
     "function": "16",
@@ -4623,16 +4713,27 @@
   "2016": {
     "function": "16",
     "mode": "read",
-    "name": "Solltemperatur wie 2013 / 2014",
+    "name": "Solltemperatur wie 2014",
     "type": "TEMP1",
     "unit": "°C",
-    "notes": "Skalierung /10 wie 2013/2014."
+    "notes": "Skalierung /10 wie 2014; 2013 ist ein gesondert aufbereiteter Regelsollwert.",
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Identische Quelle wie MAIN:2014 (echter Spiegel), je nach Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad. Nicht pauschal identisch mit MAIN:2013.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2017": {
-    "function": "16",
+    "function": "03",
     "mode": "read",
-    "name": "Reserviert / In V3.3 unbenutzt",
-    "type": "RAW"
+    "name": "Effektiver Heiz-Wassersollwert",
+    "type": "TEMP1",
+    "unit": "°C",
+    "firmware": "V3.5+",
+    "description": "Ab V3.5: Effektiver berechneter Heiz-Wassersollwert aus Getter 0x0808261C, signed int16, RAW / 10 °C. Enthält wirksame Regelkorrekturen, Heizkurven-/Timerpfade und die normale Heiztemperaturbegrenzung (R10/R11). Wird unabhängig davon berechnet, ob Heizen aktuell aktiv ist; nicht in jeder Betriebsart mit einem aktuell aktiven Vorlaufsollwert gleichzusetzen. Statuspuffer 0x20012790 +0x840; 0x820 + 2*(2017-2001). Ersetzt die ungültige frühere Zuordnung MAIN:1557. In V3.3 reserviert/unbenutzt.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046",
+    "signed": true,
+    "raw_format": "int16 / 10 °C",
+    "write_allowed": false,
+    "getter": "0x0808261C",
+    "status_buffer_offset": "0x840"
   },
   "2018": {
     "function": "03",
@@ -4692,7 +4793,11 @@
     "mode": "read",
     "name": "Anzahl Verdichter-Starts",
     "type": "RAW",
-    "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet."
+    "note": "Quelle: Forum / Endif; Hinweis: Erst ab Firmware V3.3 vorhanden; Status: selbst getestet.",
+    "cloud_aliases": [
+      "T57"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T57 → MAIN:2023; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "2024": {
     "function": "16",
@@ -4709,20 +4814,26 @@
   "2026": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwort High-Byte (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2113 High-Byte (Bedeutung offen)",
+    "type": "UINT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 High-Byte → MAIN:2026. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "storage_type": "uint8"
   },
   "2027": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwort Low-Byte (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2113 Low-Byte (Bedeutung offen)",
+    "type": "UINT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 Low-Byte → MAIN:2027. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "storage_type": "uint8"
   },
   "2028": {
     "function": "16",
     "mode": "read",
-    "name": "INV1-Datenwert 16 Bit (Semantik noch offen)",
-    "type": "RAW"
+    "name": "INV1:2118 Rohwert (signed, Bedeutung offen)",
+    "type": "INT16",
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2118 → MAIN:2028. Signed int16 (-32768..32767); physikalische Bedeutung und Einheit offen.",
+    "storage_type": "int16"
   },
   "2029": {
     "function": "16",
@@ -4886,7 +4997,9 @@
     "mode": "read",
     "name": "Einlasswassertemperatur",
     "type": "TEMP1",
-    "description": "Einlasswassertemperatur. Wird im Smart-EEV-Kennfeld zusätzlich als vierstufige Faktorachse verwendet. Faktoren: 1,2 / 1,0 / 0,9 / 0,8. Umschaltpunkte mit Hysterese liegen ungefähr bei 20,1/18,1 °C, 30/28 °C und 40/38 °C."
+    "description": "Einlasswassertemperatur. Wird im Smart-EEV-Kennfeld zusätzlich als vierstufige Faktorachse verwendet. Faktoren: 1,2 / 1,0 / 0,9 / 0,8. Umschaltpunkte mit Hysterese liegen ungefähr bei 20,1/18,1 °C, 30/28 °C und 40/38 °C.",
+    "app_label_goheating_pro": "Inlet Water Temp.",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2046": {
     "block": "T",
@@ -4894,7 +5007,9 @@
     "function": "16",
     "mode": "read",
     "name": "Auslasswassertemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "app_label_goheating_pro": "Outlet Water Temp.",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2047": {
     "block": "T",
@@ -4902,7 +5017,9 @@
     "function": "16",
     "mode": "read",
     "name": "WW-Tanktemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "app_label_goheating_pro": "DHW Tank Temp.",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2048": {
     "block": "T",
@@ -4913,7 +5030,9 @@
     "name_en": "Outdoor temperature in use",
     "type": "TEMP1",
     "description": "Von der Firmware tatsächlich verwendete Außentemperatur nach Auswahl zwischen normalem T04 und externem AT-Fühler einschließlich Fallback und Aufbereitung. Wird sowohl für die direkte Auswahl der E03-/E07-Temperatursegmente als auch für die separate sechsstufige Smart-EEV-Kennfeldachse verwendet. Die Smart-Achse besitzt Hysterese und ist nicht identisch mit den fünf direkten E03/E07-Bändern.",
-    "description_en": "Outdoor temperature actually used by the firmware after selecting between normal T04 and the external outdoor sensor, including fallback and signal processing. It is also used for E03/E07 segment selection and the separate six-stage Smart EEV map axis."
+    "description_en": "Outdoor temperature actually used by the firmware after selecting between normal T04 and the external outdoor sensor, including fallback and signal processing. It is also used for E03/E07 segment selection and the separate six-stage Smart EEV map axis.",
+    "app_label_goheating_pro": "Ambient  Temp. (AT)",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2049": {
     "block": "T",
@@ -4929,7 +5048,11 @@
     "function": "16",
     "mode": "read",
     "name": "Verteilerrohrtemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "cloud_aliases": [
+      "T14"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T14 → MAIN:2050; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "2051": {
     "block": "T",
@@ -4945,7 +5068,9 @@
     "function": "16",
     "mode": "read",
     "name": "Puffertanktemperatur",
-    "type": "TEMP1"
+    "type": "TEMP1",
+    "app_label_goheating_pro": "Buffer Tank Temp.",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2053": {
     "block": "T",
@@ -4965,7 +5090,9 @@
     "code": "T54",
     "unit": "kW",
     "description": "Live-/Diagnosewert. Vermutlich signed /10 kW; Beispiel 5 = 0,5 kW = 500 W.",
-    "app_label": "Unit Power"
+    "app_label": "Unit Power",
+    "app_label_goheating_pro": "Power Input(ODU+IDU)",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2055": {
     "block": "T",
@@ -4978,8 +5105,11 @@
   "2056": {
     "function": "16",
     "mode": "read",
-    "name": "T? / System 1 Frostschutztemperatur 2 / Coil/Frost Temp 2 (ASM V1.3)",
-    "type": "TEMP1"
+    "name": "Frostschutztemperatur 2 (optional, Quelle ungeklärt)",
+    "type": "UINT16",
+    "description": "DWIN V1.3 bezeichnet das Feld als System 1 Frostschutztemperatur 2 (TEMP1). V3.5 exportiert 2055 und 2057; am Public-Buffer-Offset von 2056 wurde kein direkter Writer gefunden. Starkes Indiz für ein optionales bzw. in dieser Konfiguration unbelegtes Feld, kein Beweis für dauernde Ungültigkeit. Sensorquelle und Hersteller-T-Code offen. Daher neutrale Rohwertanzeige; keine Zuordnung zu T06, T06_1 oder einem bestimmten Fühler. Cloud T06_1 lieferte im Livetest keine Daten.",
+    "unit": "raw",
+    "optional": true
   },
   "2057": {
     "function": "16",
@@ -5009,7 +5139,9 @@
     "code": "T59",
     "unit": "kW",
     "description": "Live-/Diagnosewert. Vermutlich signed /10 kW; Beispiel 26 = 2,6 kW.",
-    "app_label": "Unit Capacity"
+    "app_label": "Unit Capacity",
+    "app_label_goheating_pro": "Capacity Output(ODU+IDU)",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2060": {
     "function": "16",
@@ -5020,7 +5152,9 @@
     "code": "T60",
     "unit": "COP",
     "description": "Live-/Diagnosewert. Vermutlich signed /100; Beispiel 458 = COP 4,58.",
-    "app_label": "COP"
+    "app_label": "COP",
+    "app_label_goheating_pro": "COP/EER(ODU+IDU)",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2061": {
     "block": "T",
@@ -5067,7 +5201,11 @@
     "code": "T-Diag1",
     "unit": "°C",
     "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
-    "app_label": "Evaporating Temp (ASM)"
+    "app_label": "Evaporating Temp (ASM)",
+    "cloud_aliases": [
+      "T49"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T49 → MAIN:2065; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2066": {
     "function": "16",
@@ -5078,7 +5216,11 @@
     "code": "T-Diag2",
     "unit": "K",
     "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
-    "app_label": "Exhaust Superheat (ASM)"
+    "app_label": "Exhaust Superheat (ASM)",
+    "cloud_aliases": [
+      "T50"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T50 → MAIN:2066; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2067": {
     "function": "16",
@@ -5089,7 +5231,11 @@
     "code": "T-Diag3",
     "unit": "K",
     "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
-    "app_label": "Suction Superheat (ASM)"
+    "app_label": "Suction Superheat (ASM)",
+    "cloud_aliases": [
+      "T51"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T51 → MAIN:2067; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2068": {
     "function": "16",
@@ -5119,7 +5265,9 @@
     "mode": "read",
     "name": "Kompressor-Sollfrequenz",
     "type": "DIGI1",
-    "description": "Sollfrequenz des Verdichters. Wird im Smart-EEV-Kennfeld als Frequenzachse verwendet. Zustandswechsel mit Hysterese erfolgen ungefähr bei 46/44 Hz, 61/59 Hz und 76/74 Hz."
+    "description": "Sollfrequenz des Verdichters. Wird im Smart-EEV-Kennfeld als Frequenzachse verwendet. Zustandswechsel mit Hysterese erfolgen ungefähr bei 46/44 Hz, 61/59 Hz und 76/74 Hz.",
+    "app_label_goheating_pro": "Compressor Frequency",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2072": {
     "block": "T",
@@ -5160,7 +5308,9 @@
     "function": "16",
     "mode": "read",
     "name": "Zieldrehzahl des Lüftermotors",
-    "type": "DIGI1"
+    "type": "DIGI1",
+    "app_label_goheating_pro": "Target Speed of Fan Motor",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2077": {
     "block": "T",
@@ -5171,7 +5321,9 @@
     "type": "FLOW_M3H_X100",
     "unit": "m³/h",
     "description": "Wasserdurchfluss. Beobachtung: raw 64 entspricht vermutlich 0,64 m³/h.",
-    "app_label": "Water Flow Rate"
+    "app_label": "Water Flow Rate",
+    "app_label_goheating_pro": "Water Flow Rate",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2078": {
     "function": "16",
@@ -5192,10 +5344,20 @@
   "2080": {
     "function": "16",
     "mode": "read",
-    "name": "Interner Betriebs-/Anforderungsstatus (Displaybus 91099)",
+    "name": "Inverter-/Driverstatus (INV1:2099)",
     "type": "BITFIELD",
     "unit": "raw",
-    "notes": "V3.4-Firmware: internes 16-Bit-Statuswort, an mehreren Stellen bitweise gesetzt/gelöscht. Live identisch zur virtuellen Displaybus-ID 91099. Einzelne Bits sind noch nicht sicher fachlich zugeordnet."
+    "notes": "Älterer Livevergleich: Wert identisch zur virtuellen Displaybus-ID 91099. V3.5 bestätigt die zusätzliche Kopie nach 0x200119A6, aber noch nicht den Dispatcher-Nachweis für genau 91099.",
+    "description": "Bestätigt in V3.5: INV1 / Slave 0x01:2099 → MAIN:2080, unverändertes 16-Bit-Inverter-/Driverstatuswort; nicht die Fehlerwörter MAIN:2081/2082. Bits 7/14 werden im Mainboard geprüft und setzen im jeweiligen Prioritätszweig den internen Wert 0x200152F4 auf 100. Normalfall: gerundeter Istfrequenzanteil relativ zu C03 (MAIN:1220, Low-Byte-Kopie 0x20016FD3). 100 in den Sonderpfaden belegt keinen tatsächlichen 100-%-Verdichterbetrieb und keine Pumpenwirkung; direkter Export/Consumer des RAM-Werts offen. Die 19 Einzelbedeutungen der vorgelagerten Sammelprüfung 0x0808876C bleiben offen. Herstellerbitnamen unbekannt.",
+    "bit_map": {
+      "7": "Driverstatus Bit 7",
+      "14": "Driverstatus Bit 14"
+    },
+    "bit_descriptions": {
+      "7": "INV1:2099 Bit 7: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung.",
+      "14": "INV1:2099 Bit 14: V3.5 prüft dieses Bit aktiv; setzt im entsprechenden Prioritätszweig 0x200152F4 auf 100. Herstellername und Inverter-Setzursache offen. Keine belegte Störung oder Pumpenanforderung."
+    },
+    "bitfield_compact": true
   },
   "2081": {
     "bit_map": {
@@ -5522,7 +5684,9 @@
     "function": "16",
     "mode": "read",
     "name": "Softwarecode",
-    "type": "RAW"
+    "type": "RAW",
+    "app_label_goheating_pro": "MainBoard Version",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2106": {
     "function": "16",
@@ -5550,9 +5714,26 @@
   "2109": {
     "function": "16",
     "mode": "read",
-    "name": "Internes Ereignis-/Statusbitfeld",
+    "name": "Parameterblock-Änderungs-/Synchronisationsmaske",
     "type": "BITFIELD",
-    "description": "Internes Ereignis-/Statusbitfeld; Darstellung als RAW, Hex und Binär. Die Semantik der Einzelbits ist weiterhin offen."
+    "description": "Parameterblock-Änderungs-/Synchronisationsmaske, bestätigt in V3.4 und unabhängig in V3.5. Vergleich zweier Parameterabbilder über 540 Positionen, sechs Blöcke zu je 90 Registern (1001–1540). MAIN:1016 ist von der regulären Änderungsmarkierung ausgenommen; ein separater Hilfsflagpfad kann Bit 0 dennoch setzen. Clear-/ACK- und Persistenzlogik offen: kein Nachweis einer erfolgten Flash-Speicherung. Bits 6–15 unbekannt, nicht als reserviert klassifiziert. Nicht mit INV1:2109 / MAIN:2082 verwechseln.",
+    "bit_map": {
+      "0": "Parameterblock 1 (1001–1090)",
+      "1": "Parameterblock 2 (1091–1180)",
+      "2": "Parameterblock 3 (1181–1270)",
+      "3": "Parameterblock 4 (1271–1360)",
+      "4": "Parameterblock 5 (1361–1450)",
+      "5": "Parameterblock 6 (1451–1540)"
+    },
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Änderungs-/Synchronisationsbedarf für Parameterblock 1 (1001–1090). Keine bestätigte Speicher-/ACK-Aussage.",
+      "1": "Änderungs-/Synchronisationsbedarf für Parameterblock 2 (1091–1180). Keine bestätigte Speicher-/ACK-Aussage.",
+      "2": "Änderungs-/Synchronisationsbedarf für Parameterblock 3 (1181–1270). Keine bestätigte Speicher-/ACK-Aussage.",
+      "3": "Änderungs-/Synchronisationsbedarf für Parameterblock 4 (1271–1360). Keine bestätigte Speicher-/ACK-Aussage.",
+      "4": "Änderungs-/Synchronisationsbedarf für Parameterblock 5 (1361–1450). Keine bestätigte Speicher-/ACK-Aussage.",
+      "5": "Änderungs-/Synchronisationsbedarf für Parameterblock 6 (1451–1540). Keine bestätigte Speicher-/ACK-Aussage."
+    }
   },
   "2110": {
     "function": "16",
@@ -5786,13 +5967,31 @@
     "name": "Schutz-/Frequenzbegrenzungs-Status",
     "type": "BITFIELD",
     "bit_map": {
-      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß",
-      "3": "A27 – Temperaturdifferenz-/Temperaturbegrenzung",
-      "4": "A38 – Niederdruck-Frequenzbegrenzung",
-      "5": "AC-Eingangsstrom-Begrenzung / T35",
-      "6": "T12 Heißgas-/Abgastemperatur-Frequenzbegrenzung"
+      "1": "Wasserspreizung (A24)",
+      "3": "Temperaturdifferenz (A27)",
+      "4": "Niederdruck (A38)",
+      "5": "AC-Eingangsstrom (T35)",
+      "6": "Heißgastemperatur (T12)",
+      "8": "SG-/Zusatzheizung",
+      "10": "3-phasiger Stromlimiter",
+      "0": "Thermischer Regelzustand 1",
+      "2": "Thermischer Regelzustand 2",
+      "9": "Remote-/WarmLink Mode 4"
     },
-    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt."
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt. Weitere bestätigte Bits laut Issue #176: Bit8 SG-/Zusatzheizungs-Frequenzlimit und Bit10 dreiphasiger Strom-Soft-Limiter. V3.5 zusätzlich bestätigt: Bits 0/2 sind T02-/temperaturabhängige Schutz-/Frequenzregelzustände. Ihr interner State 1 begrenzt den neuen Frequenzkandidaten nach oben auf MAIN:2071/T30; Herstellername und sämtliche State-2-Wirkungen bleiben offen. Bit 9 entspricht MAIN:2152 Bit 6 (Mode-4-Klasse 1/2), kein Inverterfehler. Das Bit unterscheidet weder die Klasse noch eine aktuell messbare Kappung. Kein allgemeiner Pumpenoverride aus MAIN:2139; die A38-spezifische Wirkung bleibt getrennt.",
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Temperaturabhängiger Schutz-/Frequenzregelzustand 1, Quelle 0x20016D50+0x0A. State 1: Frequenz-Hold/Obergrenze auf bestehendes T30 (MAIN:2071). OEM-Name und State-2-Wirkungen offen; keine belegte 100-%-Pumpenanforderung.",
+      "1": "A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß.",
+      "2": "Temperaturabhängiger Schutz-/Frequenzregelzustand 2, Quelle 0x20016D50+0x0C. State 1: Frequenz-Hold/Obergrenze auf bestehendes T30 (MAIN:2071). OEM-Name und State-2-Wirkungen offen; keine belegte 100-%-Pumpenanforderung.",
+      "3": "A27 – Temperaturdifferenz-Frequenzlimit.",
+      "4": "A38 – Niederdruck-Frequenzlimit; MAIN:2115 wird auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
+      "5": "AC-Eingangsstromlimit / T35.",
+      "6": "T12 – Heißgastemperaturlimit.",
+      "8": "SG-/Zusatzheizungs-Frequenzlimit.",
+      "9": "Remote-/WarmLink-Mode-4-Frequenzregelzustand aus 0x20016A54+0x0E, Klasse 1 oder 2; identische Bedingung wie MAIN:2152 Bit 6. Status zeigt weder die genaue Klasse noch zwingend eine aktuell wirksame Frequenzbegrenzung. Kein Inverterfehler und kein allgemeiner Pumpenoverride.",
+      "10": "Dreiphasiger Strom-Soft-Limiter."
+    }
   },
   "2140": {
     "function": "03",
@@ -5863,7 +6062,11 @@
     },
     "baseline": "0x002C",
     "baseline_v35": "0x022C",
-    "practical_status_bits": [4, 6, 8]
+    "practical_status_bits": [
+      4,
+      6,
+      8
+    ]
   },
   "2147": {
     "function": "03",
@@ -5890,30 +6093,72 @@
   "2151": {
     "function": "03",
     "mode": "read",
-    "name": "Interner Controller-/Regelmodus",
+    "name": "Übernommener EMS-/Remote-Modus",
     "type": "ENUM",
+    "description": "Übernommener EMS-/Remote-Modus aus Warmlink 0x63:8001. 0 = kein Modus; fachliche Namen der Modi 1..4 sind offen. MAIN1691 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
     "value_map": {
-      "0": "Interner Modus 0 (Klartextbedeutung offen)",
-      "1": "Interner Modus 1 (Klartextbedeutung offen)",
-      "2": "Interner Modus 2 (Klartextbedeutung offen)",
-      "3": "Interner Modus 3 (Klartextbedeutung offen)",
-      "4": "Interner Modus 4 (Klartextbedeutung offen)"
+      "0": "Kein EMS-/Remote-Modus",
+      "1": "Modus 1 (Bedeutung offen)",
+      "2": "Modus 2 (Bedeutung offen)",
+      "3": "Modus 3 (Bedeutung offen)",
+      "4": "Modus 4 (Bedeutung offen)"
     },
-    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt."
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8001
+    },
+    "app_label_goheating_pro": "Current EMS Strategy Command",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2152": {
     "function": "03",
     "mode": "read",
-    "name": "Zone 1 Runtime-/Regelwert (gefiltert; Bedeutung offen)",
-    "type": "RAW",
-    "note": "V3.4-Analyse: Feld der Zone-1-Runtimestruktur; ein entsprechendes internes Feld existiert auch für Zone 2. Der Wert wird in Regelpfaden gefiltert/geglättet und ist daher kein einfaches 1/2-Enum. Live 2026-09-12 RAW 1/2 beobachtet; physikalische Bedeutung und Skalierung noch offen."
+    "name": "EMS-/Remote-Statusbitfeld",
+    "type": "BITFIELD",
+    "description": "EMS Strategy Command State (u16); interne State-Machine, kein direktes 800x-Datenregister und kein Enum. Bits 0/1/2: thermische Abschalt-/Überschussseite, Hystereseband, Bedarfsseite. Bit 3 beeinflusst vier thermische Sollwert-/Hysteresepfade. Bit 4 aktiviert den Frequenzcap-Pfad über MAIN:1422, beweist aber keine aktuell greifende Kappung. Bit 5 verhindert unter den nachgewiesenen Bedingungen das Setzen von 0x20016E2C+4 Bit 1; physische Wirkung offen. Bit 6 entspricht MAIN:2139 Bit 9 (Mode-4-Klasse 1/2). Bit 7: qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten, gemeinsamer Producer mit MAIN:2085 Bit 0, kein gewöhnlicher Fehler. Normaler Abbruch löscht Aktivflag, Zähler und Bit. Sonderfall Kommunikations-/Sperrflag 0x200144D1: zunächst nur Zähler-Reset; bereits gesetztes Bit 7 kann während der Sperre stehen bleiben. Nach Wegfall der Sperre und regulärer Auswertung wird es bis zur erneuten Qualifizierung gelöscht. OEM-Bezeichnungen, finale Aktoren und weitere Verbraucher von Bits 3/5 bleiben offen. Status angefordert/aktiv ist nicht gleich messbarer Regelauswirkung.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "bit_map": {
+      "0": "Thermische Abschalt-/Überschussseite",
+      "1": "Thermisches Hystereseband",
+      "2": "Thermische Bedarfsseite",
+      "3": "Remote-Thermikzustand",
+      "4": "Remote-Frequenzobergrenze (1422)",
+      "5": "Remote-Regelzustand Bit 5",
+      "6": "Remote-/WarmLink Mode 4",
+      "7": "Runtime qualifiziert (30 min)"
+    },
+    "storage_type": "uint16",
+    "app_label_goheating_pro": "EMS Strategy Command State",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)",
+    "bitfield_compact": true,
+    "bit_descriptions": {
+      "0": "Thermische Abschalt-/Überschussseite des Vergleichszustands.",
+      "1": "Thermisches Hystereseband des Vergleichszustands.",
+      "2": "Thermische Bedarfsseite des Vergleichszustands.",
+      "3": "Remote-Regelzustand aus 0x20016A54+0x08. Bestätigte Eingriffe in vier thermische Sollwert-/Hysteresepfade (0x0805CD00, 0x0805CEA2, 0x0805D144, 0x0805D2E8). OEM-Name und finale Aktoren offen.",
+      "4": "Remote-Frequenzobergrenze über MAIN:1422: Prozentwert × Referenzfrequenz / 100, durch Mindestfrequenz begrenzt. Gesetztes Bit aktiviert den Pfad; aktuelle Sollfrequenz muss nicht bereits am Cap liegen.",
+      "5": "Remote-Regelzustand aus 0x20016A54+0x0A. Bit 5=1 verhindert unter den nachgewiesenen Zusatzbedingungen das Setzen des internen Flags 0x20016E2C+4 Bit 1. Physische Funktion und OEM-Name offen.",
+      "6": "Mode-4-Frequenzregelzustand, gleiche Bedingung wie MAIN:2139 Bit 9 (Klasse 1 oder 2). Kein Nachweis der genauen Klasse oder einer aktuell wirksamen Kappung.",
+      "7": "Qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten; gemeinsamer Producer mit MAIN:2085 Bit 0. Normaler Abbruch löscht Flag, Zähler und Bit. Bei Kommunikationssperre 0x200144D1 zunächst nur Zähler-Reset; bereits gesetztes Bit kann vorübergehend stehen bleiben. Keine einfache AI-Saving- oder Fehleranzeige."
+    }
   },
   "2155": {
     "function": "03",
     "mode": "read",
-    "name": "Interner Timer/Zähler",
+    "name": "Batterieladezustand / Battery SoC",
     "type": "RAW",
-    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert."
+    "description": "Batterieladezustand / Battery_SoC aus Warmlink 0x63:8005. RAW; Einheit/Skalierung offen, keine bestätigte Prozentdarstellung. Die frühere Timer-/Zähler-Erklärung ist durch OEM-Strings und Mainboard-XREFs überholt. MAIN1695 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8005
+    },
+    "app_label_goheating_pro": "Battery_SoC",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
   },
   "2160": {
     "function": "03",
@@ -6012,6 +6257,138 @@
       "4": "Klassisch (SG01=3): Mode 4 / High PV | bei SG01=7 nicht verwenden"
     },
     "description": "Direkter virtueller SG-Ready-/PV-Eingang. Klassisch bei SG01/1334=3: Werte 1..4. Ab V3.4 bei SG01/1334=7: Werte 1..3 = wenig PV/Leistungsbegrenzung, Neutralbetrieb, High PV/Temperatur-Offsets; Wert 4 dort nicht verwenden."
+  },
+  "8802": {
+    "block": "ENG",
+    "code": "CTRL8802",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Additiver Warmwasser-Sollwertoffset",
+    "type": "TEMP1",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x20016982",
+    "description": "Additiver Warmwasser-Sollwertoffset, signed int16, RAW / 10 °C. Regulär nur bei MAIN:1334=0 und MAIN:1540=0 wirksam. Bei 1334=1,2,3,5,6,7 gilt der SG-Korrektursatz, bei 1334=4 der AI-Saving-/Remote-Korrektursatz; 1540 wird erst im übrigen Zweig geprüft. Bei 1334=0 und 1540!=0 ersetzt Warmlink 8026 diesen Korrekturwert.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046",
+    "unit": "°C",
+    "raw_format": "int16 / 10 °C"
+  },
+  "8803": {
+    "block": "ENG",
+    "code": "CTRL8803",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Additiver Heiz-Wassersollwertoffset",
+    "type": "TEMP1",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x20016984",
+    "description": "Additiver Heiz-Wassersollwertoffset, signed int16, RAW / 10 °C. Regulär nur bei MAIN:1334=0 und MAIN:1540=0 wirksam. Bei 1334=1,2,3,5,6,7 gilt der SG-Korrektursatz, bei 1334=4 der AI-Saving-/Remote-Korrektursatz; 1540 wird erst im übrigen Zweig geprüft. Bei 1334=7 unwirksam, auch bei 8801=2 (Neutral); bei 1334=4 ebenfalls unwirksam. Bei 1334=0 und 1540!=0 ersetzt Warmlink 8025 diesen Korrekturwert. Heizkurve/Außentemperaturführung verhindert seine Verwendung grundsätzlich nicht; nach der Korrektur gelten die normalen R10-/R11-Grenzen. Kein universeller Heizsollwert-Eingang.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046",
+    "unit": "°C",
+    "raw_format": "int16 / 10 °C"
+  },
+  "8804": {
+    "block": "ENG",
+    "code": "CTRL8804",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Subtraktive Kühl-Sollwertkorrektur",
+    "type": "TEMP1",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x20016986",
+    "description": "Subtraktive Kühl-Sollwertkorrektur, signed int16, RAW / 10 °C. Regulär nur bei MAIN:1334=0 und MAIN:1540=0 wirksam. Bei 1334=1,2,3,5,6,7 gilt der SG-Korrektursatz, bei 1334=4 der AI-Saving-/Remote-Korrektursatz; 1540 wird erst im übrigen Zweig geprüft. Bei 1334=0 und 1540!=0 ersetzt Warmlink 8024 diesen Korrekturwert.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046",
+    "unit": "°C",
+    "raw_format": "int16 / 10 °C"
+  },
+  "8805": {
+    "block": "ENG",
+    "code": "CTRL8805",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Korrekturwert für Zonenregelung A",
+    "type": "INT16",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x20016988",
+    "description": "Signed int16-Zonenkorrektur A; Herstellername und physikalische Einheit offen, keine bestätigte Skalierung. Regulär nur bei MAIN:1334=0 und MAIN:1540=0 wirksam. Bei 1334=1,2,3,5,6,7 gilt der SG-Korrektursatz, bei 1334=4 der AI-Saving-/Remote-Korrektursatz; 1540 wird erst im übrigen Zweig geprüft. Datenpfad: 0x20016CE0 +0x0A → Zone A 0x2001606C +0x9E; je nach Regelrichtung/Betriebsart addiert oder subtrahiert. Bei 1334=0 und 1540!=0 stattdessen Warmlink 8027.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
+  "8806": {
+    "block": "ENG",
+    "code": "CTRL8806",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Korrekturwert für Zonenregelung B",
+    "type": "INT16",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x2001698A",
+    "description": "Signed int16-Zonenkorrektur B; Herstellername und physikalische Einheit offen, keine bestätigte Skalierung. Regulär nur bei MAIN:1334=0 und MAIN:1540=0 wirksam. Bei 1334=1,2,3,5,6,7 gilt der SG-Korrektursatz, bei 1334=4 der AI-Saving-/Remote-Korrektursatz; 1540 wird erst im übrigen Zweig geprüft. Datenpfad: 0x20016CE0 +0x0C → Zone B 0x20016110 +0x9E; je nach Regelrichtung/Betriebsart addiert oder subtrahiert. Bei 1334=0 und 1540!=0 stattdessen Warmlink 8028.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
+  "8807": {
+    "block": "ENG",
+    "code": "CTRL8807",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Engineering-Korrekturwert 8807 (Reserve V3.5)",
+    "type": "INT16",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x2001698C",
+    "description": "Zusätzlicher additiver signed int16-Rohwert → Arbeitsstruktur 0x20016CE0 +0x06. Reserve in V3.5; fachliche Bedeutung, physikalische Einheit und Skalierung offen. Im nicht-SG-/nicht-AI-Zweig (regulär 1334=0) sowohl bei 1540=0 als auch 1540!=0 hinzugefügt. Bei 1334=7 im untersuchten Auswahlpfad übersprungen. Nur technisches Engineering-Register.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
+  "8808": {
+    "block": "ENG",
+    "code": "CTRL8808",
+    "function": "03/06/16",
+    "mode": "r/w",
+    "name": "Engineering-Korrekturwert 8808 (Reserve V3.5)",
+    "type": "INT16",
+    "firmware": "V3.5+",
+    "ui_visibility": "engineering",
+    "interface": "direct_user_modbus",
+    "signed": true,
+    "storage_type": "int16",
+    "ram_address": "0x2001698E",
+    "description": "Zusätzlicher additiver signed int16-Rohwert → Arbeitsstruktur 0x20016CE0 +0x08. Reserve in V3.5; fachliche Bedeutung, physikalische Einheit und Skalierung offen. Im nicht-SG-/nicht-AI-Zweig (regulär 1334=0) sowohl bei 1540=0 als auch 1540!=0 hinzugefügt. Bei 1334=7 im untersuchten Auswahlpfad übersprungen. Nur technisches Engineering-Register.",
+    "notes": "Runtime-/RAM-Steuerregister im direkten User-/Mainboard-Modbus (ENG:CTRL:8801–8820). FC03 lesen, FC06 einzeln schreiben, FC16 unterstützt. Im untersuchten direkten FC06-/FC16-Schreibpfad kein EEPROM-/Flash-Schreibaufruf nachgewiesen. Flüchtiger Wert, keine garantierte Wiederherstellung nach Neustart; kein normaler persistenter Benutzerparameter. Bei Bedarf nach Neustart erneut initialisieren. Für Einzeländerungen FC06 bevorzugen; keine unvalidierten größeren Blockschreibvorgänge.",
+    "persistence": "volatile RAM; no EEPROM/Flash call proven in the examined direct FC06/FC16 write path",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "50043": {
     "function": "10",
@@ -6298,10 +6675,10 @@
   "1430": {
     "function": "03/16",
     "mode": "r/w",
-    "name": "Warmlink-8055-Heizboost Freigabe (Engineering)",
+    "name": "Freigabe Warmlink-8055-Heizboost",
     "type": "RAW",
     "ui_visibility": "engineering",
-    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen.",
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen. Livebeobachtung: MAIN:1430=0, unverändert; der zusätzliche Heizboost war damit in dieser Anlage gesperrt. Kein gewöhnlicher immer aktiver Boost.",
     "source": "Reverse Engineering V3.5",
     "effective_type": "uint8",
     "default": "0",
@@ -6351,16 +6728,137 @@
     "persistence": "persistent; 32-byte record 0x218; ueberlebt normalen Mainboard-Power-Cycle",
     "factory_default": "0"
   },
-  "1557": {
+  "2153": {
     "function": "03",
     "mode": "read",
-    "name": "Effektiver Heiz-Wassersollwert",
-    "type": "TEMP1",
-    "unit": "°C",
-    "firmware": "V3.5+",
-    "description": "Effektiver intern berechneter Heiz-Wassersollwert (RAW / 10 °C) nach interner Sollwertlogik einschliesslich Betriebszustaenden, Wetter-/Timerpfaden und V3.5-Korrekturen; danach greifen die normalen Heiz-Min-/Max-Grenzen.",
-    "source": "Reverse Engineering V3.5",
-    "signed": true,
-    "raw_format": "int16 / 10 °C"
+    "name": "Strompreis / Electricity Price",
+    "type": "RAW",
+    "description": "Strompreis-Rohwert aus Warmlink 0x63:8002. Einheit und Skalierung unbekannt. MAIN1693 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8002
+    },
+    "app_label_goheating_pro": "Electricity_Price",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
+  },
+  "2154": {
+    "function": "03",
+    "mode": "read",
+    "name": "Netzleistung / OnGrid Power",
+    "type": "INT16",
+    "description": "Netzleistungs-Rohwert (signed int16) aus Warmlink 0x63:8004. Einheit und Polarität nicht live bestätigt. MAIN1427 ist ein separater lokaler Schwellwert (Default 200 RAW), nicht der Spiegel von 8004. MAIN1694 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8004
+    },
+    "app_label_goheating_pro": "OnGrid Power",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
+  },
+  "2156": {
+    "function": "03",
+    "mode": "read",
+    "name": "Batterieleistung / Battery Power",
+    "type": "INT16",
+    "description": "Batterieleistungs-Rohwert (signed int16) aus Warmlink 0x63:8003. Einheit und Polarität offen. MAIN1696 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8003
+    },
+    "app_label_goheating_pro": "Battery_Power",
+    "app_label_source_goheating_pro": "GoHeating Pro Android 1.0.0 test curve; OEM string only, not a live measurement (#180)"
+  },
+  "2157": {
+    "function": "03",
+    "mode": "read",
+    "name": "Warmlink-EMS-Rohwert 2157",
+    "type": "RAW",
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8007. Semantik offen, kein Herstellername belegt. MAIN1697 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8007
+    }
+  },
+  "2158": {
+    "function": "03",
+    "mode": "read",
+    "name": "Warmlink-EMS-Rohwert 2158",
+    "type": "RAW",
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8008. Semantik offen, kein Herstellername belegt. MAIN1698 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "write_allowed": false,
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/180",
+    "service_source": {
+      "slave_addr": "0x63",
+      "register": 8008
+    }
+  },
+  "1381": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 1",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1382": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 2",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1383": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 3",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1384": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 4",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1385": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 5",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1386": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "AT-Kurve Zone 2 – Stützpunkt 6",
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "group": "AT-Kurve Zone 2"
+  },
+  "1424": {
+    "type": "UINT16",
+    "mode": "read",
+    "function": "03",
+    "write_allowed": false,
+    "name": "Remote-Preset Heiz-Wassersollwert-Anhebung",
+    "description": "Bestätigte Verwendung in der Remote-Modus-3/4-Presetfamilie. RAW 20 live beobachtet. Konkrete physikalische Skalierung bleibt offen; unsigned Rohwert ohne Einheit."
   }
 }

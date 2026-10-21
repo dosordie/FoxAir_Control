@@ -16,6 +16,7 @@ class DeviceInfoDialog(QDialog):
     def __init__(self, main_window):
         super().__init__(main_window)
         self.main_window = main_window
+        self.identity_dialog = None
         self.setWindowTitle("Geräte-Info")
         self.resize(720, 680)
         root = QVBoxLayout(self)
@@ -55,6 +56,9 @@ class DeviceInfoDialog(QDialog):
         close_btn = QPushButton("Schließen")
         read_actions.addWidget(self.read_btn)
         read_actions.addWidget(self.direct_read_btn)
+        self.identity_btn = QPushButton("Mainboard-WiFi-ID ändern …")
+        self.identity_btn.clicked.connect(self.open_identity_dialog)
+        read_actions.addWidget(self.identity_btn)
         row.addLayout(read_actions)
         row.addWidget(copy_btn)
         row.addStretch(1)
@@ -86,7 +90,19 @@ class DeviceInfoDialog(QDialog):
         box.setLayout(form)
         root.addWidget(box)
 
+    def open_identity_dialog(self):
+        if self.main_window.settings.get("show_engineering_parameters") is not True:
+            return
+        from dialogs.device_identity_dialog import DeviceIdentityDialog
+        if self.identity_dialog is None:
+            self.identity_dialog = DeviceIdentityDialog(self.main_window)
+            self.identity_dialog.finished.connect(lambda _=None: setattr(self, "identity_dialog", None))
+        self.identity_dialog.show()
+        self.identity_dialog.raise_()
+        self.identity_dialog.activateWindow()
+
     def refresh(self):
+        self.identity_btn.setVisible(self.main_window.settings.get("show_engineering_parameters") is True)
         tracker = self.main_window.device_info_tracker
         cached = {int(reg): int(item.raw_value) for reg, item in self.main_window.latest_regs.items()}
         tracker.hydrate_cache(cached)

@@ -257,3 +257,22 @@ Die detaillierte Firmwareanalyse steht im Reverse-Engineering-Repository unter `
 AI Saving (`SG01`/MAIN:1334 = 4) aktiviert den bereits in V3.4 vorhandenen Remote-Komplex um 8001/8004/8006, 0x20016A54 und MAIN1691/1692. V3.5 ergänzt separat MAIN:1540 für 8021–8028. In der Mainboard-Firmware ist kein Setter `SG01=4 -> MAIN1540=1` bestätigt; beide Gates sind daher nicht gleichzusetzen.
 
 Zusätzlich sitzt **SG01 / MAIN:1334** in V3.5 vor einem Teil der neuen MAIN-1540-Korrekturen. Beim Zweig **1334 = 7** verwendet der thermische Korrekturblock den SG-/Legacy-Satz; die MAIN-1540-gesteuerten Warmlink-Korrekturen **8024–8028** werden in diesem Zweig nicht erreicht. Die separaten Frequenz-Caps **8021–8023** besitzen eigene Gates und sind davon getrennt zu betrachten.
+
+## Cloud-Steuerung im Editor (17.10.2026)
+
+SG01–SG08 sind nach den erfolgreichen Betreiber-Schreibtests regulär über Cloud
+verfügbar. Der Editor zeigt SG01 bis SG08 in Reihenfolge; SG08 ist Aus/Ein (0/1).
+Beim Öffnen lädt er gezielt SG01–SG08 und SG Status asynchron über den bestehenden
+Snapshot-Worker. Cachewerte erscheinen sofort; manuelle Änderungen bleiben erhalten.
+
+Geänderte SG02–SG08 gehen als ein `param[]`-Batch an
+`app/device/control?lang=en` mit `appId: "16"`; ein gemeinsamer frischer Readback
+prüft jeden Wert. Bei Aktivierung/Moduswechsel folgt SG01 erst nach vollständiger
+Parameterbestätigung. Deaktivierung SG01=0 wird zuerst einzeln bestätigt.
+Einzeländerungen an SG01 bleiben Einzelwrites über dieselbe Batch-API.
+Cloud-Schreiben beginnt ohne Zusatznachfrage. Bei Teilerfolg bleiben unbestätigte
+Felder offen; höchstens drei Leseversuche, kein Write-Replay und kein Rollback.
+
+Die lokalen Bestätigungen und 500-ms-Schreibabstände bleiben erhalten. SG Status
+2133 bleibt read-only, 8801 ausschließlich direkter Mainboard-/Standard-Modbus.
+Eine erfolgreiche Cloudübernahme garantiert keine atomare Servertransaktion.

@@ -56,6 +56,7 @@ class OfflineRegisterBrowserDialog(QDialog):
         self.source_combo = QComboBox()
         self.source_combo.addItem("Warmlink/WP", "warmlink")
         self.source_combo.addItem("Display/DWIN", "display")
+        self.source_combo.addItem("Unit-1-Telemetrie (virtuell)", "unit1")
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Register / Hex / Code / Name / Beschreibung suchen ...")
         self.search_edit.setText(str(self.main_window.settings.get("offline_register_browser_search", "")))
@@ -131,30 +132,40 @@ class OfflineRegisterBrowserDialog(QDialog):
     def _collect_items(self) -> list[dict[str, Any]]:
         out = []
         source = self._current_source()
-        if source == "display":
+        if source in {"display", "unit1"}:
             # Display-/DWIN-Mapping ist absichtlich getrennt. Es nutzt aktuell nur
             # Namen/Typen aus data/foxair_phnix_display_registers.json und keine
             # editierbare Knowledge-Datenbank.
             for reg, info in sorted(getattr(self.main_window.display_regmap, "items", {}).items()):
+                metadata = getattr(info, "metadata", None) or {}
+                virtual = bool(metadata.get("virtual"))
+                if virtual != (source == "unit1"):
+                    continue
+                source_info = (
+                    "Unit-1-Telemetrie: virtuelle Diagnose-ID, getrennt von MAIN und DWIN"
+                    if virtual else "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)"
+                )
                 name = str(getattr(info, "name", "") or "")
                 dtype = str(getattr(info, "dtype", "RAW") or "RAW")
                 display_search_data = {
                     "name": name,
-                    "block": "DWIN",
-                    "code": f"0x{int(reg):04X}",
-                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
+                    "block": "INV1" if virtual else "DWIN",
+                    "code": metadata.get("code", f"0x{int(reg):04X}"),
+                    "info": source_info,
                     "value_map": getattr(info, "value_map", None),
                     "bit_map": getattr(info, "bit_map", None),
+                    "description": metadata.get("description", ""),
+                    "notes": metadata.get("notes", ""),
                 }
                 out.append({
                     "reg": int(reg),
-                    "block": "DWIN",
-                    "code": f"0x{int(reg):04X}",
+                    "block": "INV1" if virtual else "DWIN",
+                    "code": metadata.get("code", f"0x{int(reg):04X}"),
                     "name": name or f"Display/DWIN {int(reg)}",
                     "app_label": "",
                     "dtype": dtype,
-                    "info": "Display-/DWIN-Diagnosemapping (getrennt von Warmlink/WP)",
-                    "detail": "Display-/DWIN-Diagnosemapping. Diese Adressen dürfen die normale Warmlink-Registerliste nicht überschreiben.",
+                    "info": source_info,
+                    "detail": "\n".join(str(metadata.get(k) or "") for k in ("description", "notes", "source")) or "Display-/DWIN-Diagnosemapping. Keine MAIN-Zuordnung ohne Beleg.",
                     "has_extra": True,
                     "search_text": _mapping_search_text(display_search_data),
                 })
@@ -255,6 +266,10 @@ class OfflineRegisterBrowserDialog(QDialog):
 
     def _show_selected_description(self):
         reg = self._selected_reg()
+        virtual = self._current_source() == "unit1"
+        self.read_btn.setEnabled(reg is not None and not virtual)
+        self.write_btn.setEnabled(reg is not None and not virtual)
+        self.edit_info_btn.setEnabled(reg is not None and self._current_source() == "warmlink")
         if reg is None:
             self.description_box.setText("Beschreibung: --")
             return
@@ -276,12 +291,16 @@ class OfflineRegisterBrowserDialog(QDialog):
             self._show_selected_description()
 
     def write_selected(self):
+        if self._current_source() == "unit1":
+            return
         reg = self._selected_reg()
         if reg is not None:
             bus = 0x03 if self._current_source() == "display" else DEFAULT_BUS_ADDR
             self.main_window.open_register_quick_write(reg, bus)
 
     def read_selected(self):
+        if self._current_source() == "unit1":
+            return
         reg = self._selected_reg()
         if reg is not None:
             bus = 0x03 if self._current_source() == "display" else DEFAULT_BUS_ADDR

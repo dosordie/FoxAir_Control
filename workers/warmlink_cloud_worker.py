@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Qt-Worker fuer WarmLink/Linked-Go Cloud Polling und Schreibtest."""
+"""Qt-Worker fuer WarmLink/Linked-Go Cloud Polling und Steuerung."""
 
 from __future__ import annotations
 
@@ -13,16 +13,18 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from cloud.warmlink_api import (
     ENDPOINT_AUTO_WRITE,
-    ENDPOINT_WRITE_MODEL_VALUE,
     WarmLinkCloudApi,
     WarmLinkCloudError,
     WarmLinkAuthError,
+    WarmLinkSimStatusError,
     translate_cloud_error_message,
     normalize_data_values,
     normalize_device_list,
     normalize_house_devices,
     normalize_house_list,
 )
+from cloud.cloud_write_helpers import cloud_readback_matches, validate_cloud_commands, cloud_command_batches
+from cloud.io_coordinator import serialized_cloud_io
 from cloud.known_devices import merge_discovered_and_known_devices, merge_device_sources, select_available_device_code
 from cloud.known_devices import validation_has_value
 from cloud.polling import CloudSession, CloudTimingState
@@ -48,7 +50,8 @@ def supported_codes_for_next_poll(
     requested_codes: list[str], rows: list[dict[str, Any]],
 ) -> list[str]:
     """Reduce a discovery request to codes actually returned by this device."""
-    supported = {str(row.get("code") or "") for row in rows if row.get("supported")}
+    supported = {str(row.get("code") or "") for row in rows
+                 if row.get("supported") or row.get("retry_when_empty")}
     return [code for code in requested_codes if code in supported]
 
 
@@ -156,16 +159,37 @@ class WarmLinkCloudDebugWorker(QObject):
             )
             api.preferred_login_method = self.preferred_login_method
             api.use_login_fallbacks = self.login_fallbacks
-            response = api.debug_request(
-                self.method, self.endpoint, self.body, relogin=self.relogin_on_401,
-            )
+            response = self._request_result(api)
             if api.token:
                 self.token_updated.emit(api.token)
             self.result.emit(response)
         except Exception as exc:
-            self.error.emit(translate_cloud_error_message(str(exc)))
+            self.error.emit(self._error_text(exc))
         finally:
             self.finished.emit()
+
+    def _request_result(self, api):
+        return api.debug_request(self.method, self.endpoint, self.body,
+                                 relogin=self.relogin_on_401)
+
+    def _error_text(self, exc):
+        return translate_cloud_error_message(str(exc))
+
+
+class WarmLinkCloudSimWorker(WarmLinkCloudDebugWorker):
+    """One manual read using existing credentials, API and worker lifecycle."""
+
+    def __init__(self, username, password, icc_id, request_id=0, **kwargs):
+        super().__init__(username, password, "POST", "dtuIccId/getInfoByIccId",
+                         body={"iccId": icc_id}, **kwargs)
+        self.request_id = request_id
+
+    def _request_result(self, api):
+        return {"request_id": self.request_id, "status": api.get_sim_status(self.body["iccId"])}
+
+    def _error_text(self, exc):
+        return str(exc) if isinstance(exc, WarmLinkSimStatusError) else (
+            "SIM-/LTE-Status konnte nicht gelesen werden.")
 
 
 class WarmLinkKnownDeviceValidationWorker(QObject):
@@ -587,7 +611,8 @@ class WarmLinkCloudWorker(QObject):
                 self.reload_static = False
                 self._reload_event.clear()
                 requested = self.codes if initial else (
-                    self.session.static_codes if static_reload else self.session.live_codes)
+                    self.session.static_codes if static_reload else
+                    list(dict.fromkeys([*self.session.live_codes, *self.session.retry_codes])))
                 phase = "READING_INITIAL" if initial else ("READING_STATIC" if static_reload else "READING_LIVE")
                 try:
                     if requested:
@@ -607,7 +632,7 @@ class WarmLinkCloudWorker(QObject):
                         self.session.merge(rows)
                         if initial:
                             self.session.classify(self.codes, rows)
-                            if not self.session.supported_codes:
+                            if not self.session.supported_codes and not self.session.retry_codes:
                                 self.session.scanned = False
                                 self._publish_session()
                                 self.connection_state.emit("ERROR")
@@ -719,7 +744,7 @@ class WarmLinkCloudCommandWorker(QObject):
         timeout_s: float = 15.0,
         initial_token: str | None = None,
         load_credentials: bool = False, use_saved_token: bool = True,
-        write_guard=None, commands=None,
+        write_guard=None, commands=None, mask_baselines=None,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -727,7 +752,7 @@ class WarmLinkCloudCommandWorker(QObject):
         self.device_code = str(device_code or "").strip()
         self.code = str(code or "").strip()
         self.value = str(value)
-        self.endpoint = str(endpoint or ENDPOINT_WRITE_MODEL_VALUE).strip()
+        self.endpoint = str(endpoint or ENDPOINT_AUTO_WRITE).strip()
         self.dry_run = bool(dry_run)
         self.timeout_s = float(timeout_s)
         self.load_credentials = load_credentials
@@ -735,11 +760,21 @@ class WarmLinkCloudCommandWorker(QObject):
         self.initial_token = str(initial_token or "").strip() or None
         self.write_guard = write_guard
         self.commands = tuple(commands) if commands is not None else ((self.code, self.value),)
+        self.mask_baselines = dict(mask_baselines or {})
 
     @Slot()
+    @serialized_cloud_io
     def run(self) -> None:
+        confirmed = []
         try:
             self._check_write_guard()
+            commands = validate_cloud_commands(self.commands)
+            batches = cloud_command_batches(commands, mask_baselines=self.mask_baselines)
+            if not self.device_code:
+                raise WarmLinkCloudError("Keine explizite Cloud-Geräteauswahl; Schreiben abgebrochen.")
+            if self.dry_run:
+                self.result.emit({"dryRun": True, "commands": commands, "sent": False})
+                return
             if self.load_credentials:
                 self.password, self.initial_token = load_cloud_credentials(
                     self.username, self.password, self.initial_token,
@@ -751,56 +786,77 @@ class WarmLinkCloudCommandWorker(QObject):
                 self.log.emit("WarmLink Cloud schreiben: Login ...")
                 api.login()
 
-            if not self.device_code:
-                devices_response = api.get_devices()
-                devs = normalize_device_list(devices_response)
-                if not devs:
-                    raise WarmLinkCloudError("deviceCode fehlt und keine Cloud-Geräte gefunden")
-                self.device_code = str(devs[0].get("deviceCode") or "").strip()
-                if not self.device_code:
-                    raise WarmLinkCloudError("Erstes Cloud-Gerät hat keinen deviceCode")
-                nick = str(devs[0].get("deviceNickName") or devs[0].get("deviceName") or "").strip()
-                self.log.emit(f"WarmLink Cloud schreiben: kein gespeichertes Gerät, nutze erstes Gerät {nick or self.device_code}")
-
-            for code, value in self.commands:
-                self.log.emit(
-                    f"WarmLink Cloud schreiben: {'DRY-RUN ' if self.dry_run else ''}{code}={value} via {self.endpoint}"
-                )
+            for batch in batches:
                 self._check_write_guard()
-                data = api.write_test_code(
-                    device_code=self.device_code,
-                    code=code,
-                    value=value,
-                    endpoint=self.endpoint,
-                    dry_run=self.dry_run,
-                )
-
-                data = dict(data)
-                data["command_code"] = code
-                if (not self.dry_run) and api.success(data):
-                    # Kurzer Readback: App/Cloud braucht oft einen Moment, bis der neue
-                    # Wert wieder in getDataByCode auftaucht. Fehler hier macht den
-                    # eigentlichen Schreib-Erfolg nicht kaputt.
-                    time.sleep(2.0)
+                codes = [code for code, _value in batch]
+                data = {"api_success": False, "sent": None, "send_attempted": True, "readback_verified": False}
+                try:
+                    # No token replay, endpoint fallbacks, automatic rollback or
+                    # single-write fallback after an ambiguous response.
+                    response = api.write_control_batch(self.device_code, batch)
+                    data["sent"] = True
                     self._check_write_guard()
-                    try:
-                        rb_response = api.get_data_by_code(self.device_code, [code])
-                        rb_rows = normalize_data_values(rb_response, [code])
-                        rb = rb_rows[0] if rb_rows else {"code": code, "supported": False}
-                        data["readback"] = rb
-                        if rb.get("supported"):
-                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code}={rb.get('value')}")
-                        else:
-                            self.log.emit(f"WarmLink Cloud schreiben: Readback {code} leer/unsupported")
-                    except Exception as rb_exc:
-                        data["readback_error"] = str(rb_exc)
-                        self.log.emit(f"WarmLink Cloud schreiben: Readback übersprungen: {rb_exc}")
-
-                self.result.emit(data)
-                if not api.success(data):
-                    break  # A failed command must not send the rest of a sequence.
+                    data.update(response)
+                    data["api_success"] = (api.success(response) and str(response.get("error_code", "0")) == "0"
+                                           and int(response.get("http_status", 200)) < 400)
+                except Exception as exc:
+                    self._check_write_guard()
+                    data["write_error"] = str(exc)
+                self._check_write_guard()
+                rows_by_code = {}
+                verified_codes = set()
+                if not self.dry_run:
+                    for attempt, delay in enumerate((2.0, 1.0, 2.0), 1):
+                        time.sleep(delay)  # Worker thread only.
+                        self._check_write_guard()
+                        try:
+                            response = api.get_data_by_code(self.device_code, codes)
+                            self._check_write_guard()
+                            if (not api.success(response) or str(response.get("error_code", "0")) != "0"
+                                    or int(response.get("http_status", 200)) >= 400):
+                                raise WarmLinkCloudError("Readback-API hat die Anfrage nicht bestätigt.")
+                            rows_by_code = {row["code"]: row for row in normalize_data_values(response, codes)
+                                            if row.get("code") in codes}
+                            # Verify one fresh snapshot. Never combine old cached
+                            # confirmations with a newer contradictory response.
+                            verified_codes = {code for code, value in batch
+                                if cloud_readback_matches(code, value, rows_by_code.get(code, {}))}
+                            data["readback_attempts"] = attempt
+                        except Exception as exc:
+                            self._check_write_guard()
+                            data["readback_error"] = str(exc)
+                        if len(verified_codes) == len(batch):
+                            break
+                batch_confirmed = [code for code in codes if code in verified_codes]
+                missing = [code for code in codes if not rows_by_code.get(code, {}).get("supported")
+                           or rows_by_code.get(code, {}).get("value") in (None, "")]
+                stale = [code for code in codes if code not in missing and any(
+                    rows_by_code.get(code, {}).get(flag) for flag in ("cached", "stale", "currentEmpty"))]
+                mismatched = [code for code in codes if code not in verified_codes and code not in missing + stale]
+                confirmed.extend(batch_confirmed)
+                complete = len(batch_confirmed) == len(batch)
+                data.update(confirmed_codes=list(confirmed), missing_codes=missing,
+                            mismatched_codes=mismatched, stale_codes=stale,
+                            command_count=len(commands), batch_codes=codes,
+                            sequence_complete=complete and len(confirmed) == len(commands))
+                if not complete:
+                    data["validation_error"] = (
+                        f"Cloud: API bestätigt={data['api_success']}; Readback bestätigt: {', '.join(confirmed) or 'keine'}. "
+                        f"Abweichend: {', '.join(mismatched) or 'keine'}; fehlt: {', '.join(missing) or 'keine'}; "
+                        f"veraltet: {', '.join(stale) or 'keine'}. Folgeschritte abgebrochen; kein Rollback."
+                        + (f" Readback-Fehler: {data['readback_error']}" if data.get("readback_error") else ""))
+                self.log.emit(f"Cloud Batch: gesendet={data['sent']}, API bestätigt={data['api_success']}, "
+                              f"Readback bestätigt={batch_confirmed}, abweichend={mismatched}, fehlt={missing}, veraltet={stale}")
+                for code, value in batch:
+                    self.log.emit(f"Cloud Readback {code}: Soll={value}, Ist={rows_by_code.get(code, {}).get('value', 'fehlt')}, "
+                                  f"bestätigt={code in verified_codes}")
+                    self.result.emit({**data, "command_code": code, "requested_value": value,
+                        "readback": rows_by_code.get(code, {"code": code, "supported": False}),
+                        "readback_verified": code in verified_codes})
+                if not complete:
+                    break
         except Exception as exc:
-            self.error.emit(translate_cloud_error_message(str(exc)))
+            self.error.emit(translate_cloud_error_message(str(exc)) + f" Bestätigt: {', '.join(confirmed) or 'keine'}; kein Rollback.")
         finally:
             self.finished.emit()
 

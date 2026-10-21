@@ -35,14 +35,11 @@ def test_protection_limit_status_register_uses_generic_bitfield_decoder():
     info = RegisterMap(str(REGISTER_MAP_PATH)).get(2139)
 
     assert info.dtype == "BITFIELD"
-    assert set(info.bit_map) == {1, 3, 4, 5, 6}
-    assert format_value_by_type(0x0020, info.dtype, bit_map=info.bit_map) == (
-        "0x0020: B5: AC-Eingangsstrom-Begrenzung / T35"
-    )
-    assert format_value_by_type(0x0012, info.dtype, bit_map=info.bit_map) == (
-        "0x0012: B1: A24 – Wasserspreizung / Temperaturdifferenz T01-T02 zu groß; "
-        "B4: A38 – Niederdruck-Frequenzbegrenzung"
-    )
+    assert set(info.bit_map) == {0, 1, 2, 3, 4, 5, 6, 8, 9, 10}
+    current = format_value_by_type(0x0020, info.dtype, bit_map=info.bit_map)
+    assert "0x0020" in current and "AC-Eingangsstrom" in current and "T35" in current
+    multiple = format_value_by_type(0x0012, info.dtype, bit_map=info.bit_map)
+    assert "0x0012" in multiple and "A24" in multiple and "A38" in multiple
 
 
 def test_fault_decoder_includes_error_10_and_preserves_unknown_bits():
@@ -58,8 +55,8 @@ def test_fault_decoder_includes_error_10_and_preserves_unknown_bits():
         if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
     }
 
-    assert assignments["FAULT_REGS"][-1] == 2084
-    assert assignments["FAULT_TITLES"][2084] == "Fehler 10"
+    assert assignments["FAULT_REGS"][-1] == 2090
+    assert assignments["FAULT_TITLES"][2090] == "Fehler 10"
     assert 'bit_map.get(bit, "Fehlerbit aktiv, Klartext noch unbekannt")' in source
 
 

@@ -211,3 +211,52 @@ Wegen der 10-Minuten-Umschaltzeit sollte die PV-Steuerung nicht auf jede kurze W
 Die ausführliche technische Dokumentation mit Registerdetails, Kontaktbits und den bestätigten Firmwarepfaden gibt es hier:
 
 [SG-Ready-Dokumentation](../sg_ready.md)
+
+
+## Cloudfähiger SG-Ready-Editor
+
+Der Editor verwendet den gemeinsamen Steuertransport: eine aktive lokale
+Verbindung hat Vorrang. Cloud-only liest beim Öffnen automatisch sowie mit
+**„Von WP lesen“** gezielt SG01–SG08
+und **SG Status** über den bestehenden Snapshot-/`getDataByCode`-Pfad. Auch
+laufendes Cloud-Polling aktualisiert den offenen Dialog. SG03/SG04 werden in
+**kW**, SG05–SG07 in **°C** eingegeben; Modbus-RAW-Werte werden nur für den
+lokalen Transport verwendet. Ungespeicherte Änderungen bleiben bei Liveupdates
+erhalten; „Aus Live-Werten laden“ übernimmt den aktuellen Stand bewusst.
+
+| Register | Cloudcode | Zugriff / Nachweis |
+| --- | --- | --- |
+| 1334 | SG01 | Lesen und Schreiben bestätigt; Auswahl 0–7 |
+| 1335 | SG02 | Lesen und Schreiben bestätigt |
+| 1336–1337 | SG03–SG04 | Lesen und Schreiben bestätigt |
+| 1338–1340 | SG05–SG07 | Lesen und Schreiben bestätigt |
+| 1341 | SG08 | Lesen und Schreiben bestätigt |
+| 2133 | SG Status | Lesen bestätigt; grundsätzlich read-only |
+| 8801 | kein Cloudcode | nur direkter User-/Mainboard-Modbus, SG01=3 oder 7 |
+
+Der Betreiber hat SG01–SG08 über den Cloudweg erfolgreich getestet. Die
+experimentelle Freigabe und die zusätzliche Cloud-Rückfrage entfallen.
+SG08 wird als **Aus (0)** / **Ein (1)** direkt hinter SG07 angeboten.
+Nur selbst geänderte, vom aktuellen Wert abweichende Felder werden geschrieben.
+
+- Aktivierung/Moduswechsel: geänderte SG02–SG08 gemeinsam schreiben und gemeinsam
+  zurücklesen; erst nach Bestätigung aller Werte SG01 schreiben und bestätigen.
+- Deaktivierung: SG01=0 zuerst schreiben und bestätigen; danach weitere
+  geänderte Parameter gemeinsam übertragen.
+- SG01 unverändert: nur SG02–SG08 als Batch. Nur SG01 geändert: Einzelwrite.
+
+Bei fehlender Bestätigung stoppt die Sequenz vor einem nachfolgenden
+Aktivierungsschritt. Jeder Code wird getrennt ausgewertet; nur bestätigte
+Änderungen verlieren ihren Bearbeitungsstatus. Nach Timeout wird gelesen,
+nicht automatisch erneut geschrieben. Kein automatischer Rollback.
+Cloudwerte sind Engineeringwerte (kW/°C), keine Modbus-RAW-Werte.
+
+Lokale Sicherheitsnachfragen, die vorhandene SG-Reihenfolge und **500 ms**
+Schreibabstand bleiben erhalten. Display-Modbus behält Paket-/Commit-/Sync-Sequenz.
+8801 ist bei Cloud, LTE und Display gesperrt und wird nur am direkten
+Mainboard-Modbus angeboten. SG Status bleibt strikt read-only.
+
+**SG Status 2133 = 0 bedeutet immer „Wärmepumpe aus oder SG Ready deaktiviert“,
+auch bei SG01=7.** Dort bleiben 1=Low PV, 2=Neutral und 3=High PV erhalten.
+Für SG01=5/6 und AI Saving werden keine unbekannten Detailbedeutungen erfunden.
+Ein Statusupdate wird auch im bereits geöffneten Dialog unmittelbar angezeigt.

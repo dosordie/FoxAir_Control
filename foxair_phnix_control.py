@@ -14,6 +14,7 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Dict, Optional, BinaryIO
+from types import SimpleNamespace
 from warmlink_raw_capture import (
     DEFAULT_CAPTURE_SETTINGS,
     WarmlinkRawCapture,
@@ -40,7 +41,7 @@ from dialogs.backup_restore_dialog import BackupRestoreDialog
 from dialogs.parameter_settings_dialog import ParameterSettingsDialog
 from core.register_value_sources import register_value_sources
 from core.control_transport import (
-    ControlContext, LOCAL_TRANSPORTS, TRANSPORT_NAMES,
+    ControlContext, ControlCapability, LOCAL_TRANSPORTS, TRANSPORT_NAMES,
     register_control_capability, select_control_transport,
 )
 from core.csv_logger_controller import CsvLoggerController
@@ -53,8 +54,15 @@ from dialogs.sg_ready_editor_dialog import SGReadyEditorDialog
 from dialogs.knowledge_editor_dialog import KnowledgeEditorDialog
 from dialogs.offline_register_browser_dialog import OfflineRegisterBrowserDialog
 from dialogs.timer_editor_dialog import TimerEditorDialog, SilentTimerDialog, encode_hhmm, decode_hhmm
+from dialogs.targeted_cloud import TargetedCloudDialogMixin
 from dialogs.device_info_dialog import DeviceInfoDialog
 from core.device_info import DeviceInfoTracker, decode_wifi_id
+from core.display_protocol import (
+    REQUIRED_PARAMETER_PACKETS, OPTIONAL_PARAMETER_PACKETS, is_virtual_register,
+    validate_parameter_packet,
+)
+from core.device_identity_io import DeviceIdentityIOMixin
+from core.sg_ready import SG_LOCAL_WRITE_INTERVAL_MS
 from core.at_compensation import (
     AT_LIVE_REGISTERS,
     AT_CLOUD_READ_CODES,
@@ -73,10 +81,14 @@ from cloud.warmlink_api import (
     translate_cloud_error_message,
 )
 from cloud.token_store import AsyncKeyringStore, get_password, get_token, set_token
-from core.warmlink_request_scheduler import (WarmlinkRequestScheduler, WARMLINK_READ_TIMEOUT_S, WARMLINK_READBACK_DELAY_MS)
+from core.warmlink_request_scheduler import (
+    WarmlinkRequestScheduler, ReaderSessionGuard, WARMLINK_READ_TIMEOUT_S,
+    WARMLINK_READBACK_DELAY_MS, WARMLINK_RECONNECT_DELAYS_MS,
+)
 from cloud.register_resolver import resolve_cloud_register
 from cloud.polling import CloudSession, CloudTimingState
 from cloud.cloud_write_helpers import (
+    KG_TIMER_CODES, KG_TIME_CODES, KG_MASK_CODES, SILENT_TIMER_CODES, SILENT_TIMER_LIMITS, kg_word,
     cloud_code_for_register,
     cloud_write_choice_options,
     cloud_write_value_from_label,
@@ -165,13 +177,14 @@ from core.foxair_phnix_core import (
     hex_ascii_line,
     numeric_value_by_type,
     format_value_by_type,
+    format_bitfield_details,
     s16,
     validate_register_write_value,
 )
 
 
-APP_VERSION = "0.3.4"
-BUILD_DATE = "2026-10-08"
+APP_VERSION = "0.4.0"
+BUILD_DATE = "2026-10-21"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -574,7 +587,7 @@ def set_windows_app_id() -> None:
 
 
 
-class ReaderWorker(QObject):
+class ReaderWorker(DeviceIdentityIOMixin, QObject):
     connected = Signal()
     disconnected = Signal()
     error = Signal(str)
@@ -585,6 +598,7 @@ class ReaderWorker(QObject):
     read_sent = Signal(int, int, int)
     read_failed = Signal(int, int, int, str)
     tx_blocked_attempt = Signal(str, int, int, int)
+    identity_event = Signal(str, str, object)
 
     def __init__(self, host: str, port: int, regmap: RegisterMap, backend_label: str = "Warmlink RAW TCP", write_single: bool = False, transport: str = "tcp", serial_port: str = "COM3", baudrate: int = 9600, parity: str = "N", bytesize: int = 8, stopbits: float = 1.0):
         super().__init__()
@@ -600,6 +614,7 @@ class ReaderWorker(QObject):
         self.bytesize = int(bytesize)
         self.stopbits = float(stopbits)
         self.running = False
+        self._stop_requested = False
         self.client = None
         self.buf = bytearray()
         self.write_queue: queue.Queue[tuple[str, int, int, int, int, bool]] = queue.Queue()
@@ -611,6 +626,7 @@ class ReaderWorker(QObject):
         self.rx_timeout_logged = False
         self.total_rx_bytes = 0
         self.rx_restbuffer_since_monotonic = 0.0
+        self.init_identity_io()
 
     def set_tx_blocked(self, blocked: bool) -> int:
         """Set the final, low-level TX barrier and atomically discard queued work."""
@@ -625,6 +641,8 @@ class ReaderWorker(QObject):
     def run(self):
         self.running = True
         try:
+            if self._stop_requested:
+                return
             if self.transport == "serial":
                 self.log.emit(f"Verbinde zu {self.serial_port} {self.baudrate},{self.bytesize}{self.parity}{self.stopbits:g} ({self.backend_label}) ...")
                 self.client = ModbusSerialClient(self.serial_port, baudrate=self.baudrate, parity=self.parity, bytesize=self.bytesize, stopbits=self.stopbits, timeout=0.5)
@@ -632,6 +650,8 @@ class ReaderWorker(QObject):
                 self.log.emit(f"Verbinde zu {self.host}:{self.port} ({self.backend_label}) ...")
                 self.client = WarmlinkSocketClient(self.host, self.port, timeout=0.5)
             self.client.connect()
+            if self._stop_requested:
+                return
             self.connected.emit()
             self.log.emit("Verbunden. Lese Stream ...")
             if self.transport == "serial" and "Warmlink" in self.backend_label:
@@ -641,13 +661,17 @@ class ReaderWorker(QObject):
                 self._flush_write_queue()
                 try:
                     chunk = self.client.recv(4096)
+                    if self._stop_requested:
+                        break
                     if not chunk:
                         self.log.emit("Verbindung geschlossen (EOF).")
                         break
 
-                    self.raw_chunk.emit(chunk)
+                    identity_rx = self.identity_service_active
+                    if not identity_rx:
+                        self.raw_chunk.emit(chunk)
                     self.total_rx_bytes += len(chunk)
-                    if self.transport == "serial":
+                    if self.transport == "serial" and not self.identity_service_active:
                         self.log.emit(f"SERIAL RX Rohdaten: {len(chunk)} Byte, HEX={hexdump(chunk, -1)}")
                     self.rx_after_last_send = True
                     self.rx_timeout_logged = False
@@ -656,6 +680,9 @@ class ReaderWorker(QObject):
                     self._discard_stale_rx_restbuffer()
 
                     for parsed in parsed_frames:
+                        if identity_rx:
+                            self._identity_route_frame(parsed[6])
+                            continue
                         frame = decode_frame(parsed, self.regmap)
                         self.frame_decoded.emit(frame)
 
@@ -667,7 +694,7 @@ class ReaderWorker(QObject):
 
         except Exception as exc:
             if self.running:
-                self.error.emit(str(exc))
+                self.error.emit("Identity-Service: Transportfehler (Details geschützt)." if self.identity_service_active else str(exc))
         finally:
             if self.client:
                 self.client.close()
@@ -680,6 +707,9 @@ class ReaderWorker(QObject):
         before_parse_len = len(self.buf)
         parsed_frames = find_frames(self.buf, max_len=512)
         after_parse_len = len(self.buf)
+        if self.identity_service_active:
+            self.rx_restbuffer_since_monotonic = time.monotonic() if self.buf else 0.0
+            return parsed_frames
         if parsed_frames:
             self.log.emit(
                 f"DEBUG RX-Parser: {len(parsed_frames)} Frame(s) direkt nach Eingang verarbeitet, "
@@ -728,6 +758,8 @@ class ReaderWorker(QObject):
         rest = bytes(self.buf)
         self.buf.clear()
         self.rx_restbuffer_since_monotonic = 0.0
+        if self.identity_service_active:
+            return
         self.log.emit(
             f"RX-Restbuffer verworfen: {len(rest)} Byte, kein gültiges Frame; "
             f"HEX={hexdump(rest, -1)}"
@@ -735,22 +767,28 @@ class ReaderWorker(QObject):
 
     @Slot()
     def stop(self):
+        self._stop_requested = True
         self.running = False
         if self.client:
             self.client.close()
 
     def enqueue_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, write_single: Optional[bool] = None):
         use_single = self.write_single if write_single is None else bool(write_single)
-        self.write_queue.put(("write", slave_addr, addr, value, post_delay_ms, use_single))
+        if not self._enqueue_io(("write", slave_addr, addr, value, post_delay_ms, use_single)):
+            return False
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         self.log.emit(
             f"WRITE in Sendewarteschlange: bus=0x{slave_addr:02X}, "
             f"addr={addr} / 0x{addr:04X}, value={value} / 0x{value:04X}{delay_text}"
         )
 
-    def enqueue_write_block(self, addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
+    def enqueue_write_block(self, addr: int, values: list[int] | tuple[int, ...], slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, *, identity_token=None):
         vals = [int(v) & 0xFFFF for v in values]
-        self.write_queue.put(("write_block", slave_addr, addr, vals, post_delay_ms, False))
+        if not self._enqueue_io(("write_block", slave_addr, addr, vals, post_delay_ms, False), identity_token):
+            return False
+        if identity_token is not None:
+            self.log.emit("Identity-Service: FC10 0x63 / 7001 / 10 vorgemerkt; Payload geschützt.")
+            return True
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         preview_vals = ", ".join(f"{addr + i}={v}/0x{v:04X}" for i, v in enumerate(vals[:8]))
         more = "" if len(vals) <= 8 else f" ... (+{len(vals) - 8})"
@@ -760,8 +798,11 @@ class ReaderWorker(QObject):
             f"{preview_vals}{more}"
         )
 
-    def enqueue_read(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0):
-        self.write_queue.put(("read", slave_addr, addr, quantity, post_delay_ms, False))
+    def enqueue_read(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, post_delay_ms: int = 0, *, identity_token=None):
+        if not self._enqueue_io(("read", slave_addr, addr, quantity, post_delay_ms, False), identity_token):
+            return False
+        if identity_token is not None:
+            return True
         delay_text = f", danach Pause {post_delay_ms} ms" if post_delay_ms > 0 else ""
         self.log.emit(
             f"READ in Sendewarteschlange: bus=0x{slave_addr:02X}, "
@@ -775,7 +816,11 @@ class ReaderWorker(QObject):
                 return
 
             try:
-                kind, slave_addr, addr, value_or_quantity, post_delay_ms, use_single_write = self.write_queue.get_nowait()
+                with self._identity_lock:
+                    entry = self.write_queue.get_nowait()
+                    kind, slave_addr, addr, value_or_quantity, post_delay_ms, use_single_write = entry[:6]
+                    identity_token = entry[6] if len(entry) == 7 else None
+                    self._normal_tx_busy = identity_token is None
             except queue.Empty:
                 return
 
@@ -783,10 +828,11 @@ class ReaderWorker(QObject):
                 size = len(value_or_quantity) if kind == "write_block" else 1
                 self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
                 self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), int(size))
+                self._normal_tx_busy = False
                 continue
 
             try:
-                if self.buf:
+                if self.buf and not self.identity_service_active:
                     self.log.emit(
                         f"DEBUG RX-Buffer erst beim naechsten Send-Zyklus gesehen: "
                         f"{len(self.buf)} Byte stehen vor {kind.upper()} noch im Parser-Buffer"
@@ -831,8 +877,15 @@ class ReaderWorker(QObject):
                     self.log.emit("Firmware-Capture aktiv – Senden gesperrt.")
                     self.tx_blocked_attempt.emit(kind, int(slave_addr), int(addr), len(frame))
                     continue
-                self.tx_chunk.emit(frame)
+                if identity_token is not None:
+                    if not self._identity_before_send(identity_token, kind):
+                        continue
+                else:
+                    self.tx_chunk.emit(frame)
                 self.client.send(frame)
+                if identity_token is not None:
+                    self.identity_event.emit(identity_token, "sent", kind)
+                    action = f"Identity-Service: {kind} gesendet (Rohdaten geschützt)."
                 if kind == "read":
                     self.read_sent.emit(int(addr), int(value_or_quantity), int(slave_addr))
                 self.last_send_monotonic = time.monotonic()
@@ -844,9 +897,14 @@ class ReaderWorker(QObject):
                     self.next_write_monotonic = time.monotonic() + (post_delay_ms / 1000.0)
                     return
             except Exception as exc:
+                if identity_token is not None:
+                    self.identity_event.emit(identity_token, "error", None)
+                    continue
                 self.error.emit(str(exc))
                 if kind == "read":
                     self.read_failed.emit(int(addr), int(value_or_quantity), int(slave_addr), str(exc))
+            finally:
+                self._normal_tx_busy = False
 
     def _check_rx_timeout(self):
         if self.transport != "serial":
@@ -864,7 +922,9 @@ class ReaderWorker(QObject):
 
 
 
-class OnOffTimerEditorDialog(QDialog):
+class OnOffTimerEditorDialog(TargetedCloudDialogMixin, QDialog):
+    CLOUD_REGISTERS = {**SILENT_TIMER_CODES, **KG_TIMER_CODES}
+    CLOUD_PURPOSE = "onoff_timer"
     """Editor fuer WP Ein/Aus Timer 1..6.
 
     Registerschema:
@@ -876,6 +936,7 @@ class OnOffTimerEditorDialog(QDialog):
     TIMER_REGS = set(range(1256, 1271)) | set(range(1244, 1250))
     DAY_BITS = TimerEditorDialog.DAY_BITS
     ACTIVE_BIT = TimerEditorDialog.ACTIVE_BIT
+    LOCAL_WRITE_DELAY_MS = 1200
 
     def __init__(self, main_window: "MainWindow"):
         super().__init__(main_window)
@@ -884,11 +945,20 @@ class OnOffTimerEditorDialog(QDialog):
         self.fields: dict[int, dict[str, Any]] = {}
         self._timer_read_sequence_active = False
         self._timer_read_sequence_step = ""
+        self._local_baseline = {}
+        self._local_dirty = set()
+        self._local_dirty_days = set()
+        self._cloud_baseline = {}
+        self._cloud_dirty = set()
+        self._cloud_pending = {}
         self.setWindowTitle("WP Ein/Aus / Silentmodus Timer")
         self.setMinimumWidth(650)
         self.setMinimumHeight(540)
         self._build_ui()
+        self._connect_edit_signals()
+        self._init_cloud_snapshot()
         self.load_from_live_values()
+        self._update_cloud_actions()
 
     def _time_reg(self, timer_no: int, stop: bool = False) -> int:
         return 1256 + (timer_no - 1) * 2 + (1 if stop else 0)
@@ -906,13 +976,10 @@ class OnOffTimerEditorDialog(QDialog):
         layout.addWidget(hint)
 
         top = QHBoxLayout()
-        self.auto_update_cb = QCheckBox("live aktualisieren")
-        self.auto_update_cb.setChecked(True)
         self.status_label = QLabel("Bereit.")
         self.status_label.setMinimumWidth(220)
         self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #666;")
-        top.addWidget(self.auto_update_cb)
         top.addStretch(1)
         top.addWidget(self.status_label)
         layout.addLayout(top)
@@ -922,17 +989,6 @@ class OnOffTimerEditorDialog(QDialog):
         for timer_no in range(1, 7):
             self._add_timer_tab(timer_no)
         self._add_silent_tab()
-
-        bottom = QHBoxLayout()
-        self.timer_delay_ms = QSpinBox()
-        self.timer_delay_ms.setRange(0, 10000)
-        self.timer_delay_ms.setSingleStep(100)
-        self.timer_delay_ms.setValue(1200)
-        self.timer_delay_ms.setSuffix(" ms")
-        bottom.addWidget(QLabel("Pause zwischen Writes:"))
-        bottom.addWidget(self.timer_delay_ms)
-        bottom.addStretch(1)
-        layout.addLayout(bottom)
 
         buttons = QHBoxLayout()
         self.load_btn = QPushButton("Aus Live-Werten laden")
@@ -953,6 +1009,7 @@ class OnOffTimerEditorDialog(QDialog):
 
     def set_write_status(self, text: str) -> None:
         self.status_label.setText(str(text))
+        self._update_cloud_actions()
 
     def _add_timer_tab(self, timer_no: int):
         widget = QWidget()
@@ -960,7 +1017,6 @@ class OnOffTimerEditorDialog(QDialog):
         start_reg = self._time_reg(timer_no, False)
         stop_reg = self._time_reg(timer_no, True)
         mask_reg = self._mask_reg(timer_no)
-        byte_label = "High-Byte" if self._uses_high_byte(timer_no) else "Low-Byte"
 
         start_hour = QSpinBox(); start_hour.setRange(0, 23)
         start_min = QSpinBox(); start_min.setRange(0, 59)
@@ -971,10 +1027,10 @@ class OnOffTimerEditorDialog(QDialog):
         stop_layout = QHBoxLayout(); stop_layout.addWidget(stop_hour); stop_layout.addWidget(QLabel(":")); stop_layout.addWidget(stop_min); stop_layout.addStretch(1)
 
         active_cb = QCheckBox("Timer aktiv")
-        day_raw = QSpinBox(); day_raw.setRange(0, 0xFFFF)
-        day_raw.setToolTip(f"Register {mask_reg}: {byte_label} = Timer {timer_no}, Partner-Byte wird erhalten.")
         day_layout = QVBoxLayout()
-        day_top = QHBoxLayout(); day_top.addWidget(active_cb); day_top.addWidget(QLabel(f"Reg {mask_reg}, {byte_label}, Raw:")); day_top.addWidget(day_raw); day_top.addStretch(1)
+        day_top = QHBoxLayout()
+        day_top.addWidget(active_cb)
+        day_top.addStretch(1)
         day_layout.addLayout(day_top)
         checks = []
         day_bits_layout = QHBoxLayout()
@@ -992,16 +1048,11 @@ class OnOffTimerEditorDialog(QDialog):
 
         fld = {
             "start_reg": start_reg, "stop_reg": stop_reg, "mask_reg": mask_reg,
-            "byte_high": self._uses_high_byte(timer_no),
             "start_hour": start_hour, "start_min": start_min,
             "stop_hour": stop_hour, "stop_min": stop_min,
-            "active_cb": active_cb, "day_raw": day_raw, "day_checks": checks,
+            "active_cb": active_cb, "day_checks": checks,
         }
         self.fields[timer_no] = fld
-        active_cb.stateChanged.connect(lambda _=None, t=timer_no: self._day_controls_changed(t))
-        day_raw.valueChanged.connect(lambda value, t=timer_no: self._day_raw_changed(t, int(value)))
-        for cb in checks:
-            cb.stateChanged.connect(lambda _=None, t=timer_no: self._day_controls_changed(t))
         self.tabs.addTab(widget, f"Timer {timer_no}")
 
     def _add_silent_tab(self):
@@ -1060,45 +1111,49 @@ class OnOffTimerEditorDialog(QDialog):
         for cb in fld["day_checks"]:
             cb.setChecked(bool(byte & int(cb.property("day_bit"))))
 
-    def _day_controls_changed(self, timer_no: int):
-        if self._programmatic:
-            return
-        fld = self.fields[timer_no]
-        raw = int(fld["day_raw"].value()) & 0xFFFF
+    def _local_mask_for_timer(self, timer_no):
+        """Change this timer's byte only; its partner comes from the last read."""
+        reg = self._mask_reg(timer_no)
+        if reg not in self._local_baseline:
+            raise ValueError(f"Partner-Byte von Register {reg} unbekannt; zuerst Timer lesen.")
+        raw = self._local_baseline[reg]
         byte = self._timer_day_byte_from_controls(timer_no)
-        if fld["byte_high"]:
-            raw = (raw & 0x00FF) | ((byte & 0xFF) << 8)
-        else:
-            raw = (raw & 0xFF00) | (byte & 0xFF)
-        self._programmatic = True
-        try:
-            fld["day_raw"].setValue(raw)
-        finally:
-            self._programmatic = False
+        return ((raw & 0x00FF) | (byte << 8)) if self._uses_high_byte(timer_no) else ((raw & 0xFF00) | byte)
 
-    def _day_raw_changed(self, timer_no: int, raw: int):
-        if self._programmatic:
+    def _autoload_cloud(self):
+        # Use the existing initial-read timer for either supported transport.
+        if not self.isVisible():
             return
-        byte = self._byte_from_pair_raw(timer_no, raw)
-        self._programmatic = True
-        try:
-            self._set_day_controls_from_byte(timer_no, byte)
-        finally:
-            self._programmatic = False
+        if self.main_window.control_transport() == "cloud":
+            super()._autoload_cloud()
+        elif self.main_window.control_transport() in LOCAL_TRANSPORTS and self.main_window.control_can_read():
+            self.read_from_wp()
 
-    def load_from_live_values(self):
+    def load_from_live_values(self, *, preserve_edits=False):
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         for reg_no in sorted(self.TIMER_REGS):
             reg = self.main_window.latest_regs.get(reg_no)
-            if reg is not None:
-                self.update_from_live_register(reg, force=True)
+            if reg is not None and getattr(reg, "value_source", "local") != "cloud":
+                self.update_from_live_register(reg, force=not preserve_edits)
 
     def update_from_live_register(self, reg, force: bool = False):
+        if self.main_window.control_transport() == "cloud" and not force:
+            return
         reg_no = int(reg.reg)
         if reg_no not in self.TIMER_REGS:
             return
-        if not force and not self.auto_update_cb.isChecked():
-            return
         raw = int(reg.raw_value) & 0xFFFF
+        local = self.main_window.control_transport() != "cloud"
+        if local:
+            self._local_baseline[reg_no] = raw
+            if reg_no not in (1268, 1269, 1270):
+                if force or self._cloud_value(reg_no) == raw:
+                    self._local_dirty.discard(reg_no)
+                if reg_no in self._local_dirty:
+                    return
+        previous = self._programmatic
         self._programmatic = True
         try:
             if 1244 <= reg_no <= 1249:
@@ -1129,12 +1184,15 @@ class OnOffTimerEditorDialog(QDialog):
                     fld = self.fields.get(timer_no)
                     if not fld:
                         continue
-                    if not (force or not self._has_focus(fld["active_cb"], fld["day_raw"], *fld["day_checks"])):
-                        continue
-                    fld["day_raw"].setValue(raw)
-                    self._set_day_controls_from_byte(timer_no, self._byte_from_pair_raw(timer_no, raw))
+                    byte = self._byte_from_pair_raw(timer_no, raw)
+                    if local:
+                        if force or self._timer_day_byte_from_controls(timer_no) == byte:
+                            self._local_dirty_days.discard(timer_no)
+                        if timer_no in self._local_dirty_days:
+                            continue
+                    self._set_day_controls_from_byte(timer_no, byte)
         finally:
-            self._programmatic = False
+            self._programmatic = previous
 
     def _pair_raw_from_controls(self, first_timer_no: int) -> int:
         low = self._timer_day_byte_from_controls(first_timer_no)
@@ -1148,7 +1206,7 @@ class OnOffTimerEditorDialog(QDialog):
         return [
             (fld["start_reg"], encode_hhmm(int(fld["start_hour"].value()), int(fld["start_min"].value())), f"WP Ein/Aus Timer {timer_no} Start"),
             (fld["stop_reg"], encode_hhmm(int(fld["stop_hour"].value()), int(fld["stop_min"].value())), f"WP Ein/Aus Timer {timer_no} Stop"),
-            (fld["mask_reg"], int(fld["day_raw"].value()) & 0xFFFF, f"WP Ein/Aus Timer {timer_no} Aktiv/Tage + Partner-Byte erhalten"),
+            (fld["mask_reg"], self._cloud_value(fld["mask_reg"]) if self.main_window.control_transport() == "cloud" else self._local_mask_for_timer(timer_no), f"WP Ein/Aus Timer {timer_no} Aktiv/Tage + Partner-Byte erhalten"),
         ]
 
     def all_timer_values(self) -> list[tuple[int, int, str]]:
@@ -1197,11 +1255,183 @@ class OnOffTimerEditorDialog(QDialog):
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
+    def _connect_edit_signals(self):
+        """Track edits by register, never by an individual byte of a pair."""
+        for timer_no, fld in self.fields.items():
+            for reg, widgets in (
+                (fld["start_reg"], (fld["start_hour"], fld["start_min"])),
+                (fld["stop_reg"], (fld["stop_hour"], fld["stop_min"])),
+                (fld["mask_reg"], (fld["active_cb"], *fld["day_checks"])),
+            ):
+                for widget in widgets:
+                    signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
+                    signal.connect(lambda _value, r=reg, t=timer_no: self._edited(r, t))
+        for reg, widget in (
+            (1244, self.silent_start_enable_cb), (1245, self.silent_start_hour),
+            (1246, self.silent_start_min), (1247, self.silent_stop_enable_cb),
+            (1248, self.silent_stop_hour), (1249, self.silent_stop_min),
+        ):
+            signal = widget.toggled if isinstance(widget, QCheckBox) else widget.valueChanged
+            signal.connect(lambda _value, r=reg: self._edited(r))
+        self.tabs.currentChanged.connect(lambda _index: self._update_cloud_actions())
+
+    def _edited(self, register, timer_no=None):
+        if self._programmatic:
+            return
+        if self.main_window.control_transport() == "cloud":
+            self._cloud_edited(register)
+            return
+        if register in (1268, 1269, 1270):
+            baseline = self._local_baseline.get(register)
+            if baseline is not None and self._timer_day_byte_from_controls(timer_no) == self._byte_from_pair_raw(timer_no, baseline):
+                self._local_dirty_days.discard(timer_no)
+            else:
+                self._local_dirty_days.add(timer_no)
+        elif self._cloud_value(register) == self._local_baseline.get(register):
+            self._local_dirty.discard(register)
+        else:
+            self._local_dirty.add(register)
+
+    def _cloud_value(self, register):
+        if register in SILENT_TIMER_CODES:
+            return next(value for reg, value, _ in self.silent_timer_values() if reg == register)
+        if register in (1268, 1269, 1270):
+            first = (register - 1268) * 2 + 1
+            return self._pair_raw_from_controls(first)
+        timer_no = (register - 1256) // 2 + 1
+        fld = self.fields[timer_no]
+        pair = ("start_hour", "start_min") if register % 2 == 0 else ("stop_hour", "stop_min")
+        return encode_hhmm(fld[pair[0]].value(), fld[pair[1]].value())
+
+    def _cloud_edited(self, register):
+        if self._programmatic or self.main_window.control_transport() != "cloud":
+            return
+        if self._cloud_value(register) == self._cloud_baseline.get(register):
+            self._cloud_dirty.discard(register)
+        else:
+            self._cloud_dirty.add(register)
+        self._update_cloud_actions()
+
+    def _validated_cloud_values(self, values):
+        valid = {}
+        for reg, raw in values.items():
+            try:
+                if reg in KG_TIMER_CODES:
+                    valid[reg] = kg_word(KG_TIMER_CODES[reg], raw)
+                elif reg in SILENT_TIMER_CODES and isinstance(raw, int) and (
+                    0 <= raw <= SILENT_TIMER_LIMITS[SILENT_TIMER_CODES[reg]]
+                ):
+                    valid[reg] = raw
+            except (TypeError, ValueError):
+                continue
+        return valid
+
+    def _apply_cloud_snapshot(self, values):
+        # An incomplete read invalidates missing baselines but never sends 0.
+        self._cloud_baseline = dict(values)
+        self._programmatic = True
+        try:
+            for reg, raw in values.items():
+                if reg not in self._cloud_dirty:
+                    self.update_from_live_register(SimpleNamespace(reg=reg, raw_value=raw), force=True)
+        finally:
+            self._programmatic = False
+        for reg in tuple(self._cloud_dirty):
+            self._cloud_edited(reg)
+        self._update_cloud_actions()
+
+    def _reset_cloud_source(self):
+        self._local_baseline.clear()
+        self._local_dirty.clear()
+        self._local_dirty_days.clear()
+        self._cloud_baseline.clear()
+        self._cloud_dirty.clear()
+        self._cloud_pending.clear()
+        self._programmatic = True
+        try:
+            for reg in sorted(self.CLOUD_REGISTERS):
+                self.update_from_live_register(SimpleNamespace(reg=reg, raw_value=0), force=True)
+        finally:
+            self._programmatic = False
+        self._update_cloud_actions()
+
+    def connection_changed(self):
+        old = self._control_identity
+        super().connection_changed()
+        if old != self._control_identity and self._control_identity.transport != "cloud":
+            self.load_from_live_values()
+        self._update_cloud_actions()
+
+    def _active_cloud_registers(self):
+        if self._is_silent_tab():
+            return frozenset(SILENT_TIMER_CODES)
+        fld = self.fields[self._current_timer_no()]
+        return frozenset((fld["start_reg"], fld["stop_reg"], fld["mask_reg"]))
+
+    def _update_cloud_actions(self):
+        if not hasattr(self, "tabs"):
+            return
+        cloud = self.main_window.control_transport() == "cloud"
+        self.load_btn.setText("Cloud neu laden" if cloud else "Aus Live-Werten laden")
+        self.read_btn.setText("Cloud lesen" if cloud else "Timer von WP lesen")
+        if not cloud:
+            self.send_btn.setEnabled(True)
+            self.send_all_btn.setEnabled(True)
+            return
+        current = self._active_cloud_registers()
+        all_wp = frozenset(KG_TIMER_CODES)
+        valid = self.cloud_request is None and self.main_window.control_can_write()
+        self.send_btn.setEnabled(bool(valid and current <= self._cloud_baseline.keys()
+                                      and current & self._cloud_dirty))
+        self.send_all_btn.setEnabled(bool(valid and all_wp <= self._cloud_baseline.keys()
+                                          and all_wp & self._cloud_dirty))
+        self.send_btn.setToolTip("Nur geänderte Werte; alle Register des Tabs müssen vorher frisch gelesen sein.")
+        self.send_all_btn.setToolTip("Alle sechs Timer, nur geänderte Werte und ganze 16-Bit-Tagesmasken.")
+
+    def _send_cloud_values(self, *, all_timers=False):
+        if self.cloud_request is not None:
+            self.status_label.setText("Cloud-Lesen läuft; bitte anschließend schreiben.")
+            return
+        needed = frozenset(KG_TIMER_CODES) if all_timers else self._active_cloud_registers()
+        missing = needed - self._cloud_baseline.keys()
+        if missing:
+            self.status_label.setText("Cloud: Daten unvollständig für " +
+                                      ", ".join(str(r) for r in sorted(missing)) + "; zuerst lesen.")
+            return
+        items = (self.all_timer_values() if all_timers else
+                 self.silent_timer_values() if self._is_silent_tab() else self.timer_values())
+        # For a shared register always compose BOTH timer bytes from their UI
+        # controls; the UI contains no manually editable raw byte.
+        writes = [(reg, self._cloud_value(reg), self._cloud_value(reg))
+                  for reg, _raw, _label in items if reg in self._cloud_dirty]
+        if not writes:
+            self.status_label.setText("Keine geänderten Timerwerte.")
+            return
+        self._cloud_pending = {reg: value for reg, _raw, value in writes}
+        error = self.main_window.control_write_registers(
+            writes, "WP Ein/Aus Timer Cloud", expected_context=self._control_identity)
+        if error:
+            self._cloud_pending.clear()
+        self.status_label.setText(error or "Cloud-Batch gesendet; frischen Readback abwarten …")
+        self._update_cloud_actions()
+
+    def write_readback_confirmed(self, register):
+        # A newer edit remains dirty when an older submitted word is confirmed.
+        value = self._cloud_pending.pop(register, None)
+        if value is None:
+            return
+        self._cloud_baseline[register] = value
+        self._cloud_edited(register)
+
+
     TIMER_READ_LABEL_SILENT = "Silentmodus Timer 1244-1249"
     TIMER_READ_LABEL_ONOFF = "WP Ein/Aus Timer 1256-1270"
     TIMER_READ_STEP_DELAY_MS = 600
 
     def read_from_wp(self):
+        if self.main_window.control_transport() == "cloud":
+            self.read_cloud_snapshot()
+            return
         self._timer_read_sequence_active = True
         self._timer_read_sequence_step = "silent"
         self.main_window.remove_pending_read_requests_by_label(
@@ -1213,6 +1443,9 @@ class OnOffTimerEditorDialog(QDialog):
         self.main_window._log("WP Ein/Aus/Silent Timer Lesen angefordert: Sequenz startet mit Silentmodus Timer 1244-1249.")
 
     def _start_onoff_timer_read(self, status_text: str):
+        if self.main_window.control_transport() == "cloud":
+            self._timer_read_sequence_active = False
+            return
         if not self.isVisible():
             self._timer_read_sequence_active = False
             self._timer_read_sequence_step = ""
@@ -1249,18 +1482,26 @@ class OnOffTimerEditorDialog(QDialog):
             self.status_label.setText("WP Ein/Aus Timer Timeout. Vorhandene Live-Werte bleiben erhalten.")
 
     def send_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self._send_cloud_values(all_timers=False)
+            return
         try:
             if self._is_silent_tab():
-                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.silent_timer_values(), int(self.timer_delay_ms.value()), title="Silentmodus Timer")
+                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.silent_timer_values(), self.LOCAL_WRITE_DELAY_MS, title="Silentmodus Timer")
             else:
                 timer_no = self._current_timer_no()
-                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.timer_values(timer_no), int(self.timer_delay_ms.value()), title=f"WP Ein/Aus Timer {timer_no}")
+                self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.timer_values(timer_no), self.LOCAL_WRITE_DELAY_MS, title=f"WP Ein/Aus Timer {timer_no}")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
     def send_all_values(self):
+        if self.main_window.control_transport() == "cloud":
+            self._send_cloud_values(all_timers=True)
+            return
         try:
-            self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), int(self.timer_delay_ms.value()), title="WP Ein/Aus Timer 1-6")
+            for timer_no in (1, 3, 5):
+                self._local_mask_for_timer(timer_no)
+            self.main_window.send_timer_values(DEFAULT_BUS_ADDR, self.all_timer_values(), self.LOCAL_WRITE_DELAY_MS, title="WP Ein/Aus Timer 1-6")
         except Exception as exc:
             QMessageBox.warning(self, "Ungültige Timer-Werte", str(exc))
 
@@ -1517,7 +1758,7 @@ class RegisterQuickWriteDialog(QDialog):
                 return
             self.current_raw_label.setStyleSheet("")
             self.current_decoded_label.setStyleSheet("")
-        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, self, clear_flash)
 
     def refresh_from_live(self):
         self.update_cloud_actions()
@@ -1596,7 +1837,13 @@ class RegisterQuickWriteDialog(QDialog):
             self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen konnte nicht gestartet werden.")
 
     def show_write_readback_timeout(self):
-        self.status_label.setText("Schreiben bestätigt. Automatisches Nachlesen ohne Antwort.")
+        text = "Schreiben bestätigt. Automatisches Nachlesen ohne Antwort."
+        if self.main_window.current_backend_key() == "warmlink_raw":
+            if self.main_window._backend_settings("warmlink_raw").get("transport", "tcp") == "tcp":
+                text += " LTE/TCP wird bei dauerhaft fehlender Antwort kontrolliert neu verbunden."
+            else:
+                text += " Späte Antwort abwarten oder Verbindung neu aufbauen."
+        self.status_label.setText(text)
 
 
 
@@ -2542,7 +2789,9 @@ class DualBusLoggerDialog(QDialog):
         # DWIN/Anzeige-Speicher bleibt getrennt.
         if slave == 0x00 and start in {2001, 2091}:
             return self.main_window.regmap
-        if slave == 0x01 and (1000 <= start <= 2300 or start in {1999, 2001, 2099}):
+        if slave == 0x01 and 2099 <= start <= 2149:
+            return self.main_window.unit1_regmap
+        if slave == 0x01 and (1000 <= start <= 2300 or start in {1999, 2001}):
             return self.main_window.regmap
         return self.main_window.display_regmap
 
@@ -2563,21 +2812,7 @@ class DualBusLoggerDialog(QDialog):
 
         Nur solche Pakete werden automatisch in die Hauptliste übernommen.
         """
-        if len(words) < 10:
-            return None
-        if not self._display_packet_signature_valid(words):
-            return None
-        marker = int(words[8]) & 0xFFFF
-        internal_start = int(words[9]) & 0xFFFF
-        if marker != 0x0210:
-            return None
-        if internal_start != int(start):
-            return None
-        return {
-            "marker": marker,
-            "internal_start": internal_start,
-            "end": int(start) + len(words) - 1,
-        }
+        return validate_parameter_packet(start, words, complete=False)
 
     def _validated_packet_info_from_regs(self, start: int, regs) -> Optional[dict[str, int]]:
         words = [int(getattr(r, "raw_value", 0) or 0) & 0xFFFF for r in list(regs or [])]
@@ -3527,7 +3762,7 @@ class CommunicationSettingsDialog(QDialog):
                 "Unit ist nur die aktive Zieladresse, normalerweise 3. "
                 "Gesehen: 0x03 = Display/DWIN, 3001-3021 lesbar und Bedienwerte über 23xx; "
                 "0x00 = Broadcast echter WP-Livewerte 2001/2091; "
-                "0x01 = Rohstatus 2099/51, virtuell 91099-91149; 91105~2062 AC-Spannung, 91108~2043 DC-Bus (Power-Modul-Spiegel-Kandidaten); "
+                "0x01 = Inverter-/Driver-Telemetrie INV1:2099/51, virtuelle Diagnose-IDs 91099–91149; keine direkt adressierbaren Register. "
                 "0x04 fragt 1011-1024; 0x05 liest 2000/90 und schreibt 1001/90 Nullblock. "
                 "0x04/0x05 bleiben Diagnose, wenn sie bekannte WP-Bereiche berühren."
             )
@@ -3730,6 +3965,7 @@ class WPControlDialog(QDialog):
         self.setMinimumWidth(760)
         self.setWindowIcon(main_window.windowIcon())
         self.cloud_request = None
+        self.finished.connect(lambda *_args: self._cancel_cloud_read())
         self.cloud_read_timer = QTimer(self)
         self.cloud_read_timer.setSingleShot(True)
         self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
@@ -4004,7 +4240,7 @@ class WPControlDialog(QDialog):
         self.refresh_from_live()
 
     def _confirm_write(self, title, text):
-        return ask_yes_no(self, title, text, default_yes=False)
+        return not self.main_window.control_requires_write_confirmation() or ask_yes_no(self, title, text, default_yes=False)
 
     def _write(self, register, raw, value, label, title, text):
         owner = self.main_window
@@ -4048,6 +4284,8 @@ class WPControlDialog(QDialog):
                     f"Silent wirklich {'ein' if bit else 'aus'}schalten?")
 
     def read_from_wp(self):
+        if not self.isVisible():
+            return
         owner = self.main_window
         context = owner.control_context()
         capability = owner.control_can_read(*self.CLOUD_READ_REGISTERS)
@@ -4085,6 +4323,9 @@ class WPControlDialog(QDialog):
     def cloud_read_finished(self, cycle_id, rows, error):
         request = self.cloud_request
         if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible():
+            self._cancel_cloud_read()
             return
         if not self._cloud_identity_matches():
             self.connection_changed()
@@ -4273,9 +4514,15 @@ class ATCompensationDialog(QDialog):
         self.main_window = main_window
         self._control_identity = main_window.control_context()
         self.setWindowTitle("AT-Kompensation")
-        self.setMinimumWidth(820)
+        self._dirty_registers = set()
+        self._edit_versions = {}
+        self._pending_write_versions = {}
+        self._pending_write_raw = {}
+        self._programmatic = False
+        self.setMinimumWidth(680)
         self.setWindowIcon(main_window.windowIcon())
         self.cloud_request = None
+        self.finished.connect(lambda *_args: self._cancel_cloud_read())
         self.cloud_read_timer = QTimer(self)
         self.cloud_read_timer.setSingleShot(True)
         self.cloud_read_timer.timeout.connect(self._cloud_read_timeout)
@@ -4285,8 +4532,16 @@ class ATCompensationDialog(QDialog):
         self.refresh_from_live()
         self.initial_read_timer = QTimer(self)
         self.initial_read_timer.setSingleShot(True)
-        self.initial_read_timer.timeout.connect(self.read_from_wp)
+        self.initial_read_timer.timeout.connect(self._initial_read)
         self.initial_read_timer.start(250)
+
+    def _initial_read(self):
+        if not self.isVisible():
+            return
+        if self.main_window.control_transport() == "cloud" and self.main_window._control_cloud_busy():
+            self.initial_read_timer.start(250)
+            return
+        self.read_from_wp()
 
     def _value(self, reg_no: int, dtype: str):
         sources = self.main_window.register_value_sources(reg_no)
@@ -4328,11 +4583,11 @@ class ATCompensationDialog(QDialog):
         self.current_at_label = QLabel("--")
         self.current_target_label = QLabel("--")
         self.limit_label = QLabel("R10/R11: --")
-        status.addWidget(QLabel("Außentemperatur (2048):"), 0, 0)
+        status.addWidget(QLabel("Außen:"), 0, 0)
         status.addWidget(self.current_at_label, 0, 1)
-        status.addWidget(QLabel("aktuelle kompensierte Solltemp. (2014):"), 1, 0)
-        status.addWidget(self.current_target_label, 1, 1)
-        status.addWidget(self.limit_label, 2, 0, 1, 2)
+        status.addWidget(QLabel("Aktuelles Ziel:"), 0, 2)
+        status.addWidget(self.current_target_label, 0, 3)
+        status.addWidget(self.limit_label, 1, 0, 1, 4)
 
         self.linear_box = QGroupBox("Lineare Kennlinie")
         layout.addWidget(self.linear_box)
@@ -4344,63 +4599,69 @@ class ATCompensationDialog(QDialog):
 
         self.seven_box = QGroupBox("7-Punkt-Kennlinie")
         layout.addWidget(self.seven_box)
-        seven_layout = QVBoxLayout(self.seven_box)
-        self.seven_table = QTableWidget(len(AT_SEVEN_POINT_REGISTERS), 2)
-        self.seven_table.setHorizontalHeaderLabels(["feste AT", "Heiz-Solltemperatur"])
-        self.seven_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.seven_table.verticalHeader().setVisible(False)
-        for row, (at, register) in enumerate(AT_SEVEN_POINT_REGISTERS):
-            at_item = QTableWidgetItem(f"{at:+g} °C  (Register {register})")
-            at_item.setFlags(at_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.seven_table.setItem(row, 0, at_item)
-            spin = QDoubleSpinBox(); spin.setRange(*FALLBACK_TARGET_LIMITS); spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
-            spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-            self.seven_table.setCellWidget(row, 1, spin)
-        seven_layout.addWidget(self.seven_table)
+        seven_layout = QGridLayout(self.seven_box)
+        self.seven_spins = []
+        for index, (outdoor, register) in enumerate(AT_SEVEN_POINT_REGISTERS):
+            row, col = divmod(index, 4)
+            field = QVBoxLayout()
+            field.addWidget(QLabel(f"{outdoor:+g} °C" if outdoor else "0 °C"))
+            spin = QDoubleSpinBox()
+            spin.setRange(*FALLBACK_TARGET_LIMITS)
+            spin.setDecimals(1); spin.setSingleStep(0.5); spin.setSuffix(" °C")
+            spin.setToolTip(f"MAIN {register}")
+            spin.valueChanged.connect(lambda value, r=register: self._mark_dirty(r, value))
+            self.seven_spins.append(spin)
+            field.addWidget(spin)
+            seven_layout.addLayout(field, row, col)
         drag_hint = QLabel("Tipp: Die sieben Punkte können auch direkt in der Kurve mit der Maus verschoben werden.")
         drag_hint.setWordWrap(True)
-        seven_layout.addWidget(drag_hint)
+        seven_layout.addWidget(drag_hint, 2, 0, 1, 4)
 
         self.curve_canvas = CurveCanvas(self)
+        self.curve_canvas.setMinimumHeight(220)
         self.curve_canvas.pointDragged.connect(self._curve_point_dragged)
         layout.addWidget(self.curve_canvas)
-        self.curve_table = QTableWidget(0, 3)
-        self.curve_table.setHorizontalHeaderLabels(["AT °C", "berechnete Zieltemp. °C", "Hinweis"])
-        self.curve_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.curve_table.verticalHeader().setVisible(False)
-        self.curve_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        layout.addWidget(self.curve_table)
-
+        preview = QGridLayout()
+        self.preview_labels = []
+        for index, (outdoor, _register) in enumerate(AT_SEVEN_POINT_REGISTERS):
+            field = QVBoxLayout()
+            field.addWidget(QLabel(f"{outdoor:+g} °C" if outdoor else "0 °C"))
+            value = QLabel("—")
+            value.setStyleSheet("font-weight: 600; padding: 3px;")
+            self.preview_labels.append(value)
+            field.addWidget(value)
+            preview.addLayout(field, 0, index)
+        layout.addLayout(preview)
         buttons = QHBoxLayout()
-        self.read_btn = QPushButton("von WP lesen")
-        self.apply_live_btn = QPushButton("aus Live-Werten laden")
-        self.write_mode_btn = QPushButton("H36-Modus schreiben")
-        self.write_linear_btn = QPushButton("Linearparameter schreiben")
-        self.write_seven_btn = QPushButton("7-Punkt-Kurve schreiben")
+        self.read_btn = QPushButton("Werte lesen")
+        self.apply_live_btn = QPushButton("Live-Werte übernehmen")
+        self.write_mode_btn = QPushButton("Modus schreiben")
+        self.write_curve_btn = QPushButton("Lineare Kurve schreiben")
         self.auto_refresh_cb = QCheckBox("Autorefresh")
         self.auto_refresh_interval = QSpinBox(); self.auto_refresh_interval.setRange(2, 3600); self.auto_refresh_interval.setValue(10); self.auto_refresh_interval.setSuffix(" s")
         self.close_btn = QPushButton("Schließen")
-        for widget in (self.read_btn, self.apply_live_btn, self.write_mode_btn, self.write_linear_btn, self.write_seven_btn):
+        for widget in (self.read_btn, self.apply_live_btn, self.write_mode_btn, self.write_curve_btn):
             buttons.addWidget(widget)
-        buttons.addWidget(self.auto_refresh_cb); buttons.addWidget(self.auto_refresh_interval)
-        buttons.addStretch(1); buttons.addWidget(self.close_btn)
         layout.addLayout(buttons)
+        refresh_row = QHBoxLayout()
+        refresh_row.addWidget(self.auto_refresh_cb); refresh_row.addWidget(self.auto_refresh_interval)
+        refresh_row.addStretch(1); refresh_row.addWidget(self.close_btn)
+        layout.addLayout(refresh_row)
 
         self.mode_combo.currentIndexChanged.connect(self._mode_changed)
-        self.slope_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
-        self.offset_spin.valueChanged.connect(lambda _=None: self.update_curve_table())
+        self.slope_spin.valueChanged.connect(lambda _: self._mark_dirty(1234))
+        self.offset_spin.valueChanged.connect(lambda value: self._mark_dirty(1235, value))
         self.read_btn.clicked.connect(self.read_from_wp)
-        self.apply_live_btn.clicked.connect(self.refresh_from_live)
+        self.apply_live_btn.clicked.connect(lambda: self.refresh_from_live(force=True))
         self.write_mode_btn.clicked.connect(self.write_mode)
-        self.write_linear_btn.clicked.connect(self.write_linear_params)
-        self.write_seven_btn.clicked.connect(self.write_seven_points)
+        self.write_curve_btn.clicked.connect(lambda: self.write_seven_points() if self.mode_combo.currentData() == 2 else self.write_linear_params())
         self.auto_refresh_cb.toggled.connect(self._toggle_auto_refresh)
         self.auto_refresh_interval.valueChanged.connect(lambda _=None: self._toggle_auto_refresh(self.auto_refresh_cb.isChecked()))
         self.close_btn.clicked.connect(self.close)
         self._mode_changed()
 
     def _seven_spins(self):
-        return [self.seven_table.cellWidget(row, 1) for row in range(len(AT_SEVEN_POINT_REGISTERS))]
+        return self.seven_spins
 
     def _seven_targets(self) -> dict[int, float]:
         return {register: float(spin.value()) for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins())}
@@ -4412,10 +4673,30 @@ class ATCompensationDialog(QDialog):
 
     def _update_target_editor_limits(self) -> None:
         minimum, maximum = self._limits()
-        for spin in self._seven_spins():
-            spin.setRange(minimum, maximum)
+        for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
+            # Keep an edited draft visible when live limits narrow. Preflight
+            # rejects it until the user brings it within the new R10/R11 range.
+            value = spin.value()
+            low, high = (min(minimum, value), max(maximum, value)) if register in self._dirty_registers else (minimum, maximum)
+            spin.setRange(low, high)
+
+    def _mark_dirty(self, register, value=None):
+        if not self._programmatic:
+            if register == 1235 and value is not None:
+                # Linear offset and the 0 °C point are the same parameter.
+                for spin in (self.offset_spin, self._seven_spins()[3]):
+                    previous = spin.blockSignals(True)
+                    spin.setRange(min(spin.minimum(), value), max(spin.maximum(), value))
+                    spin.setValue(value)
+                    spin.blockSignals(previous)
+            self._dirty_registers.add(register)
+            self._edit_versions[register] = self._edit_versions.get(register, 0) + 1
+        self.update_curve_table()
 
     def _mode_changed(self, _index=None):
+        if _index is not None and not self._programmatic:
+            self._dirty_registers.add(1236)
+            self._edit_versions[1236] = self._edit_versions.get(1236, 0) + 1
         mode = int(self.mode_combo.currentData())
         self.linear_box.setVisible(mode == 1)
         self.seven_box.setVisible(mode == 2)
@@ -4427,14 +4708,15 @@ class ATCompensationDialog(QDialog):
         owner = self.main_window
         self.transport_label.setText(f"Steuerung über: {TRANSPORT_NAMES[owner.control_transport()]}")
         mode = int(self.mode_combo.currentData())
-        for button, applicable, registers in (
+        registers = tuple(r for _at, r in AT_SEVEN_POINT_REGISTERS) if mode == 2 else (1234, 1235)
+        self.write_curve_btn.setText("7-Punkt-Kurve schreiben" if mode == 2 else "Lineare Kurve schreiben")
+        for button, applicable, regs in (
             (self.write_mode_btn, True, (1236,)),
-            (self.write_linear_btn, mode == 1, (1234, 1235)),
-            (self.write_seven_btn, mode == 2, tuple(register for _at, register in AT_SEVEN_POINT_REGISTERS)),
+            (self.write_curve_btn, mode in (1, 2), registers),
         ):
-            capability = owner.control_can_write(*registers)
+            capability = owner.control_can_write(*regs)
             button.setEnabled(bool(capability) and applicable)
-            button.setToolTip(capability.reason or ("" if applicable else "Schreibaktion nur im passenden AT-Modus verfügbar."))
+            button.setToolTip(capability.reason)
         capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
         self.read_btn.setEnabled(bool(capability))
         self.read_btn.setToolTip(capability.reason)
@@ -4448,11 +4730,16 @@ class ATCompensationDialog(QDialog):
     def connection_changed(self):
         context = self.main_window.control_context()
         if (context.username, context.device_code) != (self._control_identity.username, self._control_identity.device_code):
+            self._dirty_registers.clear()
+            self._pending_write_versions.clear()
+            self._pending_write_raw.clear()
+            self._programmatic = True
             self.mode_combo.setCurrentIndex(0)
             self.slope_spin.setValue(0)
             self.offset_spin.setValue(0)
             for spin in self._seven_spins():
                 spin.setValue(spin.minimum())
+        self._programmatic = False
         self._control_identity = context
         self.refresh_from_live()
         if self.cloud_request is not None and not self._cloud_identity_matches():
@@ -4477,25 +4764,38 @@ class ATCompensationDialog(QDialog):
     def show_read_timeout(self) -> None:
         self.status_label.setText("AT-Kompensation Timeout / keine Antwort.")
 
-    def update_from_live_register(self, reg):
-        if int(getattr(reg, "reg", -1)) in self.LIVE_REGISTERS:
+    def write_readback_confirmed(self, register):
+        version = self._pending_write_versions.pop(register, None)
+        self._pending_write_raw.pop(register, None)
+        if version is not None and version == self._edit_versions.get(register, 0):
+            self._dirty_registers.discard(register)
             self.refresh_from_live()
 
-    def refresh_from_live(self):
+    def update_from_live_register(self, reg):
+        register = int(getattr(reg, "reg", -1))
+        if register in self.LIVE_REGISTERS:
+            if self._pending_write_raw.get(register) == int(reg.raw_value):
+                self.write_readback_confirmed(register)
+            self.refresh_from_live()
+
+    def refresh_from_live(self, force=False):
+        if force:
+            self._dirty_registers.clear()
+        self._programmatic = True
         mode = self._value(1236, "DIGI1")
-        if mode in AT_MODE_VALUES:
+        if mode in AT_MODE_VALUES and 1236 not in self._dirty_registers:
             index = self.mode_combo.findData(mode)
             self.mode_combo.setCurrentIndex(index)
         slope = self._value(1234, "DIGI5")
-        if slope is not None:
+        if slope is not None and 1234 not in self._dirty_registers:
             self.slope_spin.setValue(slope)
         offset = self._temp(1235)
-        if offset is not None:
+        if offset is not None and 1235 not in self._dirty_registers:
             self.offset_spin.setValue(offset)
         self._update_target_editor_limits()
         for (_at, register), spin in zip(AT_SEVEN_POINT_REGISTERS, self._seven_spins()):
             value = self._temp(register)
-            if value is not None:
+            if value is not None and register not in self._dirty_registers:
                 spin.setValue(value)
         current_at, target = self._temp(2048), self._temp(2014)
         self.current_at_label.setText("--" if current_at is None else f"{current_at:.1f} °C")
@@ -4503,6 +4803,7 @@ class ATCompensationDialog(QDialog):
         minimum, maximum = self._temp(1164), self._temp(1165)
         self.limit_label.setText("R10/R11: --" if minimum is None or maximum is None else f"R10/R11: {minimum:.1f} … {maximum:.1f} °C")
         self.curve_canvas.set_runtime_point(None if current_at is None or target is None else (current_at, target))
+        self._programmatic = False
         self._update_write_actions()
         self.update_curve_table()
 
@@ -4513,7 +4814,8 @@ class ATCompensationDialog(QDialog):
         ats = [at for at, _register in AT_SEVEN_POINT_REGISTERS]
         targets = self._seven_targets()
         curve_points = []
-        self.curve_table.setRowCount(len(ats) if mode else 0)
+        for label in self.preview_labels:
+            label.setText("—")
         for row, at in enumerate(ats if mode else []):
             if mode == 2:
                 raw_target = targets[AT_SEVEN_POINT_REGISTERS[row][1]]
@@ -4523,8 +4825,8 @@ class ATCompensationDialog(QDialog):
                 target = max(minimum, min(maximum, raw_target))
             clipped = target != raw_target
             curve_points.append((at, target, clipped))
-            for col, value in enumerate((f"{at:.1f}", f"{target:.1f}", "R10/R11" if clipped else "")):
-                self.curve_table.setItem(row, col, QTableWidgetItem(value))
+            self.preview_labels[row].setText(f"{target:.1f} °C" + (" *" if clipped else ""))
+            self.preview_labels[row].setToolTip("Durch R10/R11 begrenzt" if clipped else "Berechnete Zieltemperatur")
         self.curve_canvas.set_points(curve_points)
 
     def _toggle_auto_refresh(self, enabled: bool):
@@ -4534,17 +4836,27 @@ class ATCompensationDialog(QDialog):
             self.auto_refresh_timer.stop()
 
     def _confirm_write(self, title, text):
-        return ask_yes_no(self, title, text, default_yes=False)
+        return not self.main_window.control_requires_write_confirmation() or ask_yes_no(self, title, text, default_yes=False)
 
     def _write(self, writes, title, text, label):
         owner = self.main_window
         context = owner.control_context()
+        if context.transport == "cloud" and label != "AT-Kompensation H36-Modus":
+            writes = tuple((register, raw, value) for register, raw, value in writes
+                           if register in self._dirty_registers and
+                           (self._value(register, owner.regmap.get(register).dtype) is None or
+                            abs(float(self._value(register, owner.regmap.get(register).dtype)) - float(value)) > 1e-8))
+            if not writes:
+                self.status_label.setText("Keine geänderten AT-Parameter.")
+                return
         capability = owner.control_can_write(*(register for register, _raw, _value in writes))
         if not capability:
             self._update_write_actions()
             self.status_label.setText(capability.reason)
             return
         if self._confirm_write(title, f"{text}\nTransport: {TRANSPORT_NAMES[context.transport]}"):
+            self._pending_write_versions = {r: self._edit_versions.get(r, 0) for r, _, _ in writes}
+            self._pending_write_raw = {r: raw for r, raw, _ in writes}
             error = owner.control_write_registers(writes, label, expected_context=context)
             self.status_label.setText(error or "AT-Kompensation Schreiben gesendet.")
             self._update_write_actions()
@@ -4563,11 +4875,19 @@ class ATCompensationDialog(QDialog):
 
     def write_seven_points(self):
         values = self._seven_targets()
+        minimum, maximum = self._limits()
+        invalid = [str(r) for r, value in values.items() if not minimum <= value <= maximum]
+        if invalid:
+            self.status_label.setText(f"Kurvenwerte außerhalb R10/R11 ({minimum:g} … {maximum:g} °C): " + ", ".join(invalid))
+            return
         lines = [f"{at:+g} °C → {values[register]:.1f} °C (Register {register})" for at, register in AT_SEVEN_POINT_REGISTERS]
         writes = tuple((register, raw, values[register]) for register, raw in seven_point_write_plan(values))
         self._write(writes, "7-Punkt-AT-Kurve schreiben", "Folgende sieben Werte schreiben?\n\n" + "\n".join(lines), "AT-Kompensation 7-Punkt")
 
     def read_from_wp(self):
+        if not self.isVisible():
+            return
+        self.initial_read_timer.stop()
         owner = self.main_window
         context = owner.control_context()
         capability = owner.control_can_read(*(cloud_modbus_register(code) for code in AT_CLOUD_READ_CODES))
@@ -4609,6 +4929,9 @@ class ATCompensationDialog(QDialog):
     def cloud_read_finished(self, cycle_id, rows, error):
         request = self.cloud_request
         if request is None or request.cycle_id != cycle_id:
+            return
+        if not self.isVisible():
+            self._cancel_cloud_read()
             return
         if not self._cloud_identity_matches():
             self.connection_changed()
@@ -4665,6 +4988,8 @@ class MainWindow(QMainWindow):
         # Display-/DWIN-Adressen bekommen bewusst ein eigenes Diagnose-Mapping.
         # Sie duerfen die normale Warmlink/WP-Registertabelle nicht ueberschreiben.
         self.display_regmap = RegisterMap(self.display_regmap_path) if os.path.exists(self.display_regmap_path) else RegisterMap("")
+        self.unit1_regmap = RegisterMap("")
+        self.unit1_regmap.items = {source: self.display_regmap.get(source + 89000) for source in range(2099, 2150)}
         self.register_defs = self._load_register_defs()
 
         self.thread: Optional[QThread] = None
@@ -4698,7 +5023,18 @@ class MainWindow(QMainWindow):
         # Die Markierung bleibt bewusst dauerhaft stehen, bis die Hauptliste geleert wird.
         self.register_change_highlights: set[int] = set()
         self.pending_read_requests: list[dict[str, Any]] = []
-        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+        self.warmlink_read_scheduler = WarmlinkRequestScheduler(self, self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log, self._recover_warmlink_stream)
+        self._reader_epoch = 0
+        self._reader_signal_guard = None
+        self._reader_connection_settings = None
+        self._warmlink_recovery = None
+        self._warmlink_recovery_attempts = 0
+        self._warmlink_recovery_error = ""
+        self._warmlink_closing = False
+        self._close_after_reader = False
+        self._warmlink_reconnect_timer = QTimer(self)
+        self._warmlink_reconnect_timer.setSingleShot(True)
+        self._warmlink_reconnect_timer.timeout.connect(self._attempt_warmlink_reconnect)
         self.pending_write_requests: list[dict[str, Any]] = []
         self.device_info_tracker = DeviceInfoTracker()
         self.device_info_dialog: Optional[DeviceInfoDialog] = None
@@ -4716,6 +5052,7 @@ class MainWindow(QMainWindow):
         # Display-/HMI-Diagnose: Rohblock-Snapshots fuer Kandidatensuche.
         # Diese Werte werden bewusst getrennt von der Haupt-Registerliste gehalten.
         self.display_hmi_block_snapshots: Dict[tuple[int, int, str], list[int]] = {}
+        self.display_valid_param_packet_times: Dict[int, float] = {}
         self.display_hmi_block_snapshot_times: Dict[tuple[int, int, str], float] = {}
         # PRIVATE Display-Tests: ACK-Zeitstempel fuer aktiv injizierte FC16-Schreibbefehle.
         # Key: (slave, start_addr, qty). Wichtig, weil die bisherigen Tests fast immer
@@ -4778,10 +5115,15 @@ class MainWindow(QMainWindow):
         self.cloud_write_code: str = ""
         self.cloud_read_thread: Optional[QThread] = None
         self.cloud_read_worker: Optional[WarmLinkCloudReadWorker] = None
+        self._close_after_cloud_read = False
+        self._close_after_cloud_write = False
+        self._close_after_cloud_poll = False
         self.cloud_read_reg_no: int | None = None
         self.cloud_read_code = ""
         self._cloud_read_token = None
         self._cloud_read_token_username = ""
+        self._cloud_manually_disconnected = False
+        self._cloud_disconnect_pending = False
         self.cloud_session_authenticated = False
         self.cloud_session_device_code = ""
         self.cloud_overlay_by_reg: dict[int, dict[str, Any]] = {}
@@ -4909,15 +5251,57 @@ class MainWindow(QMainWindow):
         self.send_read_request(2001, 8, slave_addr=0x63, label="Geräte-Info WiFi-ID", delay_ms=pause_ms)
         self.send_read_request(50500, 13, slave_addr=0x63, label="Geräte-Info C544")
 
-    def open_warmlink_cloud_dialog(self):
+    def _ensure_warmlink_cloud_dialog(self):
         if self.warmlink_cloud_dialog is None:
             self.warmlink_cloud_dialog = WarmLinkCloudDialog(self)
             self.warmlink_cloud_dialog.finished.connect(lambda _=None: setattr(self, "warmlink_cloud_dialog", None))
-        self.warmlink_cloud_dialog.show()
-        self.warmlink_cloud_dialog.raise_()
-        self.warmlink_cloud_dialog.activateWindow()
+        return self.warmlink_cloud_dialog
+
+    def open_warmlink_cloud_dialog(self):
+        dialog = self._ensure_warmlink_cloud_dialog()
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def toggle_cloud_connection(self):
+        if getattr(self, "_cloud_disconnect_pending", False):
+            return
+        dialog = self._ensure_warmlink_cloud_dialog()
+        if self.is_cloud_connected():
+            dialog.disconnect_session()
+        else:
+            dialog.quick_connect()
+
+    def _update_cloud_quick_button(self):
+        button = getattr(self, "cloud_quick_btn", None)
+        if button is None:
+            return
+        dialog = getattr(self, "warmlink_cloud_dialog", None)
+        state = getattr(self, "cloud_ui_state", "DISCONNECTED")
+        if getattr(self, "_cloud_disconnect_pending", False):
+            text, enabled = "Trenne …", False
+        elif getattr(dialog, "_quick_connect_pending", False) or state == "CONNECTING":
+            text, enabled = "Verbinde …", False
+        elif self.is_cloud_connected():
+            text, enabled = "Trennen", True
+        elif getattr(dialog, "cloud_thread", None) is not None:
+            text, enabled = "Verbinde …", False
+        else:
+            text, enabled = "Verbinden", True
+        button.setText(text)  # Text fallback if the bundled SVG is unavailable.
+        disconnect = self.is_cloud_connected() or getattr(self, "_cloud_disconnect_pending", False)
+        action = "disconnect" if disconnect else "connect"
+        tooltip = f"WarmLink Cloud: {text}"
+        apply_button_icon(button, f"assets/icons/cloud_{action}.svg", tooltip, f"Cloud: {text}")
+        button.setMaximumWidth(40 if not button.text() else 100)
+        button.setEnabled(enabled and not getattr(self, "_warmlink_closing", False))
 
     def _autostart_warmlink_cloud_if_enabled(self):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
+        dialog = self.warmlink_cloud_dialog
+        if dialog is not None and (dialog.cloud_thread is not None or dialog._quick_connect_pending):
+            return
         cfg = self.settings.get("warmlink_cloud", {})
         if not isinstance(cfg, dict) or not cfg.get("auto_start_polling"):
             return
@@ -4966,14 +5350,29 @@ class MainWindow(QMainWindow):
                 if block:
                     _data["block"] = block
         # Wissensdatenbank überlagert nur Erklär-/Notizfelder, nicht technische Basisfelder.
+        # These obsolete bundled descriptions were also copied into user files
+        # when saving unrelated notes. Keep custom notes, but use the corrected
+        # catalog text/source instead of importing the old known mistakes.
+        retired_status_descriptions = {
+            "2016": "Solltemperatur wie 2013/2014, °C, Skalierung /10.",
+            "2017": "0",
+        }
         for key, extra in getattr(self, "knowledge_defs", {}).items():
             if not isinstance(extra, dict):
                 continue
             skey = str(key)
+            # Old user knowledge files may still contain the invalid V3.5
+            # buffer-offset alias. It must not reappear as a readable register.
+            if skey == "1557":
+                continue
             base = defs.setdefault(skey, {})
             if not isinstance(base, dict):
                 continue
             for field in ("description", "knowledge", "notes", "hint", "explanation", "default", "source", "source_app_video"):
+                if (skey in retired_status_descriptions
+                        and extra.get("description") == retired_status_descriptions[skey]
+                        and field in ("description", "source")):
+                    continue
                 if field in extra and str(extra.get(field, "")).strip():
                     base[field] = extra[field]
             if isinstance(extra.get("default_by_device"), dict):
@@ -5047,7 +5446,11 @@ class MainWindow(QMainWindow):
         self.display_translate_cb.setChecked(False)
         self.display_translate_cb.setVisible(False)
         self.comm_settings_btn = QPushButton("Programm-Einstellungen ...")
-        self.cloud_btn = CloudStatusButton("WarmLink Cloud / LTE ...")
+        self.cloud_quick_btn = CloudStatusButton("Verbinden")
+        self.cloud_quick_btn.setMaximumWidth(100)
+        self.cloud_quick_btn.setAccessibleName("Cloud verbinden oder trennen")
+        self.cloud_quick_btn.setToolTip("WarmLink Cloud mit gespeichertem Zugang verbinden oder Sitzung trennen.")
+        self.cloud_btn = QPushButton("WarmLink Cloud / LTE ...")
         self.cloud_btn.setToolTip("Optionale WarmLink/Linked-Go Cloud-Anbindung: lesen, Overlay, Wertefinder und Schreiben bekannter Cloud-Codes.")
         self.comm_summary_label = QLabel("")
         self.comm_summary_label.setMinimumWidth(360)
@@ -5084,7 +5487,7 @@ class MainWindow(QMainWindow):
         self.about_btn.setMaximumWidth(86)
         self.device_info_btn = QPushButton("Geräte-Info")
         apply_button_icon(self.comm_settings_btn, "assets/icons/settings.svg", "Programmeinstellungen öffnen", "Einstellungen", "Programmeinstellungen öffnen")
-        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "Warmlink Cloud öffnen", "Warmlink Cloud", "Warmlink Cloud öffnen")
+        apply_button_icon(self.cloud_btn, "assets/icons/cloud.svg", "WarmLink Cloud-Einstellungen öffnen", "WarmLink Cloud-Einstellungen", "WarmLink Cloud-Einstellungen öffnen")
         apply_button_icon(self.connect_btn, "assets/icons/connect.svg", "Mit der Wärmepumpe verbinden", "Verbinden", "Mit der Wärmepumpe verbinden")
         apply_button_icon(self.disconnect_btn, "assets/icons/disconnect.svg", "Verbindung trennen", "Verbindung trennen", "Bestehende Verbindung zur Wärmepumpe trennen")
         apply_button_icon(self.about_btn, "assets/icons/about.svg", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control", "Hilfe / Über FoxAir Control öffnen")
@@ -5095,6 +5498,7 @@ class MainWindow(QMainWindow):
         top.addWidget(self.comm_settings_btn)
         self.set_cloud_ui_state("DISCONNECTED")
         top.addWidget(self.cloud_btn)
+        top.addWidget(self.cloud_quick_btn)
         top.addWidget(self.comm_summary_label)
         top.addWidget(self.connect_btn)
         top.addWidget(self.disconnect_btn)
@@ -5388,6 +5792,7 @@ class MainWindow(QMainWindow):
         self.about_btn.clicked.connect(self.open_about_dialog)
         self.device_info_btn.clicked.connect(self.open_device_info_dialog)
         self.cloud_btn.clicked.connect(self.open_warmlink_cloud_dialog)
+        self.cloud_quick_btn.clicked.connect(self.toggle_cloud_connection)
         self.connect_btn.clicked.connect(self.connect_to_device)
         self.disconnect_btn.clicked.connect(self.disconnect_from_device)
         self.write_dry_btn.clicked.connect(self.show_write_frame)
@@ -5700,6 +6105,9 @@ class MainWindow(QMainWindow):
 
     def _display_parts_for_register(self, reg_no: int, fallback_name: str = "") -> tuple[str, str, str]:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        display_map = getattr(self, "display_regmap", None)
+        if not data and display_map is not None:
+            data = display_map.get(int(reg_no)).metadata or {}
         if isinstance(data, dict):
             block, code, clean = register_meta_parts(data)
             if code or block or clean:
@@ -5720,6 +6128,9 @@ class MainWindow(QMainWindow):
 
     def _unit_for_register(self, reg_no: int) -> str:
         data = getattr(self, "register_defs", {}).get(str(int(reg_no)), {})
+        display_map = getattr(self, "display_regmap", None)
+        if not data and display_map is not None:
+            data = display_map.get(int(reg_no)).metadata or {}
         if isinstance(data, dict):
             return str(data.get("unit", "") or "").strip()
         return ""
@@ -5754,6 +6165,15 @@ class MainWindow(QMainWindow):
             )
         )
 
+    def _register_info_for_value(self, reg: DecodedRegister):
+        display_map = getattr(self, "display_regmap", None)
+        if display_map is not None and (
+            (is_virtual_register(reg.reg) and int(reg.slave_addr) == 1)
+            or (int(reg.slave_addr) in (2, 3) and int(reg.reg) in display_map.items)
+        ):
+            return display_map.get(int(reg.reg))
+        return self.regmap.get(int(reg.reg))
+
     def _display_value_for_main_table(self, reg: DecodedRegister) -> str:
         if int(getattr(reg, "slave_addr", -1)) == 0xC1 and int(getattr(reg, "frame_type", -1)) == 0xC10D:
             # getDataByCode already returns an engineering value.
@@ -5761,7 +6181,7 @@ class MainWindow(QMainWindow):
         if self._is_ascii_block_header_register(int(reg.reg)):
             ascii_text = self._decode_printable_ascii_word(int(reg.raw_value))
             return ascii_text or "Reserve"
-        info = self.regmap.get(int(reg.reg))
+        info = self._register_info_for_value(reg)
         unit = self._unit_for_register(int(reg.reg))
         dtype = info.dtype if info else getattr(reg, "dtype", "RAW")
         value_map = info.value_map if info else None
@@ -5772,6 +6192,7 @@ class MainWindow(QMainWindow):
             value_map,
             bit_map,
             unit=unit or None,
+            compact=bool(getattr(info, "bitfield_compact", False)),
         )
 
     def _display_value_with_register_unit(self, reg_no: int, display_value: str) -> str:
@@ -6112,7 +6533,7 @@ class MainWindow(QMainWindow):
             self._update_contact_table(None)
             self._update_load_output_decoder(None)
             if self.system_io_dialog is not None and self.system_io_dialog.isVisible():
-                self.system_io_dialog.set_values(None, None, status_text="Hauptfenster geleert.")
+                self.system_io_dialog.clear_values("Hauptfenster geleert.")
             self._update_fault_button_style()
             if self.value_search_target is not None:
                 self.value_search_matches = []
@@ -6271,12 +6692,16 @@ class MainWindow(QMainWindow):
         return build_read_frame(wire_addr, quantity, slave_addr=wire_slave), wire_addr, wire_slave, note
 
     def _backend_changed(self):
+        self._warmlink_recovery_error = ""
+        if self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         # Kompatibilitätsmethode für alte Signalpfade; Werte werden jetzt über das Kommunikations-Popup gesetzt.
         if hasattr(self, "write_bus_edit"):
             self.write_bus_edit.setText(f"0x{int(self.unit_spin.value()):02X}")
         # Fix34: Beim Wechsel von Display auf Warmlink/Standard darf ein alter
         # Display-INIT/DisplayWorker-Zustand den Init-Button nicht dauerhaft sperren.
         if self.current_backend_key() != "display_modbus":
+            self.display_fake_reboot_state = {}
             self.display_init_progress_active = False
             self.display_init_progress_busy_state = False
             self.display_init_progress_text = "Bereit"
@@ -6332,7 +6757,9 @@ class MainWindow(QMainWindow):
             self.init_progress_bar.setTextVisible(True)
             self.init_progress_bar.setFormat(text)
         if hasattr(self, "status_label"):
-            self.status_label.setText(text)
+            recovery_text = ("LTE: Verbindung wird wiederhergestellt …"
+                             if getattr(self, "_warmlink_recovery", None) is not None else "")
+            self.status_label.setText(getattr(self, "_warmlink_recovery_error", "") or recovery_text or text)
 
     def _compact_init_progress_format(self, done: int | None = None, total: int | None = None, fallback: str = "") -> str:
         if done is not None and total is not None:
@@ -6351,14 +6778,23 @@ class MainWindow(QMainWindow):
             self.init_progress_bar.setRange(0, 0)
         else:
             total_value = max(1, int(total if total is not None else 3))
-            done_value = total_value if finished else max(0, min(int(done if done is not None else 0), total_value))
+            done_value = total_value if finished and not failed else max(0, min(int(done if done is not None else 0), total_value))
             self.init_progress_bar.setRange(0, total_value)
             self.init_progress_bar.setValue(done_value)
         self._set_init_progress_text(self.display_init_progress_text)
         self._update_init_read_button_state()
 
     def _display_reboot_finish(self, text: str, *, failed: bool = False) -> None:
-        self._display_reboot_progress(text, busy=False, done=3, total=3, finished=True, failed=failed)
+        state = self.display_fake_reboot_state
+        fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state.get("started", time.monotonic()))))
+        received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+        missing = [start for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+        self.display_last_sync_result = {
+            "complete": not failed and not missing,
+            "received": received, "missing": missing,
+            "optional_received": [start for start in OPTIONAL_PARAMETER_PACKETS if start in fresh],
+        }
+        self._display_reboot_progress(text, busy=False, done=len(received), total=len(REQUIRED_PARAMETER_PACKETS), finished=True, failed=failed)
         self.display_init_progress_active = False
         self.display_init_progress_busy_state = False
         self._update_init_read_button_state()
@@ -6465,7 +6901,7 @@ class MainWindow(QMainWindow):
         generic_active = bool(getattr(self, "init_read_active", False)) and (display_active or warmlink_active or standard_active)
         if display_active:
             self.init_read_btn.setEnabled(False)
-            self.init_read_btn.setText("Display-Init läuft ...")
+            self.init_read_btn.setText("Display-Synchronisation läuft ...")
         elif warmlink_active or standard_active or generic_active:
             self.init_read_btn.setEnabled(False)
             self.init_read_btn.setText("Init läuft ...")
@@ -6474,9 +6910,9 @@ class MainWindow(QMainWindow):
             self.init_read_btn.setText("Firmware-Capture: Senden gesperrt")
         else:
             self.init_read_btn.setEnabled(True)
-            self.init_read_btn.setText("Alle bekannten Register lesen")
+            self.init_read_btn.setText("Display-Parameter synchronisieren" if self.current_backend_key() == "display_modbus" else "Alle bekannten Register lesen")
 
-    def connect_to_device(self):
+    def connect_to_device(self, *, recovering=False):
         if self.thread:
             return
 
@@ -6487,7 +6923,13 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Kommunikation", "Bitte in Programm-Einstellungen ... zuerst Host/IP eintragen.")
             return
 
-        self.thread = QThread()
+        if not recovering:
+            self._cancel_warmlink_recovery()
+            self._warmlink_recovery_attempts = 0
+        self._reader_connection_settings = self._current_reader_settings()
+        self._reader_epoch += 1
+        guard = self._reader_signal_guard = ReaderSessionGuard(self, self._reader_epoch)
+        self.thread = QThread(self)
         self.worker = ReaderWorker(
             host, port, self.regmap,
             backend_label=self.current_backend_label(),
@@ -6505,24 +6947,28 @@ class MainWindow(QMainWindow):
         self.worker.moveToThread(self.thread)
 
         self.thread.started.connect(self.worker.run)
-        self.worker.connected.connect(self.on_connected)
-        self.worker.disconnected.connect(self.on_disconnected)
+        self.worker.connected.connect(guard.connected)
+        self.worker.disconnected.connect(guard.disconnected)
         self.worker.error.connect(self.on_error)
         self.worker.log.connect(self._log)
-        self.worker.frame_decoded.connect(self.on_frame_decoded)
-        self.worker.read_sent.connect(self._on_warmlink_read_sent)
-        self.worker.read_failed.connect(self._on_warmlink_read_failed)
+        self.worker.frame_decoded.connect(guard.frame)
+        self.worker.read_sent.connect(guard.sent)
+        self.worker.read_failed.connect(guard.failed)
         self.worker.raw_chunk.connect(self.on_raw_chunk)
         self.worker.tx_chunk.connect(self.on_tx_chunk)
         self.worker.tx_blocked_attempt.connect(self._on_passive_tx_blocked)
         self.worker.disconnected.connect(self.thread.quit)
         self.worker.disconnected.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.finished.connect(self._clear_thread_refs)
 
         self.thread.start()
 
     def disconnect_from_device(self):
+        recovering = self._warmlink_recovery is not None
+        self._cancel_warmlink_recovery()
+        if recovering:
+            self._reader_epoch += 1
+            self.on_disconnected()
         # Wenn Display-INIT den ausgelagerten DisplayWorker benutzt, ist die
         # normale Hauptverbindung eventuell schon per EOF weg. Disconnect soll
         # dann trotzdem den noch laufenden Display-/Warmlink-Hilfsworker stoppen.
@@ -6551,8 +6997,98 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _clear_thread_refs(self):
+        thread = self.thread
+        # finished precedes thread-local cleanup. Keep both Python wrappers
+        # alive until a zero-wait probe confirms the native thread has exited.
+        # Never block the GUI or delete QThread while that cleanup still runs.
+        if thread is not None and not thread.wait(0):
+            QTimer.singleShot(10, self._clear_thread_refs)
+            return
         self.thread = None
         self.worker = None
+        if thread is not None:
+            thread.deleteLater()
+        if self._reader_signal_guard is not None:
+            self._reader_signal_guard.deleteLater()
+            self._reader_signal_guard = None
+        if self._close_after_reader:
+            QTimer.singleShot(0, self.close)
+        elif self._warmlink_recovery is not None:
+            self._schedule_warmlink_reconnect()
+
+    def _current_reader_settings(self):
+        backend = self.current_backend_key()
+        cfg = self._backend_settings(backend)
+        return (backend, self.host_edit.text().strip(), int(self.port_edit.value()),
+                str(cfg.get("transport", "tcp")), str(cfg.get("serial_port", "COM3")),
+                int(cfg.get("baudrate", 9600)), str(cfg.get("parity", "N")),
+                int(cfg.get("bytesize", 8)), float(cfg.get("stopbits", 1.0)))
+
+    def _cancel_warmlink_recovery(self):
+        recovering = self._warmlink_recovery is not None
+        self._warmlink_recovery_error = ""
+        self._warmlink_reconnect_timer.stop()
+        self._warmlink_recovery = None
+        self.warmlink_read_scheduler.cancel()
+        self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
+        if recovering and not self.connected:
+            self.status_label.setText("getrennt")
+            self.disconnect_btn.setEnabled(False)
+            self._update_connection_button_icons()
+
+    def _recover_warmlink_stream(self, request):
+        # Automatic recovery is only a TCP connection replacement. Reopening a
+        # serial port cannot establish a new remote RTU session.
+        settings = self._reader_connection_settings
+        if (self._warmlink_closing or self._warmlink_recovery is not None
+                or not self.connected or self.worker is None or self.thread is None
+                or self._is_firmware_capture_mode() or settings is None
+                or settings != self._current_reader_settings()
+                or settings[0] != "warmlink_raw" or settings[3] != "tcp"):
+            self._log("LTE-Neuverbindung nicht gestartet: Transport geändert, getrennt oder nicht als TCP-Verbindung verfügbar.")
+            return False
+        self._warmlink_recovery = {"settings": settings}
+        self._reader_epoch += 1  # Retire even already-queued old signals before closing.
+        self.worker.set_tx_blocked(True)  # Discard old queued reads AND writes.
+        self.pending_write_requests.clear()  # Never replay an unacknowledged write.
+        controller = getattr(self, "warmlink_init_controller", None)
+        if controller is not None and controller.active:
+            controller.cancel("WARMLINK-INIT wegen LTE-Neuverbindung abgebrochen.")
+        self._log(f"LTE-Neuverbindung: FC03 für Register {request['addr']} verloren; alte Verbindung wird geschlossen.")
+        self.worker.stop()
+        self.on_disconnected()
+        self.status_label.setText("LTE: Verbindung wird wiederhergestellt …")
+        # _clear_thread_refs schedules reconnection only after QThread.finished.
+        return True
+
+    def _schedule_warmlink_reconnect(self):
+        state = self._warmlink_recovery
+        if state is None:
+            return
+        if (self._warmlink_closing or state["settings"] != self._current_reader_settings()
+                or self._is_firmware_capture_mode()):
+            self._cancel_warmlink_recovery()
+            return
+        if self._warmlink_recovery_attempts >= len(WARMLINK_RECONNECT_DELAYS_MS):
+            self._cancel_warmlink_recovery()
+            self._warmlink_recovery_error = "LTE-Wiederherstellung fehlgeschlagen; bitte Verbindung prüfen und manuell verbinden."
+            self.status_label.setText(self._warmlink_recovery_error)
+            self._log("LTE-Neuverbindung: Versuchslimit erreicht; keine weiteren automatischen Verbindungsversuche.")
+            return
+        delay = WARMLINK_RECONNECT_DELAYS_MS[self._warmlink_recovery_attempts]
+        self._warmlink_reconnect_timer.start(delay)
+
+    def _attempt_warmlink_reconnect(self):
+        state = self._warmlink_recovery
+        if state is None or self.thread is not None:
+            return
+        if (self._warmlink_closing or state["settings"] != self._current_reader_settings()
+                or self._is_firmware_capture_mode()):
+            self._cancel_warmlink_recovery()
+            return
+        self._warmlink_recovery_attempts += 1
+        self._log(f"LTE-Neuverbindung: Versuch {self._warmlink_recovery_attempts}/{len(WARMLINK_RECONNECT_DELAYS_MS)}.")
+        self.connect_to_device(recovering=True)
 
     def _update_connection_button_icons(self):
         if not hasattr(self, "connect_btn") or not hasattr(self, "disconnect_btn"):
@@ -6566,6 +7102,13 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_connected(self):
+        state = self._warmlink_recovery
+        if state is not None and (self._warmlink_closing or self._is_firmware_capture_mode()
+                                  or state["settings"] != self._current_reader_settings()):
+            self.disconnect_from_device()
+            return
+        recovering = state is not None
+        self._warmlink_recovery = None
         self.connected = True
         self.status_label.setText("verbunden")
         self.connect_btn.setEnabled(False)
@@ -6584,12 +7127,16 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        if recovering:
+            self.warmlink_read_scheduler.transport_reconnected()
+            self._log("LTE-Neuverbindung erfolgreich: Scheduler zurückgesetzt; wartende Reads werden auf der neuen Verbindung fortgesetzt.")
 
     @Slot()
     def on_disconnected(self):
         scheduler = getattr(self, "warmlink_read_scheduler", None)
         if scheduler:
-            scheduler.cancel()
+            if self._warmlink_recovery is None:
+                scheduler.cancel()
             self.pending_read_requests = [r for r in self.pending_read_requests if not r.get("scheduler")]
         # Beim Backend "Modbus Display" wird fuer "Alle bekannten Register lesen"
         # absichtlich der robuste DisplayWorker-Pfad benutzt. Dadurch trennt die
@@ -6625,6 +7172,10 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        if self._warmlink_recovery is not None:
+            self.status_label.setText("LTE: Verbindung wird wiederhergestellt …")
+            self.disconnect_btn.setEnabled(True)
+            self.disconnect_btn.setToolTip("Automatische LTE-Wiederherstellung abbrechen")
 
     @Slot(str)
     def on_error(self, text: str):
@@ -6688,6 +7239,8 @@ class MainWindow(QMainWindow):
 
     def _set_firmware_capture_guard(self, active: bool) -> None:
         active = bool(active and self._is_warmlink_backend_key(self.current_backend_key()))
+        if active and self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         worker = getattr(self, "worker", None)
         # FIRST: close the final TX gate on every Warmlink ReaderWorker. Only
         # after that may timers/controllers/queues be touched.
@@ -7062,7 +7615,9 @@ class MainWindow(QMainWindow):
                 self._update_fault_decoder()
             if reg.reg in (2081, 2082, 2083, 2085, 2086, 2087, 2088, 2089, 2090):
                 self._update_fault_decoder()
-            if reg.reg in (2146, 2147) and self.system_io_dialog is not None and self.system_io_dialog.isVisible():
+            if (reg.reg in SystemIOStatusDecoderDialog.STATUS_REGISTERS
+                    and str(getattr(frame, "pending_read_label", "")) not in SystemIOStatusDecoderDialog.READ_LABELS
+                    and self.system_io_dialog is not None and self.system_io_dialog.isVisible()):
                 self.system_io_dialog.update_from_live_register(reg)
 
             if self.timer_dialog is not None and self.timer_dialog.isVisible():
@@ -7335,7 +7890,7 @@ class MainWindow(QMainWindow):
             self._apply_register_row_visual_state(reg_no)
 
         for delay_ms, color in FLASH_CHANGED_ROW_FADE_STEPS:
-            QTimer.singleShot(delay_ms, lambda c=color: apply_flash_step(c))
+            QTimer.singleShot(delay_ms, self, lambda c=color: apply_flash_step(c))
 
         def clear_flash() -> None:
             if self.register_flash_tokens.get(reg_no) != token:
@@ -7343,7 +7898,7 @@ class MainWindow(QMainWindow):
             self.register_flash_tokens.pop(reg_no, None)
             self.register_flash_colors.pop(reg_no, None)
             self._apply_register_row_visual_state(reg_no)
-        QTimer.singleShot(FLASH_CHANGED_ROW_MS, clear_flash)
+        QTimer.singleShot(FLASH_CHANGED_ROW_MS, self, clear_flash)
 
     def _apply_persistent_change_backgrounds(self, only_regs: Optional[list[int]] = None) -> None:
         """PRIVATE fix51: geaenderte Zeilen nach Refreshes erneut sichtbar machen."""
@@ -7409,6 +7964,12 @@ class MainWindow(QMainWindow):
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             if col == 2 and value:
                 item.setToolTip(reg.name)
+            elif col == 7:
+                info = self._register_info_for_value(reg)
+                definition = info.metadata or self.register_defs.get(str(reg.reg), {})
+                details = format_bitfield_details(reg.raw_value, info) if info.dtype in ("BITFIELD", "FAULT_BITS") else str(value)
+                provenance = "\n".join(str(definition.get(k) or "") for k in ("description", "notes", "source"))
+                item.setToolTip(details + "\n" + provenance)
             elif col in (11, 12):
                 item.setToolTip(value)
             apply_block_header_item_style(self.register_table, item, is_block_row)
@@ -7560,34 +8121,49 @@ class MainWindow(QMainWindow):
     def control_transport(self):
         return self.control_context().transport
 
+    def control_requires_write_confirmation(self):
+        return self.control_transport() != "cloud"
+
+    def _cloud_write_context_is_current(self, context):
+        origin = getattr(self, "_control_cloud_write_origin_context", context)
+        return (origin == self.control_context() and self.is_cloud_connected()
+                and context.username == str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip()
+                and context.device_code == self.cloud_session_device_code)
+
     def _control_cloud_busy(self, *, write=False):
         dialog = getattr(self, "warmlink_cloud_dialog", None)
         busy = (getattr(self, "cloud_read_thread", None) is not None or
                 getattr(self, "cloud_write_thread", None) is not None or
-                getattr(dialog, "command_thread", None) is not None or
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "timer_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
 
     def _control_capability(self, registers, *, write=False):
-        return register_control_capability(self.control_context(), registers, cloud_code_for_register,
+        return register_control_capability(self.control_context(), registers,
+            cloud_code_for_register,
             write=write, capture=self._is_firmware_capture_mode(), busy=self._control_cloud_busy(write=write))
 
     def control_can_read(self, *registers):
         return self._control_capability(registers)
 
     def control_can_write(self, *registers):
+        if any(register in (2019, 2034) for register in registers):
+            return ControlCapability(False, "Kontakt-/Lastausgangsstatus ist read-only.")
+        if 2133 in registers:
+            return ControlCapability(False, "SG Status ist read-only.")
+        if 8801 in registers and self.control_transport() != "standard_modbus":
+            return ControlCapability(False, "8801 ist nur am direkten Mainboard-Modbus bestätigt.")
         return self._control_capability(registers, write=True)
 
     def control_write_register(self, register, raw_value, engineering_value=None, label="", *, expected_context=None):
         return self.control_write_registers(((register, raw_value, engineering_value),), label,
                                             expected_context=expected_context)
 
-    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350):
+    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350, mask_baselines=None):
         """Preflight the whole action, then use one fixed existing I/O path."""
         context = expected_context or self.control_context()
         if context != self.control_context():
@@ -7606,11 +8182,19 @@ class MainWindow(QMainWindow):
                                       self.regmap.get(register), value)) for register, raw, value in validated)
                 if commands:
                     return self.send_cloud_write(*commands[0], device_code=context.device_code, label=label,
-                        control_context=context, commands=commands if len(commands) > 1 else None)
+                        control_context=context, commands=commands if len(commands) > 1 else None,
+                        **({"mask_baselines": mask_baselines} if mask_baselines is not None else {}))
+            elif context.transport == "display_modbus" and label.startswith("SG Ready"):
+                if self.display_timer_batch_state.get("active"):
+                    return "Display-SG-Schreibsequenz läuft bereits; bitte Abschluss abwarten."
+                plan = self._display_timer_batch_plan([(r, raw, label) for r, raw, _ in validated], DEFAULT_BUS_ADDR)
+                if not plan:
+                    return "Display-Werte noch nicht synchronisiert oder unverändert; bitte frisch lesen."
+                self._send_display_timer_batch(plan, SG_LOCAL_WRITE_INTERVAL_MS, "SG Ready")
             else:
                 for index, (register, raw, _value) in enumerate(validated):
                     self.send_register_write(register, raw, DEFAULT_BUS_ADDR, label=label,
-                                             delay_ms=index * delay_ms)
+                                             delay_ms=SG_LOCAL_WRITE_INTERVAL_MS if label.startswith("SG Ready") else index * delay_ms)
         except (ValueError, RuntimeError) as exc:
             return str(exc)
         return None
@@ -7642,19 +8226,16 @@ class MainWindow(QMainWindow):
 
     def _notify_control_connection_changed(self):
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._is_firmware_capture_mode()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "timer_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
-        update = getattr(getattr(self, "warmlink_cloud_dialog", None), "_update_write_controls", None)
-        if update is not None:
-            update()
 
     def _notify_cloud_register_update(self, reg_no: int):
         # New dialogs can opt in without changing the local register update path.
-        for attribute in ("parameter_dialog", "at_comp_dialog", "wp_control_dialog"):
+        for attribute in ("parameter_dialog", "at_comp_dialog", "wp_control_dialog", "sg_dialog", "fault_dialog"):
             dialog = getattr(self, attribute, None)
             callback = getattr(dialog, "update_from_cloud_register", None)
             if callback is not None:
@@ -7743,10 +8324,10 @@ class MainWindow(QMainWindow):
                 self.cloud_overlay_by_reg[reg_no] = info
                 changed_regs.append(reg_no)
                 if reg_no == 2034 and not self._has_local_register_entry(reg_no):
-                    if self.contact_dialog is not None and self.contact_dialog.isVisible():
+                    if self.contact_dialog is not None and self.contact_dialog.isVisible() and self.control_transport() != "cloud":
                         self.contact_dialog.set_value(int(translated.raw))
                 if reg_no == 2019 and not self._has_local_register_entry(reg_no):
-                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+                    if self.load_output_dialog is not None and self.load_output_dialog.isVisible() and self.control_transport() != "cloud":
                         self.load_output_dialog.set_value(int(translated.raw), "Cloud-Fallback")
                 if show_cloud_only and not has_local_register and (old_info.get("value") != info["value"] or reg_no not in self.table_rows):
                     new_cloud_row = new_cloud_row or reg_no not in self.table_rows
@@ -7865,12 +8446,12 @@ class MainWindow(QMainWindow):
             active_bits = [str(bit) for bit, bit_value, _name, _state, _meaning in decode_contact_bits(value) if bit_value]
             active_text = ",".join(active_bits) if active_bits else "keine"
             self.contact_value_label.setText(f"2034: 0x{value:04X} / Bits: {active_text}")
-        if self.contact_dialog is not None and self.contact_dialog.isVisible():
+        if self.contact_dialog is not None and self.contact_dialog.isVisible() and self.control_transport() != "cloud":
             self.contact_dialog.set_value(value)
 
     def _update_load_output_decoder(self, value: Optional[int]):
         self.last_load_output_value = value
-        if self.load_output_dialog is not None and self.load_output_dialog.isVisible():
+        if self.load_output_dialog is not None and self.load_output_dialog.isVisible() and self.control_transport() != "cloud":
             self.load_output_dialog.set_value(value)
 
     def _fault_alarm_active(self) -> bool:
@@ -7969,6 +8550,8 @@ class MainWindow(QMainWindow):
         return self.request_cloud_snapshot(request)
 
     def request_cloud_snapshot(self, request):
+        if getattr(self, "_warmlink_closing", False):
+            return "Programm wird beendet; Cloud-Abfrage abgebrochen."
         if self._is_firmware_capture_mode():
             return "Firmware-Capture aktiv – aktive Cloud-Abfragen sind gesperrt."
         if not self.is_cloud_connected() or request.device_code != self.cloud_session_device_code or request.username != str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip():
@@ -8299,6 +8882,8 @@ class MainWindow(QMainWindow):
                 )
             )
             decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            if int(frame.slave_addr) == 1 and 2099 <= start_addr <= 2149 and self.current_backend_key() == "display_modbus":
+                decode_map = self.unit1_regmap
             frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
             self._check_endblock_signature(frame, start_addr)
             self.observed_display_read_requests.remove(req)
@@ -8348,7 +8933,7 @@ class MainWindow(QMainWindow):
             tracked = True
             label = f"0x{slave:02X}/3001ff DWIN-Anzeige"
         # HMI-Parameterpaket: hier sehen wir 1012 als Soll-/Auswahlmodus.
-        elif slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451, 1541} and mode in {"word-frame", "read-response"}:
+        elif slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451, 1541} and mode in {"word-frame", "read-response", "write-request"}:
             tracked = True
             label = f"0x03/{start}ff Parameter"
         # 0x05 schreibt bisher meist Nullblöcke; trotzdem als Fremdblock beobachten.
@@ -8364,8 +8949,7 @@ class MainWindow(QMainWindow):
         old_words = self.display_hmi_block_snapshots.get(key)
         self.display_hmi_block_snapshots[key] = words
         self.display_hmi_block_snapshot_times[key] = time.monotonic()
-        if bool(getattr(getattr(self, "display_fake_reboot_state", {}), "get", lambda _k, _d=None: _d)("active", False)) and slave == 0x03 and start in {1001, 1091, 1181, 1271, 1361, 1451}:
-            self._display_reboot_progress(f"Display: Paket {start} empfangen", busy=True)
+        self._record_display_parameter_packet(frame)
 
         def reg_label(index: int) -> str:
             return f"{start + index}/W{index + 1}"
@@ -8480,50 +9064,23 @@ class MainWindow(QMainWindow):
                 self._log(f"DISPLAY-HMI {label}: ... (+{len(changes) - 80} weitere DREG-Änderungen)")
 
     def _display_hmi_virtual_regs_0x01_2099(self, frame) -> list[DecodedRegister]:
-        """PRIVATE fix14: 0x01/2099ff als virtuellen Diagnosebereich abbilden.
-
-        Der Rohstatus auf Bus 0x01 nutzt echte Adressen 2099-2149, ist aber
-        nicht identisch/vertraulich genug, um die normalen WP-Register 2099ff
-        zu ueberschreiben. Darum wird er im Hauptfenster als 91099-91149
-        sichtbar gemacht.
-        """
-        virt_start = 91099
-        source_start = int(getattr(frame, "typ", 2099) or 2099)
-        regs: list[DecodedRegister] = []
-        # PRIVATE fix18: zwei Rohstatuswerte wurden mit echten WP-Werten
-        # korreliert. Im Log verhaelt sich 91105 wie 2062 (AC-Eingang)
-        # und 91108 wie 2043 (DC-Power-Bus). Die Quelle bleibt Bus 0x01;
-        # als Absender/Rolle ist Power-Modul-Spiegel plausibel, aber noch
-        # nicht endgueltig bestaetigt.
-        special_names = {
-            91105: "Displaybus 0x01 Power-Modul-Spiegel: AC-Eingangsspannung wie 2062 (virtuell, Kandidat)",
-            91108: "Displaybus 0x01 Power-Modul-Spiegel: DC-Power-Bus-Spannung wie 2043 (virtuell, Kandidat)",
-        }
-        special_units = {91105: "V", 91108: "V"}
-        for idx, old_reg in enumerate(list(getattr(frame, "registers", []) or [])):
-            raw = int(getattr(old_reg, "raw_value", 0) or 0) & 0xFFFF
-            orig_reg = source_start + idx
-            virt_reg = virt_start + idx
-            name = special_names.get(virt_reg, f"Displaybus 0x01 Rohstatus {orig_reg}/0x{orig_reg:04X} (virtuell)")
-            unit = special_units.get(virt_reg)
-            # PRIVATE fix51: format_value_by_type erwartet value_map/bit_map,
-            # keine Einheit. Ein String "V" als value_map kann eine Exception
-            # ausloesen und dadurch die komplette virtuelle 91099ff-Uebernahme
-            # abbrechen. Deshalb die Einheit hier manuell anhaengen.
-            display_value = f"{s16(raw)} {unit}" if unit else format_value_by_type(raw, "DIGI1")
-            regs.append(DecodedRegister(
-                slave_addr=int(getattr(frame, "slave_addr", 0) or 0),
-                reg=virt_reg,
-                index=idx,
-                frame_type=virt_start,
-                raw_value=raw,
-                signed_value=s16(raw),
-                display_value=display_value,
-                name=name,
-                dtype="DIGI1",
-                timestamp=time.time(),
+        """Project complete Unit-1 telemetry into stable, read-only FoxAir IDs."""
+        if (int(frame.slave_addr) != 1 or int(frame.typ) != 2099
+                or frame.mode != "read-response" or not frame.crc_ok
+                or len(frame.registers) != 51 or len(frame.payload) != 102):
+            return []
+        registers = []
+        for index, original in enumerate(frame.registers):
+            virtual = 91099 + index
+            info = self.display_regmap.get(virtual)
+            raw = int(original.raw_value) & 0xFFFF
+            registers.append(DecodedRegister(
+                slave_addr=1, reg=virtual, index=index, frame_type=91099,
+                raw_value=raw, signed_value=s16(raw),
+                display_value=format_value_by_type(raw, info.dtype, info.value_map, info.bit_map),
+                name=info.name, dtype=info.dtype, timestamp=original.timestamp,
             ))
-        return regs
+        return registers
 
     def _display_hmi_promote_0x01_2099_virtual(self, frame) -> bool:
         if self.current_backend_key() != "display_modbus":
@@ -8536,7 +9093,10 @@ class MainWindow(QMainWindow):
             return False
         if not getattr(frame, "registers", None):
             return False
-        frame.registers = self._display_hmi_virtual_regs_0x01_2099(frame)
+        projected = self._display_hmi_virtual_regs_0x01_2099(frame)
+        if not projected:
+            return False
+        frame.registers = projected
         frame.typ = 91099
         frame.length_field = len(frame.registers)
         return True
@@ -8563,11 +9123,14 @@ class MainWindow(QMainWindow):
         start = int(getattr(frame, "typ", 0) or 0)
         regs = list(getattr(frame, "registers", []) or [])
 
-        # Unit 0x02/0x03: echter DWIN-/Display-Speicher. Alles ab 3000
-        # darf sichtbar werden; diese Nummern kollidieren nicht mit den
-        # normalen 10xx/20xx-WP-Paketen.
-        if slave in {0x02, 0x03} and start >= 3000:
-            return True
+        # Unit 0x03: belegter DWIN-/Display-Speicher ab 3000.
+        # Der optionale Kanal 0x02 darf bestehende Displaywerte nicht ersetzen.
+        if slave == 0x03 and start >= 3000:
+            return all(
+                int(reg.reg) not in self.latest_regs
+                or int(self.latest_regs[int(reg.reg)].slave_addr) == slave
+                for reg in regs
+            )
 
         # Unit 0x04/0x05: nur unbekannte/nicht belegte Registerbereiche in die
         # Hauptliste übernehmen. Bekannte WP-Register wie 1001ff/2000ff bleiben
@@ -8576,7 +9139,9 @@ class MainWindow(QMainWindow):
             wp_known = getattr(self.regmap, "items", {})
             for reg in regs:
                 reg_no = int(getattr(reg, "reg", 0) or 0)
-                if reg_no in wp_known:
+                display_known = getattr(getattr(self, "display_regmap", None), "items", {})
+                existing = self.latest_regs.get(reg_no)
+                if reg_no in wp_known or reg_no in display_known or (existing is not None and existing.slave_addr != slave):
                     return False
             # Sicherheitsgurt: Niedrige unbekannte Bereiche nur dann aufnehmen,
             # wenn sie sicher außerhalb der bekannten WP-Paketzone liegen.
@@ -8595,6 +9160,11 @@ class MainWindow(QMainWindow):
         V0.2.38 fix5: validierte aktive Display-Init-WP-Paketbloecke 0x03/10xx
         duerfen vorerst wieder ins Hauptfenster, bis ein besserer Init-Weg gefunden ist.
         """
+        if not getattr(frame, "crc_ok", False):
+            return False
+        # Unit 1 must be projected before the generic matched-request branch.
+        if int(frame.slave_addr) == 1 and int(frame.typ) == 2099:
+            return self._display_hmi_promote_0x01_2099_virtual(frame)
         if matched_pending_read:
             pending_label = str(getattr(frame, "pending_read_label", ""))
             if (
@@ -8660,34 +9230,12 @@ class MainWindow(QMainWindow):
                 )
                 return False
 
-        # 0x01 / 2099ff ist auf dem Displaybus nuetzlich, kollidiert aber mit
-        # echten WP-Registern. PRIVATE fix14: als virtueller Diagnosebereich
-        # 91099-91149 uebernehmen, statt 2099ff zu ueberschreiben.
-        if int(frame.slave_addr) == 0x01 and int(frame.typ) == 2099:
-            # PRIVATE fix51: nicht mehr hart von matched_passive_read abhaengig machen.
-            # Entscheidend ist, dass der Frame bereits als 2099/read-response mit
-            # Registerliste vorliegt. Dann ist der virtuelle Bereich sicher, weil er
-            # 2099ff nicht ueberschreibt, sondern nach 91099ff verschiebt.
-            if frame.registers and str(getattr(frame, "mode", "")) == "read-response":
-                if self._display_hmi_promote_0x01_2099_virtual(frame):
-                    self._log(
-                        "DISPLAY-HMI fix21: 0x01/2099ff Rohstatus als virtuellen "
-                        "Diagnosebereich 91099-91149 in die Hauptliste übernommen "
-                        "(Warmlink-2099ff bleibt unverändert)."
-                    )
-                    return True
-            self._log(
-                "DISPLAY-HMI: 0x01/2099ff Rohstatus nur Diagnose; "
-                "nicht in Hauptliste übernommen (Warmlink-Mapping bleibt unverändert)."
-            )
-            return False
-
         if int(frame.slave_addr) == 0x03 and int(frame.typ) in {1001, 1091, 1181, 1271, 1361, 1451, 1541}:
             self._log(
                 f"DISPLAY-HMI: bekanntes 10xx/Parameterpaket 0x03/{frame.typ}ff "
                 "wieder in Hauptliste übernommen."
             )
-            return True
+            return bool(self._validated_packet_info_from_regs(frame.typ, frame.registers))
 
         if self._display_hmi_is_extra_main_window_candidate(frame):
             self._log(
@@ -8707,7 +9255,7 @@ class MainWindow(QMainWindow):
 
     def _pending_read_timeout_s(self, req: dict[str, Any]) -> float:
         if req.get("scheduler"):
-            return WARMLINK_READ_TIMEOUT_S
+            return req.get("timeout_s", WARMLINK_READ_TIMEOUT_S)
         label = str(req.get("label", ""))
         if label.startswith("manuell") or label.startswith("manuelles Popup"):
             return 5.0
@@ -8749,8 +9297,8 @@ class MainWindow(QMainWindow):
     def _check_pending_read_timeouts(self) -> None:
         now = time.time()
         for req in list(getattr(self, "pending_read_requests", []) or []):
-            if req.get("scheduler") and req.get("time") is None:
-                continue
+            if req.get("scheduler") and not req.get("timeout_reported"):
+                continue  # The scheduler owns the only transport-started deadline.
             timeout_s = self._pending_read_timeout_s(req)
             if now - float(req.get("time", now)) < timeout_s:
                 continue
@@ -8813,16 +9361,10 @@ class MainWindow(QMainWindow):
                 load_dialog = getattr(self, "load_output_dialog", None)
                 if load_dialog is not None and load_dialog.isVisible():
                     load_dialog.show_read_timeout()
-            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
+            if req_label in SystemIOStatusDecoderDialog.READ_LABELS:
                 system_io_dialog = getattr(self, "system_io_dialog", None)
                 if system_io_dialog is not None and system_io_dialog.isVisible():
-                    system_io_dialog.show_read_timeout()
-            if req_label == SystemIOStatusDecoderDialog.READ_LABEL:
-                system_io_dialog = getattr(self, "system_io_dialog", None)
-                if system_io_dialog is not None and system_io_dialog.isVisible():
-                    for reg in frame.registers:
-                        system_io_dialog.update_from_live_register(reg)
-                    system_io_dialog.status_label.setText("System-/I/O-Status erfolgreich gelesen.")
+                    system_io_dialog.show_read_timeout(req_label)
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -8846,7 +9388,7 @@ class MainWindow(QMainWindow):
                     at_dialog.show_read_timeout()
 
     def _apply_pending_read_response(self, frame) -> bool:
-        if frame.mode != "read-response":
+        if frame.mode != "read-response" or not frame.crc_ok:
             return False
         if self.pending_read_requests:
             logger_only = all(str(req.get("label", "")).startswith("CSV Logger ") for req in self.pending_read_requests)
@@ -8857,7 +9399,7 @@ class MainWindow(QMainWindow):
             active = self.warmlink_read_scheduler.matching(int(frame.slave_addr), len(frame.payload))
             requests = [active] if active is not None else []
             if active is None:
-                self.warmlink_read_scheduler.unmatched_response()
+                self.warmlink_read_scheduler.unmatched_response(int(frame.slave_addr), len(frame.payload))
         for req in requests:
             if int(req["slave_addr"]) != int(frame.slave_addr):
                 continue
@@ -8887,9 +9429,11 @@ class MainWindow(QMainWindow):
                 or "Display Init Paketblock" in req_label
                 or is_display_wp_param_packet
             )
+            is_main_diagnostic = req_label in SystemIOStatusDecoderDialog.READ_LABELS
             use_display_map = (
                 self.current_backend_key() == "display_modbus"
                 and not force_wp_map
+                and not is_main_diagnostic
                 and (
                     "DWIN" in req_label
                     or "Display" in req_label
@@ -8899,6 +9443,8 @@ class MainWindow(QMainWindow):
                 )
             )
             decode_map = getattr(self, "display_regmap", self.regmap) if use_display_map else self.regmap
+            if int(frame.slave_addr) == 1 and 2099 <= start_addr <= 2149 and self.current_backend_key() == "display_modbus":
+                decode_map = self.unit1_regmap
             frame.registers = decode_read_response_registers(frame, start_addr, decode_map)
             # Falls mehrere Display-Reads doch einmal überlappen: WP-Paketkopf enthält
             # den echten internen Start im Wort 10. Dann nach internem Start neu dekodieren.
@@ -8922,6 +9468,7 @@ class MainWindow(QMainWindow):
             self.pending_read_requests.remove(req)
             if req.get("scheduler"):
                 self.warmlink_read_scheduler.complete(req)
+                self._warmlink_recovery_attempts = 0
             label = f" ({req.get('label')})" if req.get("label") else ""
             logger_level = 7 if req_label.startswith("CSV Logger ") else None
             self._log(f"READ/Response passt zu Anfrage{label}: {start_addr} / 0x{start_addr:04X}, {quantity} Register", level=logger_level)
@@ -8956,6 +9503,10 @@ class MainWindow(QMainWindow):
                         if int(reg.reg) == 2019:
                             load_dialog.set_value(int(reg.raw_value) & 0xFFFF, status_text="Lastausgänge erfolgreich gelesen.")
                             break
+            if req_label in SystemIOStatusDecoderDialog.READ_LABELS:
+                system_io_dialog = getattr(self, "system_io_dialog", None)
+                if system_io_dialog is not None and system_io_dialog.isVisible():
+                    system_io_dialog.show_read_response(req_label, frame.registers)
             if req_label in {"Störung: Lastausgang 2019", "Störung: Fehlerregister 2081-2090"}:
                 fault_dialog = getattr(self, "fault_dialog", None)
                 if fault_dialog is not None and fault_dialog.isVisible():
@@ -9025,7 +9576,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ungültige Leseanforderung", str(exc))
 
     def _warmlink_queue_log(self, text):
-        self._log(text, level=7)
+        self._log(text, level=7, force="suspended" in text)
 
     def _send_warmlink_read(self, request):
         worker = self._active_io_worker()
@@ -9057,13 +9608,21 @@ class MainWindow(QMainWindow):
         scheduler = getattr(self, "warmlink_read_scheduler", None)
         if scheduler and scheduler.active and scheduler.key(scheduler.active) == (slave, addr, quantity):
             self._warmlink_queue_log("WARMLINK READ send failed: " + error)
-            self._warmlink_read_timeout(scheduler.active)
+            request = scheduler.active
+            self._warmlink_read_timeout(request)
+            scheduler.complete(request, timeout=True)
 
     def _warmlink_read_timeout(self, request):
-        request["time"] = time.time() - WARMLINK_READ_TIMEOUT_S - 0.01
+        request["timeout_reported"] = True
+        request["time"] = time.time() - self._pending_read_timeout_s(request) - 0.01
         self._check_pending_read_timeouts()
 
     def send_read_request(self, addr: int, quantity: int = 1, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0, *, priority=None, start_delay_ms=0, expect_response=True):
+        if is_virtual_register(addr):
+            self._log("Virtuelle Unit-1-ID ist keine Modbus-Adresse; Quelle INV1:2099–2149 beobachten.")
+            return None
+        if getattr(self._active_io_worker(), "identity_service_active", False):
+            return None
         # fix11: Popup-/Parameter-Aktualisierungen am Display-Bus nicht mehr als
         # normale FC03-Reads absetzen. Stattdessen den bewährten Reboot-Snapshot
         # anstoßen. Manuelle FC03-Reads bleiben absichtlich direkt möglich, damit
@@ -9099,7 +9658,7 @@ class MainWindow(QMainWindow):
             scheduler = getattr(self, "warmlink_read_scheduler", None)
             if scheduler is None:
                 scheduler = self.warmlink_read_scheduler = WarmlinkRequestScheduler(self,
-                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log)
+                    self._send_warmlink_read, self._warmlink_read_timeout, self._warmlink_queue_log, self._recover_warmlink_stream)
             return scheduler.submit({"slave_addr": wire_slave, "addr": addr, "wire_addr": wire_addr,
                 "quantity": quantity, "label": label, "delay_ms": delay_ms, "expect_response": expect_response}, priority, start_delay_ms)
 
@@ -9298,12 +9857,14 @@ class MainWindow(QMainWindow):
 
 
     def set_cloud_ui_state(self, state, *, device_name=None, last_success_at=None):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            state = "DISCONNECTING" if getattr(self, "_cloud_disconnect_pending", False) else "DISCONNECTED"
         self.cloud_ui_state = state
         if device_name is not None:
             self.cloud_ui_device_name = device_name
         if last_success_at is not None:
             self.cloud_last_success_at = last_success_at
-        button = getattr(self, "cloud_btn", None)
+        button = getattr(self, "cloud_quick_btn", None)
         if button is None:
             return
         button.setProperty("cloudState", state)
@@ -9312,13 +9873,15 @@ class MainWindow(QMainWindow):
         styles = {
             "DISCONNECTED": "border-left: 4px solid #808080;",
             "CONNECTING": "border-left: 4px solid #d69b23;",
+            "DISCONNECTING": "border-left: 4px solid #d69b23;",
             "CONNECTED": "border-left: 4px solid #38965b;",
             "POLLING": "border-left: 4px solid #38965b;",
             "ERROR": "border-left: 4px solid #c84b4b;",
         }
         button.setStyleSheet(styles.get(state, styles["DISCONNECTED"]))
         text = {"DISCONNECTED": "Nicht verbunden", "CONNECTING": "Verbindung wird aufgebaut / erneuert",
-                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen"}
+                "CONNECTED": "Verbunden · Polling gestoppt", "POLLING": "Verbunden · Polling aktiv", "ERROR": "Verbindung unterbrochen",
+                "DISCONNECTING": "Cloud-Sitzung wird getrennt; laufende Anfragen werden beendet"}
         lines = ["WarmLink Cloud", text.get(state, state)]
         name = getattr(self, "cloud_ui_device_name", "")
         if name:
@@ -9326,7 +9889,13 @@ class MainWindow(QMainWindow):
         last = getattr(self, "cloud_last_success_at", None)
         if last:
             lines.append("Letzter erfolgreicher Abruf: " + time.strftime("%H:%M:%S", time.localtime(last)))
-        button.setToolTip("\n".join(lines))
+        settings_button = getattr(self, "cloud_btn", None)
+        if settings_button is not None:
+            settings_button.setToolTip("WarmLink Cloud-Einstellungen öffnen\n" + "\n".join(lines[1:]))
+        self._update_cloud_quick_button()
+        tooltip = button.toolTip() + "\n" + "\n".join(lines[1:])
+        button.setToolTip(tooltip)
+        button.setAccessibleDescription(tooltip)
 
     def set_cloud_timing_state(self, state: CloudTimingState) -> None:
         """Render worker scheduling without initiating or rescheduling requests."""
@@ -9363,6 +9932,8 @@ class MainWindow(QMainWindow):
 
     def set_cloud_connection_state(self, authenticated: bool, device_code: str | None = None) -> None:
         """Record a proven session, independently of whether polling is active."""
+        if authenticated and getattr(self, "_cloud_manually_disconnected", False):
+            return
         previous_device = self.cloud_session_device_code
         self.cloud_session_authenticated = bool(authenticated)
         self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
@@ -9375,6 +9946,7 @@ class MainWindow(QMainWindow):
         if controller is not None:
             controller.source_changed()
         self._notify_control_connection_changed()
+        self._update_cloud_quick_button()
         # Offene Schnellschreibdialoge sofort an den neuen Cloud-Status anpassen.
         # Sonst könnten Cloud-Aktionen nach Login/Logout bis zum nächsten lokalen
         # Register-Refresh sichtbar bzw. unsichtbar bleiben.
@@ -9438,6 +10010,8 @@ class MainWindow(QMainWindow):
         self._on_cloud_read_data(self.cloud_read_code, rows)
 
     def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
         if self.warmlink_cloud_dialog is not None:
             self.warmlink_cloud_dialog._on_data(rows)
@@ -9454,6 +10028,8 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_token(self, token: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self._cloud_read_token = token
         self._cloud_read_token_username = self._cloud_read_username
         cache = getattr(self, "cloud_credentials_cache", {})
@@ -9471,6 +10047,8 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_login_method(self, method: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self.settings.setdefault("warmlink_cloud", {})["login_method"] = method
 
     @Slot()
@@ -9484,10 +10062,13 @@ class MainWindow(QMainWindow):
             if getattr(dialog, "_cloud_read_pending", False):
                 dialog.cloud_read_completed(error="Cloud-Abfrage ohne Ergebnis beendet.")
         if getattr(self, "_close_after_cloud_read", False):
+            self._close_after_cloud_read = False
             self.close()
 
     @Slot(str)
     def _on_cloud_read_error(self, text: str) -> None:
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         self._log("WarmLink Cloud lesen: " + str(text))
         self._complete_cloud_read_dialogs(str(text))
         lower = str(text).lower()
@@ -9566,6 +10147,8 @@ class MainWindow(QMainWindow):
         return text if text != "" else None
 
     def open_cloud_write_for_register(self, reg_no: int, user_value: str | None = None):
+        input_context = (self.control_context(), self.cloud_session_device_code,
+                         str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip())
         cloud_code = cloud_code_for_register(reg_no, require_write_allowed=True)
         if not cloud_code:
             QMessageBox.information(self, "WarmLink Cloud", f"Für Register {reg_no} ist kein freigegebener Cloud-Schreibcode gemappt.")
@@ -9593,21 +10176,40 @@ class MainWindow(QMainWindow):
                 "Cloud-Zugang fehlt. Bitte im Fenster 'WarmLink Cloud / LTE' Benutzername eintragen und das Passwort speichern.",
             )
             return
-        self.send_cloud_write(cloud_code, value, device_code=device_code, label=f"Register {reg_no}")
+        if input_context != (self.control_context(), self.cloud_session_device_code,
+                             str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip()):
+            QMessageBox.warning(self, "WarmLink Cloud", "Verbindung oder Cloud-Gerät während der Eingabe geändert; Schreiben abgebrochen.")
+            return
+        error = self.send_cloud_write(cloud_code, value, device_code=device_code or self.cloud_session_device_code, label=f"Register {reg_no}")
+        if error:
+            QMessageBox.warning(self, "WarmLink Cloud", error)
 
-    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None):
-        if control_context is not None:
-            if control_context != self.control_context() or self._control_cloud_busy(write=True):
-                return "Steuerverbindung geändert oder Cloudauftrag läuft; Schreiben abgebrochen."
+    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None, mask_baselines=None):
+        origin_context = self.control_context()
+        direct_cloud_action = control_context is None
+        if direct_cloud_action:
+            control_context = ControlContext("cloud",
+                username=str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip(),
+                device_code=self.cloud_session_device_code)
+        if control_context.transport != "cloud" or not self.is_cloud_connected():
+            return "Keine gültige Cloud-Steuerverbindung."
+        from cloud.cloud_write_helpers import validate_cloud_commands
+        try:
+            validate_cloud_commands(commands or ((cloud_code, value),))
+        except ValueError as exc:
+            return str(exc)
         if self._is_firmware_capture_mode():
             QMessageBox.warning(self, "Firmware-Capture", "Firmware-Capture aktiv – aktive Steuerbefehle sind gesperrt.")
             self._log("Firmware-Capture blockierte aktiven Cloud-Steuerbefehl.")
             return
-        if (self.cloud_write_thread is not None or
-                getattr(getattr(self, "warmlink_cloud_dialog", None), "command_thread", None) is not None):
+        if self.cloud_write_thread is not None:
             QMessageBox.information(self, "WarmLink Cloud", "Es läuft bereits ein Cloud-Schreibbefehl.")
             return
+        if control_context is not None:
+            if (not direct_cloud_action and control_context != origin_context) or self._control_cloud_busy(write=True):
+                return "Steuerverbindung geändert oder Cloudauftrag läuft; Schreiben abgebrochen."
         user, pw, token, saved_device_code = self._cloud_write_credentials()
+        device_code = device_code or saved_device_code
         if control_context is not None and (user != control_context.username or device_code != control_context.device_code):
             return "Cloud-Gerät oder Account geändert; Schreiben abgebrochen."
         if not user:
@@ -9615,13 +10217,16 @@ class MainWindow(QMainWindow):
             return
         dev = str(device_code or saved_device_code or "").strip()
         self._control_cloud_write_context = control_context
+        self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else "onoff_timer_dialog" if label.startswith("WP Ein/Aus Timer") else "timer_dialog" if label.startswith("Betriebsart Timer") else ""
+        self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
             import threading
             cancelled = self._control_cloud_write_cancelled = threading.Event()
             # Worker-side guard reads Python state only, never Qt widgets.
-            write_guard = lambda: (not cancelled.is_set() and not self.connected and self.is_cloud_connected()
+            write_guard = lambda: (not cancelled.is_set() and self.is_cloud_connected()
                 and self.cloud_session_device_code == control_context.device_code
                 and str(self.settings.get("warmlink_cloud", {}).get("username") or "").strip() == control_context.username)
         self._log(f"WarmLink Cloud schreiben: {cloud_code}={value} ({label or 'Hauptfenster'})")
@@ -9638,6 +10243,7 @@ class MainWindow(QMainWindow):
             initial_token=token, load_credentials=True,
             use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
             write_guard=write_guard, commands=commands,
+            **({"mask_baselines": mask_baselines} if mask_baselines is not None else {}),
         )
         self.cloud_write_worker.moveToThread(self.cloud_write_thread)
         self.cloud_write_thread.started.connect(self.cloud_write_worker.run)
@@ -9651,33 +10257,51 @@ class MainWindow(QMainWindow):
         self._notify_control_connection_changed()
 
     def _on_cloud_write_result_current(self, data: dict):
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and not dialog.isVisible():
+            self._control_cloud_write_cancelled.set()
+            return
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
             self._log("Cloud-Schreibantwort nach Verbindungs-/Gerätewechsel verworfen.")
             return
-        self._on_cloud_write_result(data.get("command_code", self.cloud_write_code), data)
+        code = data.get("command_code", self.cloud_write_code)
+        self._on_cloud_write_result(code, data)
+        if context is not None and data.get("readback_verified"):
+            label = getattr(self, "_control_cloud_write_label", "")
+            name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog"
+            dialog = getattr(self, "_control_cloud_write_dialog", None)
+            confirmed = getattr(dialog, "write_readback_confirmed", None) if dialog is not None and dialog.isVisible() else None
+            if confirmed is not None:
+                detailed = getattr(dialog, "write_readback_result", None)
+                if detailed is not None:
+                    detailed(cloud_modbus_register(code), data)
+                else:
+                    confirmed(cloud_modbus_register(code))
         if context is not None:
-            ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
-            readback = data.get("readback") or {}
-            self._set_control_write_status(("Cloud-Schreiben abgeschlossen. " +
-                ("Readback aktualisiert." if readback.get("supported") else "Readback nicht verfügbar."))
-                if ok else "Cloud-Schreiben fehlgeschlagen.")
+            confirmed = ", ".join(data.get("confirmed_codes", [])) or "keine"
+            text = data.get("validation_error")
+            if not text:
+                text = ("Cloud-Schreiben und Readback abgeschlossen: " if data.get("sequence_complete")
+                        else "Cloud-Sequenz läuft; Readback bestätigt: ") + confirmed
+                if not data.get("api_success"):
+                    text += " · API-Antwort unklar/nicht bestätigt; Zustand durch Readback bestätigt."
+            self._set_control_write_status(text)
 
     def _set_control_write_status(self, text):
-        label = getattr(self, "_control_cloud_write_label", "")
-        name = "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog"
-        dialog = getattr(self, name, None)
-        if dialog is not None:
+        self.statusBar().showMessage(str(text), 15000)
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and dialog.isVisible():
             dialog.set_write_status(text)
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
-        ok = bool(data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))
+        ok = bool(data.get("readback_verified"))
         msg = translate_cloud_error_message(str(data.get("error_msg") or data.get("message") or ""))
         endpoint = str(data.get("endpoint") or "")
-        payload = data.get("payload")
         readback = data.get("readback") if isinstance(data, dict) else None
         rb_txt = ""
-        if isinstance(readback, dict) and readback.get("supported"):
+        if (isinstance(readback, dict) and readback.get("supported") and
+                not any(readback.get(flag) for flag in ("cached", "stale", "currentEmpty"))):
             readback = {**readback, "lastFetch": time.strftime("%Y-%m-%d %H:%M:%S"), "stale": False}
             self.apply_cloud_rows_to_main([readback])
             if self.warmlink_cloud_dialog is not None:
@@ -9687,20 +10311,29 @@ class MainWindow(QMainWindow):
             rb_status = readback.get("status") or ("OK" if readback.get("supported") else "")
             if rb_val not in (None, ""):
                 rb_txt = f"; Readback {cloud_code}: {rb_val} {rb_status}".rstrip()
-        log_txt = json.dumps({"ok": ok, "endpoint": endpoint, "message": msg, "payload": payload, "readback": readback}, ensure_ascii=False)
+        log_txt = json.dumps({"code": cloud_code, "sent": data.get("sent"), "api_success": data.get("api_success"), "readback_verified": ok, "endpoint": endpoint, "message": msg}, ensure_ascii=False)
         self._log("WarmLink Cloud Schreibantwort: " + log_txt)
-        if ok:
+        if data.get("validation_error"):
+            self.statusBar().showMessage(data["validation_error"], 15000)
+            self._log(data["validation_error"])
+        elif ok:
             # V0.2.44 fix4: Erfolg/Readback nur noch im Log. Kein Erfolgs-Popup,
             # damit Rechtsklick-Schreiben nicht am Ende wie "keine Rueckmeldung" wirkt.
-            self.statusBar().showMessage(f"Cloud-Schreiben OK: {cloud_code}={payload if payload is None else data.get('payload', '')}", 6000)
+            self.statusBar().showMessage(f"Cloud-Readback bestätigt: {cloud_code}", 6000)
             self._log(f"WarmLink Cloud schreiben OK: {cloud_code} via {endpoint}; {msg or 'Success'}{rb_txt}")
-        elif getattr(self, "_control_cloud_write_context", None) is None:
+        elif getattr(self, "_control_cloud_write_context", None) is None and not bool(
+                data.get("api_success", data.get("isReusltSuc") or data.get("isResultSuc") or data.get("success"))):
             QMessageBox.warning(self, "WarmLink Cloud", f"Cloud-Schreiben nicht erfolgreich.\nEndpoint: {endpoint}\nMeldung: {msg or data.get('error_code') or 'unbekannt'}")
+        else:
+            self.statusBar().showMessage(f"Cloud: API bestätigt; Readback für {cloud_code} noch nicht bestätigt.", 15000)
 
     def _on_cloud_write_error(self, text: str):
+        dialog = getattr(self, "_control_cloud_write_dialog", None)
+        if dialog is not None and not dialog.isVisible():
+            return
         self._log("WarmLink Cloud Schreibfehler: " + str(text))
         context = getattr(self, "_control_cloud_write_context", None)
-        if context is not None and (context != self.control_context() or self._control_cloud_write_cancelled.is_set()):
+        if context is not None and (not self._cloud_write_context_is_current(context) or self._control_cloud_write_cancelled.is_set()):
             self._set_control_write_status("Cloud-Schreiben nach Verbindungs-/Gerätewechsel abgebrochen.")
             return
         lower = str(text).lower()
@@ -9719,11 +10352,17 @@ class MainWindow(QMainWindow):
         self.cloud_write_worker = None
         self.cloud_write_code = ""
         self._control_cloud_write_context = None
+        self._control_cloud_write_origin_context = None
+        self._control_cloud_write_dialog = None
         self._notify_control_connection_changed()
         if getattr(self, "_close_after_cloud_write", False):
+            self._close_after_cloud_write = False
             self.close()
 
     def open_register_quick_write(self, reg_no: int, slave_addr: int = DEFAULT_BUS_ADDR):
+        if is_virtual_register(reg_no):
+            self._log("Unit-1-Telemetrie ist nur lesend; Details stehen im Tooltip der Wertspalte.")
+            return
         # Display-Modbus: bekannte Parameterregister erst nach geladenem Paket öffnen,
         # damit aktueller Wert/Klartext nicht leer oder alt ist. Warmlink/Standard
         # bleiben unverändert.
@@ -10228,22 +10867,61 @@ class MainWindow(QMainWindow):
         return float(self.display_hmi_block_snapshot_times.get((int(slave), int(start), str(mode)), 0.0) or 0.0)
 
     def _display_0bc3_value_from_3001(self) -> Optional[int]:
-        for slave in (0x03, 0x02):
+        for slave in (0x03,):
             words = self.display_hmi_block_snapshots.get((slave, 3001, "read-response"))
             if words and len(words) >= 11:
                 return int(words[10]) & 0xFFFF  # 3001 + 10 = 3011 / 0BC3
         return None
 
+    def _validated_packet_info_from_regs(self, start: int, registers):
+        return validate_parameter_packet(int(start), [int(reg.raw_value) & 0xFFFF for reg in registers])
+
+    def _record_display_parameter_packet(self, frame):
+        complete_payload = (
+            (frame.mode == "read-response" and len(frame.payload) == 180)
+            or (frame.mode in {"word-frame", "write-request"}
+                and len(frame.payload) == 181 and int(frame.length_field) == 90)
+        )
+        if (not frame.crc_ok or int(frame.slave_addr) != 3
+                or int(frame.typ) not in REQUIRED_PARAMETER_PACKETS + OPTIONAL_PARAMETER_PACKETS
+                or frame.mode not in {"word-frame", "read-response", "write-request"}
+                or not complete_payload
+                or not self._validated_packet_info_from_regs(frame.typ, frame.registers)):
+            return False
+        self.display_valid_param_packet_times[int(frame.typ)] = time.monotonic()
+        state = self.display_fake_reboot_state
+        if state.get("active"):
+            fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state["started"])))
+            received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+            missing = [str(start) for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+            text = f"Display: {len(received)}/{len(REQUIRED_PARAMETER_PACKETS)} Pflichtpakete"
+            if missing:
+                text += "; fehlen: " + ", ".join(missing)
+            self._display_reboot_progress(text, done=len(received), total=len(REQUIRED_PARAMETER_PACKETS))
+        return True
+
     def _display_reboot_fresh_param_blocks(self, since: float) -> list[int]:
-        starts = [1001, 1091, 1181, 1271, 1361, 1451]
-        fresh: list[int] = []
-        for start in starts:
-            if (
-                self._display_snapshot_time(0x03, start, "word-frame") >= since
-                or self._display_snapshot_time(0x03, start, "read-response") >= since
-            ):
-                fresh.append(start)
-        return fresh
+        times = getattr(self, "display_valid_param_packet_times", {})
+        return [start for start in REQUIRED_PARAMETER_PACKETS + OPTIONAL_PARAMETER_PACKETS
+                if times.get(start, 0) > 0 and times[start] >= since]
+
+    def _display_sync_block_reason(self):
+        if self._is_firmware_capture_mode():
+            return "Firmware-Capture aktiv"
+        if getattr(self, "display_user_value_state", {}).get("active") or getattr(self, "display_user_value_queue", []):
+            return "Parametrierung/Restore läuft oder ist vorgemerkt"
+        if any(time.time() - float(req.get("time", 0)) < 15 for req in self.pending_write_requests):
+            return "Schreibantwort steht noch aus"
+        worker = self._active_io_worker()
+        if worker is not None:
+            if getattr(worker, "identity_service_active", False) or getattr(worker, "_normal_tx_busy", False):
+                return "Kommunikation ist belegt"
+            pending = getattr(worker, "write_queue", None)
+            if pending is not None and hasattr(pending, "mutex"):
+                with pending.mutex:
+                    if any(entry[0] != "read" for entry in pending.queue):
+                        return "Schreibvorgänge in der Sendewarteschlange"
+        return ""
 
     def send_display_fake_reboot(self, _checked: bool = False):
         """PRIVATE/Debug-Button: Reboot-Fake mit Bestätigung.
@@ -10276,6 +10954,10 @@ class MainWindow(QMainWindow):
             if prompt:
                 QMessageBox.information(self, "Display Reboot Fake", "Ein Display-Reboot-Fake läuft bereits.")
             self._log(msg)
+            return False
+        reason = self._display_sync_block_reason()
+        if reason:
+            self._log("Display-Parametersynchronisation nicht gestartet: " + reason)
             return False
         io_worker = self._active_io_worker()
         if io_worker is None:
@@ -10362,6 +11044,11 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active"):
             return
+        reason = self._display_sync_block_reason()
+        if reason or self.current_backend_key() != "display_modbus":
+            self._display_reboot_finish("Display: Synchronisation abgebrochen; " + (reason or "Backend gewechselt"), failed=True)
+            self.display_fake_reboot_state = {}
+            return
         state["phase"] = "wait_5112_ack"
         state["last_send_addr"] = 0x5112
         state["last_send_time"] = time.monotonic()
@@ -10392,6 +11079,12 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active"):
             return
+        reason = self._display_sync_block_reason()
+        if reason or self.current_backend_key() != "display_modbus":
+            self._display_reboot_finish("Display: Synchronisation abgebrochen; " + (reason or "Backend gewechselt"), failed=True)
+            self.display_fake_reboot_state = {}
+            return
+        state.setdefault("packets_since", time.monotonic())
         state["phase"] = "wait_flag_ack"
         state["last_send_addr"] = 0x0BC3
         state["last_send_time"] = time.monotonic()
@@ -10428,26 +11121,30 @@ class MainWindow(QMainWindow):
         state = self.display_fake_reboot_state
         if not state.get("active") or state.get("phase") != "wait_upload":
             return
-        since = float(state.get("attempt_started", 0.0) or 0.0)
+        since = float(state.get("packets_since", state.get("started", 0.0)) or 0.0)
         wait_started = float(state.get("upload_wait_started", since) or since)
         flag = self._display_0bc3_value_from_3001()
         fresh = self._display_reboot_fresh_param_blocks(since)
-        if len(fresh) >= 4:
-            source = str(state.get("source_label") or "Display Reboot Fake")
+        received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+        missing = [start for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+        optional = [start for start in OPTIONAL_PARAMETER_PACKETS if start in fresh]
+        if not missing:
+            source = str(state.get("source_label") or "Display-Parametersynchronisation")
             self.display_fake_reboot_last_success_time = time.monotonic()
             self.display_fake_reboot_last_source = source
-            self._log(
-                "DISPLAY Reboot Fake fix11 ERFOLG: frische Parameterblöcke gesehen: "
-                f"{fresh}; 0BC3 aktuell {('--' if flag is None else '0x%04X' % flag)}; Quelle={source}."
-            )
-            self._display_reboot_finish(f"Display: {len(fresh)}/{len(fresh)} Pakete übernommen")
+            text = f"Display: vollständig synchronisiert ({len(received)}/{len(REQUIRED_PARAMETER_PACKETS)})"
+            text += "; optional 1541: " + ("empfangen" if optional else "nicht empfangen")
+            self._log(text + f"; Quelle={source}.")
+            self._display_reboot_finish(text)
             self.display_fake_reboot_state = {}
             self._update_init_read_button_state()
             return
+        self._display_reboot_progress(
+            f"Display: {len(received)}/{len(REQUIRED_PARAMETER_PACKETS)} Pflichtpakete; fehlen: " + ", ".join(map(str, missing)),
+            done=len(received), total=len(REQUIRED_PARAMETER_PACKETS))
         age = time.monotonic() - wait_started
         if flag == 0x8000:
             if age < 14.0:
-                self._display_reboot_progress("Display: 0BC3 sichtbar, warte auf Pakete ...", busy=True)
                 self._log(
                     "DISPLAY Reboot Fake fix11: 0BC3=0x8000 sichtbar, warte weiter auf Parameterblöcke "
                     f"(bisher {fresh or '-'})."
@@ -10482,7 +11179,12 @@ class MainWindow(QMainWindow):
         if attempt < max_attempts:
             QTimer.singleShot(700, self._display_fake_reboot_attempt)
         else:
-            self._display_reboot_finish("Display: Timeout", failed=True)
+            fresh = self._display_reboot_fresh_param_blocks(float(state.get("packets_since", state.get("started", time.monotonic()))))
+            received = [start for start in REQUIRED_PARAMETER_PACKETS if start in fresh]
+            missing = [str(start) for start in REQUIRED_PARAMETER_PACKETS if start not in fresh]
+            outcome = "teilweise synchronisiert" if received else "Timeout"
+            text = f"Display: {outcome} ({len(received)}/{len(REQUIRED_PARAMETER_PACKETS)}); fehlen: " + ", ".join(missing)
+            self._display_reboot_finish(text, failed=True)
             self._log("DISPLAY Reboot Fake fix11 FEHLGESCHLAGEN: nach 3 Versuchen kein sicherer Parameter-Upload gesehen.")
             self.display_fake_reboot_state = {}
             self._update_init_read_button_state()
@@ -10645,6 +11347,9 @@ class MainWindow(QMainWindow):
         label: str = "",
         delay_ms: int = 0,
     ) -> bool:
+        if self.current_backend_key() == "display_modbus" and getattr(self, "display_fake_reboot_state", {}).get("active"):
+            self._log("Parameterwrite nicht gesendet: Display-Synchronisation läuft.")
+            return True
         candidate = self._display_param_user_write_candidate(addr, slave_addr)
         if candidate is None:
             return False
@@ -10997,6 +11702,12 @@ class MainWindow(QMainWindow):
         self._display_user_value_complete_current(False)
 
     def send_register_write(self, addr: int, value: int, slave_addr: int = DEFAULT_BUS_ADDR, label: str = "", delay_ms: int = 0):
+        if self.current_backend_key() == "display_modbus" and getattr(self, "display_fake_reboot_state", {}).get("active"):
+            self._log("WRITE nicht gesendet: Display-Synchronisation läuft.")
+            return False
+        if is_virtual_register(addr):
+            self._log("Virtuelle Unit-1-IDs dürfen nicht per Modbus beschrieben werden.")
+            return
         # Zentrale letzte Sicherheitsgrenze fuer alle normalen Register-Writes.
         # Aufrufer wie Restore und das manuelle Popup liefern bewusst RAW-Werte
         # und umgehen deshalb teilweise parse_register_write_value().
@@ -11085,31 +11796,31 @@ class MainWindow(QMainWindow):
         # V0.2.41 fix5: Timer-Popup am Displaybus erst öffnen, wenn 1271ff
         # wirklich geladen ist. Sonst waren die Felder beim Öffnen noch 0 bzw.
         # ältere Defaults und Mehrfachwrites konnten falsche Partnerwerte nutzen.
-        if not self._display_wait_for_param_blocks_before_popup("Timer 1-6", [1271], self.open_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("Timer 1-6", [1271], self.open_timer_editor):
             return
         if self.timer_dialog is None or not self.timer_dialog.isVisible():
             self.timer_dialog = TimerEditorDialog(self)
             self.timer_dialog.finished.connect(lambda _=None: setattr(self, "timer_dialog", None))
             self.timer_dialog.show()
         else:
-            self.timer_dialog.load_from_live_values()
+            self.timer_dialog.load_from_live_values(preserve_edits=True)
             self.timer_dialog.raise_()
             self.timer_dialog.activateWindow()
 
     def open_onoff_timer_editor(self):
-        if not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("WP Ein/Aus Timer", [1181], self.open_onoff_timer_editor):
             return
         if self.onoff_timer_dialog is None or not self.onoff_timer_dialog.isVisible():
             self.onoff_timer_dialog = OnOffTimerEditorDialog(self)
             self.onoff_timer_dialog.finished.connect(lambda _=None: setattr(self, "onoff_timer_dialog", None))
             self.onoff_timer_dialog.show()
         else:
-            self.onoff_timer_dialog.load_from_live_values()
+            self.onoff_timer_dialog.load_from_live_values(preserve_edits=True)
             self.onoff_timer_dialog.raise_()
             self.onoff_timer_dialog.activateWindow()
 
     def open_silent_timer_editor(self):
-        if not self._display_wait_for_param_blocks_before_popup("Silentmodus Timer", [1181], self.open_silent_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("Silentmodus Timer", [1181], self.open_silent_timer_editor):
             return
         if self.silent_timer_dialog is None or not self.silent_timer_dialog.isVisible():
             self.silent_timer_dialog = SilentTimerDialog(self)
@@ -11121,7 +11832,7 @@ class MainWindow(QMainWindow):
             self.silent_timer_dialog.activateWindow()
 
     def open_sg_editor(self):
-        if not self._display_wait_for_param_blocks_before_popup("SG Ready", [1271], self.open_sg_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("SG Ready", [1271], self.open_sg_editor):
             return
         if self.sg_dialog is None or not self.sg_dialog.isVisible():
             self.sg_dialog = SGReadyEditorDialog(self)
@@ -11543,9 +12254,10 @@ class MainWindow(QMainWindow):
         self.display_timer_batch_state = {}
 
     def send_timer_values(self, slave_addr: int, values: list[tuple[int, int, str]], delay_ms: int = 1200, title: str = "Timer"):
+        """Keep local I/O sequences; report whether the operator accepted writes."""
         if not self.connected or self._active_io_worker() is None:
             self._log("TIMER nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
-            return
+            return False
 
         values = [
             (int(addr), validate_register_write_value(int(value), self.regmap.get(int(addr))) & 0xFFFF, label)
@@ -11554,24 +12266,25 @@ class MainWindow(QMainWindow):
         display_plan = self._display_timer_batch_plan(values, slave_addr)
         if display_plan is not None and not display_plan:
             self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): Write nicht gesendet (Init/Snapshot gestartet oder keine geänderten Werte übrig).")
-            return
+            return False
 
         lines = self._timer_write_preview_lines(values, slave_addr)
 
         if not ask_yes_no(self, f"{title} schreiben?", f"Diese {title}-Register schreiben?\n\n" + "\n".join(lines), default_yes=False):
             self._log("TIMER Write abgebrochen: nicht gesendet.")
-            return
+            return False
 
         self._log(f"TIMER wird GESENDET ({title}):\n" + "\n".join(lines))
         self._notify_timer_sg_write_status(title, f"{title}: Schreibe ...")
         if display_plan is not None:
             self._send_display_timer_batch(display_plan, delay_ms, title)
-            return
+            return True
 
         for addr, value, label in values:
             self.send_register_write(addr, value, slave_addr=slave_addr, label=label, delay_ms=delay_ms)
         self._notify_timer_sg_write_status(title, f"{title}: Schreiben gesendet.")
         QTimer.singleShot(6500, lambda t=title: self._notify_timer_sg_write_status(t, "Bereit."))
+        return True
 
     def rebuild_table_filter(self):
         self.table_rows = {}
@@ -11584,6 +12297,17 @@ class MainWindow(QMainWindow):
         self._log("Tabellenfilter geändert. Tabelle aus gespeicherten Live-Werten neu aufgebaut.")
 
     def closeEvent(self, event):
+        from dialogs.device_identity_dialog import DeviceIdentityDialog
+        for dialog in self.findChildren(DeviceIdentityDialog):
+            if dialog.service.busy or dialog.service.wait_seconds:
+                dialog.show()
+                dialog.raise_()
+                dialog._can_close()
+                event.ignore()
+                return
+        self._warmlink_closing = True
+        if self._warmlink_recovery is not None:
+            self.disconnect_from_device()
         self.csv_logger_controller.stop()
         if self.cloud_write_thread is not None:
             self._close_after_cloud_write = True
@@ -11592,22 +12316,33 @@ class MainWindow(QMainWindow):
                 cancelled.set()
             event.ignore()
             return
-        cloud_dialog = self.warmlink_cloud_dialog
-        if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
-            if not getattr(self, "_close_after_cloud_poll", False):
-                self._close_after_cloud_poll = True
-                cloud_dialog.cloud_thread.finished.connect(self.close)
-            cloud_dialog.stop_worker()
-            event.ignore()
-            return
+        # SIM jobs share the single-read slot and its cleanup callback. Let
+        # that owner resume closing, rather than connecting the same job twice.
         if self.cloud_read_thread is not None:
             self._close_after_cloud_read = True
+            event.ignore()
+            return
+        # Closed Cloud dialogs remain QObject children until their workers finish.
+        # Wait for debug/SIM jobs too, including dialogs no longer in the active slot.
+        for dialog in self.findChildren(QDialog):
+            for name in ("debug_thread", "sim_thread"):
+                job = getattr(dialog, name, None)
+                if job is not None and job.isRunning():
+                    if not job.property("_close_main_when_finished"):
+                        job.setProperty("_close_main_when_finished", True)
+                        job.finished.connect(self.close)
+                    event.ignore()
+                    return
+        cloud_dialog = self.warmlink_cloud_dialog
+        if cloud_dialog is not None and cloud_dialog.cloud_thread is not None:
+            self._close_after_cloud_poll = True
+            cloud_dialog.stop_worker()
             event.ignore()
             return
         self._update_main_window_settings()
         self.main_table_columns.stop_pending_save()
         self._save_settings()
-        self.cloud_btn.setPollingActive(False)
+        self.cloud_quick_btn.setPollingActive(False)
         if self.warmlink_cloud_dialog is not None:
             try:
                 setattr(self.warmlink_cloud_dialog, "_force_close", True)
@@ -11618,6 +12353,10 @@ class MainWindow(QMainWindow):
             self.live_poll_timer.stop()
         self.disconnect_from_device()
         self._stop_warmlink_capture("App wird beendet")
+        if self.thread is not None:
+            self._close_after_reader = True
+            event.ignore()
+            return
         event.accept()
 
 

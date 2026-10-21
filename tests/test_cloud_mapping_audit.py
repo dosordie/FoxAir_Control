@@ -63,9 +63,16 @@ def test_static_audit_reports_aliases_without_claiming_runtime_support():
     assert report["counts"]["supported"] is None
     assert report["counts"]["supported_unmapped"] is None
     assert all(entry["supported"] is None for entry in report["codes"])
+    # The new KG codes map to previously confirmed numeric Cloud aliases
+    # for MAIN 1256..1269. Keep this exact list an audited contract.
     assert report["aliases"] == [
         {"main_register": 1206, "codes": ["1206", "E03-3"]},
         {"main_register": 1208, "codes": ["1208", "E03-5"]},
+        {"main_register": 1250, "codes": ["1250", "CP1-1"]},
+        *({"main_register": register, "codes": [str(register), f"KG{register - 1255}"]}
+          for register in range(1256, 1268)),
+        {"main_register": 1268, "codes": ["1268", "KG13~KG28"]},
+        {"main_register": 1269, "codes": ["1269", "KG29~KG44"]},
         {"main_register": 2029, "codes": ["2029", "InputCurrent1"]},
     ]
 
@@ -152,11 +159,21 @@ def test_supported_unmapped_values_remain_visible_in_cloud_dialog(application):
     window.deleteLater()
 
 
-@pytest.mark.parametrize("code", ["I28", "H55", "T100", "T101"])
-def test_923_codes_are_not_in_644_catalog_or_mapping(code):
-    assert code not in WARMLINK_644_DISCOVERY_CODES
-    assert not cloud_hint(code)
-    assert resolve_cloud_projection_register(code, cloud_hint(code)) is None
+def test_unobserved_923_code_is_not_in_644_catalog_or_mapping():
+    assert "I28" not in WARMLINK_644_DISCOVERY_CODES
+    assert not cloud_hint("I28")
+    assert resolve_cloud_projection_register("I28", cloud_hint("I28")) is None
+
+
+@pytest.mark.parametrize("code", ["H55", "T100", "T101"])
+def test_ios308_observations_allow_queries_without_importing_923_mappings(code):
+    assert code in WARMLINK_644_DISCOVERY_CODES
+    metadata = cloud_hint(code)
+    assert metadata["app_observation_only"] is True
+    assert metadata["confidence"] == "unknown"
+    assert metadata["write_allowed"] is False
+    assert not metadata.get("modbus_register") and not metadata.get("unit")
+    assert resolve_cloud_projection_register(code, metadata) is None
 
 
 def test_sg_binary_word_and_distinct_numeric_cloud_code(application):

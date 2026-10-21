@@ -219,6 +219,9 @@ class RegisterInfo:
     value_map: Optional[Dict[int, str]] = None
     bit_map: Optional[Dict[int, str]] = None
     write_min: Optional[int] = None
+    bitfield_compact: bool = False
+    bit_descriptions: Optional[Dict[int, str]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 def validate_register_write_value(value: int, info: RegisterInfo) -> int:
@@ -320,6 +323,9 @@ class RegisterMap:
                     value_map,
                     bit_map,
                     int(write_min) if write_min is not None else None,
+                    bool(value.get("bitfield_compact", False)),
+                    {int(k): str(v) for k, v in value.get("bit_descriptions", {}).items()},
+                    dict(value),
                 )
             else:
                 self.items[reg] = RegisterInfo(str(value), "RAW")
@@ -350,17 +356,45 @@ def _decode_timer_bit_byte(byte_value: int) -> str:
 
 
 
-def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]]) -> str:
+def bitfield_states(raw_value: Optional[int], bit_map=None, bit_descriptions=None):
+    """Shared 16-bit states for the formatter and diagnostic detail view."""
+    labels, descriptions = bit_map or {}, bit_descriptions or {}
+    return [
+        (bit, labels.get(bit, f"B{bit} (unbekannt)"),
+         descriptions.get(bit, labels.get(bit, "Bedeutung offen")),
+         None if raw_value is None else bool(int(raw_value) & (1 << bit)))
+        for bit in range(16)
+    ]
+
+
+def format_bitfield_details(raw_value: Optional[int], info: RegisterInfo) -> str:
+    if raw_value is None:
+        return "–"
+    raw = int(raw_value) & 0xFFFF
+    lines = [f"RAW={raw} / 0x{raw:04X} / {raw:016b}"]
+    lines.extend(
+        f"B{bit}: {description}" for bit, _label, description, active
+        in bitfield_states(raw, info.bit_map, info.bit_descriptions) if active
+    )
+    return "\n".join(lines)
+
+
+def _decode_bit_map(raw_value: int, bit_map: Optional[Dict[int, str]], *, compact: bool = False) -> str:
     raw_value = int(raw_value) & 0xFFFF
+    if compact:
+        return "; ".join(
+            label for _bit, label, _description, active
+            in bitfield_states(raw_value, bit_map) if active
+        ) or "Keine aktiven Bits"
     if not bit_map:
         return f"{raw_value} / 0x{raw_value:04X} / {raw_value:016b}"
     hits = []
-    for bit in sorted(bit_map):
-        if 0 <= bit <= 15 and (raw_value & (1 << bit)):
-            hits.append(f"B{bit}: {bit_map[bit]}")
-    if not hits:
-        return "0"
-    return f"0x{raw_value:04X}: " + "; ".join(hits)
+    for bit, label, _description, active in bitfield_states(raw_value, bit_map):
+        if active and bit in bit_map:
+            hits.append(f"B{bit}: {label}")
+    mask = f"0x{raw_value:04X} / {raw_value:016b}"
+    # Unknown bits stay visible as raw bits, without invented labels.
+    return mask + (": " + "; ".join(hits) if hits else "")
 
 def _temperature_unit(unit: Optional[str]) -> str:
     unit = str(unit or "").strip()
@@ -377,24 +411,37 @@ def _append_display_unit(text: str, unit: Optional[str]) -> str:
 
 
 def format_value_by_type(
-    raw_value: int,
+    raw_value: Optional[int],
     dtype: str,
     value_map: Optional[Dict[int, str]] = None,
     bit_map: Optional[Dict[int, str]] = None,
     unit: Optional[str] = None,
+    *,
+    compact: bool = False,
 ) -> str:
+    if raw_value is None:
+        return "–"
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
     if dtype in ("UINT16", "UNSIGNED INT16"):
         return str(int(raw_value) & 0xFFFF)
     if dtype in ("INT16", "SIGNED INT16"):
         return str(signed)
+    if dtype == "HZ_LOW8":
+        return f"{int(raw_value) & 0xFF} Hz"
+    if dtype in ("TEMP_OFFSET55", "TEMP_OFFSET55_LOW8"):
+        value = int(raw_value) & (0xFF if dtype.endswith("LOW8") else 0xFFFF)
+        return f"{value - 55} °C"
+    if dtype == "BYTE_PAIR":
+        return f"0x{int(raw_value) & 0xFFFF:04X}: High={(int(raw_value) >> 8) & 0xFF}, Low={int(raw_value) & 0xFF}"
+    if dtype == "YEAR_2000":
+        return str(2000 + (int(raw_value) & 0xFFFF))
     if value_map and raw_value in value_map:
         return f"{raw_value} = {value_map[raw_value]}"
     if value_map and signed in value_map:
         return f"{signed} = {value_map[signed]}"
     if bit_map or dtype in ("FAULT_BITS", "BITFIELD"):
-        return _decode_bit_map(raw_value, bit_map)
+        return _decode_bit_map(raw_value, bit_map, compact=compact)
     if dtype in ("TEMP", "TEMP1"):
         return f"{signed / 10.0:.1f} {_temperature_unit(unit)}"
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
@@ -707,7 +754,12 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
         for idx, raw_value in enumerate(words):
             reg = base + idx
             info = regmap.get(reg)
-            service_meta = warmlink_service_metadata(slave_addr, reg)
+            # Explicit direct-mainboard definitions in the 8xxx range are not
+            # unknown Warmlink service words, even when observed on slave 0x63.
+            service_meta = (
+                None if (info.metadata or {}).get("interface") == "direct_user_modbus"
+                else warmlink_service_metadata(slave_addr, reg)
+            )
             name = str(service_meta["name"]) if service_meta else info.name
             dtype = str(service_meta["type"]) if service_meta else info.dtype
             registers.append(DecodedRegister(
@@ -745,6 +797,14 @@ def decode_frame(parsed, regmap: RegisterMap) -> DecodedFrame:
 def numeric_value_by_type(raw_value: int, dtype: str) -> float:
     signed = s16(raw_value)
     dtype = (dtype or "RAW").upper()
+    if dtype in ("UINT16", "UNSIGNED INT16", "BYTE_PAIR"):
+        return float(int(raw_value) & 0xFFFF)
+    if dtype == "HZ_LOW8":
+        return float(int(raw_value) & 0xFF)
+    if dtype in ("TEMP_OFFSET55", "TEMP_OFFSET55_LOW8"):
+        return float((int(raw_value) & (0xFF if dtype.endswith("LOW8") else 0xFFFF)) - 55)
+    if dtype == "YEAR_2000":
+        return float(2000 + (int(raw_value) & 0xFFFF))
     if dtype in ("TEMP", "TEMP1"):
         return signed / 10.0
     if dtype in ("TEMP05", "TEMP_0_5", "STEP_0_5C"):
@@ -773,7 +833,10 @@ def decode_read_response_registers(frame: DecodedFrame, start_reg: int, regmap: 
     for idx, raw_value in enumerate(words):
         reg_no = start_reg + idx
         info = regmap.get(reg_no)
-        service_meta = warmlink_service_metadata(frame.slave_addr, reg_no)
+        service_meta = (
+            None if (info.metadata or {}).get("interface") == "direct_user_modbus"
+            else warmlink_service_metadata(frame.slave_addr, reg_no)
+        )
         name = str(service_meta["name"]) if service_meta else info.name
         dtype = str(service_meta["type"]) if service_meta else info.dtype
         regs.append(DecodedRegister(

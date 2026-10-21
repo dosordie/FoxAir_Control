@@ -59,7 +59,10 @@
     "description": "Manuelle Steuerung / Silent Status: Bit 1 (Maske 0x0002) ist Silent Mode. Derselbe Registerwert ist auch der Status. Beim Schreiben nur Bit 1 per Read-Modify-Write ändern.",
     "source": "v36 Beschreibung/App-Review"
   },
-  "1017": {},
+  "1017": {
+    "description": "Funktion und Seiteneffekte ungeklärt. Die bisherige Logo-Zuordnung ist widerlegt: DWIN V1.7 liest MAIN:1026 / H39 für die Logo-Auswahl. MAIN:1017 darf bis zur Klärung nicht automatisch wiederhergestellt werden.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/DisplayFW/V1.7_original/DEMONS.ASM#L424-L431"
+  },
   "1018": {
     "description": "0-nein/1-ja",
     "source": "v36 Beschreibung/App-Review",
@@ -1365,13 +1368,21 @@
   },
   "1193": {
     "default": "0",
-    "description": "V1.3 begrenzt R40 in Celsius auf 60 °C; Fahrenheit-Minimum 14 °F.",
-    "source": "ASM DEMONS.ASM"
+    "description": "Temperaturparameter R40, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt.",
+    "source": "ASM DEMONS.ASM; ASM DEMONS V1.3; Nutzer-Registeraudit 15.10.2026",
+    "cloud_aliases": [
+      "R40"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R40 → MAIN:1193; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1194": {
     "default": "0",
-    "description": "V1.3 begrenzt R41 in Celsius auf 60 °C; Fahrenheit-Minimum 14 °F.",
-    "source": "ASM DEMONS.ASM"
+    "description": "Temperaturparameter R41, Funktion unbekannt. TEMP1-Skalierung bleibt erhalten. Die ältere DWIN-V1.3-ASM begrenzt in Celsius auf 60 °C; daraus ist keine konkrete Regelwirkung belegt.",
+    "source": "ASM DEMONS.ASM; ASM DEMONS V1.3; Nutzer-Registeraudit 15.10.2026",
+    "cloud_aliases": [
+      "R41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: R41 → MAIN:1194; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1195": {
     "default": "5",
@@ -1741,7 +1752,12 @@
   },
   "1250": {
     "description": "0-nein/1-ja",
-    "source": "v36 Beschreibung/App-Review"
+    "source": "v36 Beschreibung/App-Review",
+    "cloud_aliases": [
+      "1250",
+      "CP1-1"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1250, CP1-1 → MAIN:1250; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1251": {
     "description": "0-59"
@@ -1760,59 +1776,115 @@
   },
   "1256": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1256"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1256 → MAIN:1256; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1257": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1257"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1257 → MAIN:1257; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1258": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1258"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1258 → MAIN:1258; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1259": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1259"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1259 → MAIN:1259; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1260": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1260"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1260 → MAIN:1260; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1261": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1261"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1261 → MAIN:1261; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1262": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1262"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1262 → MAIN:1262; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1263": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1263"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1263 → MAIN:1263; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1264": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1264"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1264 → MAIN:1264; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1265": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1265"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1265 → MAIN:1265; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1266": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1266"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1266 → MAIN:1266; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1267": {
     "description": "Ältere 6-Segment-Timerlogik aus DEMONS_V1.3; nicht identisch mit neuem Timerblock 1281–1325.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1267"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1267 → MAIN:1267; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1268": {
     "description": "Ältere 6-Segment-Timerlogik; Sammel-/Bitfeldblock, genaue Bitbelegung noch nicht vollständig decodiert.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1268"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1268 → MAIN:1268; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1269": {
     "description": "Ältere 6-Segment-Timerlogik; Sammel-/Bitfeldblock, genaue Bitbelegung noch nicht vollständig decodiert.",
-    "source": "ASM V1.3 / User-Test"
+    "source": "ASM V1.3 / User-Test",
+    "cloud_aliases": [
+      "1269"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: 1269 → MAIN:1269; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1270": {
     "description": "Ältere 6-Segment-Timerlogik; Sammel-/Bitfeldblock, genaue Bitbelegung noch nicht vollständig decodiert.",
@@ -2077,7 +2149,11 @@
   "1346": {
     "default": "66",
     "description": "H41 bestätigt. Supervisor-Passwort: 66.",
-    "source": "User confirmed 2026-06-19"
+    "source": "User confirmed 2026-06-19",
+    "cloud_aliases": [
+      "H41"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: H41 → MAIN:1346; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "1347": {
     "default": "90",
@@ -2457,18 +2533,25 @@
     "description": "Aktueller Betriebsstatus: 0=Kühlen, 1=Heizen, 2=Abtauen, 3=Sterilisieren, 4=Warmwasser. Nicht identisch mit Modus-Setzregister 1012.",
     "source": "ASM DEMONS.ASM"
   },
-  "2013": {},
-  "2014": {},
+  "2013": {
+    "description": "V3.5: Gesondert aufbereiteter interner Regelsollwert aus 0x200164C8 +0x06, signed int16, RAW / 10 °C. Eigenes internes Feld; nicht pauschal identisch mit 2014/2016. Eine weitergehende Regelstufe oder Begrenzungssemantik ist nicht abschließend bewiesen.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
+  "2014": {
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Je nach ausgewählter Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad; echte Spiegelquelle von MAIN:2016. MAIN:2013 stammt aus einem anderen internen Feld.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
+  },
   "2015": {
     "description": "0-nein/1-Abtau-Modus verfügbar",
     "source": "v36 Beschreibung/App-Review"
   },
   "2016": {
-    "description": "Solltemperatur wie 2013/2014, °C, Skalierung /10.",
-    "source": "User correction 2026-06-19"
+    "description": "V3.5: Betriebsabhängig ausgewählter Solltemperaturwert aus 0x200164C8 +0x56, signed int16, RAW / 10 °C. Identische Quelle wie MAIN:2014 (echter Spiegel), je nach Betriebsart Heiz-, Warmwasser- oder Kühlsollwertpfad. Nicht pauschal identisch mit MAIN:2013.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2017": {
-    "description": "0"
+    "description": "Ab V3.5: Effektiver berechneter Heiz-Wassersollwert aus Getter 0x0808261C, signed int16, RAW / 10 °C. Enthält wirksame Regelkorrekturen, Heizkurven-/Timerpfade und die normale Heiztemperaturbegrenzung (R10/R11). Wird unabhängig davon berechnet, ob Heizen aktuell aktiv ist; nicht in jeder Betriebsart mit einem aktuell aktiven Vorlaufsollwert gleichzusetzen. Statuspuffer 0x20012790 +0x840; 0x820 + 2*(2017-2001). Ersetzt die ungültige frühere Zuordnung MAIN:1557. In V3.3 reserviert/unbenutzt.",
+    "source": "Abgeschlossene GL9 Mainboard-V3.5-Firmwareanalyse; Status 0x0806C504–0x0806C558; Korrekturauswahl 0x08089E60–0x0808A046"
   },
   "2018": {
     "description": "0 Aus 1 Ein Read-only Statusregister (>2000), nicht als WP-Schreibregister verwenden.",
@@ -2491,7 +2574,12 @@
     "description": "0 bis 500N"
   },
   "2023": {
-    "description": "2"
+    "description": "Anzahl Verdichterstarts, ab Firmware V3.3. T57 als Cloud-Alias live bestätigt (609→610).",
+    "cloud_aliases": [
+      "T57"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T57 → MAIN:2023; #178 / PR #183 (bisherige Zuordnungen).",
+    "source": "https://github.com/dosordie/FoxAir_Control/issues/178"
   },
   "2024": {
     "description": "0; ASM: 07E8H -> Anzeige System2 Ventil",
@@ -2502,13 +2590,16 @@
     "source": "ASM DEMONS.ASM"
   },
   "2026": {
-    "description": "12"
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 High-Byte → MAIN:2026. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_audit_2026-10-14.md"
   },
   "2027": {
-    "description": "0"
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2113 Low-Byte → MAIN:2027. Unsigned Byte (0..255), ohne belegte physikalische Bedeutung oder Einheit. Anzeige als kompatibler UINT16-Rohwert.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_audit_2026-10-14.md"
   },
   "2028": {
-    "description": "17"
+    "description": "Bestätigter V3.5-Datenpfad: INV1 / Slave 0x01:2118 → MAIN:2028. Signed int16 (-32768..32767); physikalische Bedeutung und Einheit offen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_audit_2026-10-14.md"
   },
   "2029": {
     "description": "Eingangsstromwert in A."
@@ -2590,7 +2681,11 @@
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2050": {
-    "description": "tatsächlicher Testwert"
+    "description": "tatsächlicher Testwert",
+    "cloud_aliases": [
+      "T14"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 12.10.2026: T14 → MAIN:2050; #178 / PR #183 (bisherige Zuordnungen)."
   },
   "2051": {
     "description": "tatsächlicher Testwert"
@@ -2609,8 +2704,8 @@
     "description": "tatsächlicher Testwert"
   },
   "2056": {
-    "description": "V1.3 konvertiert 0x0808 als Temperatur; Fault-Avoid setzt dazu Anzeigeadresse 120C für System1 Frostschutztemperatur 2.",
-    "source": "ASM DEMONS_V1.3.ASM"
+    "description": "DWIN V1.3 bezeichnet das Feld als System 1 Frostschutztemperatur 2 (TEMP1). V3.5 exportiert 2055 und 2057; am Public-Buffer-Offset von 2056 wurde kein direkter Writer gefunden. Starkes Indiz für ein optionales bzw. in dieser Konfiguration unbelegtes Feld, kein Beweis für dauernde Ungültigkeit. Sensorquelle und Hersteller-T-Code offen. Daher neutrale Rohwertanzeige; keine Zuordnung zu T06, T06_1 oder einem bestimmten Fühler. Cloud T06_1 lieferte im Livetest keine Daten.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_audit_2026-10-14.md; ASM DEMONS_V1.3.ASM"
   },
   "2057": {
     "description": "T35 / AC Input Current (AC-Eingangsstrom).",
@@ -2646,15 +2741,27 @@
   },
   "2065": {
     "description": "Aus Niederdruck und dem über A26 gewählten Kältemittel berechnete Verdampfungs-/Sättigungstemperatur. Bezeichnung durch DWIN/PHNIX und Mainboard-Datenpfad bestätigt. Skalierung 0,1 °C.",
-    "source": "Reverse Engineering GL9 Firmware V3.4"
+    "source": "Reverse Engineering GL9 Firmware V3.4",
+    "cloud_aliases": [
+      "T49"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T49 → MAIN:2065; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2066": {
     "description": "Abgasüberhitzung des Haupt-EEV-Regelpfads, als 5-Sample-Mittelwert. DWIN/PHNIX-Bezeichnung bestätigt. Wird als vierstufige Achse der Auto-EEV-Regelmatrix verwendet. Im normalen Hauptpfad basiert der Wert auf der Differenz aus Heißgastemperatur T12 und der jeweiligen Verdampfer-/Referenztemperatur; Sonderpfade können eine andere Referenz verwenden. Skalierung 0,1 K.",
-    "source": "Reverse Engineering GL9 Firmware V3.4"
+    "source": "Reverse Engineering GL9 Firmware V3.4",
+    "cloud_aliases": [
+      "T50"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T50 → MAIN:2066; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2067": {
     "description": "Tatsächlicher Feedback-Istwert der Haupt-EEV-Regelung, als 5-Sample-Mittelwert. Wird direkt gegen E02 im Heizbetrieb bzw. E18 im Kühlbetrieb geregelt. Primärer physikalischer Pfad: Saugtemperatur minus aus Niederdruck berechnete Verdampfungs-/Sättigungstemperatur. Skalierung 0,1 K.",
-    "source": "Reverse Engineering GL9 Firmware V3.4"
+    "source": "Reverse Engineering GL9 Firmware V3.4",
+    "cloud_aliases": [
+      "T51"
+    ],
+    "cloud_alias_source": "Bestätigter GL9-Cloud→MAIN-Livevergleich 14.10.2026: T51 → MAIN:2067; #178, Nutzer-Livevergleich am 14.10.2026."
   },
   "2068": {
     "description": "0; ASM: 0814H -> Anzeige System2 current",
@@ -2706,7 +2813,8 @@
     "source": "Live beobachtet; Register 200-215, Bus 0x63, Frame 0x00C8"
   },
   "2080": {
-    "description": "3"
+    "description": "Bestätigt in V3.5: INV1 / Slave 0x01:2099 → MAIN:2080, unverändertes 16-Bit-Inverter-/Driverstatuswort; nicht die Fehlerwörter MAIN:2081/2082. Bits 7/14 werden im Mainboard geprüft und setzen im jeweiligen Prioritätszweig den internen Wert 0x200152F4 auf 100. Normalfall: gerundeter Istfrequenzanteil relativ zu C03 (MAIN:1220, Low-Byte-Kopie 0x20016FD3). 100 in den Sonderpfaden belegt keinen tatsächlichen 100-%-Verdichterbetrieb und keine Pumpenwirkung; direkter Export/Consumer des RAM-Werts offen. Die 19 Einzelbedeutungen der vorgelagerten Sammelprüfung 0x0808876C bleiben offen. Herstellerbitnamen unbekannt.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_followup_2026-10-15.md; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/inverter_status_2080.md"
   },
   "2081": {
     "description": "Bitfeld-Decoder: sichere Klartexte wo bekannt, sonst markierte Node-RED-Bitpositionen als Platzhalter bis vollständiger Function-Code vorliegt.",
@@ -2822,8 +2930,8 @@
     "source": "ASM DEMONS.ASM"
   },
   "2109": {
-    "description": "Internes Ereignis-/Statusbitfeld. Der vollständige RAW-Wert bleibt als Dezimal-, Hex- und Binärdarstellung sichtbar; Einzelbitsemantik offen.",
-    "source": "FW3.3 Reverse Engineering; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140",
+    "description": "Parameterblock-Änderungs-/Synchronisationsmaske, bestätigt in V3.4 und unabhängig in V3.5. Vergleich zweier Parameterabbilder über 540 Positionen, sechs Blöcke zu je 90 Registern (1001–1540). MAIN:1016 ist von der regulären Änderungsmarkierung ausgenommen; ein separater Hilfsflagpfad kann Bit 0 dennoch setzen. Clear-/ACK- und Persistenzlogik offen: kein Nachweis einer erfolgten Flash-Speicherung. Bits 6–15 unbekannt, nicht als reserviert klassifiziert. Nicht mit INV1:2109 / MAIN:2082 verwechseln.",
+    "source": "FW3.3 Reverse Engineering; Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_audit_2026-10-14.md",
     "default": "63"
   },
   "211": {
@@ -2961,12 +3069,12 @@
     "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
   },
   "2151": {
-    "description": "Interner Controller-/Regelmodus. Werte 0..4 sind bekannt; menschliche Modusnamen sind noch nicht bestätigt.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Übernommener EMS-/Remote-Modus aus Warmlink 0x63:8001. 0 = kein Modus; fachliche Namen der Modi 1..4 sind offen. MAIN1691 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
   },
   "2155": {
-    "description": "Interner Timer/Zähler, der inkrementiert, zurückgesetzt und verglichen wird. 0xFFFF ist ein Sonderwert; kein Sensorwert.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Batterieladezustand / Battery_SoC aus Warmlink 0x63:8005. RAW; Einheit/Skalierung offen, keine bestätigte Prozentdarstellung. Die frühere Timer-/Zähler-Erklärung ist durch OEM-Strings und Mainboard-XREFs überholt. MAIN1695 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
   },
   "2147": {
     "description": "V3.5/H30=3: signed Pass-through aus HYD61:2050 (Unit 0x61 FC03). Direkter Nachbar zu MAIN:2146 Bit1 = HYD61:2049 Bit1. Hersteller-Klartextname und physikalische Semantik sind noch offen.",
@@ -2981,8 +3089,8 @@
     "source": "V3.5 Disassembly 0x0806CD68ff / 0x08088054; KASKADENBETRIEB-MASTER-SLAVE.md"
   },
   "2139": {
-    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt.",
-    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140"
+    "description": "Bit4 meldet den aktiven A38-Niederdruck-Frequenzlimiter. Bei aktivem Limiter wird MAIN:2115 auf 100 % gesetzt und die 10-min-Auto-PWM-Qualifizierung zurückgesetzt. Weitere bestätigte Bits laut Issue #176: Bit8 SG-/Zusatzheizungs-Frequenzlimit und Bit10 dreiphasiger Strom-Soft-Limiter. V3.5 zusätzlich bestätigt: Bits 0/2 sind T02-/temperaturabhängige Schutz-/Frequenzregelzustände. Ihr interner State 1 begrenzt den neuen Frequenzkandidaten nach oben auf MAIN:2071/T30; Herstellername und sämtliche State-2-Wirkungen bleiben offen. Bit 9 entspricht MAIN:2152 Bit 6 (Mode-4-Klasse 1/2), kein Inverterfehler. Das Bit unterscheidet weder die Klasse noch eine aktuell messbare Kappung. Kein allgemeiner Pumpenoverride aus MAIN:2139; die A38-spezifische Wirkung bleibt getrennt.",
+    "source": "Reverse Engineering GL9 Firmware; Issues #117/#138/#139/#140; Issue #176; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_followup_2026-10-15.md; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/FW3.3-MAIN-2139-FREQUENZLIMITIERUNGEN.md"
   },
   "6011": {
     "description": "Raw I/O-/Switch-Diagnosewort; Einzelbitsemantik offen.",
@@ -3050,7 +3158,8 @@
   },
   "1430": {
     "knowledge": "MAIN:1430 existiert bereits vor V3.5. Effektiv uint8, persistent im 32-Byte-Record 0x218, Default 0: 0 = Gate nicht aktiv, != 0 = Gate aktiv. Fuer V3.5 ist die zusaetzliche Verwendung als notwendiges Gate des positiven 8055-Heizboosts bestaetigt (zusammen mit MAIN:1492.high != 0, Z01 in {4,5,6}, int16(8055) > 0). Ausserdem ist 1430 ein alternativer Aktivierungsweg des dokumentierten 30-Minuten-Qualifier-Pfads. Offizieller PHNIX-Name bleibt offen.",
-    "source": "Reverse Engineering V3.5"
+    "source": "Reverse Engineering V3.5; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md",
+    "description": "[Engineering] Effektiv uint8: 0 = Gate nicht aktiv, != 0 = Gate aktiv. In V3.5 notwendiges Gate fuer den Warmlink-8055-Heizboost und alternativer Aktivierungsweg des 30-Minuten-Qualifier-Pfads. Das Register existiert bereits vor V3.5; nur diese zusaetzliche Verwendung ist fuer V3.5 bestaetigt. Offizieller PHNIX-Name offen. Livebeobachtung: MAIN:1430=0, unverändert; der zusätzliche Heizboost war damit in dieser Anlage gesperrt. Kein gewöhnlicher immer aktiver Boost."
   },
   "1492": {
     "knowledge": "Engineering: gepacktes uint16, persistent im 32-Byte-Record 0x218, Default 0x0000. High Byte liegt bei 0x20016A34 +0x12, ist uint8 (0..255) und bildet factor = high / 10 sowie scaled_boost_raw = int16(8055) * high / 10; high=0 sperrt den 8055-Pfad. Low Byte liegt bei +0x14, ist uint8: 0 prueft PE12 | PE13 | PD14, jeder Wert 1..255 waehlt PC4. Physische PHNIX-/FoxAir-Klemmenbezeichnungen bleiben offen.",
@@ -3060,8 +3169,69 @@
     "knowledge": "V3.5-Gate (effektiv uint8) fuer externe Warmlink-Remote-Korrekturen; persistent im 32-Byte-Record 0x218, ueberlebt normalen Power-Cycle, Factory-/Fallback-Default 0. Verbraucher pruefen 0/!=0; die UI bietet 0/1. Es gibt keinen bestaetigten Setter SG01=4 -> MAIN1540=1: AI Saving (SG01/MAIN1334=4; aelterer Komplex 8001/8004/8006, 0x20016A54, MAIN1691/1692) ist nicht MAIN1540. Die Frequenz wird nicht hart auf 30/36/42/48 Hz quantisiert: liegt der bisherige Befehl ausreichend ueber der Remote-/Adaptivreferenz, wird er um hoechstens 6 Hz abgesenkt, ohne die Referenz zu unterschreiten (47 Hz darf 47 Hz bleiben). Erst danach entsteht ein Bin-Index: f<30 => 0, sonst (f-30)/6. C02, C03 und dynamische Grenzen bleiben wirksam.",
     "source": "Reverse Engineering V3.5"
   },
-  "1557": {
-    "knowledge": "Read-only V3.5-Export des effektiven intern berechneten Heiz-Wassersollwerts als signed int16 RAW / 10 °C. RAW bleibt verfuegbar; die normalen Heiz-Min-/Max-Grenzen gelten.",
-    "source": "Reverse Engineering V3.5"
+  "2152": {
+    "description": "EMS Strategy Command State (u16); interne State-Machine, kein direktes 800x-Datenregister und kein Enum. Bits 0/1/2: thermische Abschalt-/Überschussseite, Hystereseband, Bedarfsseite. Bit 3 beeinflusst vier thermische Sollwert-/Hysteresepfade. Bit 4 aktiviert den Frequenzcap-Pfad über MAIN:1422, beweist aber keine aktuell greifende Kappung. Bit 5 verhindert unter den nachgewiesenen Bedingungen das Setzen von 0x20016E2C+4 Bit 1; physische Wirkung offen. Bit 6 entspricht MAIN:2139 Bit 9 (Mode-4-Klasse 1/2). Bit 7: qualifizierter Remote-/Runtimezustand nach 3600 × 500 ms = 30 Minuten, gemeinsamer Producer mit MAIN:2085 Bit 0, kein gewöhnlicher Fehler. Normaler Abbruch löscht Aktivflag, Zähler und Bit. Sonderfall Kommunikations-/Sperrflag 0x200144D1: zunächst nur Zähler-Reset; bereits gesetztes Bit 7 kann während der Sperre stehen bleiben. Nach Wegfall der Sperre und regulärer Auswertung wird es bis zur erneuten Qualifizierung gelöscht. OEM-Bezeichnungen, finale Aktoren und weitere Verbraucher von Bits 3/5 bleiben offen. Status angefordert/aktiv ist nicht gleich messbarer Regelauswirkung.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/open_registers_followup_2026-10-15.md; https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md; https://github.com/dosordie/FoxAir_Control/issues/180",
+    "live_observation_2026_10_15": "Vor WP-Start 2 (Bit1), beim Anlaufen 1 (Bit0). Beobachtung, keine allgemeine WP-Aus/Ein-Definition. Bit4 war jeweils aus; der 1422-Pfad war dort nicht aktiviert."
+  },
+  "2153": {
+    "description": "Strompreis-Rohwert aus Warmlink 0x63:8002. Einheit und Skalierung unbekannt. MAIN1693 ist ein interner Puffer-Alias, keine bestätigte User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2154": {
+    "description": "Netzleistungs-Rohwert (signed int16) aus Warmlink 0x63:8004. Einheit und Polarität nicht live bestätigt. MAIN1427 ist ein separater lokaler Schwellwert (Default 200 RAW), nicht der Spiegel von 8004. MAIN1694 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2156": {
+    "description": "Batterieleistungs-Rohwert (signed int16) aus Warmlink 0x63:8003. Einheit und Polarität offen. MAIN1696 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2157": {
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8007. Semantik offen, kein Herstellername belegt. MAIN1697 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "2158": {
+    "description": "Warmlink-EMS-Rohwert aus 0x63:8008. Semantik offen, kein Herstellername belegt. MAIN1698 ist ein interner Puffer-Alias, keine User-Schreibadresse.",
+    "source": "GoHeating Pro Android 1.0.0 OEM strings + Mainboard RE; https://github.com/dosordie/FoxAir_Control/issues/180"
+  },
+  "1381": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1382": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1383": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1384": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1385": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1386": {
+    "description": "Bestätigte V3.5-Kennlinienfunktion der zweiten Zone; sechs gemeinsam verarbeitete Parameter MAIN:1381–1386. Endgültige Zuordnung der Außentemperatur-Stützstellen und versionsabhängige Skalierungsdetails offen, daher unsigned Rohwert ohne Einheit. Live: LTE/Warmlink je RAW 350, Display je 0. Display-Nullwerte beweisen weder Unbenutztheit noch einen Synchronisationsfehler; Quellen getrennt halten.",
+    "source": "V3.5-Firmwareanalyse; Nutzer-Registeraudit 15.10.2026"
+  },
+  "1422": {
+    "description": "V3.5 bestätigt: prozentualer Frequenzdeckel im Remote-Regelpfad, aktiviert durch MAIN:2152 Bit4. Default 70 %. Effektive Grenze hängt von Frequenzanforderung und Mindestfrequenz ab. 0 und Werte >100 werden in diesem Rechenpfad funktional wie 100 % behandelt. Keine neuen Schreibgrenzen.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md"
+  },
+  "1424": {
+    "description": "Bestätigte Verwendung in der Remote-Modus-3/4-Presetfamilie. RAW 20 live beobachtet. Konkrete physikalische Skalierung bleibt offen; unsigned Rohwert ohne Einheit.",
+    "source": "https://github.com/dosordie/FoxAir_private/blob/main/docs/reverse_engineering/firmware/V3.5/adaptive_inverter_control.md"
+  },
+  "1466": {
+    "description": "Aktiver Konfigurationswert, live RAW 300. Funktion, Einheit und zeitliche Bedeutung nicht bestätigt. Frühere Entprellzeit-/Qualifikationsannahme ist keine gesicherte Bezeichnung.",
+    "source": "Nutzer-Registeraudit 15.10.2026"
+  },
+  "1476": {
+    "description": "Aktiver Konfigurationswert, live RAW 5. Hinweise auf eine spezielle Regelungsfamilie; endgültige OEM-Funktion und Einheit offen. Keine gesicherte Sekunden-, Kelvin-, °C- oder Prozentangabe.",
+    "source": "Nutzer-Registeraudit 15.10.2026"
   }
 }

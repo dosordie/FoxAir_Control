@@ -82,7 +82,9 @@ Besonders relevant sind die erweiterten Remote-/Optimierungspfade:
 
 `MAIN:1540` ist ein persistentes **uint8-Gate** für die zusätzlichen Warmlink-Werte **8021–8028**. Die Kompressorfrequenz wird dabei **nicht** einfach auf feste Werte wie 30/36/42/48 Hz quantisiert. Stattdessen nähert die Logik einen bisherigen Frequenzbefehl bei Bedarf in Schritten von höchstens **6 Hz** an die Remote-/Adaptivreferenz an, ohne diese zu unterschreiten. Erst anschließend wird intern ein 6-Hz-Bin-Index berechnet. **C02, C03 sowie die dynamischen Min-/Max-Grenzen bleiben wirksam.**
 
-`MAIN:1557` exportiert den effektiven Heiz-Wassersollwert **read-only als signed int16, RAW/10 °C**.
+`MAIN:2017` exportiert ab V3.5 den effektiven berechneten Heiz-Wassersollwert **read-only (FC03) als signed int16, RAW/10 °C**, inklusive wirksamer Korrekturen und normaler Heiztemperaturbegrenzung. Er wird unabhängig vom aktiven Betriebsmodus berechnet. Die frühere Zuordnung `MAIN:1557` war falsch; 1557 ist im untersuchten direkten V3.5-Dispatcher kein gültiger Export.
+
+Die direkten RAM-Engineering-Korrekturen **8802–8808** und die Auswahl über **MAIN:1334/1540** sind in [Engineering-Register V3.5](register_engineering_v35.md) dokumentiert. Insbesondere wirkt 8803 regulär nur bei 1334=0 und 1540=0, nicht bei SG01=7 (auch nicht in Neutral). 2014/2016 spiegeln dasselbe betriebsabhängige Sollwertfeld; 2013 ist ein gesondertes internes Feld.
 
 `MAIN:1492` enthält im **High Byte** den Korrekturfaktor des 8055-Pfads und im **Low Byte** den Hardware-Eingangsselector. Beide Bytes sind persistente Engineeringparameter. `MAIN:1430` existierte bereits vor V3.5; in V3.5 ist zusätzlich seine Verwendung als Gate des **8055-Pfads** bestätigt.
 
