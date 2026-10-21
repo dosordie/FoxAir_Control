@@ -9,6 +9,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 - [Zonenregelung – Raumfühler, Thermostate und Mischer](zonenregelung.md)
 - [Warmwasser mit der FoxAir](warmwasser.md)
 - [Abtauen, Kondensat und Frostschutz](abtauen_frostschutz.md)
+- [Ölrückführung (Oil Return) – kurzzeitig höhere Kompressorfrequenz](oelrueckfuehrung.md)
 
 ## Umwälzpumpe
 
