@@ -2,7 +2,7 @@
 
 Manchmal erhöht die FoxAir die Kompressorfrequenz für einige Minuten, obwohl sich an der Heizanforderung nichts geändert hat. Eine mögliche Ursache dafür ist die **Ölrückführung**, auch **Oil Return** genannt.
 
-Dieser Vorgang ist normalerweise **keine Störung**, sondern eine automatische Schutzfunktion des Kältekreises.
+Dieser Vorgang ist  **keine Störung**, sondern eine automatische Schutzfunktion des Kältekreises.
 
 ## Warum ist eine Ölrückführung nötig?
 
@@ -12,7 +12,7 @@ Wenn der Kompressor längere Zeit mit niedriger Drehzahl läuft, kann sich Öl a
 
 ## Wann startet Oil Return?
 
-Im normalen Betrieb mit **H34 = 0** ist in den untersuchten Mainboard-Firmwares folgende Logik vorhanden:
+Im normalen Betrieb ist in den untersuchten Mainboard-Firmwares folgende Logik vorhanden:
 
 - Der Kompressor läuft **120 Minuten ununterbrochen mit 1 bis 35 Hz**.
 - Danach startet die automatische Ölrückführung.
@@ -71,20 +71,13 @@ Es ist aber **kein eindeutiger Nachweis**: Die Wärmepumpe kann auch bei normale
 
 Mehr zum [Abtauen und Frostschutz](abtauen_frostschutz.md).
 
-## Sollte man die Funktion ausschalten?
+## Kann man die Funktion ausschalten?
 
-**Nein, die normale Ölrückführung sollte nicht deaktiviert werden.** Sie dient dem Schutz und der zuverlässigen Schmierung des Verdichters.
+**Nein, die normale Ölrückführung kann nicht deaktiviert werden.** Sie dient dem Schutz und der zuverlässigen Schmierung des Verdichters.
 
-Der Parameter **H34 (Register 1020)** heißt **ERP-Testmodus**. In der untersuchten Firmware beeinflussen dessen Testmodi auch die Ölrückführung. Er ist **kein gewöhnlicher Schalter zum Abschalten von Oil Return** und sollte im normalen Anlagenbetrieb auf **0** bleiben.
 
 ## Ab welcher Firmware ist das bekannt?
 
 Die beschriebene Logik ist für die Mainboard-Firmware **V3.3 (Softwarecode 82400644)** durch Reverse Engineering nachgewiesen. Die zugehörigen Zeitkonstanten und Regelpfade sind auch in den untersuchten Versionen **V3.4 und V3.5** erkennbar.
 
 Für noch ältere Firmwareversionen oder andere Softwarecode-Familien ist damit keine identische Funktion nachgewiesen.
-
-## Wann sollte man genauer hinschauen?
-
-Ein gelegentlicher kurzer Frequenzanstieg nach langem Niedriglastbetrieb ist normal. Wenn der Kompressor dagegen ständig unerwartet hochdreht, ungewöhnliche Geräusche auftreten oder die Anlage Fehler meldet, sollte man nicht automatisch von Oil Return ausgehen.
-
-Hilfreich sind dann ein Verlauf der **Register 2071 und 2072**, die aktuelle Betriebsart und mögliche Fehlermeldungen. Auch andere Regel- und Schutzfunktionen können die Verdichterfrequenz beeinflussen.
