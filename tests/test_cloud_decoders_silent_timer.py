@@ -313,8 +313,8 @@ def test_exact_six_write_grants_and_integer_values(register, code):
 def test_no_other_timer_or_decoder_write_grants(window):
     cloud_only(window)
     # KG1..KG12 and KG13~KG28 etc (1256..1270) are now intentionally
-    # Cloud-writable; decoder outputs and the other timers remain read-only.
-    for register in (2019, 2034, *range(1271, 1326)):
+    # Cloud-writable; M timers now have their own 45-code grant as well.
+    for register in (2019, 2034, *range(1271, 1281)):
         assert cloud_code_for_register(register, require_write_allowed=True) is None
         assert not window.control_can_write(register)
 

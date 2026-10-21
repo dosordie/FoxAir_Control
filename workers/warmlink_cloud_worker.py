@@ -744,7 +744,7 @@ class WarmLinkCloudCommandWorker(QObject):
         timeout_s: float = 15.0,
         initial_token: str | None = None,
         load_credentials: bool = False, use_saved_token: bool = True,
-        write_guard=None, commands=None,
+        write_guard=None, commands=None, mask_baselines=None,
     ) -> None:
         super().__init__()
         self.username = str(username or "").strip()
@@ -760,6 +760,7 @@ class WarmLinkCloudCommandWorker(QObject):
         self.initial_token = str(initial_token or "").strip() or None
         self.write_guard = write_guard
         self.commands = tuple(commands) if commands is not None else ((self.code, self.value),)
+        self.mask_baselines = dict(mask_baselines or {})
 
     @Slot()
     @serialized_cloud_io
@@ -768,6 +769,7 @@ class WarmLinkCloudCommandWorker(QObject):
         try:
             self._check_write_guard()
             commands = validate_cloud_commands(self.commands)
+            batches = cloud_command_batches(commands, mask_baselines=self.mask_baselines)
             if not self.device_code:
                 raise WarmLinkCloudError("Keine explizite Cloud-Geräteauswahl; Schreiben abgebrochen.")
             if self.dry_run:
@@ -784,7 +786,7 @@ class WarmLinkCloudCommandWorker(QObject):
                 self.log.emit("WarmLink Cloud schreiben: Login ...")
                 api.login()
 
-            for batch in cloud_command_batches(commands):
+            for batch in batches:
                 self._check_write_guard()
                 codes = [code for code, _value in batch]
                 data = {"api_success": False, "sent": None, "send_attempted": True, "readback_verified": False}

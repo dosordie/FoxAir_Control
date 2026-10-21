@@ -108,13 +108,16 @@ class TargetedCloudDialogMixin:
         self._cancel_cloud_read()
         mapping = {code: register for register, code in self.CLOUD_REGISTERS.items()}
         fresh = [row for row in rows if row.get("code") in mapping and fresh_cloud_row(row)] if not error else []
-        values = {mapping[row["code"]]: parse_cloud_word(row["value"], row) for row in fresh}
+        values = {mapping[row["code"]]: self._decode_cloud_row(row) for row in fresh}
         values = self._validated_cloud_values(values)
         self._apply_cloud_snapshot(values)
         self.main_window.apply_cloud_rows_to_main([row for row in fresh if mapping[row["code"]] in values])
         count = len(values)
         self.status_label.setText(f"Cloud: {count}/{len(mapping)} Werte · " + (
             str(error) if error else "erfolgreich gelesen" if count == len(mapping) else "Daten unvollständig"))
+
+    def _decode_cloud_row(self, row):
+        return parse_cloud_word(row["value"], row)
 
     def _validated_cloud_values(self, values):
         return {register: value for register, value in values.items() if value is not None}

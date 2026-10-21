@@ -8137,7 +8137,7 @@ class MainWindow(QMainWindow):
                 getattr(dialog, "debug_thread", None) is not None)
         if write:
             busy = busy or any(getattr(getattr(self, name, None), "cloud_request", None) is not None
-                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "csv_logger_controller"))
+                              for name in ("at_comp_dialog", "wp_control_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "timer_dialog", "csv_logger_controller"))
             pending = getattr(getattr(dialog, "cloud_worker", None), "has_pending_snapshots", None)
             busy = busy or bool(pending and pending())
         return busy
@@ -8163,7 +8163,7 @@ class MainWindow(QMainWindow):
         return self.control_write_registers(((register, raw_value, engineering_value),), label,
                                             expected_context=expected_context)
 
-    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350):
+    def control_write_registers(self, writes, label="", *, expected_context=None, delay_ms=350, mask_baselines=None):
         """Preflight the whole action, then use one fixed existing I/O path."""
         context = expected_context or self.control_context()
         if context != self.control_context():
@@ -8182,7 +8182,8 @@ class MainWindow(QMainWindow):
                                       self.regmap.get(register), value)) for register, raw, value in validated)
                 if commands:
                     return self.send_cloud_write(*commands[0], device_code=context.device_code, label=label,
-                        control_context=context, commands=commands if len(commands) > 1 else None)
+                        control_context=context, commands=commands if len(commands) > 1 else None,
+                        **({"mask_baselines": mask_baselines} if mask_baselines is not None else {}))
             elif context.transport == "display_modbus" and label.startswith("SG Ready"):
                 if self.display_timer_batch_state.get("active"):
                     return "Display-SG-Schreibsequenz läuft bereits; bitte Abschluss abwarten."
@@ -8227,7 +8228,7 @@ class MainWindow(QMainWindow):
         context = getattr(self, "_control_cloud_write_context", None)
         if context is not None and (not self._cloud_write_context_is_current(context) or self._is_firmware_capture_mode()):
             self._control_cloud_write_cancelled.set()
-        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog"):
+        for name in ("wp_control_dialog", "at_comp_dialog", "sg_dialog", "parameter_dialog", "fault_dialog", "contact_dialog", "load_output_dialog", "silent_timer_dialog", "onoff_timer_dialog", "timer_dialog"):
             dialog = getattr(self, name, None)
             if dialog is not None:
                 dialog.connection_changed()
@@ -10183,7 +10184,7 @@ class MainWindow(QMainWindow):
         if error:
             QMessageBox.warning(self, "WarmLink Cloud", error)
 
-    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None):
+    def send_cloud_write(self, cloud_code: str, value: str, device_code: str | None = None, label: str = "", *, control_context=None, commands=None, mask_baselines=None):
         origin_context = self.control_context()
         direct_cloud_action = control_context is None
         if direct_cloud_action:
@@ -10218,7 +10219,7 @@ class MainWindow(QMainWindow):
         self._control_cloud_write_context = control_context
         self._control_cloud_write_origin_context = origin_context
         self._control_cloud_write_label = label
-        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else "onoff_timer_dialog" if label.startswith("WP Ein/Aus Timer") else ""
+        dialog_name = "sg_dialog" if label.startswith("SG Ready") else "wp_control_dialog" if label.startswith("WP-Steuerung") else "at_comp_dialog" if label.startswith("AT-Kompensation") else "silent_timer_dialog" if label.startswith("Silentmodus Timer") else "onoff_timer_dialog" if label.startswith("WP Ein/Aus Timer") else "timer_dialog" if label.startswith("Betriebsart Timer") else ""
         self._control_cloud_write_dialog = getattr(self, dialog_name, None)
         write_guard = None
         if control_context is not None:
@@ -10242,6 +10243,7 @@ class MainWindow(QMainWindow):
             initial_token=token, load_credentials=True,
             use_saved_token=bool(self.settings.get("warmlink_cloud", {}).get("save_token", True)),
             write_guard=write_guard, commands=commands,
+            **({"mask_baselines": mask_baselines} if mask_baselines is not None else {}),
         )
         self.cloud_write_worker.moveToThread(self.cloud_write_thread)
         self.cloud_write_thread.started.connect(self.cloud_write_worker.run)
@@ -10271,7 +10273,11 @@ class MainWindow(QMainWindow):
             dialog = getattr(self, "_control_cloud_write_dialog", None)
             confirmed = getattr(dialog, "write_readback_confirmed", None) if dialog is not None and dialog.isVisible() else None
             if confirmed is not None:
-                confirmed(cloud_modbus_register(code))
+                detailed = getattr(dialog, "write_readback_result", None)
+                if detailed is not None:
+                    detailed(cloud_modbus_register(code), data)
+                else:
+                    confirmed(cloud_modbus_register(code))
         if context is not None:
             confirmed = ", ".join(data.get("confirmed_codes", [])) or "keine"
             text = data.get("validation_error")
@@ -11790,14 +11796,14 @@ class MainWindow(QMainWindow):
         # V0.2.41 fix5: Timer-Popup am Displaybus erst öffnen, wenn 1271ff
         # wirklich geladen ist. Sonst waren die Felder beim Öffnen noch 0 bzw.
         # ältere Defaults und Mehrfachwrites konnten falsche Partnerwerte nutzen.
-        if not self._display_wait_for_param_blocks_before_popup("Timer 1-6", [1271], self.open_timer_editor):
+        if self.control_transport() in LOCAL_TRANSPORTS and not self._display_wait_for_param_blocks_before_popup("Timer 1-6", [1271], self.open_timer_editor):
             return
         if self.timer_dialog is None or not self.timer_dialog.isVisible():
             self.timer_dialog = TimerEditorDialog(self)
             self.timer_dialog.finished.connect(lambda _=None: setattr(self, "timer_dialog", None))
             self.timer_dialog.show()
         else:
-            self.timer_dialog.load_from_live_values()
+            self.timer_dialog.load_from_live_values(preserve_edits=True)
             self.timer_dialog.raise_()
             self.timer_dialog.activateWindow()
 
@@ -12248,9 +12254,10 @@ class MainWindow(QMainWindow):
         self.display_timer_batch_state = {}
 
     def send_timer_values(self, slave_addr: int, values: list[tuple[int, int, str]], delay_ms: int = 1200, title: str = "Timer"):
+        """Keep local I/O sequences; report whether the operator accepted writes."""
         if not self.connected or self._active_io_worker() is None:
             self._log("TIMER nicht gesendet: keine aktive Verbindung / kein aktiver Worker.")
-            return
+            return False
 
         values = [
             (int(addr), validate_register_write_value(int(value), self.regmap.get(int(addr))) & 0xFFFF, label)
@@ -12259,24 +12266,25 @@ class MainWindow(QMainWindow):
         display_plan = self._display_timer_batch_plan(values, slave_addr)
         if display_plan is not None and not display_plan:
             self._log(f"DISPLAY Timer/Popup V0.2.41 fix5 ({title}): Write nicht gesendet (Init/Snapshot gestartet oder keine geänderten Werte übrig).")
-            return
+            return False
 
         lines = self._timer_write_preview_lines(values, slave_addr)
 
         if not ask_yes_no(self, f"{title} schreiben?", f"Diese {title}-Register schreiben?\n\n" + "\n".join(lines), default_yes=False):
             self._log("TIMER Write abgebrochen: nicht gesendet.")
-            return
+            return False
 
         self._log(f"TIMER wird GESENDET ({title}):\n" + "\n".join(lines))
         self._notify_timer_sg_write_status(title, f"{title}: Schreibe ...")
         if display_plan is not None:
             self._send_display_timer_batch(display_plan, delay_ms, title)
-            return
+            return True
 
         for addr, value, label in values:
             self.send_register_write(addr, value, slave_addr=slave_addr, label=label, delay_ms=delay_ms)
         self._notify_timer_sg_write_status(title, f"{title}: Schreiben gesendet.")
         QTimer.singleShot(6500, lambda t=title: self._notify_timer_sg_write_status(t, "Bereit."))
+        return True
 
     def rebuild_table_filter(self):
         self.table_rows = {}

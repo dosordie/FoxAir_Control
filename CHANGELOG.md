@@ -1,5 +1,16 @@
 ## Unreleased
 
+- Betriebsart Timer 1-6: bestehenden Editor modernisiert und um Cloud-Autoload
+  aller 45 M-Codes, geänderte Batch-Writes und frische Einzel-Readbacks erweitert.
+  HH:MM-Wörter, bereits skalierte °C/kW und 16-Bit-Masken werden getrennt behandelt;
+  Partner-Bytes und offene Eingaben bleiben erhalten. Unbekannte Modi und fehlende
+  Werte werden nicht durch 0 ersetzt. Raw-Felder, Live-Checkbox und Schreibpause
+  entfernt; lokale Writes weiter mit fest 1.200 ms über bestehende Modbus-/Displaypfade.
+- M-Timer: Cloud-Leseformate am 21.10.2026 auf GL9 V3.5 live bestätigt,
+  MAIN:1281–1325-Zuordnung schemaabgeleitet, Modbusvergleich noch offen.
+  Cloud-Writes neu und noch nicht live getestet; regulär ohne Testfreigabe nutzbar.
+  Widersprüchliche Cloud-Metadatengrenzen werden dokumentiert und beim Lesen nicht geklemmt.
+
 - Cloud-Einstellungen mit Wolke-/Zahnrad-SVG gekennzeichnet. Der animierte
   Polling-Rahmen und die farbige Statusmarkierung liegen jetzt am
   Verbinden-/Trennen-Icon; Einstellungen öffnen weiterhin den Cloud-Dialog.
@@ -27,7 +38,7 @@
   KG-Codes, Cloud-Freigaben, ACK-/Readback- und Display-Sequenzen bleiben unverändert.
 
 - Cloud WP Ein/Aus Timer: wieder vollständiger kombinierter Dialog mit Timer 1–6 und Silentmodus statt Silent-Umleitung. KG1–KG12 und KG13~KG28 / KG29~KG44 / KG45~KG60 den MAIN-Registern 1256–1270 zugeordnet; ganze HH:MM-/Tagesmasken, nur geänderte Werte, frische Readbacks und Schutz des Partner-Bytes. Cloud-Schreibpfad neu und noch nicht live bestätigt.
-- Cloud-Mapping-Inventar um M-/W-/DP-Kandidaten ergänzt; keine neuen Schreibfreigaben außerhalb der 15 KG-Timer-Register.
+- Cloud-Mapping-Inventar: M-Timer sind inzwischen separat zugeordnet und freigegeben; W-/DP-Familien bleiben Kandidaten ohne neue Schreibfreigabe.
 
 - Kontaktdecoder (2034 / S01~S10) und Lastausgangsdecoder (2019 / O01~023):
   frischer asynchroner Cloud-Autoload, Jetzt lesen, Polling und korrekte uint16-
