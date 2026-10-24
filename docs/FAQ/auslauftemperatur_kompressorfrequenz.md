@@ -1,113 +1,138 @@
 # Auslauftemperatur und Kompressorfrequenz – wie regelt die FoxAir?
 
-Die FoxAir passt ihre Heizleistung hauptsächlich über die **Kompressorfrequenz** an. Entscheidend ist dabei nicht die Zahl der Vorlauftemperatur in °C, sondern die **Abweichung zwischen gewünschter und gemessener Temperatur**.
+Die FoxAir passt ihre Heizleistung hauptsächlich über die **Drehzahl des Kompressors** an. Diese wird als **Frequenz in Hertz (Hz)** angezeigt.
 
-Diese Beschreibung bezieht sich auf die untersuchte **Mainboard-Firmware V3.5 (Softwarecode 82400644)**. Ältere Versionen, insbesondere V1.3, können sich im Detail anders verhalten.
+Dabei gilt: **Die Kompressorfrequenz wird nicht einfach aus der Vorlauftemperatur berechnet.** Entscheidend ist vor allem, wie weit die gemessene Temperatur vom gewünschten Wert entfernt ist und wie sie sich im Laufe der Zeit verändert.
 
-## Was bedeutet Auslauftemperaturregelung?
+Die folgenden Erklärungen beziehen sich auf die untersuchte **Mainboard-Firmware V3.5**. Bei älteren Firmwareständen kann sich die Regelung im Detail unterscheiden.
 
-Mit **H25 = 0 (Outlet Water Temp.)** wird die **Auslasswassertemperatur T02 (Vorlauf)** als zentrale Regelgröße verwendet.
+## Welche Temperatur soll erreicht werden?
 
-Beispiel: Sind 35 °C gewünscht und T02 liegt bei 30 °C, besteht Heizbedarf. Nähert sich T02 den 35 °C, muss die WP nicht mehr dieselbe Leistung liefern. Liegt T02 darüber, muss sie die Leistung weiter reduzieren oder – wenn das nicht mehr möglich ist – schließlich abschalten.
+Steht **H25 = 0 (Outlet Water Temp.)**, orientiert sich die Wärmepumpe an der **Auslauftemperatur T02**, also am Vorlauf.
 
-Die Solltemperatur kann fest eingestellt sein oder durch eine aktive **AT-Entschädigung / Heizkurve** und weitere Korrekturen verändert werden. Es ist daher wichtig, den **tatsächlich wirksamen Sollwert** zu betrachten und nicht nur die ursprünglich eingestellte Temperatur.
+Ein Beispiel:
 
-Andere H25-Modi verwenden Raum-, Puffer- oder Einlasstemperatur als übergeordnete Führungsgröße. Die interne Leistungsregelung bleibt komplexer als ein direkter Vergleich dieser Temperatur mit der Frequenz. Mehr dazu unter [Heizungsregelung, H25 und Heizkurve](regelung_heizkurve.md).
+- Gewünscht sind **35 °C Vorlauf**.
+- Tatsächlich kommen nur **30 °C** aus der Wärmepumpe.
+- Die Regelung erkennt, dass noch Wärme benötigt wird, und kann die Kompressorleistung erhöhen.
+- Nähert sich der Vorlauf den **35 °C**, wird weniger Leistung benötigt.
 
-## Wie wird die Kompressorfrequenz geregelt?
+Der gewünschte Wert kann fest eingestellt oder durch eine **Heizkurve** abhängig von der Außentemperatur verändert werden. Deshalb ist der **aktuell gültige Sollwert** wichtig – nicht nur die Temperatur, die einmal manuell eingestellt wurde.
 
-Die untersuchte Firmware verwendet im normalen Temperaturregelpfad einen **PID-Regler**. Dieser berücksichtigt nicht nur die aktuelle Temperaturabweichung, sondern auch deren zeitlichen Verlauf.
+Was H25 und die Heizkurve genau machen, steht hier:
 
-Vereinfacht:
+[Heizungsregelung und Heizkurve – welche Temperatur soll die FoxAir erreichen?](regelung_heizkurve.md)
 
-- **Temperatur deutlich unter dem Soll:** Die Regelung kann eine höhere Frequenz anfordern, um mehr Wärme zu liefern.
-- **Temperatur nähert sich dem Soll:** Die Frequenz wird nicht beliebig oder sprunghaft verändert. Im kleinen Regelbereich kann die aktuelle Anforderung zunächst gehalten werden.
-- **Temperatur oberhalb des Solls:** Die Regelung arbeitet auf eine Verringerung der Frequenz hin. Ob und wie weit sie tatsächlich herunterkommt, hängt auch von Mindestfrequenz und Betriebszustand ab.
+## Wie verändert die FoxAir die Kompressorfrequenz?
 
-Der PID-Rechenkern wird etwa **alle 0,5 Sekunden** ausgeführt. Das bedeutet **nicht**, dass der reale Verdichter alle 0,5 Sekunden seine Drehzahl ändern muss: weitere Freigaben, Begrenzungen und die Dynamik des Kältekreises wirken mit.
+Die Regelung schaut nicht nur auf den aktuellen Abstand zum Sollwert, sondern auch darauf, wie sich die Temperatur entwickelt. In der Firmware übernimmt das ein sogenannter **PID-Regler**.
 
-Die zugehörigen Serviceparameter heißen **C13 (P-Anteil)**, **C14 (I-Skalierung)** und **C15 (D-Anteil)**. Sie beeinflussen das Regelverhalten, sind aber **keine normalen Optimierungsregler für den Anwender**. Ohne belastbare Messungen sollten sie nicht verändert werden; insbesondere ist C14 intern ein Divisor und darf nicht auf 0 gesetzt werden.
+Vereinfacht lässt sich das so beschreiben:
 
-Eine einfache Formel wie **„Auslauftemperatur in °C + 2 = Kompressorfrequenz in Hz“** existiert im untersuchten V3.5-Regelpfad nicht. Wenn die angezeigten Zahlen zufällig ähnlich sind, ergibt das noch keinen Zusammenhang.
+| Beobachtung | Typische Reaktion |
+| --- | --- |
+| **Vorlauf deutlich unter Soll** | Der Kompressor kann höher drehen, damit mehr Wärme erzeugt wird. |
+| **Vorlauf nähert sich dem Soll** | Die Regelung kann die Frequenz zunächst halten oder schrittweise anpassen. |
+| **Vorlauf über Soll** | Die Regelung versucht, die Heizleistung zu senken. Reicht das nicht, schaltet der Verdichter bei entsprechender Abschaltbedingung ab. |
 
-## Warum dreht der Verdichter nicht sofort hoch oder herunter?
+Die Frequenz muss sich also **nicht sofort** ändern, nur weil sich die Vorlauftemperatur um 1 °C verändert hat.
 
-Die geforderte Frequenz ist nicht automatisch die tatsächlich mögliche Frequenz.
+Ebenso gibt es keine feste Formel wie **„Vorlauftemperatur in °C + 2 = Kompressorfrequenz in Hz“**. Wenn diese beiden Werte zeitweise ähnlich aussehen, ist das kein Beweis für einen solchen Zusammenhang.
 
-Unter anderem greifen:
+## Warum dreht der Kompressor manchmal nicht weiter herunter?
 
-- **C02 / Register 1219:** konfigurierte Mindestfrequenz (häufig 30 Hz als Ausgangswert)
-- **C03 / Register 1220:** konfigurierte Höchstfrequenz
-- dynamische Frequenzgrenzen und Schutzfunktionen, beispielsweise abhängig von Kältekreiszustand, Druck oder elektrischer Belastung
-- Start-, Betriebs- und Sonderzustände wie Abtauen und Ölrückführung
-- gegebenenfalls externe Leistungsbegrenzungen und Remote-/SG-Regelungen
+Die FoxAir kann ihre Leistung nicht beliebig weit reduzieren. Der Verdichter hat eine **Mindestfrequenz**.
 
-Besonders wichtig ist die **Mindestfrequenz**: Benötigt das Gebäude weniger Wärme, als der Verdichter bei seiner derzeitigen Mindestfrequenz abgibt, kann die WP nicht unbegrenzt heruntermodulieren. Die Temperatur kann weiter steigen, bis die Regelung über ihre Ein-/Ausschaltschwellen den Verdichter stoppt. Das ist nicht automatisch ein Regelfehler.
+Diese wird unter anderem durch **C02 (minimale Kompressorfrequenz)** vorgegeben. Dazu können je nach Betriebszustand weitere Grenzen kommen.
 
-Auch umgekehrt gilt: Wenn der Verdichter nicht hochdreht, obwohl die Temperatur deutlich unter dem Soll liegt, sollte zuerst nach aktiven Frequenzbegrenzungen geschaut werden – nicht gleich nach einem defekten PID-Regler.
+Wenn das Haus gerade weniger Wärme benötigt, als die Wärmepumpe bei ihrer niedrigsten möglichen Leistung erzeugt, kann sie die Solltemperatur überschreiten und anschließend abschalten. Später startet sie bei erneutem Wärmebedarf wieder.
 
-**Wichtig:** In V3.5 können zusätzlich externe/adaptive Regelpfade aktiv sein. Sie ändern aber nichts daran, dass die üblichen Mindest-/Höchstgrenzen und Schutzfunktionen berücksichtigt werden.
+**Das ist nicht automatisch eine fehlerhafte Regelung.** Es kann schlicht daran liegen, dass die aktuell benötigte Heizleistung zu gering für einen dauerhaft laufenden Verdichter ist.
 
-## Warum ist es beim Warmwasser anders?
+Die Mindestfrequenz sollte nicht auf Verdacht abgesenkt werden: Die zulässigen Betriebsgrenzen des Kompressors müssen eingehalten werden.
 
-Bei der **Warmwasserbereitung** muss die Wärmepumpe den Speicher über einen Wärmetauscher erwärmen. Die angezeigte Speichertemperatur ist nicht identisch mit der Auslasswassertemperatur T02.
+## Warum dreht der Kompressor manchmal nicht schneller hoch?
 
-Je wärmer der Speicher wird, desto kleiner wird gewöhnlich die Temperaturdifferenz, über die noch Wärme übertragen werden kann. Hinzu kommen die höheren erforderlichen Kältekreistemperaturen und mögliche Leistungs- oder Schutzgrenzen. Deshalb kann sich die Frequenz im Warmwasserbetrieb anders verhalten als beim Heizen.
+Auch nach oben ist die Drehzahl begrenzt. **C03** gibt die eingestellte Höchstfrequenz vor.
 
-Für die Beurteilung müssen deshalb **Speicher-Istwert, Warmwasser-Sollwert, T01/T02, Kompressorfrequenz und der zeitliche Verlauf** gemeinsam betrachtet werden.
+Zusätzlich können Schutzfunktionen die Leistung vorübergehend einschränken, etwa aufgrund von Druck, Temperatur oder elektrischer Belastung. Auch bestimmte Betriebsarten und externe Steuerungen können Grenzen setzen.
 
-Siehe auch [Warmwasser mit der FoxAir](warmwasser.md).
+Deshalb kann die Vorlauftemperatur deutlich unter dem Soll liegen, obwohl die Wärmepumpe die Frequenz nicht weiter erhöht.
 
-## Warum habe ich nur 2 K Spreizung zwischen Vorlauf und Rücklauf?
+Ein kurzer Anstieg oder Abfall der Frequenz muss ebenfalls kein Fehler sein. Zum Beispiel verändern [Abtauen und Frostschutz](abtauen_frostschutz.md) sowie die [Ölrückführung (Oil Return)](oelrueckfuehrung.md) den normalen Betriebsablauf.
 
-Die **Spreizung (T02 minus T01)** ist ein anderer Sachverhalt als die Kompressorregelung. Sie hängt von der **abgegebenen Wärmeleistung und vom Wasserdurchfluss** ab.
+## Warum verhält sich die Frequenz beim Warmwasser anders?
 
-- **Mehr Wasserdurchfluss** bei gleicher Leistung → kleinere Spreizung.
-- **Weniger Wasserdurchfluss** bei gleicher Leistung → größere Spreizung.
-- **Geringere Heizleistung** bei gleichem Durchfluss → ebenfalls kleinere Spreizung.
+Bei der **Warmwasserbereitung** wird ein Speicher erwärmt. Dafür muss das Heizwasser Wärme an den Speicher übertragen.
 
-**2 K sind daher nicht automatisch ein Fehler.** Bei ungefähr 1,0 m³/h entspricht eine Spreizung von 2 K rechnerisch nur rund 2,3 kW übertragener Wärmeleistung. Bei 1,5 m³/h wären es rund 3,5 kW. Der Zusammenhang erklärt, weshalb eine stark laufende Umwälzpumpe eine niedrige Spreizung erzeugen kann.
+**Speichertemperatur und Vorlauftemperatur sind dabei zwei verschiedene Werte.** Die Wärmepumpe muss das Heizwasser normalerweise wärmer machen als den Speicher, damit die Wärme übertragen werden kann.
 
-**Wichtig bei älterer Firmware:** Dass die PWM-Leitung korrekt angeschlossen wurde, bedeutet nicht automatisch, dass die Wärmepumpe den Durchfluss selbst auf eine Soll-Spreizung regelt. Die **automatische ΔT-Pumpenregelung gibt es in der untersuchten Firmwarefamilie ab Mainboard V3.3**. Dort sind **H31** (richtiger Pumpentyp), **P10 = 0 %** (Automatik) und **P11/P12** relevant. Mit älterer V1.3 oder fester P10-Vorgabe kann die Pumpendrehzahl trotz PWM-Anschluss einfach fest sein.
+Mit zunehmender Speichertemperatur verändern sich die Arbeitsbedingungen. Dadurch können auch Frequenz und Heizleistung anders verlaufen als beim normalen Heizen.
 
-Den Durchfluss niemals nur für eine größere Spreizung so weit senken, dass Mindestdurchfluss, Wärmeübertragung oder Abtauen gefährdet werden.
+Bei Problemen mit der Warmwasserbereitung sollte man deshalb nicht nur die Kompressorfrequenz anschauen, sondern auch den **Warmwasser-Sollwert, die tatsächliche Speichertemperatur und die Einlass- und Auslasstemperatur**.
+
+Weitere Grundlagen findest du unter [Warmwasser mit der FoxAir](warmwasser.md).
+
+## Was bedeutet eine Spreizung von nur 2 °C?
+
+Die **Spreizung** ist die Temperaturdifferenz zwischen Vorlauf (Auslass / T02) und Rücklauf (Einlass / T01).
+
+Sie hängt sowohl von der **abgegebenen Wärmeleistung** als auch vom **Wasserdurchfluss** ab:
+
+- **Mehr Wasserdurchfluss** bei gleicher Heizleistung → kleinere Spreizung.
+- **Weniger Wasserdurchfluss** bei gleicher Heizleistung → größere Spreizung.
+- **Weniger Heizleistung** bei gleichem Wasserdurchfluss → ebenfalls kleinere Spreizung.
+
+**Eine Spreizung von 2 °C ist daher nicht automatisch ein Fehler.** Bei 1 m³/h Wasserdurchfluss entsprechen 2 °C Spreizung ungefähr 2,3 kW übertragener Wärmeleistung.
+
+Eine möglichst große Spreizung ist kein Selbstzweck. Der Durchfluss muss weiterhin zur Anlage passen und insbesondere für den Abtaubetrieb ausreichend sein.
+
+### Hat die PWM-Umwälzpumpe damit zu tun?
+
+Ja. Über die Pumpendrehzahl verändert sich der Wasserdurchfluss und damit auch die Spreizung.
+
+**Wichtig:** Eine korrekt angeschlossene PWM-Leitung bedeutet noch nicht, dass die Wärmepumpe ihre Pumpendrehzahl automatisch nach der Spreizung regelt.
+
+Die automatische Spreizungsregelung der Pumpe ist bei der untersuchten Mainboard-Firmwarefamilie **ab V3.3** vorhanden. Dafür müssen der richtige Pumpentyp (**H31**) und der Automatikbetrieb (**P10 = 0 %**) eingestellt sein. Über **P11** wird die gewünschte Spreizung vorgegeben.
+
+Bei älterer Firmware oder fester Pumpendrehzahl kann die Spreizung deshalb niedriger ausfallen, ohne dass die Kompressorregelung fehlerhaft ist.
 
 Mehr dazu: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md) und [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md).
 
-## So lässt sich die Regelung gezielt überprüfen
+## Wie finde ich heraus, ob die Regelung richtig arbeitet?
 
-Statt nur einen einzelnen Frequenzwert zu vergleichen, ist ein Verlauf über einige Minuten deutlich aussagekräftiger. Am besten getrennt für **Heizen** und **Warmwasser** folgende Werte protokollieren:
+Ein einzelner Messwert sagt meist wenig aus. Besser ist es, die Entwicklung über mehrere Minuten zu beobachten – am besten getrennt im **Heizbetrieb** und bei der **Warmwasserbereitung**.
 
-| Wert | Bedeutung |
+Hilfreich sind folgende Werte:
+
+| Wert | Warum ist er interessant? |
 | --- | --- |
-| **T01 / T02** | Einlass- und Auslasswassertemperatur (Rücklauf/Vorlauf) |
-| **wirksamer Temperatur-Sollwert** | Nicht nur der manuell eingestellte Wert; bei Heizen ggf. Heizkurve/Korrekturen beachten |
-| **2071 (Soll-Hz)** | Vom Mainboard angeforderte Kompressorfrequenz |
-| **2072 (Ist-Hz)** | Tatsächlich gemeldete Kompressorfrequenz |
-| **2077 (Durchfluss)** | Tatsächlich gemeldeter Wasserdurchfluss, sofern plausibel erfasst |
-| **C02 / C03** | Eingestellte Frequenzgrenzen |
-| **H25 / P10 / H31** | Art der Temperaturregelung sowie Pumpenkonfiguration |
-| **Betriebsart und WW-Speichertemperatur** | Zur Unterscheidung von Heizen und Warmwasser |
+| **Aktueller Temperatur-Sollwert** | Welche Temperatur soll tatsächlich erreicht werden? |
+| **Einlass- und Auslasstemperatur (T01 / T02)** | Wie warm ist das Wasser vor und nach der Wärmepumpe? |
+| **Kompressor-Sollfrequenz und Istfrequenz** | Welche Drehzahl wird angefordert und welche tatsächlich erreicht? |
+| **Wasserdurchfluss** | Hilft dabei, die Spreizung richtig einzuschätzen. |
+| **H25, C02 und C03** | Welche Temperaturregelung und Frequenzgrenzen sind eingestellt? |
+| **Pumpeneinstellung (P10 / H31)** | Läuft die Umwälzpumpe fest oder automatisch? |
 
-Bei Bedarf können in V3.5 zusätzlich **2139 (Frequenzbegrenzungsstatus)** und **2152 (EMS-/Remotezustände)** Hinweise liefern. **Ein einzelnes gesetztes Bit beweist noch keine aktuell wirksame Frequenzbegrenzung.**
+Diese Werte lassen sich – je nach Anzeige und Verbindung – mit **FoxAir Control**, über die **WarmLink-App** oder am Display nachvollziehen.
 
-Als erste Einordnung:
+Als Anhaltspunkte:
 
-- **Soll- und Istfrequenz liegen dauerhaft an C02:** möglicherweise Mindestleistung erreicht; die WP kann nicht weiter herunterregeln.
-- **Sollfrequenz bleibt niedrig, obwohl die wirksame Solltemperatur deutlich unterschritten wird:** H25, Sollwertquelle, Betriebszustand und Regelpfad prüfen.
-- **Sollfrequenz steigt, Istfrequenz folgt nicht:** mögliche Inverter-, Betriebs- oder Schutzbegrenzung prüfen.
-- **Nur 2 K Spreizung bei hohem Durchfluss:** zunächst Wasserleistung und Pumpeneinstellung beurteilen, nicht die Verdichterregelung verdächtigen.
+- **Kompressor läuft nahe seiner Mindestfrequenz:** Möglicherweise ist die benötigte Wärmeleistung zu gering, um weiter herunterzuregeln.
+- **Vorlauf bleibt deutlich unter Soll und die Frequenz steigt nicht:** Einstellungen, Betriebszustand und mögliche Frequenzbegrenzungen prüfen.
+- **Angeforderte und tatsächliche Kompressorfrequenz weichen länger deutlich voneinander ab:** Mögliche Betriebs- oder Schutzbegrenzungen prüfen.
+- **Spreizung ist klein, Durchfluss ist hoch:** Erst den Zusammenhang mit der Pumpendrehzahl und der aktuellen Heizleistung beurteilen.
 
-Kurzzeitig höhere Verdichterfrequenzen können auch durch die [Ölrückführung (Oil Return)](oelrueckfuehrung.md) entstehen.
+## Kann ein Firmwareupdate helfen?
 
-## Hilft ein Firmware-Update?
+**Möglich, aber nicht garantiert.** Die Mainboard-Firmware V3.3 und neuer bietet gegenüber der älteren V1.3 zusätzliche Funktionen, unter anderem die automatische Regelung der Umwälzpumpe auf eine gewünschte Spreizung.
 
-Ein Update **kann** neue Funktionen und ein anderes Betriebsverhalten mitbringen, ist aber **keine Garantie** dafür, dass die Wärmepumpe anschließend stärker oder schneller moduliert.
+Ein Update bedeutet aber nicht automatisch, dass der Kompressor danach schneller hochregelt oder weiter heruntermodulieren kann.
 
-Gerade bei **Mainboard V1.3** ist der Unterschied relevant, weil die automatische Pumpenregelung auf Soll-Spreizung erst ab **V3.3** dokumentiert ist. Die Mainboard-Version ist außerdem **nicht** mit der getrennten Display-Firmware zu verwechseln.
+Vorher sollten **Mainboard-Firmwareversion, Einstellungen und Messwerte** geprüft werden. Die **Display-Firmware** ist davon unabhängig.
 
-Vor einem Update den **Mainboard-Softwarecode und die genaue Mainboard-Version** überprüfen, Einstellungen sichern und die Kompatibilität abklären. Siehe [Firmware-Versionen und Update](firmware.md).
+Mehr dazu: [Firmware-Versionen und Update](firmware.md).
 
 ---
 
-**Kurz gesagt:** Die FoxAir regelt die Kompressorfrequenz nicht nach der bloßen Vorlauftemperaturzahl. Im V3.5-Regelpfad werden Temperaturabweichung, zeitlicher Verlauf und Betriebsgrenzen berücksichtigt. Eine niedrige Wasserspreizung ist dabei kein Beweis für eine fehlerhafte Verdichterregelung.
+**Kurz gesagt:** Die Kompressorfrequenz richtet sich nach dem Wärmebedarf und mehreren Betriebsgrenzen, nicht nach einer festen Umrechnung der Vorlauftemperatur in Hertz. Eine kleine Spreizung oder eine zeitweise gleichbleibende Frequenz ist deshalb noch kein Hinweis auf einen Defekt.
