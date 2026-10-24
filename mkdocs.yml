@@ -79,7 +79,6 @@ nav:
   - Firmware und Einrichtung:
       - Firmwareversionen und Update: firmware.md
       - Einstellungen sichern: einstellungen_sichern.md
-      - FoxAir Control verbinden: verbindung.md
       - WarmLink und LTE: warmlink_lte.md
       - Modbus-Anschluss: modbus.md
   - Weitere Steuerung:
@@ -88,3 +87,8 @@ nav:
   - Fehlersuche:
       - Fehler und Statuswerte: fehler_und_status.md
       - Factory Settings: factory_settings.md
+  - FoxAir Control:
+      - Überblick und Download: foxair_control_ueberblick.md
+      - Verbindungsarten und Schnittstellen: verbindung.md
+      - Funktionen und Bedienung: foxair_control_funktionen.md
+      - Diagnose und Sicherheit: foxair_control_diagnose.md
