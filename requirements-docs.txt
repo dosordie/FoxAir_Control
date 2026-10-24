@@ -1,0 +1,3 @@
+# Ausschließlich für den Bau der kostenfreien FAQ-Website.
+# Kein Einfluss auf die Abhängigkeiten von FoxAir Control.
+mkdocs-material>=9.6,<10
