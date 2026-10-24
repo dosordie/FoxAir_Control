@@ -36,12 +36,18 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 - [Modbus-Anschluss am Klemmfeld](modbus.md)
 - [SG Ready und PV-Überschusssteuerung](sg_ready.md)
 - [Solltemperaturen extern korrigieren – RAM-Register 8802–8808](externe_sollwertkorrektur.md)
-- [FoxAir Control mit der Wärmepumpe verbinden](verbindung.md)
 
 ## Bedienung und Fehlersuche
 
 - [Factory Settings – Codes 22 und 66](factory_settings.md)
 - [Fehler und Betriebszustände anzeigen](fehler_und_status.md)
+
+## FoxAir Control
+
+- [Überblick und Download](foxair_control_ueberblick.md)
+- [Verbindungsarten: Standard-Modbus, Display, Warmlink und Cloud](verbindung.md)
+- [Funktionen und Bedienung](foxair_control_funktionen.md)
+- [Diagnose, Sicherheit und Grenzen](foxair_control_diagnose.md)
 
 ---
 
