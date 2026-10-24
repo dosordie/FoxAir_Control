@@ -25,19 +25,58 @@ Was H25 und die Heizkurve genau machen, steht hier:
 
 ## Wie verändert die FoxAir die Kompressorfrequenz?
 
-Die Regelung schaut nicht nur auf den aktuellen Abstand zum Sollwert, sondern auch darauf, wie sich die Temperatur entwickelt. In der Firmware übernimmt das ein sogenannter **PID-Regler**.
+Die FoxAir verwendet für die normale Leistungsregelung einen **PID-Regler**. Er schaut nicht nur darauf, *wie groß* die Temperaturabweichung ist, sondern auch darauf, *wie lange* sie schon besteht und *wie schnell* sie sich verändert.
 
-Vereinfacht lässt sich das so beschreiben:
+### Was bedeuten P, I und D?
 
-| Beobachtung | Typische Reaktion |
+Ein PID-Regler besteht aus drei Anteilen, die zusammen bestimmen, welche Kompressorfrequenz angefordert wird:
+
+| Anteil | Einfach erklärt | Wirkung im Alltag |
+| --- | --- | --- |
+| **P – proportional** | Reagiert auf die **aktuelle Temperaturabweichung**. Je größer der Abstand zwischen Soll- und Isttemperatur, desto größer kann die Korrektur sein. | Liegt der Vorlauf weit unter dem Sollwert, fordert die Regelung eher mehr Leistung an. |
+| **I – integral** | Berücksichtigt, **wie lange** eine Abweichung schon besteht. Kleine, länger anhaltende Abweichungen sammeln sich sozusagen an. | Wenn die Wärmepumpe über längere Zeit nicht warm genug wird, kann die angeforderte Frequenz weiter steigen, obwohl der Temperaturabstand gleich bleibt. |
+| **D – differential** | Betrachtet, **wie schnell sich die Temperaturabweichung verändert**. | Wenn sich der Vorlauf rasch dem Soll nähert, kann dieser Anteil einer zu starken Reaktion entgegenwirken. |
+
+**Beispiel:** Die Wärmepumpe soll 35 °C erreichen und liefert erst 30 °C. Der P-Anteil reagiert auf die 5 °C Unterschied. Bleibt der Vorlauf trotzdem länger zu kühl, wirkt zusätzlich der I-Anteil. Steigt die Temperatur anschließend schnell, berücksichtigt der D-Anteil diese Veränderung.
+
+Deshalb folgt die Frequenz keiner einfachen Regel wie „5 °C zu kalt = genau 10 Hz mehr“. Der Regler bewertet die gesamte Entwicklung.
+
+### Was macht die Firmware V3.5 konkret?
+
+Aus der Firmwareanalyse kennen wir auch einige Besonderheiten des Reglers:
+
+- Der **Regler berechnet ungefähr alle 0,5 Sekunden** einen neuen Frequenz-Sollwert. Der Kompressor selbst muss deshalb nicht alle 0,5 Sekunden seine Drehzahl ändern.
+- **Beim Annähern an den Sollwert** gibt es einen kleinen Bereich, in dem die Regelung die Frequenz zunächst halten kann, statt sie bei jeder kleinen Temperaturänderung anzupassen.
+- **Bei einer deutlichen Unterschreitung des Sollwerts** kann die angeforderte Frequenz steigen. Wie stark, hängt unter anderem vom bisherigen Verlauf ab.
+- **Wenn die Temperatur über den Sollwert steigt**, wirkt die Regelung auf ein Absenken der Frequenz hin. Die Firmware besitzt hierfür zusätzlich einen beschleunigten Abbau des gespeicherten I-Anteils.
+- **Nach bestimmten Zustandswechseln** wird der gespeicherte I-Anteil an die aktuelle Frequenzreferenz angepasst. Er startet also nicht grundsätzlich wieder bei null.
+- **Die berechnete Frequenz ist nur eine Anforderung.** Mindest- und Höchstfrequenz sowie Schutzfunktionen begrenzen weiterhin, was der Verdichter tatsächlich ausführen darf.
+
+Genau deshalb kann die Wärmepumpe trotz erreichter Solltemperatur eine Zeit lang mit ähnlicher Frequenz weiterlaufen – oder bei Überschreitung rascher herunterregeln. Erst der zeitliche Verlauf zeigt, ob das Verhalten zur Regelung passt.
+
+### Welche Einstellungen beeinflussen den PID-Regler?
+
+Die zugehörigen Serviceparameter sind:
+
+| Parameter | Funktion |
 | --- | --- |
-| **Vorlauf deutlich unter Soll** | Der Kompressor kann höher drehen, damit mehr Wärme erzeugt wird. |
-| **Vorlauf nähert sich dem Soll** | Die Regelung kann die Frequenz zunächst halten oder schrittweise anpassen. |
-| **Vorlauf über Soll** | Die Regelung versucht, die Heizleistung zu senken. Reicht das nicht, schaltet der Verdichter bei entsprechender Abschaltbedingung ab. |
+| **C13** | Stärke des **P-Anteils** |
+| **C14** | Skalierung des **I-Anteils** – in der Firmware wird durch C14 geteilt |
+| **C15** | Stärke des **D-Anteils** |
 
-Die Frequenz muss sich also **nicht sofort** ändern, nur weil sich die Vorlauftemperatur um 1 °C verändert hat.
+Für technisch Interessierte ist die vereinfachte Berechnung:
 
-Ebenso gibt es keine feste Formel wie **„Vorlauftemperatur in °C + 2 = Kompressorfrequenz in Hz“**. Wenn diese beiden Werte zeitweise ähnlich aussehen, ist das kein Beweis für einen solchen Zusammenhang.
+```text
+P = C13 × Temperaturabweichung
+I = bisheriger I-Wert + Temperaturabweichung / C14
+D = C15 × Änderung der Temperaturabweichung
+```
+
+Die Beiträge werden zur Frequenzanforderung verarbeitet. Der tatsächliche Firmwareablauf enthält zusätzliche Regeln für das Halten, Absenken und Begrenzen der Frequenz.
+
+**Wichtig:** C13 bis C15 sind keine Einstellungen, die man zum schnellen „Optimieren“ auf Verdacht verändern sollte. Gerade **C14 darf nicht 0 sein**, weil es intern als Divisor verwendet wird. Auch die Werte für **C02 (Mindestfrequenz)** und **C03 (Höchstfrequenz)** bleiben unabhängig davon relevant.
+
+Eine feste Formel wie **„Vorlauftemperatur in °C + 2 = Kompressorfrequenz in Hz“** gibt es in der untersuchten V3.5-Regelung nicht. Dass beide Anzeigen zufällig ähnliche Zahlen zeigen, bedeutet keinen solchen Zusammenhang.
 
 ## Warum dreht der Kompressor manchmal nicht weiter herunter?
 
