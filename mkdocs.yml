@@ -18,15 +18,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Dunkles Design
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Helles Design
@@ -54,6 +54,10 @@ markdown_extensions:
 # Webseite zu GitHub-Links umgewandelt (ohne die FAQ-Quelldateien zu ändern).
 hooks:
   - docs_pages_hooks.py
+
+# Nur für den Webauftritt, nicht für die Markdown-Dateien auf GitHub.
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Startseite: index.md
