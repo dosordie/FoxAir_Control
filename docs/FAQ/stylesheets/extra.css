@@ -1,0 +1,95 @@
+/*
+ * FoxAir FAQ – schlankes, GitHub-artiges Lesedesign
+ *
+ * Referenz: Orange aus dem FoxAir-Control-Fuchslogo.
+ * Für den Header bewusst etwas dunkler, damit Weiß lesbar bleibt.
+ *
+ * Ausschließlich Darstellung: Keine Änderung an FAQ-Inhalten oder MkDocs-Logik.
+ */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #c65311;
+  --md-primary-fg-color--light: #e98839;
+  --md-primary-fg-color--dark: #a8430b;
+  --md-accent-fg-color: #b64b0f;
+  --fox-nav-group-bg: rgba(198, 83, 17, 0.075);
+  --fox-nav-group-text: #823b11;
+  --fox-heading-rule: rgba(31, 35, 40, 0.16);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #c65311;
+  --md-primary-fg-color--light: #e98839;
+  --md-primary-fg-color--dark: #a8430b;
+  --md-accent-fg-color: #ff9c58;
+  --fox-nav-group-bg: rgba(233, 136, 57, 0.12);
+  --fox-nav-group-text: #ffc697;
+  --fox-heading-rule: rgba(214, 225, 235, 0.17);
+}
+
+/* Leserliches Systemschriftbild ähnlich der Markdown-Ansicht auf GitHub. */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+}
+
+.md-typeset {
+  font-size: 0.8rem;
+  line-height: 1.58;
+  font-weight: 400;
+}
+
+/* Weniger große und aufdringliche Artikelüberschriften. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.md-typeset h1 {
+  font-size: 1.8em;
+  color: var(--md-default-fg-color);
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--fox-heading-rule);
+}
+
+.md-typeset h2 {
+  font-size: 1.4em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--fox-heading-rule);
+}
+
+.md-typeset h3 {
+  font-size: 1.17em;
+}
+
+/* Klare optische Gruppierung in der linken Navigation. */
+.md-nav--primary .md-nav__item--section > .md-nav__link {
+  color: var(--fox-nav-group-text);
+  background: var(--fox-nav-group-bg);
+  border-left: 3px solid var(--md-primary-fg-color);
+  border-radius: 0 0.22rem 0.22rem 0;
+  margin: 0.95em 0 0.3em;
+  padding: 0.52em 0.7em;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.md-nav--primary .md-nav__item--section:first-child > .md-nav__link {
+  margin-top: 0.35em;
+}
+
+/* Aktuelle Seite leicht hervorheben, ohne die Navigation bunt zu machen. */
+.md-nav--primary .md-nav__link--active {
+  font-weight: 650;
+}
+
+/* Mobile Navigation: weniger Einrückung / kein Überlaufen. */
+@media screen and (max-width: 76.234375em) {
+  .md-nav--primary .md-nav__item--section > .md-nav__link {
+    margin-right: 0.6rem;
+  }
+}
