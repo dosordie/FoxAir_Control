@@ -1,0 +1,86 @@
+site_name: FoxAir – Hilfe & FAQ
+site_description: Verständliche Antworten rund um FoxAir-/PHNIX-Wärmepumpen.
+site_url: https://dosordie.github.io/FoxAir_Control/
+repo_url: https://github.com/dosordie/FoxAir_Control
+repo_name: dosordie/FoxAir_Control
+edit_uri: blob/main/docs/FAQ/
+
+# Nur die öffentlichen Endbenutzer-FAQs veröffentlichen.
+# Die bestehenden Markdown-Artikel bleiben unverändert.
+docs_dir: docs/FAQ
+site_dir: site
+use_directory_urls: true
+
+theme:
+  name: material
+  language: de
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Dunkles Design
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Helles Design
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: de
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+
+# Links auf technische Dokumente außerhalb docs/FAQ werden nur für die
+# Webseite zu GitHub-Links umgewandelt (ohne die FAQ-Quelldateien zu ändern).
+hooks:
+  - docs_pages_hooks.py
+
+nav:
+  - Startseite: index.md
+  - Alle Themen: FAQ.md
+  - Betrieb und Regelung:
+      - Heizungsregelung und Heizkurve: regelung_heizkurve.md
+      - Auslauftemperatur und Kompressorfrequenz: auslauftemperatur_kompressorfrequenz.md
+      - Zonenregelung: zonenregelung.md
+      - Warmwasser: warmwasser.md
+      - Abtauen und Frostschutz: abtauen_frostschutz.md
+      - Ölrückführung (Oil Return): oelrueckfuehrung.md
+  - Umwälzpumpe:
+      - Durchfluss und Pumpenbetriebsarten: wasserdurchfluss_pumpe.md
+      - Automatische Pumpenregelung: automatische_up_regelung.md
+      - PWM-Leitung umklemmen: up_umklemmen.md
+  - Sensoren und Anschlüsse:
+      - Externer Außentemperaturfühler: externer_at_fuehler.md
+      - Relaisausgänge: relais_ausgaenge.md
+  - Firmware und Einrichtung:
+      - Firmwareversionen und Update: firmware.md
+      - Einstellungen sichern: einstellungen_sichern.md
+      - FoxAir Control verbinden: verbindung.md
+      - WarmLink und LTE: warmlink_lte.md
+      - Modbus-Anschluss: modbus.md
+  - Weitere Steuerung:
+      - SG Ready und PV: sg_ready.md
+      - Solltemperaturen extern korrigieren: externe_sollwertkorrektur.md
+  - Fehlersuche:
+      - Fehler und Statuswerte: fehler_und_status.md
+      - Factory Settings: factory_settings.md

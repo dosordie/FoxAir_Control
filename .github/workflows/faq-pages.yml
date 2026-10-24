@@ -1,0 +1,70 @@
+name: FoxAir FAQ-Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/FAQ/**"
+      - "mkdocs.yml"
+      - "docs_pages_hooks.py"
+      - "requirements-docs.txt"
+      - ".github/workflows/faq-pages.yml"
+  pull_request:
+    paths:
+      - "docs/FAQ/**"
+      - "mkdocs.yml"
+      - "docs_pages_hooks.py"
+      - "requirements-docs.txt"
+      - ".github/workflows/faq-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foxair-faq-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: FAQ erstellen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository abrufen
+        uses: actions/checkout@v4
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: MkDocs installieren
+        run: python -m pip install -r requirements-docs.txt
+      - name: Website erstellen und Links prüfen
+        run: mkdocs build --strict
+      - name: Vorschau zum Herunterladen bereitstellen (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: foxair-faq-vorschau
+          path: site/
+          retention-days: 7
+      - name: GitHub Pages-Dateien hochladen
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/
+
+  deploy:
+    name: FAQ veröffentlichen
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
