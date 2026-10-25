@@ -13,6 +13,7 @@ use_directory_urls: true
 
 theme:
   name: material
+  favicon: assets/favicon-a.png
   language: de
   font: false
   palette:
