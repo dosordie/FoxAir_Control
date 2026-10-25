@@ -55,10 +55,9 @@ body {
   border-bottom: 1px solid var(--fox-heading-rule);
 }
 
-/* Startseite: Trennlinie erst unter dem FoxyE-Logo, nicht unter dem Titel. */
+/* Nur auf der Startseite: Titel zentrieren; die reguläre H1-Trennlinie bleibt erhalten. */
 .md-typeset #foxair-hilfe-und-faq {
-  border-bottom: 0;
-  padding-bottom: 0;
+  text-align: center;
 }
 
 .md-typeset h2 {
