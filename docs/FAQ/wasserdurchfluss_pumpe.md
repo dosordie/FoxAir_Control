@@ -121,9 +121,9 @@ Dieser Parameter betrifft die Warmwasserpumpenlogik und ist nicht mit P01 der Ha
 
 Bei älteren Firmwareständen bzw. manueller Regelung kann darüber direkt eine feste Pumpendrehzahl eingestellt werden.
 
-> **Achtung bei fester P10-Vorgabe:** Wird die Pumpe manuell auf einen festen Prozentwert eingestellt, bleibt diese Vorgabe auch beim **Abtauen** bestehen. Die Wärmepumpe erhöht die Pumpendrehzahl in diesem Modus nicht automatisch. Der eingestellte Durchfluss muss deshalb auch für den Abtaubetrieb ausreichend sein.
+> **Wichtig bei festem P10:** Eine separate, einstellbare Drehzahlerhöhung fürs **Abtauen** ist nicht nachgewiesen. Die Firmware kann die feste Vorgabe zwar in Sonderzuständen übersteuern, darauf sollte man sich aber nicht verlassen. Der Durchfluss muss auch beim Abtauen ausreichen.
 
-Das wurde an der GL9 praktisch beobachtet. Bei zu niedrig gewählter fester Drehzahl kann während des Abtauens zu wenig Wasserenergie zur Verfügung stehen.
+Mehr dazu unter [Durchfluss beim Abtauen](#durchfluss-beim-abtauen).
 
 Wenn die Pumpe trotz Änderung von P10 immer mit voller Drehzahl läuft, sollte die Verdrahtung geprüft werden.
 
@@ -183,11 +183,45 @@ Entscheidend ist, dass die Wärmepumpe stabil arbeitet und der benötigte Wärme
 
 ## Durchfluss beim Abtauen
 
-Beim Abtauen benötigt die Wärmepumpe ausreichend Wasserenergie.
+Beim Abtauen entzieht die Wärmepumpe dem Heizwasser Wärme. Dafür braucht sie **ausreichend Durchfluss** und genügend Wärme im Heizkreis.
 
-Parameter **D22** betrifft den Wasserdurchfluss beim Abtauen.
+### D22 – Mindestdurchfluss
 
-Dieser Wert sollte nicht ohne konkreten Grund verändert werden. Ein zu geringer Durchfluss kann die Abtauung verschlechtern.
+**D22 (Register 1127)** heißt beim Hersteller „Water Flow of Defrosting“. In der untersuchten Firmware dient er auch als **Untergrenze für die automatische Pumpenregelung**:
+
+| D22 | Mindestdurchfluss der Automatik |
+| --- | --- |
+| **0** | **80 % von A40** (Nenn-Wasserdurchfluss) |
+| **größer 0** | Der eingestellte D22-Wert in **m³/h** |
+
+**Beispiel:** Bei A40 = 1,0 m³/h und D22 = 0 liegt die Untergrenze bei **0,8 m³/h**. Stellt man D22 auf 1,0 m³/h, gilt stattdessen dieser Wert.
+
+Wird die Untergrenze erreicht, darf die Automatik die Pumpendrehzahl **nicht weiter senken**. Erhöhen darf sie sie weiterhin. **D22 stellt also keinen festen Durchfluss ein** und kann fehlende Pumpenleistung nicht ersetzen.
+
+### Pumpendrehzahl während des Abtauens
+
+- **P10 = 0 (Automatik, ab Mainboard-V3.3):** Beim Abtauen fordert die Firmware **100 % Pumpenleistung** an. Anschließend muss die Automatik ihre Freigabebedingungen erneut erfüllen. Daher kann die Pumpe noch etwa **10 Minuten oder länger** mit hoher Drehzahl laufen.
+- **P10 größer 0 (feste Drehzahl):** Eine separat einstellbare Abtau-Drehzahl ist **nicht nachgewiesen**. Schutz- und Sonderfunktionen können P10 zwar übersteuern, eine gezielte Erhöhung auf 100 % lässt sich damit aber nicht zuverlässig einstellen.
+
+Wer automatisch mehr Durchfluss beim Abtauen möchte, sollte prüfen, ob **P10 = 0** mit richtig eingestelltem **H31** und passenden **P11/P12** für seine Anlage geeignet ist.
+
+### Was lässt sich kontrollieren?
+
+In FoxAir Control helfen diese Werte:
+
+| Wert | Bedeutung |
+| --- | --- |
+| **2012 = 2** | Abtaubetrieb |
+| **2115** | angeforderte Pumpenleistung in % |
+| **2116** | PWM-Rückmeldung der Pumpe |
+| **2077** | berechneter Wasserdurchfluss |
+| **T01 / T02** | Einlass- und Auslasstemperatur |
+
+Der angezeigte Durchfluss wird bei vielen Pumpentypen aus der PWM-Rückmeldung **berechnet** und nicht unabhängig gemessen.
+
+**Empfehlung:** D22 nicht vorschnell erhöhen. Erst Durchfluss und Temperaturverlauf beim Abtauen beobachten.
+
+Mehr dazu: [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md).
 
 ## Bekannte Auffälligkeit der originalen Shimge-Pumpe
 
