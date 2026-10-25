@@ -55,6 +55,12 @@ body {
   border-bottom: 1px solid var(--fox-heading-rule);
 }
 
+/* Startseite: Trennlinie erst unter dem FoxyE-Logo, nicht unter dem Titel. */
+.md-typeset #foxair-hilfe-und-faq {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .md-typeset h2 {
   font-size: 1.4em;
   padding-bottom: 0.25em;
