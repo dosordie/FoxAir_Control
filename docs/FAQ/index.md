@@ -25,3 +25,9 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 
 !!! info "Hinweis"
     Dies ist ein Community-Projekt und keine offizielle Herstellerdokumentation. Einstellungen und Änderungen an der Wärmepumpe erfolgen auf eigene Verantwortung. Elektrische Arbeiten gehören in fachkundige Hände.
+
+---
+
+### 💙 Projekt unterstützen
+
+FoxAir Control und diese FAQ entstehen in meiner Freizeit und sind kostenlos. Wenn dir das Projekt hilft, freue ich mich über eine freiwillige kleine Unterstützung: **[Per PayPal spenden](https://www.paypal.com/paypalme/AuhuberD)**.
