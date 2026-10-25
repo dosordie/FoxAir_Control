@@ -14,7 +14,7 @@ use_directory_urls: true
 theme:
   name: material
   favicon: assets/favicon-a.png
-  logo: assets/favicon-a.png
+  logo: assets/foxye-header-transparent.png
   language: de
   font: false
   palette:
