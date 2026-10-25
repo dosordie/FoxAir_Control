@@ -151,11 +151,18 @@ Die automatische Regelung ist hier ausführlicher beschrieben:
 
 ## A40 – Nenn-Wasserdurchfluss
 
-**A40** beschreibt den Nenn-Wasserdurchfluss der Anlage.
+**A40** beschreibt den Nenn-Wasserdurchfluss der Anlage und ist für die automatische Pumpenregelung wichtig.
 
-Bei der automatischen Pumpenregelung wird dieser Wert unter anderem als Bezug für Mindest- und Freigabebedingungen verwendet.
+**A40 darf dafür nicht auf 0 stehen!** Bei **A40 = 0** gibt die Firmware die automatische Drehzahlabsenkung nicht frei und fordert stattdessen **100 % Pumpenleistung** an – auch wenn **P10 = 0** eingestellt ist.
 
-A40 sollte deshalb nicht willkürlich verändert werden.
+Bei gültigem A40 verwendet die Automatik den Wert für zwei Bedingungen:
+
+- **Freigabe:** Der Durchfluss muss nach dem Kompressorstart ungefähr **10 Minuten lang mindestens 120 % von A40** erreichen, bevor die Pumpe automatisch herunterregeln darf.
+- **Mindestgrenze:** Bei **D22 = 0** darf der Durchfluss durch das automatische Herunterregeln nicht unter ungefähr **80 % von A40** abgesenkt werden. Bei **D22 größer 0** gilt stattdessen der eingestellte D22-Wert.
+
+**Beispiel:** A40 = 1,0 m³/h → Freigabeschwelle etwa **1,2 m³/h**, Mindestgrenze bei D22 = 0 etwa **0,8 m³/h**.
+
+A40 deshalb **nicht willkürlich erhöhen oder verringern**, sondern passend zur Anlage einstellen.
 
 ## Welche Spreizung ist richtig?
 
