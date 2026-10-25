@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/dosordie/FoxAir_Control/main/app_icon.png" alt="FoxyE – FoxAir Control Logo" width="160">
+  <img src="https://raw.githubusercontent.com/dosordie/FoxAir_Control/main/app_icon.png" alt="FoxyE – FoxAir Control Logo" width="280" style="max-width: 100%; height: auto;">
 </p>
 
 # FoxAir – Hilfe und FAQ
