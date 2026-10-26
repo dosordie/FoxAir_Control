@@ -17,6 +17,7 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 - **[Warmwasserbereitung](warmwasser.md)** – Wie funktioniert die Speicherladung?
 - **[Abtauen und Frostschutz](abtauen_frostschutz.md)** – Warum taut die Wärmepumpe ab?
 - **[Firmware und Updates](firmware.md)** – Welche Version ist installiert, und wie läuft ein Update?
+- **[Register-Browser](register-browser.md)** – Register suchen, filtern und ihre Bedeutung nachlesen.
 ---
 
 ### 💙 Projekt unterstützen

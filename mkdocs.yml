@@ -60,10 +60,15 @@ hooks:
 # Nur für den Webauftritt, nicht für die Markdown-Dateien auf GitHub.
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/register-browser.css
+
+extra_javascript:
+  - javascripts/register-browser.js
 
 nav:
   - Startseite: index.md
   - Alle Themen: FAQ.md
+  - Register-Browser: register-browser.md
   - Betrieb und Regelung:
       - Heizungsregelung und Heizkurve: regelung_heizkurve.md
       - Auslauftemperatur und Kompressorfrequenz: auslauftemperatur_kompressorfrequenz.md

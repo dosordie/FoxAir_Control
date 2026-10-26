@@ -32,6 +32,9 @@ def _topics_from_navigation(nav: list) -> str:
         for group, items in section.items():
             if group in {"Startseite", "Alle Themen"}:
                 continue
+            if isinstance(items, str):
+                topics.append(f"## {group}\n\n- [{group}]({items})")
+                continue
             if not isinstance(items, list):
                 continue
             links = []

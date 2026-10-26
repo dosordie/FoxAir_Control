@@ -18,3 +18,6 @@ foxair_phnix_raw_*.bin
 /docs/FAQ/firmwareupdate-windows.md
 /docs/FAQ/assets/imported/
 /docs/FAQ/firmwareupdate-linux.md
+
+# Beim FAQ-Build aus data/*.json erzeugte Registerreferenz.
+/docs/FAQ/assets/register-browser/registers.json

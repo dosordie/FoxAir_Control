@@ -6,6 +6,8 @@ on:
     paths:
       - "docs/FAQ/**"
       - "docs/firmware_overview.md"
+      - "data/*.json"
+      - "build_register_browser.py"
       - "prepare_faq_pages.py"
       - "mkdocs.yml"
       - "docs_pages_hooks.py"
@@ -15,6 +17,8 @@ on:
     paths:
       - "docs/FAQ/**"
       - "docs/firmware_overview.md"
+      - "data/*.json"
+      - "build_register_browser.py"
       - "prepare_faq_pages.py"
       - "mkdocs.yml"
       - "docs_pages_hooks.py"
@@ -54,6 +58,10 @@ jobs:
         run: python -m pip install -r requirements-docs.txt
       - name: Ausgewählte Artikel in den FAQ-Build übernehmen
         run: python prepare_faq_pages.py
+      - name: Registerdaten für die Website erzeugen und JavaScript prüfen
+        run: |
+          python build_register_browser.py
+          node --check docs/FAQ/javascripts/register-browser.js
       - name: Website erstellen und Links prüfen
         run: mkdocs build --strict
       # Alte FAQ-Adresse behalten, ohne die redundante Seite noch zu indexieren.
