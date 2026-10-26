@@ -19,6 +19,11 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 - **[Abtauen und Frostschutz](abtauen_frostschutz.md)** – Warum taut die Wärmepumpe ab?
 - **[Firmware und Updates](firmware.md)** – Welche Version ist installiert, und wie läuft ein Update?
 
+### 💙 Projekt unterstützen
+
+FoxAir Control und diese FAQ entstehen in meiner Freizeit und sind kostenlos. Wenn dir das Projekt hilft, freue ich mich über eine freiwillige kleine Unterstützung: **[Per PayPal spenden](https://www.paypal.com/paypalme/AuhuberD)**.
+
+
 ## Weitere Fragen?
 
 Öffne links die gewünschte Kategorie oder nutze oben die **Suche**. Du findest außerdem eine [Übersicht aller FAQ-Themen](FAQ.md).
@@ -27,7 +32,3 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
     Dies ist ein Community-Projekt und keine offizielle Herstellerdokumentation. Einstellungen und Änderungen an der Wärmepumpe erfolgen auf eigene Verantwortung. Elektrische Arbeiten gehören in fachkundige Hände.
 
 ---
-
-### 💙 Projekt unterstützen
-
-FoxAir Control und diese FAQ entstehen in meiner Freizeit und sind kostenlos. Wenn dir das Projekt hilft, freue ich mich über eine freiwillige kleine Unterstützung: **[Per PayPal spenden](https://www.paypal.com/paypalme/AuhuberD)**.
