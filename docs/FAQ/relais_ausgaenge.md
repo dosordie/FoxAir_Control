@@ -13,8 +13,8 @@ Die folgende Zuordnung wurde für das in der FoxAir GL9 verwendete Mainboard anh
 | **RO01** | **Alarm / Sammelstörung** | **2019 Bit 10 / O011** |
 | **RO02** | Mischventil Zone 2 – Richtung 1 | – |
 | **RO03** | Mischventil Zone 2 – Richtung 2 | – |
-| RO04 | Haupt-/Wasserumwälzpumpe | 2019 Bit 4 / O005 |
-| RO05 | Warmwasserpumpe | 2019 Bit 5 / O006 |
+| RO04 / K4 | Haupt-/Wasserumwälzpumpe | 2019 Bit 4 / O005 |
+| RO05 / K5 | Externer Pumpenausgang (über H40 konfigurierbar) | 2019 Bit 5 / O006 |
 | RO06 | 4-Wege-Ventil | 2019 Bit 6 / O007 |
 | RO07 | Elektroheizung Stufe 1 | 2019 Bit 7 / O008 |
 | RO08 | Elektroheizung Stufe 2 | 2019 Bit 8 / O009 |
@@ -25,6 +25,22 @@ Die folgende Zuordnung wurde für das in der FoxAir GL9 verwendete Mainboard anh
 | RO13 | Elektroheizer Warmwasserspeicher | 2018 Bit 0 / O025 |
 | **RO14** | **Pumpe Zone 1** | **2018 Bit 8** |
 | **RO15** | **Pumpe Zone 2** | **2018 Bit 9** |
+
+## RO05 / K5 – Externe Pumpe über H40 auswählen
+
+Der Anschluss **Hot Water Pump (K5)** am Klemmfeld gehört zum Relaisausgang **RO05**. Seine Aufgabe lässt sich über **H40 (Modbus-Register 1345)** wählen:
+
+| H40 | Funktion von RO05 / K5 |
+|---:|---|
+| **0** | Warmwasserpumpe (*Hot Water Pump*) |
+| **1** | Warmwasser-Zirkulationspumpe (*Warm Water Circulation Pump*) |
+| **2** | Ausschaltsignal beim Abtauen (*Off Signal when defrosting*) |
+
+**H40 = 2** ist beispielsweise interessant, wenn eine externe Pumpe während des Abtauens abgeschaltet werden soll. Ob und wie eine angeschlossene Pumpe auf das Signal reagiert, hängt auch von der Verdrahtung und der verwendeten Schaltlogik ab.
+
+**Wichtig:** Die **Hauptumwälzpumpe an RO04 / K4** wird durch H40 nicht umkonfiguriert. Sie muss beim Abtauen weiterhin genügend Wasserdurchfluss sicherstellen.
+
+Weitere Informationen: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md).
 
 ## Warum sind manche Relais nicht angeschlossen?
 
