@@ -82,6 +82,8 @@ nav:
       - Firmwareversionen und Update: firmware.md
       - Firmware-Übersicht (ausführlich): firmware-uebersicht.md
       - FoxAir Updater – Endanwender-Anleitung: foxair-updater-anleitung.md
+      - LTE-Modem verbinden und sichern (mit Bildern): lte-modem-backup.md
+      - Firmwareupdate unter Windows (mit Bildern): firmwareupdate-windows.md
       - Einstellungen sichern: einstellungen_sichern.md
       - WarmLink und LTE: warmlink_lte.md
       - Modbus-Anschluss: modbus.md

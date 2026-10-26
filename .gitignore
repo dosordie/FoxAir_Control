@@ -14,3 +14,6 @@ foxair_phnix_raw_*.bin
 /.external/
 /docs/FAQ/firmware-uebersicht.md
 /docs/FAQ/foxair-updater-anleitung.md
+/docs/FAQ/lte-modem-backup.md
+/docs/FAQ/firmwareupdate-windows.md
+/docs/FAQ/assets/imported/

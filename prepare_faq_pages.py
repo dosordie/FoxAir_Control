@@ -1,4 +1,4 @@
-"""Zwei gezielt ausgewählte, öffentliche Markdown-Artikel für MkDocs bereitstellen.
+"""Ausgewählte öffentliche Markdown-Artikel samt Bildern für MkDocs bereitstellen.
 
 Die Quelldateien in beiden Repositories bleiben unverändert. Diese Kopien
 existieren nur während des CI-Builds und werden nicht ins Git übernommen.
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import posixpath
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import quote
 
@@ -31,7 +32,27 @@ SOURCES = (
         / "PHNIX_UPDATER_ENDANWENDER.md",
         FAQ_DIR / "foxair-updater-anleitung.md",
     ),
+    (
+        "FoxAir_updater",
+        "docs/HowTo/firmware_backup_lte.md",
+        ROOT / ".external" / "FoxAir_updater" / "docs" / "HowTo"
+        / "firmware_backup_lte.md",
+        FAQ_DIR / "lte-modem-backup.md",
+    ),
+    (
+        "FoxAir_updater",
+        "docs/HowTo/firmware_update_windows.md",
+        ROOT / ".external" / "FoxAir_updater" / "docs" / "HowTo"
+        / "firmware_update_windows.md",
+        FAQ_DIR / "firmwareupdate-windows.md",
+    ),
 )
+
+# Relative Links zwischen importierten Artikeln bleiben in unserer FAQ.
+IMPORTED_PAGES = {
+    (repo, source_path): destination.name
+    for repo, source_path, _source, destination in SOURCES
+}
 
 MARKDOWN_LINK = re.compile(
     r"(?P<prefix>!?\[[^\]\n]*\]\()(?P<target>[^)\n]+)(?P<suffix>\))"
@@ -68,12 +89,31 @@ def rewrite_links(markdown: str, repo: str, source_path: str) -> str:
             raise ValueError(f"Ungültiger relativer Link in {source_path}: {target}")
 
         is_image = match.group("prefix").startswith("!")
-        base = (
-            f"https://raw.githubusercontent.com/dosordie/{repo}/main/"
-            if is_image
-            else f"https://github.com/dosordie/{repo}/blob/main/"
-        )
-        url = base + quote(resolved, safe="/%")
+        if not is_image and (repo, resolved) in IMPORTED_PAGES:
+            # Beispiel: Windows-Update-Anleitung -> eingebundener LTE-Backup-Artikel.
+            url = IMPORTED_PAGES[(repo, resolved)]
+        elif is_image:
+            # Screenshots werden lokal mit ins GitHub-Pages-Artefakt kopiert.
+            # So bleiben sie direkt in der Anleitung sichtbar und müssen
+            # beim Seitenaufruf nicht von raw.githubusercontent.com kommen.
+            checkout_root = (
+                ROOT if repo == "FoxAir_Control" else ROOT / ".external" / repo
+            )
+            original_image = checkout_root / resolved
+            if not original_image.is_file():
+                raise FileNotFoundError(
+                    f"Screenshot fehlt: {repo}/{resolved} in {source_path}"
+                )
+            local_image = posixpath.join("assets", "imported", repo, resolved)
+            target_image = FAQ_DIR / local_image
+            target_image.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(original_image, target_image)
+            url = quote(local_image, safe="/%")
+        else:
+            url = (
+                f"https://github.com/dosordie/{repo}/blob/main/"
+                + quote(resolved, safe="/%")
+            )
         if sep:
             url += "#" + fragment
         return match.group("prefix") + url + match.group("suffix")
