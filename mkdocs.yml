@@ -68,7 +68,7 @@ extra_javascript:
 nav:
   - Startseite: index.md
   - Alle Themen: FAQ.md
-  - Register-Browser: register-browser.md
+  - Modbus Register Browser: register-browser.md
   - Betrieb und Regelung:
       - Heizungsregelung und Heizkurve: regelung_heizkurve.md
       - Auslauftemperatur und Kompressorfrequenz: auslauftemperatur_kompressorfrequenz.md

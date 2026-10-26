@@ -9,7 +9,7 @@ FIELDS = (
     "name", "code", "block", "group", "function", "mode", "type", "unit",
     "firmware", "description", "notes", "note", "app_label", "value_map",
     "bit_map", "bit_descriptions", "range", "default", "write_allowed",
-    "virtual", "namespace", "source_slave", "source_register", "main_aliases",
+    "namespace", "source_slave", "source_register", "main_aliases",
     "raw_format", "persistence", "interface", "ui_visibility",
 )
 KNOWLEDGE_FIELDS = ("description", "knowledge", "notes", "note", "range", "default")
@@ -29,9 +29,7 @@ def clean(value):
         return {str(k): clean(v) for k, v in value.items() if not str(k).startswith("_")}
     return str(value)
 
-def access(entry, virtual):
-    if virtual:
-        return "Virtuell / nicht direkt lesbar"
+def access(entry):
     if entry.get("write_allowed") is False:
         return "Nur lesen"
     mode = str(entry.get("mode", "")).lower()
@@ -51,8 +49,11 @@ def main():
         for raw_id, entry in data.items():
             if not raw_id.isdecimal() or not isinstance(entry, dict):
                 continue
-            virtual = namespace == "display" and entry.get("virtual") is True
-            category = "virtual" if virtual else namespace
+            # Virtuelle FoxAir-IDs sind keine echten Modbus-Register und
+            # werden bewusst nicht in den öffentlichen Browser übernommen.
+            if entry.get("virtual") is True:
+                continue
+            category = namespace
             key = (category, int(raw_id))
             if key in keys:
                 raise ValueError("Register doppelt: " + str(key))
@@ -60,9 +61,7 @@ def main():
             row = {"id": int(raw_id), "category": category}
             row.update({field: clean(entry[field]) for field in FIELDS
                         if field in entry and entry[field] is not None and entry[field] != ""})
-            row["access"] = access(entry, virtual)
-            if virtual:
-                row["virtual"] = True
+            row["access"] = access(entry)
             extra = knowledge.get(raw_id, {}) if namespace == "main" else {}
             if isinstance(extra, dict):
                 supplemental = {field: clean(extra[field]) for field in KNOWLEDGE_FIELDS
@@ -72,12 +71,12 @@ def main():
             records.append(row)
     records.sort(key=lambda row: (row["id"], row["category"]))
     counts = Counter(row["category"] for row in records)
-    if len(records) < 850 or counts["main"] < 600 or counts["display"] < 150:
+    if len(records) < 800 or counts["main"] < 600 or counts["display"] < 150:
         raise ValueError("Registerbestand unplausibel: " + str(dict(counts)))
     data = {
         "schema": 1,
         "meta": {"total": len(records), "main": counts["main"],
-                 "display": counts["display"], "virtual": counts["virtual"],
+                 "display": counts["display"],
                  "knowledge": sum(bool(row.get("knowledge")) for row in records)},
         "registers": records,
     }

@@ -8,9 +8,9 @@ Diese FAQ richtet sich an Anwender der FoxAir-/PHNIX-Wärmepumpen.
 Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründe sind – wenn vorhanden – separat verlinkt.
 
 <!-- faq-topics:start -->
-## Register-Browser
+## Modbus Register Browser
 
-- [Register-Browser](register-browser.md)
+- [Modbus Register Browser](register-browser.md)
 
 ## Betrieb und Regelung
 

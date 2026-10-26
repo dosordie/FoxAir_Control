@@ -24,7 +24,7 @@
     return String(x).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   }
   function catLabel(x) {
-    return x==="main" ? "Mainboard" : x==="display" ? "Display" : "Virtuell";
+    return x==="main" ? "Mainboard" : "Display";
   }
   function attr(label,val) {
     if (val == null || val === "") return "";
@@ -51,8 +51,6 @@
       attr("Quellregister",r.source_register),attr("Mainboard-Bezüge",r.main_aliases)
     ].join("");
     return '<tr class="fox-rb-detailrow"><td colspan="5"><div class="fox-rb-detail">'+
-      (r.category==="virtual" ? '<p class="fox-rb-alert"><strong>Virtuelle FoxAir-ID:</strong> '+ 
-       'nicht direkt über Modbus adressierbar. Die Quelle ist gesondert angegeben.</p>' : "")+
       (r.description ? '<strong>Beschreibung</strong><p>'+esc(r.description)+'</p>' : "")+
       (note ? '<strong>Hinweise</strong><p>'+esc(pretty(note))+'</p>' : "")+
       mapping("Werte und Bedeutung",r.value_map)+
@@ -78,9 +76,7 @@
       '<td><button class="fox-rb-open" type="button" data-open="'+esc(r.id)+
       '" aria-expanded="'+(open?"true":"false")+'">'+
       esc(r.name||"Unbekanntes Register")+' <span aria-hidden="true">'+(open?"▴":"▾")+'</span></button></td>'+
-      '<td><span class="fox-rb-pill '+(r.category==="virtual"?"fox-rb-pill-virtual":"")+'">'+
-      esc(catLabel(r.category))+'</span>'+
-      (r.block?'<span class="fox-rb-block">'+esc(r.block)+'</span>':"")+'</td>'+
+      '<td><span class="fox-rb-pill">'+esc(catLabel(r.category))+'</span></td>'+
       '<td class="fox-rb-access">'+esc(r.access)+'</td></tr>'+
       (open?makeDetail(r):"");
   }
@@ -130,7 +126,7 @@
        '<label for="fox-rb-search">Register suchen</label>'+
        '<input type="search" id="fox-rb-search" autocomplete="off" placeholder="2057, H40, Abtauen, SG Ready ...">'+
        '<div class="fox-rb-filters">'+
-        '<label>Bereich<select id="fox-rb-category"><option value="all">Alle Bereiche</option><option value="main">Mainboard</option><option value="display">Display</option><option value="virtual">Virtuell</option></select></label>'+
+        '<label>Bereich<select id="fox-rb-category"><option value="all">Alle Bereiche</option><option value="main">Mainboard</option><option value="display">Display</option></select></label>'+
         '<label>Gruppe<select id="fox-rb-block"><option value="all">Alle Gruppen</option></select></label>'+
         '<label>Zugriff<select id="fox-rb-access"><option value="all">Alle</option><option value="read">Nur lesen</option><option value="write">Schreibbar</option></select></label>'+
         '<button type="button" id="fox-rb-reset">Zurücksetzen</button>'+
@@ -141,7 +137,7 @@
        '<th><button type="button" data-sort="id">Register<span></span></button></th>'+
        '<th><button type="button" data-sort="code">Code<span></span></button></th>'+
        '<th><button type="button" data-sort="name">Bezeichnung<span></span></button></th>'+
-       '<th><button type="button" data-sort="block">Bereich / Gruppe<span></span></button></th>'+
+       '<th><button type="button" data-sort="category">Bereich<span></span></button></th>'+
        '<th><button type="button" data-sort="access">Zugriff<span></span></button></th>'+
       '</tr></thead><tbody id="fox-rb-body"></tbody></table></div>'+
       '<div class="fox-rb-pager"><button type="button" id="fox-rb-prev">← Zurück</button>'+
