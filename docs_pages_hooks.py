@@ -17,6 +17,32 @@ _IMAGES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
 _GITHUB_ONLY = re.compile(
     r"<!-- github-only:start -->.*?<!-- github-only:end -->\n*", re.DOTALL
 )
+_FAQ_TOPICS = re.compile(
+    r"<!-- faq-topics:start -->.*?<!-- faq-topics:end -->", re.DOTALL
+)
+
+
+def _topics_from_navigation(nav: list) -> str:
+    """Alle Themen immer in Reihenfolge und mit Linkzielen der Seitenleiste."""
+
+    topics = []
+    for section in nav:
+        if not isinstance(section, dict):
+            continue
+        for group, items in section.items():
+            if group in {"Startseite", "Alle Themen"}:
+                continue
+            if not isinstance(items, list):
+                continue
+            links = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                for label, target in item.items():
+                    if isinstance(target, str):
+                        links.append(f"- [{label}]({target})")
+            topics.append(f"## {group}\n\n" + "\n".join(links))
+    return "\n\n".join(topics)
 
 # Beim Website-Build die GitHub-Quelldokumente intern verlinken.
 _UPDATER_FAQ_LINKS = {
@@ -52,6 +78,12 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
     # Artikeln müssen weiterhin auf die Originaldateien bei GitHub verweisen.
     page = kwargs.get("page")
     src_uri = getattr(getattr(page, "file", None), "src_uri", "")
+    if src_uri == "FAQ.md":
+        config = kwargs.get("config")
+        nav = config.get("nav", []) if config is not None else []
+        if not nav or len(_FAQ_TOPICS.findall(markdown)) != 1:
+            raise ValueError("FAQ-Themenübersicht oder mkdocs.yml-Navigation fehlt")
+        markdown = _FAQ_TOPICS.sub(_topics_from_navigation(nav), markdown)
     if src_uri in {"FAQ.md", "firmware.md"}:
         for github_url, faq_target in _UPDATER_FAQ_LINKS.items():
             markdown = markdown.replace(f"]({github_url})", f"]({faq_target})")

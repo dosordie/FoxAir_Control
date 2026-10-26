@@ -78,18 +78,17 @@ nav:
   - Sensoren und Anschlüsse:
       - Externer Außentemperaturfühler: externer_at_fuehler.md
       - Relaisausgänge: relais_ausgaenge.md
-  - Firmware und Einrichtung:
+      - Modbus-Anschluss: modbus.md
+  - Firmware:
       - Firmwareversionen und Update: firmware.md
       - Firmware-Übersicht (ausführlich): firmware-uebersicht.md
       - LTE-Modem verbinden und sichern: lte-modem-backup.md
       - Firmwareupdate unter Windows: firmwareupdate-windows.md
       - Firmwareupdate unter Linux / Raspberry Pi: firmwareupdate-linux.md
-      - Einstellungen sichern: einstellungen_sichern.md
-      - WarmLink und LTE: warmlink_lte.md
-      - Modbus-Anschluss: modbus.md
   - Weitere Steuerung:
       - SG Ready und PV: sg_ready.md
       - Solltemperaturen extern korrigieren: externe_sollwertkorrektur.md
+      - WarmLink und LTE: warmlink_lte.md
   - Fehlersuche:
       - Fehler und Statuswerte: fehler_und_status.md
       - Factory Settings: factory_settings.md
@@ -97,4 +96,5 @@ nav:
       - Überblick und Download: foxair_control_ueberblick.md
       - Verbindungsarten und Schnittstellen: verbindung.md
       - Funktionen und Bedienung: foxair_control_funktionen.md
+      - Einstellungen sichern: einstellungen_sichern.md
       - Diagnose und Sicherheit: foxair_control_diagnose.md
