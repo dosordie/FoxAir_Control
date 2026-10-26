@@ -14,6 +14,9 @@ _GITHUB_BASE = "https://github.com/dosordie/FoxAir_Control/blob/main/"
 _RAW_BASE = "https://raw.githubusercontent.com/dosordie/FoxAir_Control/main/"
 _LINK = re.compile(r"(?P<prefix>!?\[[^\]]*\]\()(?P<target>\.\./[^)]+)(?P<suffix>\))")
 _IMAGES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
+_GITHUB_ONLY = re.compile(
+    r"<!-- github-only:start -->.*?<!-- github-only:end -->\n*", re.DOTALL
+)
 
 
 def on_page_markdown(markdown: str, **kwargs) -> str:
@@ -31,4 +34,7 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
             url += "#" + anchor
         return match.group("prefix") + url + match.group("suffix")
 
+    # Hinweise, die nur in der GitHub-Markdownansicht erscheinen sollen,
+    # beim Bau der öffentlichen FAQ entfernen (ohne die Quelldatei zu ändern).
+    markdown = _GITHUB_ONLY.sub("", markdown)
     return _LINK.sub(replace, markdown)

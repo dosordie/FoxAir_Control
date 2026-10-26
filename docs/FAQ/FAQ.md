@@ -1,5 +1,9 @@
 # FoxAir FAQ
 
+<!-- github-only:start -->
+> 🌐 **Neu: FoxAir-FAQ als Website** – mit übersichtlicher Navigation und Suche: **[FoxAir – Hilfe & FAQ öffnen](https://dosordie.github.io/FoxAir_Control/)**.
+<!-- github-only:end -->
+
 Diese FAQ richtet sich an Anwender der FoxAir-/PHNIX-Wärmepumpen.  
 Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründe sind – wenn vorhanden – separat verlinkt.
 
