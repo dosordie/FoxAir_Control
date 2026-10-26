@@ -39,6 +39,26 @@ body {
   font-weight: 400;
 }
 
+/* Listen und Link-Aufzählungen kompakter, ähnlich der GitHub-Markdown-Ansicht. */
+.md-typeset :is(ul, ol) {
+  margin-top: 0.45em;
+  margin-bottom: 0.65em;
+}
+
+.md-typeset :is(ul, ol) > li {
+  margin-bottom: 0.18em;
+}
+
+.md-typeset li + li {
+  margin-top: 0.12em;
+}
+
+/* Auch bei Aufzählungen mit zusätzlichen Absätzen keine großen Lücken. */
+.md-typeset li > p {
+  margin-top: 0.15em;
+  margin-bottom: 0.15em;
+}
+
 /* Weniger große und aufdringliche Artikelüberschriften. */
 .md-typeset h1,
 .md-typeset h2,
@@ -96,5 +116,24 @@ body {
 @media screen and (max-width: 76.234375em) {
   .md-nav--primary .md-nav__item--section > .md-nav__link {
     margin-right: 0.6rem;
+  }
+}
+
+/* Lesebereich auf Desktop-Bildschirmen moderat verbreitern (auch bei 24-Zoll-Monitoren).
+ * Kleinere Fenster, Tablets und Smartphones behalten die normale Material-Breite.
+ */
+@media screen and (min-width: 76.25em) {
+  .md-grid {
+    max-width: 73rem;
+  }
+
+  /* Linke Navigation etwas kleiner; Gruppentitel bleiben gut erkennbar. */
+  .md-nav--primary .md-nav__link {
+    font-size: 0.66rem;
+    line-height: 1.35;
+  }
+
+  .md-nav--primary .md-nav__item--section > .md-nav__link {
+    font-size: 0.69rem;
   }
 }
