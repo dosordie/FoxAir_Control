@@ -34,7 +34,7 @@ body {
 }
 
 .md-typeset {
-  font-size: 0.70rem;
+  font-size: 0.65rem;
   line-height: 1.6;
   font-weight: 400;
 }
@@ -59,6 +59,12 @@ body {
   margin-bottom: 0.15em;
 }
 
+/* Tabellen kompakter: Zeilenhöhe verringern, ohne die Spalten zu quetschen. */
+.md-typeset table:not([class]) :is(th, td) {
+  padding: 0.38em 0.7em;
+  line-height: 1.35;
+}
+
 /* Weniger große und aufdringliche Artikelüberschriften. */
 .md-typeset h1,
 .md-typeset h2,
@@ -69,7 +75,7 @@ body {
 }
 
 .md-typeset h1 {
-  font-size: 1.93em; /* bleibt bei kleinerer Textschrift praktisch gleich groß */
+  font-size: 2.08em; /* optisch nahezu unverändert trotz kleinerer Fließschrift */
   color: var(--md-default-fg-color);
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--fox-heading-rule);
@@ -81,13 +87,13 @@ body {
 }
 
 .md-typeset h2 {
-  font-size: 1.5em;
+  font-size: 1.62em;
   padding-bottom: 0.25em;
   border-bottom: 1px solid var(--fox-heading-rule);
 }
 
 .md-typeset h3 {
-  font-size: 1.25em;
+  font-size: 1.35em;
 }
 
 /* Klare optische Gruppierung in der linken Navigation. */
