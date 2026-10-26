@@ -1,8 +1,9 @@
 # Einstellungen vor einem Firmwareupdate sichern
 
 Vor einem Mainboard-Firmwareupdate sollten die aktuellen Einstellungen gesichert werden.
-
 Das ist besonders sinnvoll, wenn viele Parameter bereits an die eigene Anlage angepasst wurden.
+
+Normalerweise geht aber nichts verloren. Mir ist zumindest kein fall bekannt.
 
 ## Mit FoxAir Control
 
@@ -20,8 +21,3 @@ Empfehlung:
 > Nicht jedes Firmwareupdate besitzt exakt dieselben Parameter. Deshalb ein altes Backup nach einem Update nicht blind vollständig zurückschreiben.
 
 Wichtige individuelle Einstellungen sollten zusätzlich dokumentiert werden.
-
-MAIN:1017 ist ein Parameter mit ungeklärter Funktion und wird deshalb nicht
-automatisch gesichert oder wiederhergestellt, auch aus alten Backup-Dateien.
-Die frühere Bezeichnung „Logo-Auswahl“ war falsch; dafür ist MAIN:1026/H39 zuständig.
-Die übrigen bestätigten Paketbereiche behalten ihre bisherige Backup-/Restore-Policy.
