@@ -39,6 +39,13 @@ SOURCES = (
         / "firmware_update_windows.md",
         FAQ_DIR / "firmwareupdate-windows.md",
     ),
+    (
+        "FoxAir_updater",
+        "docs/HowTo/PHNIX_UPDATER_ENDANWENDER.md",
+        ROOT / ".external" / "FoxAir_updater" / "docs" / "HowTo"
+        / "PHNIX_UPDATER_ENDANWENDER.md",
+        FAQ_DIR / "firmwareupdate-linux.md",
+    ),
 )
 
 # Relative Links zwischen importierten Artikeln bleiben in unserer FAQ.
@@ -139,6 +146,38 @@ def material_alerts(markdown: str) -> str:
     return result + ("\n" if markdown.endswith("\n") else "")
 
 
+def extract_linux_guide(markdown: str) -> str:
+    """Nur den Linux-/Raspberry-Pi-Abschnitt aus der Updater-Originalanleitung.
+
+    Scheitert bewusst, falls die Quellüberschrift geändert wird. Damit werden
+    später nicht stillschweigend falsche oder leere FAQ-Seiten veröffentlicht.
+    """
+    match = re.search(
+        r"(?ms)^## Linux / Raspberry Pi\s*\n(?P<body>.*?)(?=^## [^#]|\Z)",
+        markdown,
+    )
+    if not match:
+        raise ValueError(
+            "Linux / Raspberry Pi nicht mehr eindeutig in "
+            "PHNIX_UPDATER_ENDANWENDER.md gefunden"
+        )
+    body = match.group("body").strip()
+    if not body or "### Raspberry Pi als Server für die Windows-GUI" not in body:
+        raise ValueError("Linux-Abschnitt der Updater-Anleitung ist unvollständig")
+
+    # Aus der ursprünglichen Unterüberschrift eine reguläre H2 der
+    # neuen eigenständigen Seite machen (für das rechte Inhaltsverzeichnis).
+    body = re.sub(r"(?m)^### (.+)$", r"## \1", body)
+    return (
+        "# Firmwareupdate unter Linux / Raspberry Pi\n\n"
+        "Linux und Raspberry Pi ermöglichen Firmwareupdates auch ohne "
+        "Windows-PC. Die folgenden Angaben werden automatisch aus der "
+        "Originalanleitung des FoxAir Updaters übernommen.\n\n"
+        + body
+        + "\n"
+    )
+
+
 def main() -> None:
     for repo, source_path, source, destination in SOURCES:
         if not source.is_file():
@@ -147,6 +186,8 @@ def main() -> None:
             )
 
         markdown = source.read_text(encoding="utf-8")
+        if destination.name == "firmwareupdate-linux.md":
+            markdown = extract_linux_guide(markdown)
         markdown = rewrite_links(markdown, repo, source_path)
         markdown = material_alerts(markdown)
 

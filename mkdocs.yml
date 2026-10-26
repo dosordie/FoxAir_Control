@@ -83,6 +83,7 @@ nav:
       - Firmware-Übersicht (ausführlich): firmware-uebersicht.md
       - LTE-Modem verbinden und sichern: lte-modem-backup.md
       - Firmwareupdate unter Windows: firmwareupdate-windows.md
+      - Firmwareupdate unter Linux / Raspberry Pi: firmwareupdate-linux.md
       - Einstellungen sichern: einstellungen_sichern.md
       - WarmLink und LTE: warmlink_lte.md
       - Modbus-Anschluss: modbus.md
