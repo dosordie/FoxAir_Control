@@ -27,13 +27,6 @@ SOURCES = (
     ),
     (
         "FoxAir_updater",
-        "docs/HowTo/PHNIX_UPDATER_ENDANWENDER.md",
-        ROOT / ".external" / "FoxAir_updater" / "docs" / "HowTo"
-        / "PHNIX_UPDATER_ENDANWENDER.md",
-        FAQ_DIR / "foxair-updater-anleitung.md",
-    ),
-    (
-        "FoxAir_updater",
         "docs/HowTo/firmware_backup_lte.md",
         ROOT / ".external" / "FoxAir_updater" / "docs" / "HowTo"
         / "firmware_backup_lte.md",

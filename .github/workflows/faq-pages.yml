@@ -56,6 +56,11 @@ jobs:
         run: python prepare_faq_pages.py
       - name: Website erstellen und Links prüfen
         run: mkdocs build --strict
+      # Alte FAQ-Adresse behalten, ohne die redundante Seite noch zu indexieren.
+      - name: Frühere Updater-Adresse weiterleiten
+        run: |
+          mkdir -p site/foxair-updater-anleitung
+          printf '%s\n' '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=../firmwareupdate-windows/"><link rel="canonical" href="../firmwareupdate-windows/"><title>FoxAir Updater – Weiterleitung</title></head><body><p>Die aktuelle Anleitung findest du <a href="../firmwareupdate-windows/">hier</a>.</p></body></html>' > site/foxair-updater-anleitung/index.html
       - name: Vorschau zum Herunterladen bereitstellen (PR)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
