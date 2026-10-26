@@ -41,4 +41,11 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
     # Hinweise, die nur in der GitHub-Markdownansicht erscheinen sollen,
     # beim Bau der öffentlichen FAQ entfernen (ohne die Quelldatei zu ändern).
     markdown = _GITHUB_ONLY.sub("", markdown)
+    # Den öffentlich eingebundenen Updater-Artikel innerhalb der FAQ öffnen.
+    # Der ursprüngliche GitHub-Link bleibt in firmware.md für GitHub-Besucher erhalten.
+    markdown = markdown.replace(
+        "(https://github.com/dosordie/FoxAir_updater/blob/main/"
+        "docs/HowTo/firmware_update_windows.md)",
+        "(firmwareupdate-windows.md)",
+    )
     return _LINK.sub(replace, markdown)
