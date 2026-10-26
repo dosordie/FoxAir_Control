@@ -26,22 +26,6 @@ Die folgende Zuordnung wurde für das in der FoxAir GL9 verwendete Mainboard anh
 | **RO14** | **Pumpe Zone 1** | **2018 Bit 8** |
 | **RO15** | **Pumpe Zone 2** | **2018 Bit 9** |
 
-## RO05 / K5 – Externe Pumpe über H40 auswählen
-
-Der Anschluss **Hot Water Pump (K5)** am Klemmfeld gehört zum Relaisausgang **RO05**. Seine Aufgabe lässt sich über **H40 (Modbus-Register 1345)** wählen:
-
-| H40 | Funktion von RO05 / K5 |
-|---:|---|
-| **0** | Warmwasserpumpe (*Hot Water Pump*) |
-| **1** | Warmwasser-Zirkulationspumpe (*Warm Water Circulation Pump*) |
-| **2** | Ausschaltsignal beim Abtauen (*Off Signal when defrosting*) |
-
-**H40 = 2** ist beispielsweise interessant, wenn eine externe Pumpe während des Abtauens abgeschaltet werden soll. Ob und wie eine angeschlossene Pumpe auf das Signal reagiert, hängt auch von der Verdrahtung und der verwendeten Schaltlogik ab.
-
-**Wichtig:** Die **Hauptumwälzpumpe an RO04 / K4** wird durch H40 nicht umkonfiguriert. Sie muss beim Abtauen weiterhin genügend Wasserdurchfluss sicherstellen.
-
-Weitere Informationen: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md).
-
 ## Warum sind manche Relais nicht angeschlossen?
 
 Das Mainboard wird für unterschiedliche Geräte- und Anlagenvarianten verwendet. Deshalb sind mehr Ein- und Ausgänge vorhanden, als bei einer typischen FoxAir GL9 tatsächlich benötigt werden.
@@ -85,6 +69,22 @@ RO02 und RO03 gehören zusammen. Sie bilden die beiden Richtungen eines **3-Punk
 Die Steuerung verriegelt die beiden Ausgänge gegeneinander, sodass nicht beide Richtungen gleichzeitig angesteuert werden.
 
 Welche Klemme in einer konkreten Verdrahtung als **AUF** bzw. **ZU** verwendet wird, hängt von der Anschlussrichtung des Ventilantriebs ab.
+
+## RO05 / K5 – Externe Pumpe über H40 auswählen
+
+Der Anschluss **Hot Water Pump (K5)** am Klemmfeld gehört zum Relaisausgang **RO05**. Seine Aufgabe lässt sich über **H40 (Modbus-Register 1345)** wählen:
+
+| H40 | Funktion von RO05 / K5 |
+|---:|---|
+| **0** | Warmwasserpumpe (*Hot Water Pump*) |
+| **1** | Warmwasser-Zirkulationspumpe (*Warm Water Circulation Pump*) |
+| **2** | Ausschaltsignal beim Abtauen (*Off Signal when defrosting*) |
+
+**H40 = 2** ist beispielsweise interessant, wenn eine externe Pumpe während des Abtauens abgeschaltet werden soll. Ob und wie eine angeschlossene Pumpe auf das Signal reagiert, hängt auch von der Verdrahtung und der verwendeten Schaltlogik ab.
+
+**Wichtig:** Die **Hauptumwälzpumpe an RO04 / K4** wird durch H40 nicht umkonfiguriert. Sie muss beim Abtauen weiterhin genügend Wasserdurchfluss sicherstellen.
+
+Weitere Informationen: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md).
 
 ## Hinweis zu anderen Geräten
 
