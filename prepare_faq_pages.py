@@ -170,6 +170,16 @@ def extract_linux_guide(markdown: str) -> str:
     body = re.sub(r"(?m)^### (.+)$", r"## \1", body)
     return (
         "# Firmwareupdate unter Linux / Raspberry Pi\n\n"
+        "!!! warning \"Vor dem Firmwareupdate beachten\"\n"
+        "    Prüfe vor dem Update, ob der **Mainboard-Softwarecode** und das "
+        "    Firmwarepaket zu deinem Gerät passen. Die bisher erfolgreich "
+        "    getesteten Updatewege sind keine Garantie für andere "
+        "    Geräte-/Firmwarekombinationen. Ein Firmwareupdate erfolgt "
+        "    **auf eigenes Risiko**.\n\n"
+        "    **Wärmepumpe und LTE-Modem während des laufenden Updates nicht "
+        "    stromlos machen.** Auch **100 % Datenübertragung** ist noch kein "
+        "    erfolgreicher Abschluss – maßgeblich ist die ausdrückliche "
+        "    Erfolgsmeldung des Updaters.\n\n"
         "Linux und Raspberry Pi ermöglichen Firmwareupdates auch ohne "
         "Windows-PC. Die folgenden Angaben werden automatisch aus der "
         "Originalanleitung des FoxAir Updaters übernommen.\n\n"
@@ -188,6 +198,21 @@ def main() -> None:
         markdown = source.read_text(encoding="utf-8")
         if destination.name == "firmwareupdate-linux.md":
             markdown = extract_linux_guide(markdown)
+        elif destination.name == "lte-modem-backup.md":
+            # Allgemeine Updater-Anleitung wird nur noch als Linux-Teil importiert.
+            # Deshalb direkt auf die beiden entsprechenden FAQ-Seiten verweisen.
+            old_link = (
+                "- [`PHNIX_UPDATER_ENDANWENDER.md`]"
+                "(PHNIX_UPDATER_ENDANWENDER.md)"
+            )
+            if markdown.count(old_link) != 1:
+                raise ValueError("Allgemeiner Updater-Link im LTE-Backup fehlt")
+            markdown = markdown.replace(
+                old_link,
+                "- [Firmwareupdate unter Windows](firmware_update_windows.md)\n"
+                "- [Firmwareupdate unter Linux / Raspberry Pi]"
+                "(PHNIX_UPDATER_ENDANWENDER.md)",
+            )
         markdown = rewrite_links(markdown, repo, source_path)
         markdown = material_alerts(markdown)
 

@@ -3,7 +3,7 @@
 Vor einem Mainboard-Firmwareupdate sollten die aktuellen Einstellungen gesichert werden.
 Das ist besonders sinnvoll, wenn viele Parameter bereits an die eigene Anlage angepasst wurden.
 
-Normalerweise geht aber nichts verloren. Mir ist zumindest kein fall bekannt.
+Nach rund **60 durchgeführten Firmwareupdates** ist bislang **kein Fall verlorener Einstellungen** bekannt. Trotzdem sollten die Einstellungen vor jedem Update gesichert und danach kontrolliert werden.
 
 ## Mit FoxAir Control
 

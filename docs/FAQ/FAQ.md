@@ -33,13 +33,18 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Firmware
 
 - [Firmware-Versionen, Changelog und Display-Update](firmware.md)
+- [Firmware-Übersicht (ausführlich)](../firmware_overview.md)
+- [LTE-Modem verbinden und sichern](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/firmware_backup_lte.md)
+- [Firmwareupdate unter Windows](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/firmware_update_windows.md)
+- [Firmwareupdate unter Linux / Raspberry Pi](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/PHNIX_UPDATER_ENDANWENDER.md#linux--raspberry-pi)
+- [Einstellungen vor einem Firmwareupdate sichern](einstellungen_sichern.md)
 
 ## Steuerung
 
 - [WarmLink-App, LTE-Modem und SIM-Karte](warmlink_lte.md)
 - [Modbus-Anschluss am Klemmfeld](modbus.md)
 - [SG Ready und PV-Überschusssteuerung](sg_ready.md)
-- [Solltemperaturen extern korrigieren – RAM-Register 8802–8808](externe_sollwertkorrektur.md)
+- [Solltemperaturen extern korrigieren – RAM-Register 8802–8806](externe_sollwertkorrektur.md)
 
 ## Bedienung und Fehlersuche
 
