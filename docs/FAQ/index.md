@@ -4,7 +4,6 @@
   <img src="https://raw.githubusercontent.com/dosordie/FoxAir_Control/main/app_icon.png" alt="FoxyE – FoxAir Control Logo" width="280" style="max-width: 100%; height: auto;">
 </p>
 
----
 
 Willkommen bei der **inoffiziellen FoxAir-/PHNIX-Hilfeseite**. Hier findest du verständliche Anleitungen, Erklärungen und Antworten auf häufige Fragen rund um deine Wärmepumpe.
 
