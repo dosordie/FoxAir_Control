@@ -26,6 +26,10 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
         target = match.group("target")
         path, sep, anchor = target.partition("#")
         resolved = posixpath.normpath(posixpath.join("docs/FAQ", path))
+        # Auf GitHub bleibt der Original-Link; auf Pages führt er zur FAQ-Seite.
+        if resolved == "docs/firmware_overview.md":
+            suffix = "#" + anchor if sep else ""
+            return match.group("prefix") + "firmware-uebersicht.md" + suffix + match.group("suffix")
         if not resolved.startswith("docs/"):
             return match.group(0)
         base = _RAW_BASE if resolved.lower().endswith(_IMAGES) else _GITHUB_BASE

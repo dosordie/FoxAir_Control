@@ -9,3 +9,8 @@ foxair_phnix_settings.json
 foxair_phnix_last_values.json
 foxair_phnix_raw_*.bin
 *.log
+
+# Temporäre Quelldateien und erzeugte Seiten des FAQ-Builds.
+/.external/
+/docs/FAQ/firmware-uebersicht.md
+/docs/FAQ/foxair-updater-anleitung.md

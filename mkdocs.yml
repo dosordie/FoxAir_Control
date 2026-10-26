@@ -80,6 +80,8 @@ nav:
       - Relaisausgänge: relais_ausgaenge.md
   - Firmware und Einrichtung:
       - Firmwareversionen und Update: firmware.md
+      - Firmware-Übersicht (ausführlich): firmware-uebersicht.md
+      - FoxAir Updater – Endanwender-Anleitung: foxair-updater-anleitung.md
       - Einstellungen sichern: einstellungen_sichern.md
       - WarmLink und LTE: warmlink_lte.md
       - Modbus-Anschluss: modbus.md
