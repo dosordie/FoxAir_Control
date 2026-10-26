@@ -115,6 +115,22 @@ Für die Warmwasserpumpe gibt es mit **P05** eine vergleichbare Betriebsart:
 
 Dieser Parameter betrifft die Warmwasserpumpenlogik und ist nicht mit P01 der Hauptumwälzpumpe zu verwechseln.
 
+## H40 – Funktion des externen Pumpenausgangs RO05
+
+Über **H40 (Register 1345)** lässt sich festlegen, wofür der Relaisausgang **RO05 / K5** (*Hot Water Pump*) verwendet wird:
+
+| H40 | Funktion |
+|---:|---|
+| **0** | Warmwasserpumpe |
+| **1** | Warmwasser-Zirkulationspumpe |
+| **2** | Ausschaltsignal beim Abtauen |
+
+Mit **H40 = 2** kann der Ausgang beispielsweise genutzt werden, um eine externe Pumpe beim Abtauen abzuschalten. Die tatsächliche Schaltwirkung hängt von der Verdrahtung ab.
+
+**Nicht verwechseln:** RO05 / K5 ist ein zusätzlicher Pumpenausgang. Die **Hauptumwälzpumpe** hängt an **RO04 / K4**; ihre Regelung über P01, P10 und die Pumpenautomatik wird durch H40 nicht umgestellt. Beim Abtauen muss der notwendige Heizwasserdurchfluss erhalten bleiben.
+
+Die komplette Belegung steht unter [Relaisausgänge RO01–RO15 am Mainboard](relais_ausgaenge.md).
+
 ## P10 – Pumpendrehzahl
 
 **P10** gibt die gewünschte Drehzahl der Hauptumwälzpumpe in Prozent vor.
