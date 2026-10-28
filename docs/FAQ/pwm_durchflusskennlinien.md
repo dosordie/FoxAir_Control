@@ -14,6 +14,4 @@ Die folgenden Formeln sind aus der **Mainboard-Firmware V3.3** rekonstruiert. **
 
 **Grenzen:** Bei H31 = 4 wird bis 5 % Rückmeldung 0 l/h berechnet. Ab 85 % PWM-Rückmeldung wird das Signal in der analysierten Firmware als ungültig behandelt und der Durchfluss auf 0 gesetzt. Die oberen Durchflussgrenzen der Umrechnung sind bei Typ 1 ca. 2.100 l/h, bei Typ 2/3/5 ca. 4.000 l/h und bei Typ 4 ca. 4.500 l/h.
 
-**Beispiel:** Ein Rückgang von 2.110 auf 2.070 l/h sind nur 1,9 %. Das entspricht etwa 0,62 Prozentpunkten Rückmeldung bei H31 = 4 oder 0,70 bei H31 = 5.
-
 **Genauigkeit:** Die Anzeige in Register 2077 hat eine Auflösung von 0,01 m³/h (10 l/h). Die Berechnung ersetzt keine unabhängige Messung; Signal- und Rundungsschwankungen sowie ein möglicher Korrekturwert in Register 1022 können eine Rolle spielen. Kleine Schwankungen beweisen weder einen Defekt noch eine konkrete Messungenauigkeit.
