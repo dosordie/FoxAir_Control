@@ -24,6 +24,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Umwälzpumpe
 
 - [Durchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md)
+- [PWM-Rückmeldung und Durchflusskennlinien](pwm_durchflusskennlinien.md)
 - [Automatische Pumpenregelung](automatische_up_regelung.md)
 - [PWM-Leitung umklemmen](up_umklemmen.md)
 
