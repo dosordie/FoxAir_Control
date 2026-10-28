@@ -35,6 +35,8 @@ Der eingestellte Typ muss zur tatsächlich eingebauten Pumpe passen.
 
 Nicht einfach einen anderen Typ wählen, nur damit irgendein Durchflusswert erscheint.
 
+Die aus der Firmware rekonstruierten Umrechnungen sind im Artikel [PWM-Rückmeldung und Durchflusskennlinien](pwm_durchflusskennlinien.md) beschrieben.
+
 ## P01 – Betriebsmodus der Hauptumwälzpumpe
 
 Parameter **P01** bestimmt vor allem das Verhalten der Hauptumwälzpumpe in Wartephasen, wenn die **Wärmepumpe eingeschaltet** ist, der Verdichter aber z. B. wegen erreichter Solltemperatur gerade nicht läuft.
