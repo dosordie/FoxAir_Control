@@ -13,6 +13,7 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 
 - **[Heizkurve und Heizungsregelung](regelung_heizkurve.md)** – Welche Temperatur soll die Wärmepumpe erreichen?
 - **[Kompressorfrequenz und PID-Regelung](auslauftemperatur_kompressorfrequenz.md)** – Warum dreht der Verdichter hoch oder herunter?
+- **[EEV Auto oder Smart](eev_auto_smart.md)** – Unterschiede und bisherige Erkenntnisse zur Effizienz.
 - **[Wasserdurchfluss und Umwälzpumpe](wasserdurchfluss_pumpe.md)** – Was bedeutet eine geringe oder hohe Spreizung?
 - **[Warmwasserbereitung](warmwasser.md)** – Wie funktioniert die Speicherladung?
 - **[Abtauen und Frostschutz](abtauen_frostschutz.md)** – Warum taut die Wärmepumpe ab?
