@@ -79,6 +79,16 @@ Der Mischervorlauffühler ist **nicht** der normale Wärmepumpen-Vorlauffühler 
 
 Ist AI/DI15 im Geräteschaltplan **nach GND gebrückt**, kann die Firmware den Kurzschluss als ungültigen Sensor interpretieren. **2161 = 0,0 °C** ist auch bei deaktivierter Zone möglich und damit kein Beweis für tatsächlich 0 °C Vorlauf.
 
+## Heizkreispumpen bei Taktpause und Pufferspeicher
+
+Die **Zonenpumpen RO14 und RO15** werden unabhängig von der **Hauptumwälzpumpe RO04** angesteuert. Stoppt der Verdichter, weil die Heiz- oder Puffersolltemperatur erreicht ist, **können die Zonenpumpen weiterlaufen**, solange die jeweilige Zone noch Wärme anfordert. So kann beispielsweise eine Heizkreispumpe weiter warmes Wasser aus einem geladenen Pufferspeicher zu den Heizkörpern fördern.
+
+Dafür muss die passende Zone über **Z01** aktiviert sein und weiterhin eine Wärmeanforderung vom Raumfühler oder Thermostat vorliegen. **Ohne Zonenanforderung schaltet die betreffende Pumpe ab.** Auch Warmwasser-Vorrang sowie Schutz- und Sonderbetriebszustände können den Pumpenbetrieb beeinflussen.
+
+**Besonderheit bei Puffertankregelung (H25 = 2):** Die Firmware berücksichtigt zusätzlich die Puffertemperatur. Ist der Puffer für den Heizkreis zu kalt, kann sie die Zonenpumpe vorübergehend sperren. Die Grenze hängt unter anderem vom **Zonen-Heizwassersollwert** ab – es gibt also keine feste allgemeine Abschalttemperatur für alle Anlagen.
+
+**Hinweis:** Dieses Verhalten wurde in der Mainboard-Firmware **V3.5** nachvollzogen, aber noch nicht für jede Anlagenkonfiguration praktisch getestet.
+
 ## Wichtige Zonenparameter
 
 | Parameter / Modbus | Bedeutung |
@@ -99,6 +109,7 @@ Ist AI/DI15 im Geräteschaltplan **nach GND gebrückt**, kann die Firmware den K
 | Z12 / 1088 | Mischer-I-Anteil |
 | Z13 / 1090 | Mischer-Regelzyklus |
 | 1353 / 1354 | Korrektur der beiden Raumtemperaturen |
+| **H25 / 1035** | Regeltemperatur der Wärmepumpe wählen (2 = Puffertank) |
 | **H30 / 1036** | Typ der optionalen Hydraulikstation |
 
 Die Mischer-Laufzeiten und Reglerparameter müssen zum vorhandenen Antrieb passen. Die grundlegende Wärmepumpen-Regelauswahl **H25** ist davon zu unterscheiden; siehe [Heizungsregelung und Heizkurve](regelung_heizkurve.md).
@@ -115,6 +126,9 @@ Die Mischer-Laufzeiten und Reglerparameter müssen zum vorhandenen Antrieb passe
 | **2165** | Wassersollwert Zone 2 nach AT-Kompensation |
 | **2018 Bit 8** | Pumpe Zone 1 / RO14 |
 | **2018 Bit 9** | Pumpe Zone 2 / RO15 |
+| **2019 Bit 0** | Kompressor läuft / steht |
+| **2019 Bit 4** | Hauptumwälzpumpe / RO04 |
+| **2052 (T07)** | Puffertanktemperatur |
 
 Temperaturen sind im Modbus mit **0,1 °C pro Rohwert** skaliert. Diese **Statusregister sind zum Lesen** gedacht: Das direkte Schreiben einer vorgegebenen Raumtemperatur auf **2160/2162** ist nicht als unterstützter Weg bestätigt.
 
