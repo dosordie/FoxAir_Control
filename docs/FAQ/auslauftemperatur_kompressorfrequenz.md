@@ -90,6 +90,8 @@ Wenn das Haus gerade weniger Wärme benötigt, als die Wärmepumpe bei ihrer nie
 
 Die Mindestfrequenz sollte nicht auf Verdacht abgesenkt werden: Die zulässigen Betriebsgrenzen des Kompressors müssen eingehalten werden.
 
+Warum der Verdichter dabei ganz ausschaltet und wann er wieder einschaltet, erklärt [Heizungshysterese und Takten](heizung_hysterese_takten.md).
+
 ## Warum dreht der Kompressor manchmal nicht schneller hoch?
 
 Auch nach oben ist die Drehzahl begrenzt. **C03** gibt die eingestellte Höchstfrequenz vor.
@@ -99,6 +101,32 @@ Zusätzlich können Schutzfunktionen die Leistung vorübergehend einschränken, 
 Deshalb kann die Vorlauftemperatur deutlich unter dem Soll liegen, obwohl die Wärmepumpe die Frequenz nicht weiter erhöht.
 
 Ein kurzer Anstieg oder Abfall der Frequenz muss ebenfalls kein Fehler sein. Zum Beispiel verändern [Abtauen und Frostschutz](abtauen_frostschutz.md) sowie die [Ölrückführung (Oil Return)](oelrueckfuehrung.md) den normalen Betriebsablauf.
+
+### Welche Schutzfunktion begrenzt die Frequenz? – Register 2139
+
+Die FoxAir kann die angeforderte Kompressorfrequenz bei bestimmten Betriebsbedingungen **halten oder reduzieren**, auch wenn das Heizwasser noch zu kalt ist.
+
+Die untersuchte **Mainboard-Firmware V3.5** stellt dafür in **Modbus-Register 2139** mehrere Schutz- und Begrenzungszustände bereit. Jeder Zustand belegt ein eigenes Bit:
+
+| Bit | Was bedeutet ein gesetztes Bit? |
+| ---: | --- |
+| **0 / 2** | Temperaturabhängige Schutz-/Regelzustände rund um T02; genaue Herstellerbezeichnung noch offen |
+| **1** | Zu hohe Temperaturdifferenz zwischen Wassereinlass und -auslass (A24) |
+| **3** | Temperaturdifferenzabhängige Frequenzbegrenzung (A27) |
+| **4** | Niederdruckbegrenzung (A38) |
+| **5** | Begrenzung wegen elektrischem Eingangsstrom (T35) |
+| **6** | Begrenzung wegen hoher Heißgas-/Verdichter-Austrittstemperatur (T12) |
+| **8** | SG-/Zusatzheizungs-bezogener Frequenzgrenzzustand |
+| **9** | Remote-/WarmLink-Mode-4-Frequenzregelzustand |
+| **10** | Dreiphasiger Strom-Soft-Limiter |
+
+**Wichtig:** Register 2139 ist **kein Fehlercode**. Ein gesetztes Bit zeigt einen internen Schutz- oder Regelzustand an. Es beweist **nicht bei jedem Bit**, dass die tatsächliche Verdichterfrequenz im selben Moment bereits begrenzt wird. Ein Wert von 0 schließt außerdem andere Betriebs- und Invertergrenzen nicht aus.
+
+Drei dieser Schutzpfade sind zusätzlich mit der Umwälzpumpe gekoppelt: Bei aktivem **Bit 1 (Wasserspreizung), Bit 4 (Niederdruck) oder Bit 6 (Heißgastemperatur)** kann die Firmware die Pumpenvorgabe auf **100 %** setzen und die Freigabe der automatischen Pumpenabsenkung zurücksetzen. Nicht jeder andere Schutzstatus hat dieselbe Pumpenwirkung.
+
+**Zur Fehlersuche:** Während der Auffälligkeit am besten **2139, Kompressor-Sollfrequenz (2071), Istfrequenz (2072), Vor-/Rücklauftemperatur und Pumpensollwert (2115)** gemeinsam beobachten. Je nach gesetztem Bit sind anschließend Niederdruck, Heißgastemperatur oder Stromwerte relevant. FoxAir Control bietet dafür eine aufgeschlüsselte Statusanzeige.
+
+**Schutzgrenzen nicht einfach hochsetzen oder deaktivieren**, nur um eine höhere Kompressorfrequenz zu erreichen. Das kann den Verdichter gefährden.
 
 ## Warum verhält sich die Frequenz beim Warmwasser anders?
 
