@@ -71,7 +71,9 @@ nav:
   - Modbus Register Browser: register-browser.md
   - Betrieb und Regelung:
       - Heizungsregelung und Heizkurve: regelung_heizkurve.md
+      - Heizungshysterese und Takten: heizung_hysterese_takten.md
       - Auslauftemperatur und Kompressorfrequenz: auslauftemperatur_kompressorfrequenz.md
+      - Lüfterregelung: luefterregelung.md
       - EEV Auto oder Smart: eev_auto_smart.md
       - Zonenregelung: zonenregelung.md
       - Warmwasser: warmwasser.md
