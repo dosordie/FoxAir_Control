@@ -15,7 +15,9 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Betrieb und Regelung
 
 - [Heizungsregelung und Heizkurve](regelung_heizkurve.md)
+- [Heizungshysterese und Takten](heizung_hysterese_takten.md)
 - [Auslauftemperatur und Kompressorfrequenz](auslauftemperatur_kompressorfrequenz.md)
+- [Lüfterregelung](luefterregelung.md)
 - [EEV Auto oder Smart – welcher Modus ist effizienter?](eev_auto_smart.md)
 - [Zonenregelung](zonenregelung.md)
 - [Warmwasser](warmwasser.md)
