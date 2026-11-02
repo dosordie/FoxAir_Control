@@ -12,7 +12,9 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 ## Häufig gesuchte Themen
 
 - **[Heizkurve und Heizungsregelung](regelung_heizkurve.md)** – Welche Temperatur soll die Wärmepumpe erreichen?
+- **[Hysterese und Takten](heizung_hysterese_takten.md)** – Warum schaltet der Verdichter ein und aus?
 - **[Kompressorfrequenz und PID-Regelung](auslauftemperatur_kompressorfrequenz.md)** – Warum dreht der Verdichter hoch oder herunter?
+- **[Lüfterregelung](luefterregelung.md)** – Warum ändert der Außenventilator seine Drehzahl?
 - **[EEV Auto oder Smart](eev_auto_smart.md)** – Unterschiede und bisherige Erkenntnisse zur Effizienz.
 - **[Wasserdurchfluss und Umwälzpumpe](wasserdurchfluss_pumpe.md)** – Was bedeutet eine geringe oder hohe Spreizung?
 - **[Warmwasserbereitung](warmwasser.md)** – Wie funktioniert die Speicherladung?
