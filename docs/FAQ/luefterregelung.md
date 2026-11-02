@@ -15,6 +15,55 @@ Aus der untersuchten Mainboard-Firmware kennen wir mehrere Einflussgrößen:
 
 Die Steuerung verwendet dafür Kennlinien mit Temperatur-Stützpunkten. Zwischen diesen Punkten berechnet sie die Lüftervorgabe. **Es gibt also keine allgemeine Regel „je kälter draußen, desto höher die Lüfterdrehzahl“.**
 
+## Silent-Modus – wie wird die FoxAir leiser?
+
+Der **Silent-Modus** soll die Geräusche der Wärmepumpe verringern, etwa nachts. Die untersuchte **Mainboard-Firmware V3.5** begrenzt dazu im normalen Lüfterregler die angeforderte Lüfterdrehzahl. Die Grenze hängt von Betriebsart und **lokaler Außentemperatur T04** ab.
+
+### Wie stark wird die Lüfterdrehzahl begrenzt?
+
+| Betriebsart | Außentemperatur T04 | Berechnete Silent-Obergrenze |
+| --- | --- | --- |
+| **Heizen** | unter −14 °C | **80 % von F26** |
+| Heizen | −14 bis unter 22 °C | **60 % von F26** |
+| Heizen | ab 22 °C | **F19** (Minimum Heizen) |
+| **Kühlen** | unter 30 °C | **F18** (Minimum Kühlen) |
+| Kühlen | 30 bis unter 46 °C | **60 % von F25** |
+| Kühlen | ab 46 °C | **80 % von F25** |
+
+**F26 (Register 1104)** ist die obere Lüftervorgabe für das Heizen, **F25 (1103)** für das Kühlen. **F19 (1083)** und **F18 (1081)** sind die jeweiligen Mindestvorgaben. Bei einem erkannten Fehler des lokalen Außentemperaturfühlers verwendet die Firmware in den untersuchten Zweigen ersatzweise **80 % von F25 bzw. F26**.
+
+**Wichtig:** Das sind **Höchstwerte für bestimmte normale Regelzweige**, keine festen Lüfterdrehzahlen. Ist die normale Lüfteranforderung bereits niedriger, bleibt es bei diesem niedrigeren Wert. Andere Betriebs-/Schutzpfade können die Silent-Vorgabe übersteuern. **„Silent = immer 60 %“ ist daher falsch.**
+
+### Wie schalte ich Silent ein?
+
+| Parameter | Bedeutung |
+| --- | --- |
+| **H22 / 1030** | Grundfreigabe für die Silent-Funktion (0 = gesperrt, 1 = erlaubt) |
+| **1016, Bit 1** | Manuelle Silent-Anforderung |
+| **2108** | Tatsächlich gebildeter Silent-/Fan-Mute-Status |
+| **1244–1246** | Silent-Timer: Start aktivieren, Stunde, Minute |
+| **1247–1249** | Silent-Timer: Ende aktivieren, Stunde, Minute |
+
+**H22 = 1 allein schaltet Silent nicht sofort ein.** Zusätzlich muss eine manuelle, zeitgesteuerte oder andere interne Silent-Anforderung vorliegen. Bei **H22 = 0** bleibt der Status 2108 dagegen aus.
+
+Die **manuelle Silent-Anforderung über 1016 Bit 1** wird nach **ungefähr acht Stunden** von der V3.5 automatisch zurückgenommen. Die separat geschaltete Silent-Timer-Anforderung wird dadurch nicht gelöscht. Bei direktem Schreiben auf Register 1016 unbedingt die anderen Steuerbits unverändert lassen.
+
+Der **Silent-Timer** reagiert auf die eingestellten Start- und Endminuten: Bei Erreichen der Startzeit wird seine Silent-Anforderung gesetzt, beim Erreichen der Endzeit gelöscht. Es handelt sich nicht um eine ständig neu berechnete Zeitspanne. Deshalb beide Zeiten sauber einstellen und nach einem Neustart prüfen, ob Silent tatsächlich aktiv ist. Sind beide Uhrzeiten identisch, wird die Schaltlogik dieses Durchlaufs übersprungen.
+
+Die Silent-Zeiten lassen sich auch in **FoxAir Control** bearbeiten: [Funktionen und Bedienung](foxair_control_funktionen.md).
+
+### Hat Silent auch Einfluss auf die Kompressorfrequenz?
+
+**Ja.** In V3.5 wurde ein echter Datenweg von der Silent-Anforderung über **temperaturabhängige Frequenzstufen** bis zur Kompressor-Sollfrequenz und ihrem Modbus-Sendewert nachgewiesen. Dabei spielen Betriebsbedingungen und teilweise auch die adaptive Regelung eine Rolle.
+
+Eine feste Obergrenze wie **„Silent = maximal 50 Hz“** ist **nicht belegt**. Der Kompressor wird weiterhin durch die normalen Mindest-/Höchstfrequenzen, Temperaturregelung und Schutzfunktionen beeinflusst. Mehr dazu: [Auslauftemperatur und Kompressorfrequenz](auslauftemperatur_kompressorfrequenz.md).
+
+### Warum kann der Lüfter trotzdem schneller drehen?
+
+Die Silent-Begrenzung gilt **nicht uneingeschränkt für jeden Zustand**. In der untersuchten V3.5 können nachgelagerte Schutz- und Betriebsroutinen andere Lüftervorgaben schreiben. Insbesondere für einen **Abtau-Übergangszustand im kombinierten Warmwasser-/Raumbetrieb** ist das nachgewiesen. Auch ein ausgeschalteter Lüfter ist nicht automatisch ein Silent-Fehler.
+
+Zum Prüfen eignen sich **2108** (Silent-Status), **2076** (Lüfter-Sollwert), **2074/2075** (Lüfter-Rückmeldungen) und **2071/2072** (Kompressor-Soll-/Istfrequenz). Vorher/Nachher-Werte nur bei möglichst gleichem Betriebszustand und ähnlichen Temperaturen vergleichen.
+
 ## Warum bleibt der Lüfter manchmal stehen?
 
 Ein stehender Lüfter kann zum Beispiel während des **Abtauens** normal sein. Die Abtausteuerung darf die normale Lüftervorgabe überschreiben und die Ventilatoren zeitweise auf null setzen.
@@ -68,4 +117,4 @@ Bei ungewöhnlichen Geräuschen zusätzlich den Luftweg und mögliche Vereisung 
 
 ## Für welche Firmware gilt das?
 
-Die Lüfterkennlinien und der Soll-/Ist-Datenfluss wurden vor allem in der **Mainboard-Firmware V3.3 / 82400644** rekonstruiert. Der zentrale Lüfter-Regelblock ist in **V3.4 und V3.5** weiterhin vorhanden und im untersuchten Kern unverändert. Einzelheiten können je nach Lüftermotor, Leistungsmodul und Gerätevariante abweichen.
+Die Grundregelung und der Soll-/Ist-Datenfluss wurden in der **Mainboard-Firmware V3.3 / 82400644** rekonstruiert und für V3.4/V3.5 weiter untersucht. **Die konkreten Silent-Kennlinien, der Acht-Stunden-Timeout und der Kompressor-Stufenpfad sind anhand V3.5 belegt**; bei anderen Firmwareständen oder Hardwarevarianten kann das Verhalten abweichen.
