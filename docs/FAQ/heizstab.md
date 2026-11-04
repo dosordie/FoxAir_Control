@@ -116,7 +116,7 @@ Für **A31 und R45** zählt die Außentemperatur des **externen Fühlers**, wenn
 | **A32 / 1050** | Zeitabstand zwischen den Stufen in Minuten |
 | **A33 / 1063** | Erforderliche Temperaturabweichung zur Zuschaltung (Temperatur-Rohwert in Zehntelgrad) |
 | **H17 / 1031** | Temperaturdifferenz zur Abschaltung |
-| **R45 / 1231** | Außentemperaturgrenze für den unmittelbaren Kältepfad |
+| **R45 / 1231** | Außentemperaturgrenze für die Heizstabzuschaltung ohne Wartezeit |
 | **D21 / 1126** | Separate Freigabe der elektrischen Zusatzheizung beim Abtauen |
 | **1463** | Auswahl lokaler oder externer Außentemperatur |
 | **2019 Bit 7 / 8** | Ausgang RO07 / RO08, jeweils 0 = aus, 1 = ein |
