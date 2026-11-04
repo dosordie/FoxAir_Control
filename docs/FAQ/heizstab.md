@@ -93,8 +93,8 @@ Für die normale Zuschaltung sind insbesondere diese Zusammenhänge relevant:
 
 - **A31** legt eine Außentemperaturgrenze fest.
 - **A33** legt fest, wie groß die relevante Temperaturabweichung für die Zusatzheizungsanforderung sein muss.
-- **A35** legt eine Temperaturdifferenz für das Abschalten beziehungsweise die Rücknahme der elektrischen Zusatzheizung fest.
-- Die ausgewertete Wasser- oder Regeltemperatur kann sich je nach Anlagen- und Betriebsart unterscheiden; die allgemeine Wahl der Regeltemperatur erfolgt über **H25**.
+- **A35** bestimmt, wie weit die Abschaltschwelle unter der berechneten Referenztemperatur liegt. Im normalen Regelablauf wird die Zusatzheizung zurückgenommen, sobald die maßgebliche Isttemperatur diese Schwelle erreicht. Welche Temperatur dafür verwendet wird, hängt unter anderem von **H25** und der Anlagenkonfiguration ab.
+- **H25** bestimmt die Art der verwendeten Regeltemperatur, etwa Auslauf-, Raum-, Puffer- oder Rücklauftemperatur. Die tatsächliche Auswahl kann zusätzlich von Betriebsart und Hydraulik abhängen.
 
 Die Steuerung prüft den Heizbedarf auch nach dem Zuschalten weiter. Nur weil A32 abgelaufen ist, muss sie daher nicht automatisch bis zur dritten Stufe hochschalten.
 
@@ -115,7 +115,7 @@ Für **A31 und R45** zählt die Außentemperatur des **externen Fühlers**, wenn
 | **A31 / 1049** | Außentemperaturgrenze für die normale Zuschaltung |
 | **A32 / 1050** | Zeitabstand zwischen den Stufen in Minuten |
 | **A33 / 1063** | Erforderliche Temperaturabweichung zur Zuschaltung (Temperatur-Rohwert in Zehntelgrad) |
-| **A35 / 1031** | Temperaturdifferenz zur Abschaltung der elektrischen Zusatzheizung („Electric Heater Off Temp. Diff“) |
+| **A35 / 1031** | Abschaltdifferenz: Die Zusatzheizung wird im normalen Regelablauf zurückgenommen, sobald die maßgebliche Temperatur die berechnete Referenztemperatur minus A35 erreicht. |
 | **R45 / 1231** | Außentemperaturgrenze für die Heizstabzuschaltung ohne Wartezeit |
 | **D21 / 1126** | Freigabe einer zusätzlichen elektrischen Heizanforderung während des Abtauens |
 | **D24 / 1129** | Auswahl des Wasserkreises in bestimmten Abtauzuständen; keine direkte Heizstabfreigabe |
@@ -126,7 +126,7 @@ Die genannten Registerwerte sind **nicht automatisch sinnvolle Einstellwerte**. 
 
 ### Abtauung, Warmwasser und Schutzfunktionen
 
-**D21** erlaubt der FoxAir, beim Abtauen eine **zusätzliche elektrische Heizanforderung** auszulösen. Diese Funktion ist in der Firmware V3.5 vorhanden. Sie wird aber nur genutzt, wenn auch die übrigen Betriebs- und Sicherheitsbedingungen erfüllt sind. **Welche der elektrischen Ausgänge dadurch tatsächlich eingeschaltet werden, ist noch nicht eindeutig zugeordnet.** D21 garantiert deshalb nicht, dass bei jedem Abtauvorgang ein Heizstab läuft.
+**D21** erlaubt der FoxAir, beim Abtauen eine **zusätzliche elektrische Heizanforderung** auszulösen. Die Firmware V3.5 verarbeitet diese Anforderung über denselben internen Schaltweg wie **Heizstufe 1** (in der bekannten Ausgangsbelegung **RO07**). Allerdings müssen weitere Betriebs- und Sicherheitsbedingungen erfüllt sein. Die tatsächliche Schaltung des Relaiskontakts ist damit für jede Hardwareausführung noch nicht abschließend bestätigt. **D21 garantiert deshalb nicht, dass bei jedem Abtauvorgang ein Heizstab läuft.**
 
 **D24** beeinflusst, **welcher Wasserkreis in bestimmten Abtauzuständen genutzt wird**. Die Firmware V3.5 berücksichtigt dabei ausdrücklich auch die Einstellung **D24 = 2**. D24 schaltet aber **keinen Heizstab direkt frei** und ist nicht mit D21 zu verwechseln.
 
