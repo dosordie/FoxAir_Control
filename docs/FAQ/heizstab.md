@@ -1,6 +1,6 @@
 # Elektrischer Heizstab – Zuschaltung und Heizstufen
 
-Die FoxAir-/PHNIX-Wärmepumpe kann eine **externe elektrische Zusatzheizung** ansteuern. Ein Heizstab ist bei der üblichen FoxAir GL9 **nicht fest eingebaut**; die Steuerung stellt dafür Ausgänge bereit.
+Die **FoxAir GL9 hat keinen eingebauten Heizstab**. Die Steuerung kann aber eine **extern installierte elektrische Zusatzheizung** ansteuern.
 
 ## Kurz erklärt
 
@@ -8,7 +8,7 @@ Die FoxAir-/PHNIX-Wärmepumpe kann eine **externe elektrische Zusatzheizung** an
 
 Bei großer Kälte oder wenn die Wärmepumpe die gewünschte Temperatur über längere Zeit nicht erreicht, kann ein angeschlossener Heizstab zusätzliche Wärme liefern. Auch für bestimmte Sonderbetriebsarten, beispielsweise das Abtauen, gibt es eine eigene Freigabe.
 
-Die elektrische Zusatzheizung arbeitet mit einem **COP von ungefähr 1**. Deshalb sollte sie nur dann mitlaufen, wenn die zusätzliche Leistung wirklich benötigt wird.
+Die elektrische Zusatzheizung arbeitet mit einem **COP von 1**. Deshalb sollte sie nur dann mitlaufen, wenn die zusätzliche Leistung wirklich benötigt wird.
 
 ### Zwei Anschlüsse, drei Heizstufen
 
@@ -26,7 +26,7 @@ Die Leistungen sind **Beispiele**, keine Vorgabe der FoxAir. Die Steuerung schal
 
 ### Schaltet die FoxAir automatisch hoch?
 
-**Ja.** In der untersuchten Firmware V3.5 gibt es neben einem unmittelbaren Zuschaltpfad auch eine **zeitabhängige Staffelung**:
+**Ja.** In der Firmware V3.5 gibt es sowohl eine **zeitabhängige Staffelung** als auch die Möglichkeit, bei besonders niedriger Außentemperatur die Zusatzheizung ohne diese Wartezeit zuzuschalten:
 
 1. Zuerst kann **Stufe 1** eingeschaltet werden.
 2. Bleibt der zusätzliche Wärmebedarf bestehen, kann die Steuerung auf **Stufe 2** wechseln. Stufe 1 wird dabei abgeschaltet.
@@ -38,17 +38,19 @@ Die im Menü ausgewählte Heizstufe begrenzt, **wie weit die Steuerung hochschal
 
 Entscheidend sind unter anderem **Heizbedarf, Soll-/Isttemperatur, Außentemperatur und die eingestellte Wartezeit**. „Nach 30 Minuten“ ist keine allgemeine Werkseinstellung: Die Wartezeit ist einstellbar.
 
-Bei sehr niedrigen Außentemperaturen kann ein **separater Kältepfad** die normale Verzögerung umgehen. Andere Betriebszustände, Störungen oder Schutzfunktionen können die Zuschaltung verhindern oder beenden.
+Bei sehr niedrigen Außentemperaturen kann die Steuerung die Zusatzheizung auch **ohne die normale Wartezeit** einschalten. Andere Betriebszustände, Störungen oder Schutzfunktionen können die Zuschaltung verhindern oder beenden.
+
+**Welcher Außentemperaturfühler zählt?** Normalerweise verwendet die FoxAir den eingebauten Außentemperaturfühler **T04**. Ist ein externer Außentemperaturfühler aktiviert und liefert er einen gültigen Wert, verwendet die Heizstabregelung dessen Temperatur.
 
 ### Worauf muss ich beim Anschluss achten?
 
-Die Heizstäbe werden **nicht allein durch die Menüeinstellung anschlussfertig**. Die Ausgänge sind Steuersignale; erforderliche Leistungsschütze, passende elektrische Absicherung, Übertemperaturschutz und die zulässigen Anschlusswerte müssen zur Anlage passen. Die konkrete Mainboard- und Klemmfeldbelegung ist vor der Verdrahtung zu prüfen.
+**Ein Heizstab darf nicht direkt an RO07 oder RO08 angeschlossen werden.** Zwischen den Steuerausgängen des Mainboards und dem Heizstab muss jeweils ein **für die Heizstableistung geeignetes Relais oder Schütz** geschaltet werden. Außerdem sind eine passende Absicherung und ein unabhängiger Übertemperaturschutz erforderlich. Die konkrete Anschlussbelegung muss vor der Verdrahtung geprüft werden.
 
 ---
 
 ## Technischer Teil: Regelung und Zusammenhänge (Firmware V3.5)
 
-Die folgenden Angaben beziehen sich auf die untersuchte **Mainboard-Firmware V3.5 der Softwarefamilie 82400644**. Die Schaltfolge und wesentliche Zeit-/Temperaturpfade wurden im disassemblierten Firmwarecode nachvollzogen. Wo eine Hardware- oder Schutzpriorität nicht vollständig geschlossen ist, wird das ausdrücklich gekennzeichnet.
+Die folgenden Einstellungen und Zusammenhänge beschreiben die **Heizstabregelung der Firmware V3.5**.
 
 ### Heizstufenauswahl H18 und die Ausgänge
 
@@ -67,13 +69,13 @@ Die normale Zusatzheizung verwendet zwei logische Ausgänge:
 | **2** | bis Stufe 2 | RO08 |
 | **3** | bis Stufe 3 | RO07 und RO08 |
 
-Dieser Unterschied ist wichtig: Der Firmwarecode enthält einen Zweig, der **direkt** die zu H18 passende Ausgangskombination setzt, und einen anderen, der die Stufen **nacheinander** erreicht. Die frühere Annahme „H18 wählt immer ausschließlich eine feste Relaiskombination“ ist damit widerlegt.
+**Wichtig:** Bei normalem Heizbedarf schaltet die FoxAir die Stufen nacheinander hoch. Bei sehr niedriger Außentemperatur kann sie dagegen **direkt die mit H18 gewählte maximale Stufe** einschalten. H18 ist also keine Einstellung, die in jedem Fall nur einen bestimmten Heizstab dauerhaft auswählt.
 
 ### Wie funktioniert die zeitliche Staffelung?
 
 **A32 / Modbus 1050** bestimmt den Zeitabstand in Minuten. Die Firmware begrenzt den intern verwendeten Wert auf **mindestens 10 Minuten**.
 
-Bei weiterhin erfüllter Heizanforderung sind im normalen Zuschaltpfad drei Zeitgrenzen nachweisbar:
+Besteht weiterhin Heizbedarf, gelten im normalen Betrieb diese drei Zeitgrenzen:
 
 | Erreichte Zeit | Bedingung | Ausgangszustand |
 | --- | --- | --- |
@@ -83,9 +85,7 @@ Bei weiterhin erfüllter Heizanforderung sind im normalen Zuschaltpfad drei Zeit
 
 Beispiel **A32 = 30 Minuten**: 30 / 60 / 90 Minuten. Bei **A32 = 60 Minuten**: 60 / 120 / 180 Minuten.
 
-Die Firmware zählt hierfür zunächst einen kürzeren Zeitabschnitt bis **120 Zyklen** und erhöht anschließend den Minutenzähler. Die bekannte zyklische Zeitbasis dieser Firmware beträgt rund **0,5 Sekunden pro Aufruf**, sodass 120 Zyklen ungefähr einer Minute entsprechen.
-
-**Keine feste Einschaltgarantie:** Der Zeitfortschritt ist an Freigabebedingungen gebunden. Wird das Temperaturziel erreicht oder ein Sperrzustand aktiv, ist das nicht mit einer ununterbrochen laufenden Stoppuhr gleichzusetzen.
+**Wichtig:** Die Wartezeit zählt nur, solange die Voraussetzungen für die Zuschaltung erfüllt sind. Wird das Temperaturziel erreicht oder die Zusatzheizung gesperrt, kann die Staffelung unterbrochen werden.
 
 ### Temperaturbedingungen und früheres Abschalten
 
@@ -96,15 +96,15 @@ Für die normale Zuschaltung sind insbesondere diese Zusammenhänge relevant:
 - **H17** beschreibt eine Temperaturdifferenz für das Abschalten beziehungsweise die Rücknahme der elektrischen Zusatzheizung.
 - Die ausgewertete Wasser- oder Regeltemperatur kann sich je nach Anlagen- und Betriebsart unterscheiden; die allgemeine Wahl der Regeltemperatur erfolgt über **H25**.
 
-Die Firmware hat ausdrücklich getrennte **Einschalt-, Halte- und Rücknahmezweige**. Deshalb darf man aus A32 allein nicht schließen, dass ein Heizstab unabhängig von der tatsächlichen Temperatur bis zur dritten Stufe hochschaltet.
+Die Steuerung prüft den Heizbedarf auch nach dem Zuschalten weiter. Nur weil A32 abgelaufen ist, muss sie daher nicht automatisch bis zur dritten Stufe hochschalten.
 
 ### Sonderfall: sehr niedrige Außentemperatur (R45)
 
-**R45 / Modbus 1231** ist ein zusätzlicher Kälte-Grenzwert. Für diesen Pfad gibt es eine **unmittelbare Ausgangswahl nach H18**, ohne zuvor sämtliche Stufenwartezeiten zu durchlaufen.
+**R45 / Modbus 1231** ist ein zusätzlicher Außentemperatur-Grenzwert. Wird er unterschritten und sind die übrigen Voraussetzungen erfüllt, kann die FoxAir **direkt die über H18 festgelegte Stufe einschalten**, ohne die normalen Wartezeiten abzuwarten.
 
-Die R45-Freigabe besitzt eine Rückschalthysterese von etwa **2 K**. Das ist eine eigene Logik und nicht mit der normalen A31-/A32-/A33-Zuschaltung zu verwechseln.
+Für die Rückschaltung gibt es eine Hysterese von etwa **2 °C**. Das verhindert, dass der Heizstab bei kleinen Temperaturschwankungen ständig ein- und ausgeschaltet wird.
 
-Für **A31 und R45** wird die **wirksame Außentemperatur** verwendet: Bei aktiviertem und gültigem externem Außentemperaturfühler (**Modbus 1463**) kann dessen Messwert maßgeblich sein; andernfalls wird auf den lokalen Sensor zurückgegriffen. Andere Wärmepumpenfunktionen, etwa Teile der Abtauregelung, nutzen dagegen weiterhin den lokalen T04.
+Für **A31 und R45** zählt die Außentemperatur des **externen Fühlers**, wenn dieser über **Modbus 1463** aktiviert ist und gültige Werte liefert. Andernfalls wird der eingebaute Fühler **T04** verwendet. Für andere Funktionen, beispielsweise Teile der Abtauregelung, kann unabhängig davon weiterhin T04 maßgeblich sein.
 
 ### Wichtige Einstellungen und Statuswerte
 
@@ -125,7 +125,7 @@ Die genannten Registerwerte sind **nicht automatisch sinnvolle Einstellwerte**. 
 
 ### Abtauung, Warmwasser und Schutzfunktionen
 
-Die V3.5 besitzt weitere Bedingungen für Betriebsart, Verdichterzustand, Abtauung und Sicherheitsstatus. Insbesondere sind vor einer Zuschaltung mehrere Status- und Sperrprüfungen zu erkennen. Die **vollständige Prioritätsreihenfolge aller Schutz- und Abtaustufen bis zu den physischen Ausgängen** ist aus den bisher rückverfolgten Pfaden noch **nicht abschließend bewiesen**; daher lässt sich eine Heizstabeinschaltung beim Abtauen nicht allein aus D21 garantieren.
+Auch beim Abtauen und in anderen Betriebszuständen berücksichtigt die **Firmware V3.5** weitere Freigaben und Schutzbedingungen. Daher bedeutet eine aktivierte **D21** nicht, dass der Heizstab bei jedem Abtauvorgang tatsächlich eingeschaltet wird.
 
 Ein **separater Ausgang RO13** ist für den **Elektroheizer des Warmwasserspeichers** vorgesehen. Er ist von den beiden normalen Zusatzheizstufen zu unterscheiden:
 
@@ -140,12 +140,6 @@ Am einfachsten die betreffenden Einstellungen, den Betriebszustand, die Soll-/Is
 
 Wenn die Ausgangsbits schalten, der Heizstab aber kalt bleibt, sollte die externe Leistungsversorgung beziehungsweise Schütz- und Sicherheitskette geprüft werden. Bleiben die Bits aus, können fehlender Heizbedarf, ungeeignete Einstellungen oder aktive Sperren die Ursache sein.
 
-### Stand der Firmwareanalyse
-
-**Direkt im V3.5-Code belegt:** H18 wird in zwei unterschiedlichen Schaltpfaden verwendet; die Ausgangskombinationen der drei Stufen, die gestaffelten Schwellen bei 1×/2×/3×A32, die Mindest-Zeitbasis von 10 Minuten, der Minutenzähler sowie der R45-Kältepfad mit etwa 2 K Hysterese.
-
-**Nicht vollständig geschlossen:** die fachliche Benennung jedes internen Schutz- und Sonderstatus, die Priorität sämtlicher Abtau-/Störfallpfade und die elektrische Verdrahtung jedes Geräte-Klemmfelds. Solche Aussagen wären ohne zusätzlichen Code-/Hardwareabgleich nicht belastbar.
-
 Weitere Informationen: [Relaisausgänge](relais_ausgaenge.md), [Heizungsregelung und Heizkurve](regelung_heizkurve.md) und [Abtauen und Frostschutz](abtauen_frostschutz.md).
 
-> **Sicherheit:** Externe elektrische Heizstäbe nur mit passenden Schaltgeräten, Absicherung und unabhängigen Übertemperatur-Sicherheitseinrichtungen betreiben. Das Mainboardrelais nicht ungeprüft als direkten Lastanschluss verwenden.
+> **Sicherheit:** Heizstäbe **niemals direkt an RO07/RO08 anschließen**, sondern über ein geeignetes Leistungsrelais oder Schütz schalten. Absicherung und unabhängiger Übertemperaturschutz müssen zur Anlage passen.
