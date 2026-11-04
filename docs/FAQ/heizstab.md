@@ -6,7 +6,7 @@ Die **FoxAir GL9 hat keinen eingebauten Heizstab**. Die Steuerung kann aber eine
 
 ### Wofür ist die Zusatzheizung gedacht?
 
-Bei großer Kälte oder wenn die Wärmepumpe die gewünschte Temperatur über längere Zeit nicht erreicht, kann ein angeschlossener Heizstab zusätzliche Wärme liefern. Auch für bestimmte Sonderbetriebsarten, beispielsweise das Abtauen, gibt es eine eigene Freigabe.
+Bei großer Kälte oder wenn die Wärmepumpe die gewünschte Temperatur über längere Zeit nicht erreicht, kann ein angeschlossener Heizstab zusätzliche Wärme liefern. Auch während des Abtauens kann die Steuerung bei entsprechender Freigabe und erfüllten Schutzbedingungen zusätzliche elektrische Heizleistung anfordern.
 
 Die elektrische Zusatzheizung arbeitet mit einem **COP von 1**. Deshalb sollte sie nur dann mitlaufen, wenn die zusätzliche Leistung wirklich benötigt wird.
 
@@ -85,7 +85,7 @@ Besteht weiterhin Heizbedarf, gelten im normalen Betrieb diese drei Zeitgrenzen:
 
 Beispiel **A32 = 30 Minuten**: 30 / 60 / 90 Minuten. Bei **A32 = 60 Minuten**: 60 / 120 / 180 Minuten.
 
-**Wichtig:** Die Wartezeit zählt nur, solange die Voraussetzungen für die Zuschaltung erfüllt sind. Wird das Temperaturziel erreicht oder die Zusatzheizung gesperrt, kann die Staffelung unterbrochen werden.
+**Wichtig:** Die Wartezeit gilt nur, solange die Voraussetzungen für die Zuschaltung erfüllt sind. Betriebs- und Schutzbedingungen können die Zuschaltung verhindern oder die bereits erreichte Stufe wieder abschalten und die Wartezeit zurücksetzen.
 
 ### Temperaturbedingungen und früheres Abschalten
 
@@ -93,7 +93,7 @@ Für die normale Zuschaltung sind insbesondere diese Zusammenhänge relevant:
 
 - **A31** legt eine Außentemperaturgrenze fest.
 - **A33** legt fest, wie groß die relevante Temperaturabweichung für die Zusatzheizungsanforderung sein muss.
-- **H17** beschreibt eine Temperaturdifferenz für das Abschalten beziehungsweise die Rücknahme der elektrischen Zusatzheizung.
+- **A35** legt eine Temperaturdifferenz für das Abschalten beziehungsweise die Rücknahme der elektrischen Zusatzheizung fest.
 - Die ausgewertete Wasser- oder Regeltemperatur kann sich je nach Anlagen- und Betriebsart unterscheiden; die allgemeine Wahl der Regeltemperatur erfolgt über **H25**.
 
 Die Steuerung prüft den Heizbedarf auch nach dem Zuschalten weiter. Nur weil A32 abgelaufen ist, muss sie daher nicht automatisch bis zur dritten Stufe hochschalten.
@@ -111,13 +111,14 @@ Für **A31 und R45** zählt die Außentemperatur des **externen Fühlers**, wenn
 | Parameter / Register | Bedeutung |
 | --- | --- |
 | **H18 / 1032** | Maximale elektrische Heizstufe 1–3 |
-| **R35 / 1173** | Zuordnung/Verwendung der elektrischen Zusatzheizung; bekannte Menüwerte: 0 = nicht verwendet, 1 = Heizwasserkreis, 2 = Speicher-/Tankheizung |
+| **R35 / 1173** | Verwendung der elektrischen Zusatzheizung: bekannte Menüwerte 0 = nicht verwendet, 1 = Heizwasserkreis, 2 = Speicher-/Tankheizung. Die Firmware berücksichtigt auch den internen Wert 3; dessen Bedeutung ist noch nicht geklärt. |
 | **A31 / 1049** | Außentemperaturgrenze für die normale Zuschaltung |
 | **A32 / 1050** | Zeitabstand zwischen den Stufen in Minuten |
 | **A33 / 1063** | Erforderliche Temperaturabweichung zur Zuschaltung (Temperatur-Rohwert in Zehntelgrad) |
-| **H17 / 1031** | Temperaturdifferenz zur Abschaltung |
+| **A35 / 1031** | Temperaturdifferenz zur Abschaltung der elektrischen Zusatzheizung („Electric Heater Off Temp. Diff“) |
 | **R45 / 1231** | Außentemperaturgrenze für die Heizstabzuschaltung ohne Wartezeit |
-| **D21 / 1126** | Separate Freigabe der elektrischen Zusatzheizung beim Abtauen |
+| **D21 / 1126** | Freigabe einer zusätzlichen elektrischen Heizanforderung während des Abtauens |
+| **D24 / 1129** | Auswahl des Wasserkreises in bestimmten Abtauzuständen; keine direkte Heizstabfreigabe |
 | **1463** | Auswahl lokaler oder externer Außentemperatur |
 | **2019 Bit 7 / 8** | Ausgang RO07 / RO08, jeweils 0 = aus, 1 = ein |
 
@@ -125,20 +126,24 @@ Die genannten Registerwerte sind **nicht automatisch sinnvolle Einstellwerte**. 
 
 ### Abtauung, Warmwasser und Schutzfunktionen
 
-Auch beim Abtauen und in anderen Betriebszuständen berücksichtigt die **Firmware V3.5** weitere Freigaben und Schutzbedingungen. Daher bedeutet eine aktivierte **D21** nicht, dass der Heizstab bei jedem Abtauvorgang tatsächlich eingeschaltet wird.
+**D21** erlaubt der FoxAir, beim Abtauen eine **zusätzliche elektrische Heizanforderung** auszulösen. Diese Funktion ist in der Firmware V3.5 vorhanden. Sie wird aber nur genutzt, wenn auch die übrigen Betriebs- und Sicherheitsbedingungen erfüllt sind. **Welche der elektrischen Ausgänge dadurch tatsächlich eingeschaltet werden, ist noch nicht eindeutig zugeordnet.** D21 garantiert deshalb nicht, dass bei jedem Abtauvorgang ein Heizstab läuft.
+
+**D24** beeinflusst, **welcher Wasserkreis in bestimmten Abtauzuständen genutzt wird**. Die Firmware V3.5 berücksichtigt dabei ausdrücklich auch die Einstellung **D24 = 2**. D24 schaltet aber **keinen Heizstab direkt frei** und ist nicht mit D21 zu verwechseln.
+
+Auch außerhalb des Abtauens kann die Steuerung die Zusatzheizung durch Betriebs- oder Schutzbedingungen sperren beziehungsweise bereits eingeschaltete Heizstufen zurücknehmen.
 
 Ein **separater Ausgang RO13** ist für den **Elektroheizer des Warmwasserspeichers** vorgesehen. Er ist von den beiden normalen Zusatzheizstufen zu unterscheiden:
 
 - **RO07 / RO08:** Heizstufen 1 und 2, Status **2019 Bit 7 / 8**
 - **RO13:** Warmwasserspeicher-Heizer, Status **2018 Bit 0**
 
-Die Statusregister **2018 und 2019** sind **nur lesbar** und dürfen nicht als Steuerregister beschrieben werden.
+Die Statusregister **2018 und 2019** sind **nur lesbar** und dürfen nicht als Steuerregister beschrieben werden. Ein eingeschaltetes Statusbit zeigt außerdem nicht, ob tatsächlich ein Heizstab angeschlossen ist oder Strom verbraucht.
 
 ### Wie kann ich die Funktion prüfen?
 
 Am einfachsten die betreffenden Einstellungen, den Betriebszustand, die Soll-/Isttemperaturen und die Ausgänge **2019 Bit 7/8** gemeinsam protokollieren. Für die zeitliche Staffelung muss die Wärmeanforderung lange genug anliegen; bei A32 = 30 Minuten sind insbesondere die Zustände um 30, 60 und 90 Minuten interessant.
 
-Wenn die Ausgangsbits schalten, der Heizstab aber kalt bleibt, sollte die externe Leistungsversorgung beziehungsweise Schütz- und Sicherheitskette geprüft werden. Bleiben die Bits aus, können fehlender Heizbedarf, ungeeignete Einstellungen oder aktive Sperren die Ursache sein.
+Wenn die Ausgangsbits schalten, der Heizstab aber kalt bleibt, sollte die externe Leistungsversorgung beziehungsweise die Schütz- und Sicherheitskette geprüft werden. Die Ausgangsbits zeigen nur das Schaltsignal an, nicht die tatsächlich erzeugte Wärme. Bleiben die Bits aus, können fehlender Heizbedarf, ungeeignete Einstellungen oder aktive Sperren die Ursache sein.
 
 Weitere Informationen: [Relaisausgänge](relais_ausgaenge.md), [Heizungsregelung und Heizkurve](regelung_heizkurve.md) und [Abtauen und Frostschutz](abtauen_frostschutz.md).
 
