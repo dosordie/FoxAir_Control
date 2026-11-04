@@ -20,6 +20,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 - [Lüfterregelung](luefterregelung.md)
 - [EEV Auto oder Smart – welcher Modus ist effizienter?](eev_auto_smart.md)
 - [Zonenregelung](zonenregelung.md)
+- [Elektrischer Heizstab – Zuschaltung und Heizstufen](heizstab.md)
 - [Warmwasser](warmwasser.md)
 - [Abtauen und Frostschutz](abtauen_frostschutz.md)
 - [Ölrückführung (Oil Return)](oelrueckfuehrung.md)
