@@ -111,7 +111,7 @@ Für **A31 und R45** zählt die Außentemperatur des **externen Fühlers**, wenn
 | Parameter / Register | Bedeutung |
 | --- | --- |
 | **H18 / 1032** | Maximale elektrische Heizstufe 1–3 |
-| **R35 / 1173** | Verwendung der elektrischen Zusatzheizung: bekannte Menüwerte 0 = nicht verwendet, 1 = Heizwasserkreis, 2 = Speicher-/Tankheizung. Die Firmware berücksichtigt auch den internen Wert 3; dessen Bedeutung ist noch nicht geklärt. |
+| **R35 / 1173** | Verwendung der elektrischen Zusatzheizung: 0 = nicht verwendet, 1 = Heizwasserkreis, 2 = Speicher-/Tankheizung |
 | **A31 / 1049** | Außentemperaturgrenze für die normale Zuschaltung |
 | **A32 / 1050** | Zeitabstand zwischen den Stufen in Minuten |
 | **A33 / 1063** | Erforderliche Temperaturabweichung zur Zuschaltung (Temperatur-Rohwert in Zehntelgrad) |
