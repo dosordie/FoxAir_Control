@@ -116,13 +116,14 @@ def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     Neue Mapping-Struktur:
       name = reiner Klartext
       code = z. B. D04 / A40 / SG01
+      display_code = optionale lokale Anzeige (kein Cloud-Abfragecode)
       block = z. B. D / A / SG
 
     Alte Struktur mit "D04 / Name" bleibt kompatibel.
     """
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip()
+        code = str(data_or_name.get("display_code") or data_or_name.get("code") or "").strip()
         code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)

@@ -87,7 +87,8 @@ def cloud_code_for_register(reg_no: int, require_write_allowed: bool = False) ->
     preferred = {**M_TIMER_CODES, **KG_TIMER_CODES, **SILENT_TIMER_CODES, 1234: "compensate_slope", 1235: "compensate_offset",
                  1250: "CP1-1", 1251: "CP1-2", 1252: "CP1-3",
                  1253: "CP1-5", 1254: "CP1-6", 1255: "CP1-7",
-                 **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status"}
+                 **{1333 + i: f"SG{i:02}" for i in range(1, 9)}, 2133: "SG Status",
+                 2032: "T60", 2029: "2029", 2030: "2030", 2031: "2031"}
     definitions = _static_register_defs()
     local_code = register_code_from_definition(definitions.get(str(target), {})).upper()
     for code, hint in WARMLINK_CLOUD_CODE_HINTS.items():

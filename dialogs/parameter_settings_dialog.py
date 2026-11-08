@@ -7,7 +7,7 @@ from typing import Any, Optional
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QDialog, QHBoxLayout,
+    QAbstractItemView, QApplication, QCheckBox, QDialog, QGridLayout, QHBoxLayout,
     QHeaderView, QLabel, QMessageBox, QPushButton, QSpinBox, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
@@ -103,7 +103,7 @@ def register_block_and_clean_name(name: str) -> tuple[str, str, str]:
 def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip()
+        code = str(data_or_name.get("display_code") or data_or_name.get("code") or "").strip()
         code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)
@@ -191,7 +191,7 @@ class ParameterSettingsDialog(QDialog):
         self._read_started_monotonic = 0.0
         self._read_status_timeout_s = 12.0
         self.setWindowTitle("Parameter Einstellungen")
-        self.setMinimumSize(1080, 760)
+        self.setMinimumSize(900, 640)
         self.resize(1120, 820)
         self._build_ui()
         self.refresh_blocks()
@@ -246,6 +246,8 @@ class ParameterSettingsDialog(QDialog):
                 continue
             block, code, clean_name = register_meta_parts(data)
             app_label = str(data.get("app_label", ""))
+            if not code and block == "T":
+                code = str(reg_no)
             if not code:
                 # Kompatibilitaet fuer Alt-Mappings, bei denen der Code nur im App-Label steckt.
                 m = self.PARAM_RE.search(str(data.get("name", "")) + " " + app_label)
@@ -258,19 +260,22 @@ class ParameterSettingsDialog(QDialog):
                 # und sollen die normale Parameter-Einstellungsansicht nicht ueberladen.
                 continue
             mode = str(data.get("mode", ""))
-            is_t_diag = str(code).upper().startswith("T-DIAG")
             # Fuer diese Ansicht sind schreibbare/parametrierbare Register interessant.
-            # App-Video-Labels nehmen wir immer mit, auch wenn mode fehlt.
-            # T-Diag-Werte sind Diagnosewerte, sollen aber als eigener Anhang im T-Block sichtbar sein.
-            if "w" not in mode.lower() and not app_label and not is_t_diag:
+            # Der T-Block enthält Livewerte unabhängig von Cloudcode/App-Label.
+            # Alte Parameterdefinitionen ohne mode bleiben in ihren bekannten
+            # Blöcken sichtbar. Explizit lesbare Status-/Reservegruppen nicht.
+            if block != "T" and "w" not in mode.lower() and (
+                    mode or block not in ParameterSettingsDialog.BLOCK_SHORT_DESCRIPTIONS):
                 continue
             is_engineering = str(data.get("ui_visibility", "")).lower() == "engineering"
             items.append({
                 "reg": reg_no,
-                "code": code,
+                "code": str(data.get("code") or code),
+                "display_code": code,
                 "block": block,
                 "name": f"[Engineering] {clean_name}" if is_engineering else clean_name,
                 "app_label": app_label,
+                "app_label_goheating_pro": str(data.get("app_label_goheating_pro") or ""),
                 "dtype": str(data.get("type", "RAW")),
                 "description": str(data.get("description", "")),
                 "knowledge": str(data.get("knowledge", data.get("explanation", ""))),
@@ -283,18 +288,16 @@ class ParameterSettingsDialog(QDialog):
                 "source_app_video": str(data.get("source_app_video", "")),
             })
         def sort_key(item: dict[str, Any]):
-            code_text = str(item["code"] or "")
+            code_text = str(item["display_code"] or "")
             num_match = re.search(r"(\d+)", code_text)
             num = int(num_match.group(1)) if num_match else 9999
-            # T-Diag-Diagnosewerte gehoeren ans Ende des T-Blocks, nicht zwischen T05/T10.
-            diag_tail = 1 if code_text.upper().startswith("T-DIAG") else 0
-            return (item["block"], diag_tail, num, item["reg"])
+            return (item["block"], num, item["reg"])
         return sorted(items, key=sort_key)
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
         hint = QLabel(
-            "App-nahe Einstellungsansicht. Oben den Parameterblock waehlen; "
+            "Parameter und Diagnosewerte. Oben den Parameterblock waehlen; "
             "die Tabelle zeigt technischen/deutschen Namen, Live-Wert und Register. "
             "Schreiben erfolgt ueber das bekannte Einzelregister-Popup."
         )
@@ -309,8 +312,6 @@ class ParameterSettingsDialog(QDialog):
         layout.addLayout(self.block_bar)
 
         top = QHBoxLayout()
-        self.app_only_cb = QCheckBox("nur App-Video Parameter")
-        self.app_only_cb.setToolTip("Zeigt nur Parameter, fuer die bereits ein Original-App-Label aus der Bildschirmaufnahme bekannt ist.")
         self.app_name_cb = QCheckBox("App-Name anzeigen")
         self.app_name_cb.setToolTip("Aus: erkannter deutscher/technischer Name. An: Name wie in der Original-App, falls bekannt.")
         self.live_update_cb = QCheckBox("live aktualisieren")
@@ -326,7 +327,6 @@ class ParameterSettingsDialog(QDialog):
         self.tab_poll_interval_spin.setSuffix(" s")
         self.tab_poll_interval_spin.setValue(int(self.main_window.settings.get("tab_poll_interval_s", 30)))
         self.tab_poll_interval_spin.setMaximumWidth(90)
-        top.addWidget(self.app_only_cb)
         top.addWidget(self.app_name_cb)
         top.addWidget(self.live_update_cb)
         top.addWidget(self.auto_read_block_cb)
@@ -370,7 +370,7 @@ class ParameterSettingsDialog(QDialog):
         self.description_box.setStyleSheet("QLabel { background: #fffbe8; border: 1px solid #d8d0a0; padding: 6px; color: #333; }")
         layout.addWidget(self.description_box)
 
-        buttons = QHBoxLayout()
+        buttons = QGridLayout()
         self.read_visible_btn = QPushButton("sichtbare lesen")
         self.refresh_btn = QPushButton("aktualisieren")
         self.write_selected_btn = QPushButton("ausgewaehltes Register schreiben ...")
@@ -378,18 +378,18 @@ class ParameterSettingsDialog(QDialog):
         self.close_btn = QPushButton("Schließen")
         self.count_label = QLabel("0 Parameter")
         self.read_status_label = QLabel("Status: bereit")
+        self.read_status_label.setWordWrap(True)
         self.read_status_label.setToolTip("Zeigt den aktuellen Lesestatus des sichtbaren Parameterblocks.")
-        buttons.addWidget(self.read_visible_btn)
-        buttons.addWidget(self.refresh_btn)
-        buttons.addWidget(self.write_selected_btn)
-        buttons.addWidget(self.edit_info_btn)
-        buttons.addWidget(self.count_label)
-        buttons.addWidget(self.read_status_label)
-        buttons.addStretch(1)
-        buttons.addWidget(self.close_btn)
+        buttons.addWidget(self.read_visible_btn, 0, 0)
+        buttons.addWidget(self.refresh_btn, 0, 1)
+        buttons.addWidget(self.write_selected_btn, 0, 2)
+        buttons.addWidget(self.edit_info_btn, 0, 3)
+        buttons.addWidget(self.close_btn, 0, 4)
+        buttons.addWidget(self.count_label, 1, 0)
+        buttons.addWidget(self.read_status_label, 1, 1, 1, 4)
+        buttons.setColumnStretch(2, 1)
         layout.addLayout(buttons)
 
-        self.app_only_cb.stateChanged.connect(lambda _=None: self.refresh_table())
         self.app_name_cb.stateChanged.connect(lambda _=None: self.refresh_table())
         self.refresh_btn.clicked.connect(self.refresh_table)
         self.read_visible_btn.clicked.connect(self.read_visible_registers)
@@ -459,12 +459,9 @@ class ParameterSettingsDialog(QDialog):
 
     def _visible_items(self) -> list[dict[str, Any]]:
         block = self.current_block or ""
-        app_only = self.app_only_cb.isChecked()
         items = []
         for item in self._items:
             if block and item["block"] != block:
-                continue
-            if app_only and not item.get("app_label"):
                 continue
             items.append(item)
         return items
@@ -514,11 +511,15 @@ class ParameterSettingsDialog(QDialog):
         parts: list[str] = []
         if include_title:
             technical_name = self._display_name_for_item(item)
-            title = f"{item.get('code', '')} / Register {item.get('reg')}: {technical_name}"
+            title = f"{item.get('display_code', item.get('code', ''))} / Register {item.get('reg')}: {technical_name}"
             parts.append(title)
+            if item.get("display_code") != item.get("code") and item.get("code"):
+                parts.append(f"Cloud-Abfragecode: {item['code']}")
             app_label = str(item.get("app_label") or "").strip()
             if app_label and app_label != technical_name:
                 parts.append(f"App-Name: {app_label}")
+            if item.get("app_label_goheating_pro"):
+                parts.append(f"App-Name (GoHeating Pro): {item['app_label_goheating_pro']}")
         extra = register_extra_info_text(item, reg_no=item.get("reg"), device_model=self.main_window.current_device_model())
         if extra:
             parts.append(extra)
@@ -563,7 +564,7 @@ class ParameterSettingsDialog(QDialog):
             name_text = self._display_name_for_item(item)
             row_values = [
                 int(item["reg"]),
-                item.get("code") or item.get("block", ""),
+                item.get("display_code") or item.get("code") or item.get("block", ""),
                 name_text,
                 value_text,
                 raw_text,
@@ -580,7 +581,7 @@ class ParameterSettingsDialog(QDialog):
                     self.table.setItem(row, col, cell)
                 cell.setText(str(text))
                 detail_tip = self._description_detail_text(item)
-                cell.setToolTip(detail_tip if register_has_extra_info(item, reg_no=item.get("reg"), device_model=self.main_window.current_device_model()) else str(text))
+                cell.setToolTip(detail_tip if item.get("app_label") or item.get("app_label_goheating_pro") or register_has_extra_info(item, reg_no=item.get("reg"), device_model=self.main_window.current_device_model()) else str(text))
                 apply_block_header_item_style(self.table, cell, is_block_row)
                 if col == 0:
                     cell.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)

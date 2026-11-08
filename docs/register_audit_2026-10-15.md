@@ -121,7 +121,8 @@ anderer Busadressen werden im lokalen Diagnosedialog nicht übernommen.
 ## Cloud und Erhaltung des vorhandenen Stands
 
 T49→2065 (°C), T50→2066 (K), T51→2067 (K) sind bestätigte read-only-Aliasse
-aus dem Betreiber-Livevergleich vom 14.10.2026. T-Diag1/2/3 bleiben lokale Codes.
+aus dem Betreiber-Livevergleich vom 14.10.2026. Die damaligen lokalen Codes
+T-Diag1/2/3 wurden am 08.11.2026 durch T49/T50/T51 ersetzt.
 Cloudwerte sind bereits skaliert; lokale signed TEMP1-Wörter benötigen `/10`.
 Das Cloudmetadatum TEMP ändert Temperaturdifferenzen nicht in °C.
 

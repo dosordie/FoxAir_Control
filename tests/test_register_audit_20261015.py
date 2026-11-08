@@ -80,7 +80,7 @@ def test_new_status_bits_have_neutral_details_and_compact_labels(reg, mask, bits
 
 
 @pytest.mark.parametrize("code,register,local_code,unit", [
-    ("T49", 2065, "T-Diag1", "°C"), ("T50", 2066, "T-Diag2", "K"), ("T51", 2067, "T-Diag3", "K"),
+    ("T49", 2065, "T49", "°C"), ("T50", 2066, "T50", "K"), ("T51", 2067, "T51", "K"),
 ])
 @pytest.mark.parametrize("value", ["-3.5", "0", "19.8"])
 def test_live_cloud_aliases_keep_units_sign_and_engineering_scale(application, code, register, local_code, unit, value):

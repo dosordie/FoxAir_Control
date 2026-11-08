@@ -680,6 +680,11 @@ class WarmLinkCloudDialog(QDialog):
             dialog._sim_context = None
             dialog._pending_overlay.clear()
             dialog._overlay_timer.stop()
+            dialog._pending_data_rows.clear()
+            dialog._data_render_timer.stop()
+            dialog.data_rows = [{**row, "stale": True, "cached": True} for row in dialog.data_rows]
+            dialog._compare_dirty = True
+            dialog.refresh_data()
             dialog.stop_worker()
             dialog._update_device_controls()
         self.session.validated = False
@@ -979,12 +984,16 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot(int, list, str)
     def _on_logger_snapshot(self, cycle_id, rows, error):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         controller = getattr(self.main_window, "csv_logger_controller", None)
         if controller is not None:
             controller.cloud_response(cycle_id, rows, error)
 
     @Slot(str, int, list, str)
     def _on_targeted_snapshot(self, purpose, cycle_id, rows, error):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            return
         name = {"at_compensation": "at_comp_dialog", "wp_control": "wp_control_dialog", "sg_ready": "sg_dialog", "parameters": "parameter_dialog", "fault_decoder": "fault_dialog", "contact_decoder": "contact_dialog", "load_output_decoder": "load_output_dialog", "silent_timer": "silent_timer_dialog", "onoff_timer": "onoff_timer_dialog", "operating_timer": "timer_dialog"}.get(purpose)
         if name is not None:
             dialog = getattr(self.main_window, name, None)
@@ -1032,6 +1041,9 @@ class WarmLinkCloudDialog(QDialog):
             if isinstance(row, dict) and row.get("code"):
                 code = str(row["code"])
                 merged = {**existing.get(code, {}), **row}
+                if (row.get("supported") and row.get("value") not in (None, "")
+                        and not any(row.get(flag) for flag in ("stale", "cached", "currentEmpty"))):
+                    merged.update(stale=False, cached=False, currentEmpty=False)
                 if existing.get(code) != merged:
                     delta.append(merged)
                 existing[code] = merged
@@ -1040,7 +1052,8 @@ class WarmLinkCloudDialog(QDialog):
         self._compare_dirty = True
         self._tab_changed(self.tabs.currentIndex())
         self._apply_overlay_to_main(delta)
-        good = [r for r in rows if r.get("supported") and not r.get("stale")]
+        good = [r for r in rows if r.get("supported") and r.get("value") not in (None, "")
+                and not any(r.get(flag) for flag in ("stale", "cached", "currentEmpty"))]
         if good:
             setter = getattr(self.main_window, "set_cloud_ui_state", None)
             if setter:
@@ -1243,6 +1256,9 @@ class WarmLinkCloudDialog(QDialog):
 
     @Slot()
     def _flush_overlay_chunk(self):
+        if getattr(self.main_window, "_cloud_manually_disconnected", False):
+            self._pending_overlay.clear()
+            return
         if not self.overlay_cb.isChecked():
             self._pending_overlay.clear()
             return

@@ -67,6 +67,17 @@ Cloudwerte. Der Decoder verwendet alle elf aktuellen Fehlerwörter einschließli
 Sammelstörung, keine Fehlerhistorie. Schreibtest und Wertefinder wurden entfernt.
 Lokale Bestätigungen und LTE-Recovery bleiben erhalten.
 
+Beim manuellen Cloud-Trennen bleiben die zuletzt angezeigten Werte erhalten.
+Sie sind als „zuletzt bekannt“ gekennzeichnet und gelten nicht als aktuelle
+Messung oder Schreibbestätigung. Geräte-/Kontowechsel entfernen die bisherigen
+Cloudwerte; lokale Modbus-Werte bleiben getrennt. „Hauptfenster leeren“ ist
+weiterhin möglich.
+
+Die Parameteransicht zeigt Parameter und T-Diagnosewerte nach Registerblock
+und Zugriffsmodus. Einen Filter „Nur App-Parameter“ gibt es nicht mehr.
+App-Bezeichnungen bleiben in Detailinformationen und Tooltips verfügbar;
+Engineering-Einträge benötigen weiterhin die entsprechende Freigabe der Anzeige.
+
 ## Cloud-Decoder und Timer
 
 Kontaktdecoder (2034 / `S01~S10`) und Lastausgangsdecoder (2019 / `O01~023`)

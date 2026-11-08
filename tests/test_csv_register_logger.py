@@ -100,7 +100,11 @@ def test_only_current_confirmed_catalogue_cloud_codes_including_reviewed_faults(
     assert mappings["T14"] == 2050
     assert mappings["T57"] == 2023
     assert {code: mappings[code] for code in ("T49", "T50", "T51")} == {"T49": 2065, "T50": 2066, "T51": 2067}
-    assert len(set(mappings.values())) == 55
+    assert {code: mappings[code] for code in ("T60", "T65", "2060", "2054", "2059")} == {
+        "T60": 2032, "T65": 2033, "2060": 2060, "2054": 2054, "2059": 2059,
+    }
+    assert not any(f"T{n}" in mappings for n in range(200, 206))
+    assert len(set(mappings.values())) == 60
     custom = {"2078": {"code": "T04"}, "2081": {"code": "Fault1"}}
     assert logger_cloud_mappings(custom) == {"T04": 2078, "Fault1": 2081}
 

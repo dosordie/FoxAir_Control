@@ -183,8 +183,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.4.0"
-BUILD_DATE = "2026-10-21"
+APP_VERSION = "0.4.1"
+BUILD_DATE = "2026-11-08"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 
@@ -509,13 +509,14 @@ def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     Neue Mapping-Struktur:
       name = reiner Klartext
       code = z. B. D04 / A40 / SG01
+      display_code = optionale lokale Anzeige (kein Cloud-Abfragecode)
       block = z. B. D / A / SG
 
     Alte Struktur mit "D04 / Name" bleibt kompatibel.
     """
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip()
+        code = str(data_or_name.get("display_code") or data_or_name.get("code") or "").strip()
         code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)
@@ -5345,7 +5346,8 @@ class MainWindow(QMainWindow):
                 block, code, clean = register_meta_parts(_data)
                 if clean:
                     _data["name"] = clean
-                if code:
+                # display_code is a UI label, never the Cloud routing identity.
+                if code and not (_data.get("code") or _data.get("display_code")):
                     _data["code"] = code
                 if block:
                     _data["block"] = block
@@ -7940,7 +7942,7 @@ class MainWindow(QMainWindow):
                 str(cloud_info.get("value", "")),
                 self.cloud_previous_value_by_reg.get(reg.reg, "--"),
                 str(cloud_info.get("code", "")),
-                str(cloud_info.get("lastFetch", "")),
+                str(cloud_info.get("lastFetch", "")) + (" (zuletzt bekannt)" if cloud_info.get("stale") else ""),
             ])
         else:
             values.extend(["", "", "", ""])
@@ -8248,7 +8250,7 @@ class MainWindow(QMainWindow):
         Zusatzspalte angezeigt. Wenn ein gemapptes Register lokal noch nicht in
         der Tabelle existiert, kann eine Cloud-only-Zeile angelegt werden.
         """
-        if rows is None:
+        if rows is None or getattr(self, "_cloud_manually_disconnected", False):
             return
         self.cloud_session.merge(rows)
         cached_rows = {r.get("code"): dict(r) for r in self.cloud_last_rows}
@@ -8309,13 +8311,14 @@ class MainWindow(QMainWindow):
                     "confidence": code_confidence(code),
                     "source": "warmlink-cloud",
                     "dataType": row.get("dataType", ""),
+                    "stale": any(row.get(flag) for flag in ("stale", "cached", "currentEmpty")),
                 }
                 old_info = self.cloud_overlay_by_reg.get(reg_no, {})
                 if old_info == info:
                     continue
                 # Compare the Cloud payload (already in engineering units),
                 # independently of timestamps, types, units and stale flags.
-                value_changed = bool(old_info and not row.get("stale") and value is not None
+                value_changed = bool(old_info and not info["stale"] and value is not None
                                      and not cloud_values_equal(old_info.get("raw_value"), value))
                 if value_changed:
                     self.cloud_previous_value_by_reg[reg_no] = str(old_info["value"])
@@ -8382,8 +8385,38 @@ class MainWindow(QMainWindow):
         if old_count != self.register_table.rowCount() and not old_suppress:
             self._resize_name_column()
 
+    def _mark_cloud_values_stale(self):
+        """Retain Cloud display/provenance without treating it as a fresh response."""
+        self.cloud_session.mark_stale()
+        self.cloud_last_rows = [{**row, "stale": True, "cached": True}
+                                for row in self.cloud_last_rows]
+        self.cloud_change_highlights.clear()
+        for reg_no, info in self.cloud_overlay_by_reg.items():
+            info["stale"] = True
+            info["metadata"] = {**info.get("metadata", {}), "stale": True, "cached": True}
+            if self._is_cloud_only_register(reg_no):
+                self.register_change_highlights.discard(reg_no)
+                self.register_flash_tokens.pop(reg_no, None)
+                self.register_flash_colors.pop(reg_no, None)
+            self._refresh_cloud_cells_for_register(reg_no)
+            self._notify_cloud_register_update(reg_no)
+        for dialog in self.register_write_dialogs.values():
+            dialog.refresh_from_live()
+
     def clear_cloud_device_values(self):
         """Discard values of the previous cloud device, retaining local registers."""
+        if getattr(self, "_retained_cloud_identity", None):
+            self.cloud_session.rows.clear()
+            self.cloud_session.scanned = self.cloud_session.validated = False
+            for dialog in self.findChildren(WarmLinkCloudDialog):
+                dialog.data_rows = []
+                dialog._pending_overlay.clear()
+                dialog._overlay_timer.stop()
+                dialog._pending_data_rows.clear()
+                dialog._data_render_timer.stop()
+                dialog._compare_dirty = True
+                dialog.refresh_data()
+        self._retained_cloud_identity = None
         self.clear_cloud_overlay()
         for reg_no in list(self.latest_regs):
             if not self._is_cloud_only_register(reg_no):
@@ -8420,7 +8453,7 @@ class MainWindow(QMainWindow):
             str(cloud_info.get("value", "")) if cloud_info else "",
             self.cloud_previous_value_by_reg.get(reg_no, "--") if cloud_info else "",
             str(cloud_info.get("code", "")) if cloud_info else "",
-            str(cloud_info.get("lastFetch", "")) if cloud_info else "",
+            (str(cloud_info.get("lastFetch", "")) + (" (zuletzt bekannt)" if cloud_info.get("stale") else "")) if cloud_info else "",
         ]
         for off, val in enumerate(vals):
             col = 11 + off
@@ -8431,7 +8464,14 @@ class MainWindow(QMainWindow):
             if item.text() != val:
                 item.setText(val)
             context = f"Cloud {cloud_info.get('code')} ({cloud_info.get('confidence', '')})" if cloud_info else ""
+            if cloud_info.get("stale"):
+                context += "\nZuletzt bekannter Cloudwert – keine aktuelle Messung."
             item.setToolTip(f"{val}\n{context}" if cloud_info and col in (11, 12) else context)
+        if self._is_cloud_only_register(reg_no):
+            item = self.register_table.item(row, 7)
+            if item is not None:
+                item.setToolTip(str(cloud_info.get("value", "")) + (
+                    "\nZuletzt bekannter Cloudwert – keine aktuelle Messung." if cloud_info.get("stale") else ""))
         if self._is_cloud_only_register(reg_no):
             item = self.register_table.item(row, 5)
             if item is not None:
@@ -9938,8 +9978,17 @@ class MainWindow(QMainWindow):
         self.cloud_session_authenticated = bool(authenticated)
         self.set_cloud_ui_state("CONNECTED" if authenticated else "DISCONNECTED")
         self.cloud_session_device_code = str(device_code or "").strip() if authenticated else ""
-        if previous_device and previous_device != self.cloud_session_device_code:
+        username = getattr(self, "settings", {}).get("warmlink_cloud", {}).get("username", "")
+        retained = getattr(self, "_retained_cloud_identity", None)
+        if not authenticated and getattr(self, "_cloud_manually_disconnected", False):
+            if previous_device:
+                self._retained_cloud_identity = (username, previous_device)
+            self._mark_cloud_values_stale()
+        elif (previous_device and previous_device != self.cloud_session_device_code) or (
+                retained and retained != (username, self.cloud_session_device_code)):
             self.clear_cloud_device_values()
+        if authenticated:
+            self._retained_cloud_identity = None
         if hasattr(self, "init_read_btn"):
             self._update_init_read_button_state()
         controller = getattr(self, "csv_logger_controller", None)
@@ -9978,6 +10027,7 @@ class MainWindow(QMainWindow):
         self.cloud_read_reg_no = int(reg_no)
         self.cloud_read_code = code
         self._cloud_read_username = user
+        self._cloud_read_identity = (user, self.cloud_session_device_code)
         cfg = self.settings.get("warmlink_cloud", {})
         self.cloud_read_thread = QThread(self)
         self.cloud_read_worker = WarmLinkCloudReadWorker(
@@ -10009,13 +10059,20 @@ class MainWindow(QMainWindow):
     def _on_cloud_read_rows(self, rows: list[dict[str, Any]]) -> None:
         self._on_cloud_read_data(self.cloud_read_code, rows)
 
+    def _cloud_read_response_is_current(self):
+        identity = getattr(self, "_cloud_read_identity", None)
+        return identity is None or (self.is_cloud_connected() and identity == (
+            self.settings.get("warmlink_cloud", {}).get("username", ""), self.cloud_session_device_code))
+
     def _on_cloud_read_data(self, code: str, rows: list[dict[str, Any]]) -> None:
-        if getattr(self, "_cloud_manually_disconnected", False):
+        if getattr(self, "_cloud_manually_disconnected", False) or not self._cloud_read_response_is_current():
             return
         self.apply_cloud_rows_to_main(rows, show_cloud_only=True)
         if self.warmlink_cloud_dialog is not None:
             self.warmlink_cloud_dialog._on_data(rows)
-        row = next((r for r in rows if r.get("code") == code and r.get("supported")), None)
+        row = next((r for r in rows if r.get("code") == code and r.get("supported")
+                    and r.get("value") not in (None, "")
+                    and not any(r.get(flag) for flag in ("stale", "cached", "currentEmpty"))), None)
         error = "Cloud liefert keinen Wert für " + code if row is None else ""
         display = self.cloud_overlay_by_reg.get(self.cloud_read_reg_no, {}).get("value", "kein Wert")
         self._log(f"WarmLink Cloud Readback: {code}={display}", level=2)
@@ -10028,7 +10085,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_token(self, token: str) -> None:
-        if getattr(self, "_cloud_manually_disconnected", False):
+        if getattr(self, "_cloud_manually_disconnected", False) or not self._cloud_read_response_is_current():
             return
         self._cloud_read_token = token
         self._cloud_read_token_username = self._cloud_read_username
@@ -10047,7 +10104,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_login_method(self, method: str) -> None:
-        if getattr(self, "_cloud_manually_disconnected", False):
+        if getattr(self, "_cloud_manually_disconnected", False) or not self._cloud_read_response_is_current():
             return
         self.settings.setdefault("warmlink_cloud", {})["login_method"] = method
 
@@ -10057,6 +10114,7 @@ class MainWindow(QMainWindow):
         self.cloud_read_worker = None
         self.cloud_read_reg_no = None
         self.cloud_read_code = ""
+        self._cloud_read_identity = None
         for dialog in list(self.register_write_dialogs.values()):
             dialog.update_cloud_actions()
             if getattr(dialog, "_cloud_read_pending", False):
@@ -10067,7 +10125,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _on_cloud_read_error(self, text: str) -> None:
-        if getattr(self, "_cloud_manually_disconnected", False):
+        if getattr(self, "_cloud_manually_disconnected", False) or not self._cloud_read_response_is_current():
             return
         self._log("WarmLink Cloud lesen: " + str(text))
         self._complete_cloud_read_dialogs(str(text))
@@ -10257,6 +10315,8 @@ class MainWindow(QMainWindow):
         self._notify_control_connection_changed()
 
     def _on_cloud_write_result_current(self, data: dict):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         dialog = getattr(self, "_control_cloud_write_dialog", None)
         if dialog is not None and not dialog.isVisible():
             self._control_cloud_write_cancelled.set()
@@ -10295,6 +10355,8 @@ class MainWindow(QMainWindow):
             dialog.set_write_status(text)
 
     def _on_cloud_write_result(self, cloud_code: str, data: dict):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         ok = bool(data.get("readback_verified"))
         msg = translate_cloud_error_message(str(data.get("error_msg") or data.get("message") or ""))
         endpoint = str(data.get("endpoint") or "")
@@ -10328,6 +10390,8 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Cloud: API bestätigt; Readback für {cloud_code} noch nicht bestätigt.", 15000)
 
     def _on_cloud_write_error(self, text: str):
+        if getattr(self, "_cloud_manually_disconnected", False):
+            return
         dialog = getattr(self, "_control_cloud_write_dialog", None)
         if dialog is not None and not dialog.isVisible():
             return

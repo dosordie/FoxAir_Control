@@ -24,6 +24,67 @@ CONFIRMED_CODES = sorted(
 )
 
 
+@pytest.mark.parametrize("register,code,display,value,unit,local_raw,local_display", [
+    (2065, "T49", "T49", -3.5, "°C", 98, "9.8 °C"),
+    (2066, "T50", "T50", 19.8, "K", 98, "9.8 K"),
+    (2067, "T51", "T51", 4.2, "K", 98, "9.8 K"),
+    (2023, "T57", "T57", 610, "", 610, "610"),
+    (2032, "T60", "T60", 1234, "h", 1234, "1234"),
+    (2033, "T65", "T65", -2.5, "°C", 98, "9.8 °C"),
+    (2060, "2060", "T200", 4.58, "COP", 458, "4.58"),
+    (2054, "2054", "T201", 0.5, "kW", 5, "0.5 kW"),
+    (2059, "2059", "T202", 2.6, "kW", 26, "2.6 kW"),
+    (2029, "2029", "T203", 3.4, "A", 34, "3.4"),
+    (2030, "2030", "T204", 0, "A", 0, "0.0"),
+    (2031, "2031", "T205", 0, "A", 0, "0.0"),
+])
+def test_consolidated_t_routes_display_and_independent_scales(
+        application, register, code, display, value, unit, local_raw, local_display):
+    from cloud.cloud_write_helpers import cloud_code_for_register
+    from cloud.mapping_validation import register_code_from_definition
+    from dialogs.dialog_helpers import register_meta_parts
+
+    window = CloudWindow()
+    definition = window.register_defs[str(register)]
+    assert definition["block"] == "T"
+    assert register_meta_parts(definition)[1] == display
+    assert register_code_from_definition(definition) == code
+    assert cloud_code_for_register(register) == code
+    assert cloud_code_for_register(register, require_write_allowed=True) is None
+    assert resolve_cloud_register(code, cloud_hint(code)) == register
+    assert code in WARMLINK_644_DISCOVERY_CODES
+    window.apply_cloud_rows_to_main([cloud_row(str(value), code, dataType="TEMP")])
+    sources = window.register_value_sources(register)
+    assert sources.local_raw is None
+    assert window.cloud_overlay_by_reg[register]["engineering_value"] == value
+    assert sources.cloud_display == f"{value} {unit}".strip()
+    info = window.regmap.get(register)
+    local = DecodedRegister(0x63, register, 0, 3, local_raw, local_raw, "",
+                            info.name, info.dtype, time.time())
+    window._upsert_register_row(local, False)
+    assert window.register_table.item(window.table_rows[register], 7).text().startswith(local_display)
+    assert window.register_value_sources(register).local_raw == local_raw
+    window.apply_cloud_rows_to_main([cloud_row(value, code, dataType="DIGI1", unit="live-unit")])
+    assert window.register_value_sources(register).cloud_display == f"{value} live-unit"
+    window.deleteLater()
+
+
+def test_virtual_t_codes_never_enter_cloud_catalog_or_resolver():
+    from cloud.register_resolver import current_register_definitions
+    from cloud.warmlink_codes import ALL_WARMLINK_CLOUD_CODES, DEFAULT_WARMLINK_CLOUD_CODES
+    from dialogs.dialog_helpers import register_meta_parts
+
+    virtual = {f"T{i}" for i in range(200, 206)}
+    for catalog in (WARMLINK_CLOUD_CODE_HINTS, WARMLINK_644_DISCOVERY_CODES,
+                    ALL_WARMLINK_CLOUD_CODES, DEFAULT_WARMLINK_CLOUD_CODES):
+        assert virtual.isdisjoint(catalog)
+    for code in virtual | {"T55", "T58", "T59", "T99", "T101"}:
+        assert resolve_cloud_register(code, cloud_hint(code)) is None
+    labels = [register_meta_parts(d)[1] for d in current_register_definitions().values()
+              if isinstance(d, dict) and d.get("block") == "T"]
+    assert len(labels) == len(set(labels))
+
+
 @pytest.mark.parametrize("code", CONFIRMED_CODES)
 @pytest.mark.parametrize("local_present", [False, True], ids=["cloud-only", "local-overlay"])
 def test_every_confirmed_mapping_projects_to_main(application, code, local_present):

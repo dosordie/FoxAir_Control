@@ -150,8 +150,8 @@ def test_additive_coverage_keeps_work_baseline_and_exact_literal_codes():
     assert set(baseline["discovery_codes"]) <= set(WARMLINK_644_DISCOVERY_CODES)
     assert set(WARMLINK_IOS308_CODES) <= set(ALL_WARMLINK_CLOUD_CODES)
     assert set(WARMLINK_IOS308_CODES) <= set(WARMLINK_644_DISCOVERY_CODES)
-    assert len(ALL_WARMLINK_CLOUD_CODES) == len(set(ALL_WARMLINK_CLOUD_CODES)) == 505
-    assert len(WARMLINK_644_DISCOVERY_CODES) == len(set(WARMLINK_644_DISCOVERY_CODES)) == 530
+    assert len(ALL_WARMLINK_CLOUD_CODES) == len(set(ALL_WARMLINK_CLOUD_CODES)) == 510
+    assert len(WARMLINK_644_DISCOVERY_CODES) == len(set(WARMLINK_644_DISCOVERY_CODES)) == 535
     assert "S01~S11" in WARMLINK_IOS308_CODES and "O25~O27" in WARMLINK_IOS308_CODES
 
 
