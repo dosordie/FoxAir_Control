@@ -57,7 +57,7 @@ class CloudWindow(gui.MainWindow):
         self.cloud_read_reg_no = None
         self.cloud_session_authenticated = True
         self.cloud_session_device_code = "selected-device"
-        self.settings = {"warmlink_cloud": {"save_token": False}}
+        self.settings = {"warmlink_cloud": {"username": "user", "save_token": False}}
         self.logs = []
 
     def _cloud_write_credentials(self):

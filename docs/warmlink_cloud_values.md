@@ -467,7 +467,8 @@ T200–T205 waren unbelegt und stehen in keinem Cloud-Abfragekatalog. Die frühe
 lokale Zuordnung T60 → COP ist entfernt; die Kompressorlaufzeit bevorzugt
 ausdrücklich T60. Der bestätigte Alias `InputCurrent1` bleibt erhalten, bei
 Registerabfragen wird `2029` verwendet. Einträge mit `block: "T"` bleiben auch
-ohne App-Label und bei aktivem App-Filter im Diagnose-/Live-Reiter sichtbar.
+ohne App-Label im Diagnose-/Live-Reiter sichtbar. Der frühere App-Filter wurde
+im anschließenden UI-Abschluss entfernt (siehe unten).
 
 T49–T51, T57 und die Strom-Aliase übernehmen die vorhandene Live-Evidenz. T60,
 T65 und die numerischen Leistungs-/COP-Codes folgen dem bestätigten
@@ -518,3 +519,89 @@ nachgeprüft; es bleiben keine offenen Fehlschläge.
 Mapping-Audit: keine Fehler. Einheiten-/Bereichsaudit: 366 auflösbare Mappings,
 keine Konflikte. `git diff --check` ist sauber. Die Cloud-Payloadtests verwenden
 synthetische Antworten; ein zusätzlicher Test an einem Live-Gerät erfolgte nicht.
+
+
+## Cloud-Trennung und Parameteransicht abschließen (Issue #200)
+
+Beim manuellen Trennen bleibt die Haupttabelle einschließlich Cloudwerten und
+lokalen Modbus-Zeilen erhalten. Die Cloudwerte tragen in der Abrufspalte den
+Zusatz „zuletzt bekannt“ und entsprechende Tooltips. Der ursprüngliche
+Abrufzeitpunkt bleibt unverändert. Overlay, Sitzungs-Snapshot und Cloud-Dialog
+markieren diese Daten als `stale`/`cached`; sie bestätigen weder einen frischen
+Abruf noch einen Schreib-Readback.
+
+Die Verbindung wird tatsächlich deaktiviert. Polling-Worker werden gestoppt,
+laufende Requests nach den bisherigen Regeln abgebrochen beziehungsweise bis
+zur normalen Bereinigung abgewartet. Verspätete Daten-, Token-, Snapshot- und
+Schreibantworten sowie bereits geplante Overlay-Updates reaktivieren die Sitzung
+nicht. Die vorhandene Behandlung gespeicherter Zugangsdaten bleibt erhalten.
+Die Sitzungsvalidierung und der Scanstatus werden beim manuellen Trennen
+aufgehoben; beim Wiederverbinden werden Werte frisch abgefragt. Neue Antworten
+entfernen die Cache-Markierungen nur für tatsächlich gelieferte Werte.
+
+Ein zurückbehaltener Snapshot gehört zu Konto und Gerät. Beim Identitätswechsel
+werden seine Cloudwerte und wartenden UI-Updates entfernt, während lokale
+Modbus-Werte erhalten bleiben. Einzelreads prüfen zusätzlich die Identität des
+Auftrags vor der Übernahme von Daten, Fehlern oder Token. Authentifizierungsfehler
+nutzen weiterhin die vorhandene Bereinigung. „Hauptfenster leeren“ bleibt ein
+ausdrücklicher Reset der Anzeige und Wertebestände.
+
+Die Checkbox „Nur App-Parameter“ und ihre Filterlogik wurden entfernt. Die
+Auswahl richtet sich nach Block, Zugriffsmodus und bestehender Engineering-
+Sichtbarkeit. Lesbare T-Diagnosewerte bleiben vollständig sichtbar; explizit
+lesbare Status-/Reservegruppen außerhalb von T bleiben ausgeschlossen. Alte
+Definitionen ohne `mode` werden in bekannten Parameterblöcken angezeigt. Das
+betrifft im aktuellen Bestand A40 und zusätzlich H41, das bisher wegen seines
+fehlenden App-Labels nicht erschien. Dies verändert keine Schreibberechtigung.
+Der entfernte Filter hatte keine gespeicherte Einstellung im bisherigen Code;
+es wird keine neue Einstellung oder Migration eingeführt. App-Metadaten bleiben
+in den Registerdateien erhalten; App- und GoHeating-Pro-Namen stehen in Tooltips.
+
+Der Dialog passt ab 900 Pixel Fensterbreite; Aktionsknöpfe und Statuszeile liegen
+in getrennten Zeilen. Die GUI wurde bei 900 und 1080 Pixeln geprüft und bei
+900 Pixeln als Qt-Screenshot visuell kontrolliert.
+
+Die T-Zuordnungen aus `6d8c7aa` bleiben unverändert. Korrigiert wurde ausschließlich
+die Laufzeitnormalisierung im Hauptfenster: Sie darf den tatsächlichen `code`
+nicht durch `display_code` überschreiben und aus einer reinen Anzeigebezeichnung
+keinen Abfragecode erzeugen. Ein Test mit dem echten Hauptfenster prüft alle zwölf
+Zuordnungen sowie die unabhängigen Werte für COP, elektrische Leistung,
+thermische Leistung und Kompressorlaufzeit. Vorhandene Einzelread- und
+T-Block-Snapshottests prüfen weiterhin die tatsächlichen Cloud-Payloads.
+Beide Register-JSON-Dateien bleiben bytegleich zum Ausgangsstand.
+
+Offene Live-Prüfungen: manueller LTE-Disconnect und Wiederverbindung an der
+Wärmepumpe, Geräte-/Kontowechsel sowie Wechsel zum realen lokalen Modbus.
+Automatisierte Tests verwenden synthetische Cloudantworten und simulierte
+Transportwege. Firmware-/Cloud-Forschung und Livevalidierung bleiben in
+Issue #185; Issue #171 wird durch diese Änderung nicht bearbeitet.
+
+
+Für diesen Abschluss geprüfte Kernmodule:
+
+```bash
+python -m pytest -q \
+  tests/test_cloud_quick_connect_timer_ui.py \
+  tests/test_cloud_parameter_cache_full_scan.py \
+  tests/test_cloud_single_read_and_values.py \
+  tests/test_cloud_polling.py \
+  tests/test_cloud_resolver_and_quickwrite.py
+```
+
+Zusätzliche Regression: `test_cloud_mapping_audit`,
+`test_register_mapping_integrity`, `test_cloud_metadata`, `test_cloud_ranges`,
+`test_register_audit_20261015`, `test_register_engineering_v35`,
+`test_warmlink_value_translator`, `test_unit_aware_formatting`,
+`test_ios308_registers_and_codes`, `test_csv_register_logger`,
+`test_cloud_shutdown`, `test_cloud_device_double_click`,
+`test_cloud_history_discovery_countdown`, `test_cloud_batch_control`,
+`test_control_transport`, `test_cloud_at_curve_and_csv_cleanup`,
+`test_csv_logger_transport` und `test_warmlink_recovery` (jeweils
+`tests/<Modul>.py`, gemeinsam mit `python -m pytest -q`). Ergebnis: alle
+1.242 Tests bestanden. Mapping-, Einheiten- und Bereichsaudit sind ohne
+Konflikte; beide Register-JSON-Dateien sind unverändert und gültig.
+
+Endgültiger gemeinsamer Lauf der fünf Kernmodule: **198 bestanden**. Zusammen
+mit den 1.242 ergänzenden Regressionstests sind **1.440 Testfälle erfolgreich**.
+`git diff --check` ist sauber. Die Prüfungen sind synthetisch; die oben genannten
+Live-Prüfungen bleiben getrennt offen.

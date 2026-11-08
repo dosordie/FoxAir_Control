@@ -46,8 +46,7 @@ def test_t_diagnostics_show_display_codes_and_query_real_cloud_codes(application
                 2060: ("T200", "2060"), 2054: ("T201", "2054"),
                 2059: ("T202", "2059"), 2029: ("T203", "2029"),
                 2030: ("T204", "2030"), 2031: ("T205", "2031")}
-    # Even the App-only option must retain diagnostics with no app_label.
-    dialog.app_only_cb.setChecked(True)
+    assert not hasattr(dialog, "app_only_cb")
     items = {item["reg"]: item for item in dialog._visible_items()}
     assert expected.keys() <= items.keys()
     for row in range(dialog.table.rowCount()):
@@ -82,6 +81,50 @@ def test_t_block_collection_does_not_require_a_code_or_app_label():
     dialog = SimpleNamespace(main_window=owner, PARAM_RE=ParameterSettingsDialog.PARAM_RE)
     items = ParameterSettingsDialog._collect_parameter_items(dialog)
     assert {item["reg"] for item in items} == {2060, 2054}
+
+
+def test_parameter_membership_is_independent_of_app_labels_and_keeps_visibility_gates(application):
+    from PySide6.QtWidgets import QCheckBox
+    window, dialog = parameter_window("T60")
+    original = deepcopy(window.register_defs)
+    before = {item["reg"] for item in dialog._items}
+    assert not hasattr(dialog, "app_only_cb")
+    assert all("nur app" not in box.text().lower() for box in dialog.findChildren(QCheckBox))
+    assert 1344 in before and 1346 in before  # A40/H41 legacy definitions lack mode.
+    assert {2034, 2081, 2133, 6011, 6073}.isdisjoint(before)
+    assert {1430, 1492, 1540}.isdisjoint(before)
+    window.register_defs = {
+        key: {field: value for field, value in entry.items() if not field.startswith("app_label")}
+        if isinstance(entry, dict) else entry for key, entry in original.items()}
+    after = {item["reg"] for item in dialog._collect_parameter_items()}
+    assert after == before
+    window.settings["show_engineering_parameters"] = True
+    assert {1430, 1492, 1540} <= {item["reg"] for item in dialog._collect_parameter_items()}
+    # Visibility never changes the register or Cloud write policy.
+    from cloud.cloud_write_helpers import cloud_code_for_register
+    assert cloud_code_for_register(1346, require_write_allowed=True) is None
+    assert window.register_defs["2060"]["mode"] == "read"
+    window.register_defs = original
+    dialog.close()
+
+
+@pytest.mark.parametrize("width", [900, 1080])
+def test_parameter_controls_fit_narrow_window_and_keep_app_tooltips(application, width):
+    from PySide6.QtCore import QPoint
+    window, dialog = parameter_window("T60")
+    dialog.resize(width, 700)
+    application.processEvents()
+    assert dialog.width() == width
+    for control in (dialog.app_name_cb, dialog.live_update_cb, dialog.auto_read_block_cb,
+                    dialog.tab_poll_interval_spin, dialog.read_visible_btn, dialog.refresh_btn,
+                    dialog.write_selected_btn, dialog.edit_info_btn, dialog.close_btn):
+        corner = control.mapTo(dialog, QPoint(control.width(), control.height()))
+        assert corner.x() <= dialog.width() and corner.y() <= dialog.height()
+    row = next(row for row in range(dialog.table.rowCount())
+               if dialog.table.item(row, 0).data(Qt.UserRole) == 2060)
+    assert "COP/EER(ODU+IDU)" in dialog.table.item(row, 2).toolTip()
+    assert "Cloud-Abfragecode: 2060" in dialog.table.item(row, 2).toolTip()
+    dialog.close()
 
 
 @pytest.mark.parametrize("source", ["initial", "live", "static", "single", "write-readback"])

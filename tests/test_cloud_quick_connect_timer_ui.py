@@ -14,7 +14,7 @@ from cloud.token_store import get_password, get_token, set_password, set_token
 from dialogs.cloud_dialog import WarmLinkCloudDialog
 from test_cloud_decoders_silent_timer import _onoff_cloud
 from test_cloud_single_read_and_values import application, cloud_row
-from test_cloud_polling import fake_api
+from test_cloud_polling import DialogWindow, fake_api
 from test_control_transport import command_api, CommandApi
 from test_csv_logger_transport import wait_for
 from test_warmlink_request_scheduler import window
@@ -427,6 +427,7 @@ def test_disconnect_during_possibly_executed_timer_write_prevents_remaining_batc
         assert release.wait(3)
         return result
     monkeypatch.setattr(CommandApi, "write_control_batch", write)
+    previous_values = {reg: info["engineering_value"] for reg, info in window.cloud_overlay_by_reg.items()}
     dialog.send_values()
     try:
         wait_for(entered.is_set)
@@ -439,7 +440,173 @@ def test_disconnect_during_possibly_executed_timer_write_prevents_remaining_batc
         wait_for(lambda: not window._cloud_disconnect_pending)
     assert [call[0] for call in CommandApi.created[0].calls] == ["write"]
     assert [code for code, _ in CommandApi.created[0].calls[0][2]] == ["KG1"]
-    assert not window.cloud_overlay_by_reg
+    assert {reg: info["engineering_value"] for reg, info in window.cloud_overlay_by_reg.items()} == previous_values
+    assert all(info["stale"] for info in window.cloud_overlay_by_reg.values())
+    dialog.close()
+
+
+def retained_cloud_window():
+    owner = DialogWindow()
+    dialog = WarmLinkCloudDialog(owner)
+    owner.warmlink_cloud_dialog = dialog
+    owner.set_cloud_connection_state(True, "device")
+    rows = [cloud_row(4.58, "2060", lastFetch="2026-11-08 10:00:00"),
+            cloud_row(1234, "T60", lastFetch="2026-11-08 10:00:00")]
+    dialog._on_data(rows)
+    return owner, dialog
+
+
+def test_manual_disconnect_retains_display_and_marks_all_caches_stale(application, monkeypatch):
+    owner, dialog = retained_cloud_window()
+    previous = {reg: (owner.latest_regs[reg], owner.cloud_overlay_by_reg[reg]["value"])
+                for reg in (2032, 2060)}
+    last_success = owner.cloud_last_success_at
+    dialog.session.validated = dialog.session.scanned = True
+    dialog.disconnect_session()
+    assert not owner.is_cloud_connected() and owner.cloud_ui_state == "DISCONNECTED"
+    assert owner.cloud_last_success_at == last_success
+    assert not dialog.session.validated and not dialog.session.scanned
+    assert all(row["stale"] and row["cached"] for row in dialog.session.rows.values())
+    assert all(row["stale"] and row["cached"] for row in dialog.data_rows + owner.cloud_last_rows)
+    for reg, (register, value) in previous.items():
+        assert owner.latest_regs[reg] is register
+        assert owner.cloud_overlay_by_reg[reg]["stale"]
+        row = owner.table_rows[reg]
+        assert owner.register_table.item(row, 7).text() == value
+        assert owner.register_table.item(row, 11).text() == value
+        assert "Zuletzt bekannter Cloudwert" in owner.register_table.item(row, 7).toolTip()
+        assert "zuletzt bekannt" in owner.register_table.item(row, 14).text()
+    # No queued poll/read/write/snapshot path may replace the retained values.
+    late = [cloud_row(99, "2060")]
+    owner.apply_cloud_rows_to_main(late)
+    owner._on_cloud_read_data("2060", late)
+    dialog._on_data(late)
+    dialog._pending_overlay["2060"] = late[0]
+    dialog._flush_overlay_chunk()
+    monkeypatch.setattr(owner, "_on_cloud_write_result", lambda *args: pytest.fail("Late write confirmation"))
+    owner._on_cloud_write_result_current({"readback_verified": True, "readback": late[0]})
+    gui.MainWindow._on_cloud_write_result(owner, "2060", {"readback_verified": True, "readback": late[0]})
+    owner.parameter_dialog = SimpleNamespace(cloud_read_finished=lambda *args: pytest.fail("Late snapshot"))
+    dialog._on_targeted_snapshot("parameters", 1, late, "")
+    owner.parameter_dialog = None
+    assert owner.cloud_overlay_by_reg[2060]["engineering_value"] == 4.58
+    assert not dialog._pending_overlay
+    assert not owner.cloud_change_highlights
+    assert not owner.is_cloud_connected()
+    dialog.close()
+
+
+def test_reconnect_replaces_only_observed_cached_values_without_double_scaling(application):
+    owner, dialog = retained_cloud_window()
+    dialog.disconnect_session()
+    owner._cloud_manually_disconnected = False
+    owner.set_cloud_connection_state(True, "device")
+    dialog._on_data([cloud_row(5.12, "2060", dataType="TEMP", unit="COP", lastFetch="2026-11-08 10:01:00")])
+    assert owner.cloud_overlay_by_reg[2060]["engineering_value"] == 5.12
+    assert not owner.cloud_overlay_by_reg[2060]["stale"]
+    assert owner.cloud_overlay_by_reg[2032]["stale"]
+    for row in (dialog.session.rows["2060"], next(r for r in dialog.data_rows if r["code"] == "2060")):
+        assert not any(row.get(flag) for flag in ("stale", "cached", "currentEmpty"))
+    assert "Zuletzt bekannter" not in owner.register_table.item(owner.table_rows[2060], 7).toolTip()
+    assert owner.register_value_sources(2060).local_raw is None
+    dialog.close()
+
+
+@pytest.mark.parametrize("change", ["device", "account"])
+def test_retained_cloud_snapshot_does_not_cross_device_or_account(application, change):
+    from core.foxair_phnix_core import DecodedRegister
+    owner, dialog = retained_cloud_window()
+    local = DecodedRegister(0x63, 2060, 0, 3, 321, 321, "3.21 COP", "COP", "COP_X100", 0)
+    owner._upsert_register_row(local, False)
+    owner.last_values[2060] = 321
+    dialog.disconnect_session()
+    assert owner.register_value_sources(2060).local_raw == 321
+    owner._cloud_manually_disconnected = False
+    if change == "account":
+        owner.settings["warmlink_cloud"]["username"] = "other-user"
+    owner.set_cloud_connection_state(True, "other-device" if change == "device" else "device")
+    assert not owner.cloud_overlay_by_reg and not owner.cloud_last_rows and not owner.cloud_session.rows
+    assert not dialog.data_rows
+    dialog._apply_overlay_to_main()
+    assert not owner.cloud_overlay_by_reg
+    assert owner.latest_regs[2060] is local and owner.last_values[2060] == 321
+    assert 2032 not in owner.latest_regs
+    dialog.close()
+
+
+@pytest.mark.parametrize("error", ["401 login expired", "-100 Please login again"])
+def test_authentication_failure_retains_existing_reset_behavior(application, error):
+    owner, dialog = retained_cloud_window()
+    dialog._on_worker_error(error)
+    assert not owner.is_cloud_connected() and owner.cloud_ui_state == "ERROR"
+    assert not owner.cloud_overlay_by_reg and not owner.latest_regs
+    dialog.close()
+
+
+def test_explicit_full_reset_still_clears_manually_retained_values(window):
+    dialog = configured(window)
+    window.set_cloud_connection_state(True, "device")
+    window.apply_cloud_rows_to_main([cloud_row(4.58, "2060")])
+    dialog.disconnect_session()
+    assert 2060 in window.latest_regs
+    window.clear_main_window_values()
+    assert not window.latest_regs and not window.cloud_overlay_by_reg
+    assert window.register_table.rowCount() == 0
+
+
+def test_main_register_loader_keeps_query_codes_separate_from_t_display(window, tmp_path):
+    import json
+    expected = {2065: ("T49", "T49"), 2066: ("T50", "T50"), 2067: ("T51", "T51"),
+                2023: ("T57", "T57"), 2032: ("T60", "T60"), 2033: ("T65", "T65"),
+                2060: ("T200", "2060"), 2054: ("T201", "2054"), 2059: ("T202", "2059"),
+                2029: ("T203", "2029"), 2030: ("T204", "2030"), 2031: ("T205", "2031")}
+    for register, (display, code) in expected.items():
+        assert window.register_defs[str(register)]["code"] == code
+        assert window._display_parts_for_register(register)[1] == display
+        assert window._validated_cloud_modbus_register(code)[0] == register
+    window.apply_cloud_rows_to_main([cloud_row(4.58, "2060"), cloud_row(1.2, "2054"),
+                                     cloud_row(5.5, "2059"), cloud_row(1234, "T60")])
+    assert {reg: info["engineering_value"] for reg, info in window.cloud_overlay_by_reg.items()} == {
+        2060: 4.58, 2054: 1.2, 2059: 5.5, 2032: 1234}
+    path = tmp_path / "display-only-and-legacy.json"
+    path.write_text(json.dumps({"2060": {"name": "COP", "block": "T", "display_code": "T200"},
+                                "1001": {"name": "H01 / Legacy parameter"}}))
+    definitions = gui.MainWindow._load_register_defs(SimpleNamespace(regmap_path=str(path)))
+    assert "code" not in definitions["2060"]
+    assert definitions["1001"]["code"] == "H01"
+
+
+@pytest.mark.parametrize("change", ["device", "account"])
+def test_single_read_response_cannot_cross_cloud_identity(application, change):
+    owner, dialog = retained_cloud_window()
+    owner._cloud_read_identity = ("user", "device")
+    if change == "account":
+        owner.settings["warmlink_cloud"]["username"] = "other-user"
+    else:
+        owner.set_cloud_connection_state(True, "other-device")
+    previous = copy.deepcopy(owner.cloud_overlay_by_reg)
+    owner._on_cloud_read_data("2060", [cloud_row(99, "2060")])
+    owner._on_cloud_read_error("401 login expired")
+    owner._on_cloud_read_token("old-token")
+    owner._on_cloud_read_login_method("obsolete")
+    assert owner.cloud_overlay_by_reg == previous
+    assert owner.is_cloud_connected()
+    assert owner.settings["warmlink_cloud"].get("login_method") != "obsolete"
+    dialog.close()
+
+
+@pytest.mark.parametrize("flag", ["stale", "cached", "currentEmpty"])
+def test_cached_response_is_not_a_successful_single_read_or_recent_fetch(application, flag):
+    from test_cloud_single_read_and_values import open_dialog
+    owner, dialog = retained_cloud_window()
+    quick = open_dialog(owner, 2060)
+    owner.cloud_read_reg_no = 2060
+    previous_success = owner.cloud_last_success_at
+    owner._on_cloud_read_data("2060", [cloud_row(4.58, "2060", **{flag: True})])
+    assert "fehlgeschlagen" in quick.status_label.text()
+    assert owner.cloud_last_success_at == previous_success
+    assert owner.cloud_overlay_by_reg[2060]["stale"]
+    quick.close()
     dialog.close()
 
 
