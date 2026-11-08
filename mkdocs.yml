@@ -1,0 +1,110 @@
+site_name: FoxAir – Hilfe & FAQ
+site_description: Verständliche Antworten rund um FoxAir-/PHNIX-Wärmepumpen.
+site_url: https://dosordie.github.io/FoxAir_Control/
+repo_url: https://github.com/dosordie/FoxAir_Control
+repo_name: dosordie/FoxAir_Control
+edit_uri: blob/main/docs/FAQ/
+
+# Nur die öffentlichen Endbenutzer-FAQs veröffentlichen.
+# Die bestehenden Markdown-Artikel bleiben unverändert.
+docs_dir: docs/FAQ
+site_dir: site
+use_directory_urls: true
+
+theme:
+  name: material
+  favicon: assets/favicon-a.png
+  logo: assets/foxye-header-transparent.png
+  language: de
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dunkles Design
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Helles Design
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: de
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+
+# Links auf technische Dokumente außerhalb docs/FAQ werden nur für die
+# Webseite zu GitHub-Links umgewandelt (ohne die FAQ-Quelldateien zu ändern).
+hooks:
+  - docs_pages_hooks.py
+
+# Nur für den Webauftritt, nicht für die Markdown-Dateien auf GitHub.
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/register-browser.css
+
+extra_javascript:
+  - javascripts/register-browser.js
+
+nav:
+  - Startseite: index.md
+  - Alle Themen: FAQ.md
+  - Modbus Register Browser: register-browser.md
+  - Betrieb und Regelung:
+      - Heizungsregelung und Heizkurve: regelung_heizkurve.md
+      - Heizungshysterese und Takten: heizung_hysterese_takten.md
+      - Auslauftemperatur und Kompressorfrequenz: auslauftemperatur_kompressorfrequenz.md
+      - Lüfterregelung: luefterregelung.md
+      - EEV Auto oder Smart: eev_auto_smart.md
+      - Zonenregelung: zonenregelung.md
+      - Elektrischer Heizstab: heizstab.md
+      - Warmwasser: warmwasser.md
+      - Abtauen und Frostschutz: abtauen_frostschutz.md
+      - Ölrückführung (Oil Return): oelrueckfuehrung.md
+  - Umwälzpumpe:
+      - Durchfluss und Pumpenbetriebsarten: wasserdurchfluss_pumpe.md
+      - PWM-Rückmeldung und Durchflusskennlinien: pwm_durchflusskennlinien.md
+      - Automatische Pumpenregelung: automatische_up_regelung.md
+      - PWM-Leitung umklemmen: up_umklemmen.md
+  - Sensoren und Anschlüsse:
+      - Externer Außentemperaturfühler: externer_at_fuehler.md
+      - Relaisausgänge: relais_ausgaenge.md
+      - Modbus-Anschluss: modbus.md
+  - Firmware:
+      - Firmwareversionen und Update: firmware.md
+      - Firmware-Übersicht (ausführlich): firmware-uebersicht.md
+      - LTE-Modem verbinden und sichern: lte-modem-backup.md
+      - Firmwareupdate unter Windows: firmwareupdate-windows.md
+      - Firmwareupdate unter Linux / Raspberry Pi: firmwareupdate-linux.md
+  - Weitere Steuerung:
+      - SG Ready und PV: sg_ready.md
+      - Solltemperaturen extern korrigieren: externe_sollwertkorrektur.md
+      - WarmLink und LTE: warmlink_lte.md
+  - Fehlersuche:
+      - Fehler und Statuswerte: fehler_und_status.md
+      - Factory Settings: factory_settings.md
+  - FoxAir Control:
+      - Überblick und Download: foxair_control_ueberblick.md
+      - Verbindungsarten und Schnittstellen: verbindung.md
+      - Funktionen und Bedienung: foxair_control_funktionen.md
+      - Einstellungen sichern: einstellungen_sichern.md
+      - Diagnose und Sicherheit: foxair_control_diagnose.md

@@ -30,7 +30,7 @@ Um an die Anschlüsse zu kommen:
 
 > **Achtung – hohe Spannung:** Im Elektronikbereich der Wärmepumpe befinden sich netzspannungsführende Teile. Vor dem Öffnen unbedingt die Stromversorgung abschalten, gegen Wiedereinschalten sichern und Spannungsfreiheit prüfen. Nicht unter Spannung arbeiten.
 
-## Danach
+## Nach dem Umklemmen
 
 Nach dem Umklemmen kann die Pumpendrehzahl vom Mainboard vorgegeben werden.
 
@@ -46,9 +46,6 @@ Mehr dazu:
 - [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md)
 - [Relaisausgänge RO01–RO15 am Mainboard](relais_ausgaenge.md)
 
-## Hintergrund
-
-Die originale Verdrahtung wurde im Photovoltaikforum untersucht und praktisch getestet. Dort ist auch beschrieben, dass der braune Draht (29) von GND auf **P1-DO** gelegt werden muss.
 
 [FoxAir Wärmepumpen – Erfahrungen, Meinungen & Tipps](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=13)
 

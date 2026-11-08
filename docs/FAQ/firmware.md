@@ -1,7 +1,6 @@
 # Firmware-Versionen, Changelog und Display-Update
 
 Bei der FoxAir gibt es mehrere voneinander unabhängige Firmware-Versionen.
-
 Das ist wichtig, weil zum Beispiel **Display V1.7 nicht Mainboard V1.7** bedeutet.
 
 ## Welche Firmware gibt es?

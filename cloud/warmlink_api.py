@@ -181,7 +181,7 @@ class WarmLinkCloudApi:
         raw_body = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.4.0",
         }
         if raw_body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"
@@ -216,7 +216,7 @@ class WarmLinkCloudApi:
         body = None if verb == "GET" else json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
         headers = {
             "Accept": "application/json",
-            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.3.4",
+            "User-Agent": "FoxAir-Phnix-Control-WarmLinkCloud/0.4.0",
         }
         if body is not None:
             headers["Content-Type"] = "application/json;charset=utf-8"

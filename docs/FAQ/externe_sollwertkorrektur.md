@@ -1,4 +1,4 @@
-# Solltemperaturen von außen korrigieren – Register 8802–8808
+# Solltemperaturen von außen korrigieren – Register 8802–8806
 
 Mit einer Hausautomation, einem Raumregler oder einer PV-Steuerung kann man die Solltemperaturen der FoxAir **vorübergehend korrigieren**, ohne ständig die eigentlichen Temperatureinstellungen zu verändern.
 
@@ -13,8 +13,8 @@ Das ist beispielsweise interessant, wenn ein externer Regler die Heizwassertempe
 | **8802** | Warmwasser-Sollwertkorrektur (wird addiert) | Warmwasserziel vorübergehend anpassen |
 | **8803** | Heizsollwertkorrektur (wird addiert) | Heiztemperatur vorübergehend beeinflussen |
 | **8804** | Kühlsollwertkorrektur (wird abgezogen) | Kühltemperatur vorübergehend beeinflussen |
-| **8805** | Zonen-Korrektur A | Zonenwertkorrektur (wird addiert) | Zonentemperatur vorübergehend beeinflussent|
-| **8806** | Zonen-Korrektur B |  Zonenwertkorrektur (wird addiert) | Zonentemperatur vorübergehend beeinflussent|
+| **8805** | Zonen-Korrektur A | Zusätzliche Zonen-Korrektur; genaue Einheit und Wirkung noch nicht abschließend bestätigt |
+| **8806** | Zonen-Korrektur B | Zusätzliche Zonen-Korrektur; genaue Einheit und Wirkung noch nicht abschließend bestätigt |
 
 
 ## Beispiel: Heiztemperatur mit einem Raumregler nachführen
@@ -27,7 +27,7 @@ So kann man beispielsweise alle **10 Minuten** eine kleine Anpassung vornehmen, 
 
 ## Warum ist das speicherschonender?
 
-Die Register **8802–8808** liegen im Arbeitsspeicher (**RAM**). In der untersuchten V3.5-Firmware schreibt der direkte Engineering-Modbus-Pfad diese Werte in den RAM; dabei wurde **kein Flash-/EEPROM-Schreibaufruf** gefunden.
+Die Register **8802–8806** liegen im Arbeitsspeicher (**RAM**). In der untersuchten V3.5-Firmware schreibt der direkte Engineering-Modbus-Pfad diese Werte in den RAM; dabei wurde **kein Flash-/EEPROM-Schreibaufruf** gefunden.
 
 Das ist ein Vorteil gegenüber dem häufigen Ändern von Parametern, die dauerhaft gespeichert werden könnten. Es ist aber **keine Garantie**, dass andere Firmwarepfade niemals einen Speichervorgang auslösen.
 
@@ -37,12 +37,12 @@ Weil es sich um Laufzeitwerte handelt, sollte eine externe Steuerung nach einem 
 
 Die Firmware unterscheidet zwischen der normalen Engineering-Korrektur, SG Ready und der Remote-/AI-Steuerung.
 
-| Einstellung | Wirkung auf 8802–8808 |
+| Einstellung | Wirkung auf 8802–8806 |
 | --- | --- |
 | **1334 = 0** und **1540 = 0** | Normaler Engineering-Korrekturpfad wird verwendet |
-| **1334 = 1, 2, 3, 5, 6 oder 7** | SG-Ready-/PV-Korrekturen haben Vorrang; 8802–8808 werden nicht berücksichtigt |
-| **1334 = 4** | Eigener AI-Saving-/Remote-Korrekturpfad; 8802–8808 werden nicht berücksichtigt |
-| **1334 = 0**, aber **1540 ≠ 0** | Remote-/WarmLink-Korrekturen ersetzen 8802–8806; 8807/8808 werden intern weiterhin addiert, ihre Wirkung ist aber ungeklärt |
+| **1334 = 1, 2, 3, 5, 6 oder 7** | SG-Ready-/PV-Korrekturen haben Vorrang; 8802–8806 werden nicht berücksichtigt |
+| **1334 = 4** | Eigener AI-Saving-/Remote-Korrekturpfad; 8802–8806 werden nicht berücksichtigt |
+| **1334 = 0**, aber **1540 ≠ 0** | Die Remote-/WarmLink-Korrekturen ersetzen die hier beschriebenen Korrekturen 8802–8806 |
 
 **Wichtig:** Wenn **1334 = 7** für die virtuelle SG-/PV-Steuerung eingestellt ist, funktioniert **8803 auch bei 8801 = 2 (Neutral)** nicht. Entscheidend ist die eingestellte SG-Steuerungsart, nicht nur der momentan angeforderte SG-Zustand.
 
@@ -52,7 +52,7 @@ Wer die normale externe Heizkorrektur nutzen möchte, benötigt daher nach dem u
 
 Für die untersuchten Register den **direkten Benutzer-Modbus am Mainboard** verwenden (in FoxAir Control: **„Modbus Standard“**). Den Display-Bus oder den Warmlink-/LTE-Bus nicht einfach als gleichwertig voraussetzen.
 
-- **V3.5 / 82400644:**Korrekturpfad per Firmwareanalyse bestätigt, Livevalidierung von 8802 erfolgreich.
+- **V3.5 / 82400644:** Korrekturpfad per Firmwareanalyse bestätigt, Livevalidierung von 8802 erfolgreich.
 - **V3.4 / 82400644:** Im untersuchten Korrekturselektor fehlt dieser normale Zweig. Die hier beschriebene Nutzung ist daher **nicht für V3.4 belegt**.
 - **V3.3 und älter:** Nicht als funktionsfähig nachgewiesen.
 

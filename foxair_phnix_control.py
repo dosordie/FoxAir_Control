@@ -183,8 +183,8 @@ from core.foxair_phnix_core import (
 )
 
 
-APP_VERSION = "0.3.4"
-BUILD_DATE = "2026-10-08"
+APP_VERSION = "0.4.0"
+BUILD_DATE = "2026-10-21"
 APP_EDITION = "PUBLIC"
 APP_TITLE = f"FoxAir / Phnix Control V{APP_VERSION}{' PRIVATE' if APP_EDITION.upper() == 'PRIVATE' else ''} - by DosOrDie"
 

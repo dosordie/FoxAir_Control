@@ -1,6 +1,6 @@
 # FoxAir / PHNIX Firmware-Übersicht
 
-Stand: 2026-09-22
+Stand: 2026-10-26
 
 Diese Seite soll die häufige Verwechslung zwischen **Mainboard-Firmware**, **Display-Firmware** und **LTE-/DTU-Firmware** vermeiden. Eine Versionsnummer wie `V1.7` oder `V3.4` ist **ohne den zugehörigen Software-/Gerätecode nicht eindeutig**.
 
@@ -53,11 +53,6 @@ Aus Forumshinweisen und unserem statischen Vergleich V3.3 → V3.4:
 - neuer dreiphasiger Soft-Strombegrenzer auf Basis des höchsten Eingangsstroms aus L1/L2/L3,
 - erweiterte SG-/PV-State-Machine; zusätzlich zu klassischem SG Ready existiert ab V3.4 eine zweite 3-stufige SG/PV-Familie.
 
-Technische Details dazu liegen bewusst im Reverse-Engineering-Bereich:
-
-- [`reverse_engineering/firmware_v34.md`](reverse_engineering/firmware_v34.md)
-- [`reverse_engineering/firmware_v34_sg_ready_8801.md`](reverse_engineering/firmware_v34_sg_ready_8801.md)
-
 ### V3.5 – wichtigste bekannte Änderungen
 
 V3.5 ist als nächste Revision derselben `82400644`-Firmwarelinie bestätigt. **Die analysierte V3.5 stammt von einer FoxAir BlueLine (BL).** Dieselbe Mainboard-Firmwarelinie wird bei entsprechenden FoxAir GreenLine-/GL-Geräten mit Softwarecode `82400644` verwendet:
@@ -96,7 +91,7 @@ Die Firmwareanalyse belegt Cloud-/Remote-Eingänge und deren lokale Anwendung. O
 
 > **BlueLine-/GreenLine-Kompatibilität:** Für Geräte mit Mainboard-Softwarecode `82400644` sind BlueLine und GreenLine keine getrennten Firmwarezweige. Die untersuchte V3.5 aus einer BlueLine ist firmwareseitig dieselbe V3.5-Linie wie bei entsprechenden GreenLine-/GL-Geräten und daher zwischen diesen Geräten kompatibel. Das gilt ausdrücklich für die gemeinsame `82400644`-Firmwarefamilie; bei anderen Softwarecodes ist daraus keine Kompatibilität abzuleiten.
 >
-> **OTA-Status:** V3.5 ist bestätigt, aber ein kompletter Firmwarewechsel **auf oder von V3.5** wurde mit dem FoxAir Updater noch nicht als realer Updatevorgang validiert.
+> **OTA-Status:** Mit dem **FoxAir Updater** wurden inzwischen vollständige Firmwarewechsel **auf V3.5** sowie der **Downgrade V3.5 → V3.4** real erfolgreich durchgeführt. Ebenfalls bestätigt sind unter anderem **V3.3 → V3.4** und **V1.2 → V3.4**. Die praktischen Tests decken nicht automatisch alle Gerätevarianten, Firmwarestände oder Fehlerfälle ab. Vor jedem Update den Mainboard-Softwarecode und die Eignung des Firmwarepakets prüfen.
 
 ---
 

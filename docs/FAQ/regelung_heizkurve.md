@@ -1,194 +1,105 @@
-# Heizungsregelung, H25 und Heizkurve
+# Heizungsregelung und Heizkurve – welche Temperatur soll die FoxAir erreichen?
 
-Die FoxAir kann auf unterschiedliche Arten regeln. Viele Startprobleme oder scheinbar unlogische Sollwerte entstehen dadurch, dass **H25**, die eingestellte Solltemperatur und die **AT-Entschädigung / Heizkurve** nicht zueinander passen.
+Bei der FoxAir bestimmen vor allem zwei Einstellungen, **welche Temperatur sie erreichen soll**:
 
-## H25 – welche Temperatur soll geregelt werden?
+- **H25:** An welcher Temperatur orientiert sich die Heizungsregelung?
+- **H36 / AT-Entschädigung:** Soll die gewünschte Heizwassertemperatur mit der Außentemperatur verändert werden?
 
-Parameter **H25** legt fest, welche Temperatur die Wärmepumpe als Regelgröße verwendet.
+Wenn diese Einstellungen nicht zusammenpassen, wirkt es manchmal so, als würde die Wärmepumpe zu früh abschalten, nicht starten oder einen unerwarteten Sollwert verwenden.
 
-| H25 | Regelung nach |
+## H25 – welche Temperatur wird verwendet?
+
+| H25 | Einstellung | Was bedeutet das? |
+| ---: | --- | --- |
+| **0** | **Outlet Water Temp.** (Vorlauf / Auslass) | Die Wärmepumpe orientiert sich an der Temperatur des Wassers, das sie zum Heizkreis schickt. |
+| **1** | **Room Temp.** (Raum) | Ein Raumfühler beeinflusst die benötigte Heizwassertemperatur. |
+| **2** | **Buffer Tank Temp.** (Puffer) | Die Temperatur eines Pufferspeichers dient als Vorgabe für die Regelung. |
+| **3** | **Inlet Water Temp.** (Rücklauf / Einlass) | Die Wärmepumpe orientiert sich an der Temperatur des zurückkommenden Wassers. |
+
+**Für viele Anlagen ohne zusätzlichen Raum- oder Pufferfühler ist H25 = 0 ein sinnvoller Ausgangspunkt.** Das gilt besonders, wenn die FoxAir direkt einen Heizkreis versorgt.
+
+Bei **H25 = 1 oder 2** muss der passende Fühler auch wirklich angeschlossen und richtig positioniert sein. Fehlt er, kann die Wärmepumpe die gewünschte Raum- bzw. Puffertemperatur nicht zuverlässig beurteilen.
+
+Wichtig: Auch bei einer Raumtemperaturregelung wird die Heizleistung letztlich über das erwärmte Wasser bereitgestellt. Das ist keine direkte Einstellung der Kompressorfrequenz.
+
+## Feste Vorlauftemperatur oder Heizkurve?
+
+Es gibt zwei typische Möglichkeiten:
+
+**Feste Solltemperatur:** Du stellst beispielsweise 35 °C ein. Dieser Wert bleibt grundsätzlich gleich, egal ob es draußen +10 °C oder -5 °C hat. Weitere aktivierte Funktionen können ihn dennoch beeinflussen.
+
+**Heizkurve / AT-Entschädigung:** Die Wärmepumpe passt die gewünschte Heizwassertemperatur an die Außentemperatur an.
+
+Die Grundidee ist einfach:
+
+- **Draußen wärmer:** Das Haus braucht meist eine niedrigere Heizwassertemperatur.
+- **Draußen kälter:** Das Haus braucht meist eine höhere Heizwassertemperatur.
+
+Damit kann die Wärmepumpe witterungsabhängig heizen, ohne dass du die Solltemperatur ständig selbst ändern musst.
+
+## H36 – die Heizkurve einstellen
+
+Bei den untersuchten Mainboard-Firmwares **V3.4 und V3.5** gibt es folgende Möglichkeiten:
+
+| H36 | Funktion |
 | ---: | --- |
-| **0** | Auslasswassertemperatur / Vorlauf |
-| **1** | Raumtemperatur |
-| **2** | Puffertanktemperatur |
-| **3** | Einlasswassertemperatur / Rücklauf |
+| **0 – Aus** | Keine Außentemperatur-Anpassung über diese Heizkurve |
+| **1 – Linear** | Eine einfache Heizkurve mit Steigung und Verschiebung |
+| **2 – 7-Punkt** | Du legst die gewünschte Heizwassertemperatur für sieben Außentemperaturen fest |
 
-Für viele einfache Anlagen ist **Outlet Water Temp. / Auslasswassertemperatur** der leicht verständliche Ausgangspunkt.
+### Lineare Heizkurve
 
-## Regelung nach Auslasswassertemperatur
+Hier legst du die Kurve über **Steigung** und **Verschiebung / Offset** fest:
 
-Bei **H25 = Outlet Water Temp.** versucht die Wärmepumpe, die eingestellte Wassertemperatur zu erreichen.
+- Über die **Steigung** bestimmst du, wie stark sich die Solltemperatur verändert, wenn es draußen kälter oder wärmer wird.
+- Mit der **Verschiebung** hebst oder senkst du das Temperaturniveau der Kurve.
 
-Das ist beispielsweise sinnvoll, wenn:
+Ist es bei kaltem Wetter zu kühl im Haus, kann eine steilere Kurve sinnvoll sein. Ist es dagegen bei fast jeder Außentemperatur zu kühl, kann eher eine Verschiebung nach oben nötig sein.
 
-- die Wärmepumpe direkt einen Heizkreis versorgt,
-- die gewünschte Vorlauftemperatur fest vorgegeben werden soll,
-- oder eine externe Steuerung die Wärmepumpe nur ein- und ausschaltet.
+Änderungen am besten in kleinen Schritten durchführen und dem Haus genügend Zeit geben, darauf zu reagieren.
 
-Wenn eine feste Vorlauftemperatur gefahren werden soll, darf eine zusätzlich aktive **AT-Entschädigung** den Sollwert nicht unerwartet verändern. Bei der Fehlersuche deshalb immer prüfen, ob die AT-Entschädigung aktiviert ist.
+### 7-Punkt-Heizkurve
 
-## Regelung nach Raumtemperatur
+Hier kannst du für diese sieben festen Außentemperaturen jeweils eine gewünschte Heizwassertemperatur einstellen:
 
-Bei **H25 = Room Temp.** benötigt die Wärmepumpe einen passenden Raumtemperaturfühler.
+**-20 / -10 / -5 / 0 / +5 / +10 / +20 °C**
 
-Ohne angeschlossenen Sensor kann die Regelung keine sinnvolle reale Raumtemperatur erfassen.
+Die FoxAir berechnet die Werte dazwischen automatisch.
 
-Der Fühler wird am dafür vorgesehenen **RT/BT- bzw. Raum-/Puffersensor-Eingang** angeschlossen.
+**Beispiel:** Du stellst bei -5 °C Außentemperatur einen Vorlauf-Sollwert von 36 °C und bei 0 °C einen Wert von 32 °C ein. Bei -2,5 °C ergibt sich daraus ungefähr **34 °C**. Das ist nur ein Rechenbeispiel, keine allgemeine Einstellungsempfehlung.
 
-## Regelung nach Puffertemperatur
+Außerhalb des Bereichs von -20 bis +20 °C verwendet die untersuchte Kurvenberechnung den jeweiligen Randpunkt. Außerdem gelten weiterhin die eingestellten **minimalen und maximalen Heiz-Solltemperaturen (R10 / R11)**.
 
-Bei **H25 = Buffer Tank Temp.** wird ein Temperaturfühler im Pufferspeicher benötigt.
+Die Kurve sollte zu deinem Gebäude und deinen Heizflächen passen. Eine pauschal richtige Einstellung gibt es nicht.
 
-Diese Betriebsart ist sinnvoll, wenn die Wärmepumpe in erster Linie einen Pufferspeicher auf Temperatur halten soll.
+## Wo kann ich die Heizkurve ansehen und ändern?
 
-Auch hier gilt: Ohne passenden Fühler am vorgesehenen Eingang kennt die Wärmepumpe die reale Puffertemperatur nicht. Soweit bekannt dann der mitgelieferte Sensor verwendet werden.
+Die Einstellungen lassen sich – je nach Firmware und vorhandener Anzeige – am **Display**, über **WarmLink** oder mit **FoxAir Control** aufrufen.
 
-## Regelung nach Einlasswassertemperatur
+In FoxAir Control findest du dafür die **AT-Kompensation**. Dort kannst du die Kurvenwerte ansehen, ändern und die berechnete Solltemperatur nachvollziehen.
 
-Bei **H25 = Inlet Water Temp.** wird nach der Rücklauf-/Einlasstemperatur geregelt.
+Wichtig ist, nach einer Änderung zu prüfen, ob die neuen Werte tatsächlich übernommen wurden und welcher **aktuelle Sollwert** daraus entsteht. Eine aktive Heizkurve kann dafür sorgen, dass der wirksame Sollwert von dem ursprünglich manuell eingestellten Wert abweicht.
 
-Diese Variante wird deutlich seltener verwendet als die Regelung nach Auslasswassertemperatur.
+## Warum startet die Wärmepumpe nicht oder heizt anders als erwartet?
 
-## Was macht die AT-Entschädigung / Heizkurve?
+Prüfe zunächst diese Punkte:
 
-Die **AT-Entschädigung** passt die benötigte Heizwassertemperatur abhängig von der Außentemperatur an.
+1. **H25:** Wird die richtige Temperatur als Grundlage verwendet?
+2. **Fühler:** Ist ein benötigter Raum- oder Puffertemperaturfühler vorhanden und zeigt er plausible Werte?
+3. **H36:** Ist eine Heizkurve aktiv, obwohl du mit einem festen Sollwert rechnest?
+4. **Soll-/Isttemperatur:** Welche Heizwassertemperatur soll die Wärmepumpe *aktuell* erreichen, und wie warm ist das Wasser tatsächlich?
+5. **Betriebszustand:** Ist Heizen überhaupt freigegeben, oder befindet sich die Wärmepumpe bereits in einer Wartephase, innerhalb ihrer Ein-/Ausschaltschwellen oder in einer Störung?
 
-Grundidee:
+Für einen übersichtlichen Test kann es helfen, vorübergehend **H25 = 0** zu wählen und die **AT-Entschädigung (H36 = 0)** auszuschalten. Mit einer geeigneten festen Vorlauftemperatur lässt sich dann leichter prüfen, ob die Wärmepumpe grundsätzlich erwartungsgemäß arbeitet. Anschließend kann die Heizkurve wieder aktiviert werden.
 
-- draußen mild → niedrigere Heizwassertemperatur
-- draußen kalt → höhere Heizwassertemperatur
+## Wie regelt die FoxAir anschließend ihre Leistung?
 
-Damit muss nicht für jede Wetterlage manuell eine neue Vorlauftemperatur eingestellt werden.
+**Die Heizkurve bestimmt die gewünschte Temperatur – nicht direkt die Kompressorfrequenz.** Wie schnell die FoxAir aufheizt, warum der Verdichter manchmal nicht weiter herunterregelt und welche Grenzen es gibt, ist in einem eigenen Artikel erklärt:
 
-Bei Firmware **V3.4** kann die Heizkurve außerdem zusammen mit den Leistungstimern verwendet werden.
+[Auslauftemperatur und Kompressorfrequenz – wie regelt die FoxAir?](auslauftemperatur_kompressorfrequenz.md)
 
-### H36 – Art der Außentemperaturkompensation
+## Ab welcher Firmware gelten diese Angaben?
 
-In den untersuchten GL9-Firmwares **V3.4 und V3.5** wählt **H36 (Register 1236)** die Art der Heizkurve:
+Die beschriebene **lineare und 7-Punkt-Heizkurve** ist für die untersuchten **Mainboard-Firmwares V3.4 und V3.5** dokumentiert. Bei älteren Versionen kann der Funktionsumfang abweichen. Ein Firmwareupdate sollte deshalb nicht allein aufgrund einer abweichenden Anzeige durchgeführt werden.
 
-| H36 | Modus |
-| ---: | --- |
-| **0** | Aus |
-| **1** | Lineare Kennlinie |
-| **2** | 7-Punkt-Kennlinie |
-
-#### Lineare Kennlinie
-
-Im Modus **H36 = 1** bestimmen **Register 1234** (Steigung) und **Register 1235** (Offset bzw. Mittelpunkt) die lineare Heizkurve.
-
-#### 7-Punkt-Kennlinie
-
-Im Modus **H36 = 2** werden Heiz-Solltemperaturen an sieben festen Außentemperatur-Stützstellen vorgegeben:
-
-| Außentemperatur | Register des Heiz-Sollwerts |
-| ---: | ---: |
-| **-20 °C** | **1250** |
-| **-10 °C** | **1251** |
-| **-5 °C** | **1252** |
-| **0 °C** | **1235** |
-| **+5 °C** | **1253** |
-| **+10 °C** | **1254** |
-| **+20 °C** | **1255** |
-
-Zwischen benachbarten Punkten interpoliert die Regelung linear. Für die Kurvenberechnung wird die verwendete Außentemperatur auf **-20 bis +20 °C** begrenzt.
-
-**Register 1234** spielt im 7-Punkt-Modus keine Rolle. **Register 1235** hat damit eine Doppelrolle: linearer Offset/Mittelpunkt in Modus 1 und 0-°C-Sollwert in Modus 2.
-
-#### Grenzen und aktuelle Werte
-
-Nach der Kurvenberechnung wird das Ergebnis durch **R10 (Register 1164, minimale Heiz-Solltemperatur)** und **R11 (Register 1165, maximale Heiz-Solltemperatur)** begrenzt.
-
-Die aktuell für die Kurve verwendete Außentemperatur steht in **Register 2048**, die daraus resultierende kompensierte Solltemperatur in **Register 2014**. Diese beiden Werte sind Laufzeitwerte und werden in FoxAir Control nur angezeigt, nicht als Kurvenparameter geschrieben.
-
-### WarmLink: AT-Kurve über Cloud lesen und schreiben
-
-Die WarmLink-Android-App **3.0.5 / Family 416, Softwarecode 644** bestätigt
-dieselben festen Stützstellen wie die GL9-Mainboard-Firmware:
-**-20 / -10 / -5 / 0 / +5 / +10 / +20 °C**.
-
-| AT | Zone-1-Cloudcode | MAIN-Register |
-| ---: | --- | ---: |
-| -20 °C | `CP1-1` | 1250 |
-| -10 °C | `CP1-2` | 1251 |
-| -5 °C | `CP1-3` | 1252 |
-| 0 °C | `compensate_offset` | 1235 |
-| +5 °C | `CP1-5` | 1253 |
-| +10 °C | `CP1-6` | 1254 |
-| +20 °C | `CP1-7` | 1255 |
-
-**`CP1-4` wird von der App abgefragt, aber nicht als 0-°C-Punkt verwendet.**
-Es erhält keine lokale Projektion auf 1235 oder ein anderes Register. Für Zone 2
-fragt die App analog `CP2-1`…`CP2-7` ab; der tatsächliche Mittelpunkt stammt
-aus **`Zone 2 Curve Offset`**, ebenfalls nicht aus `CP2-4`. Alle CP-Codes stehen
-im Cloudkatalog; Schreibfreigaben werden getrennt von der Lesbarkeit behandelt. Die lokalen Zone-2-Register bleiben
-unbestätigt und werden nicht geraten.
-
-Ab FoxAir Control **0.3.3** funktioniert **AT-Kompensation → Werte lesen**
-auch Cloud-only. Der vorhandene Worker liest gezielt H36, Steigung/Offset,
-die sechs CP1-Stützwerte, R10/R11, T04, 2014 und 2146 über
-`app/device/getDataByCode` (`protocalCodes`), ohne Fullscan. Die Abfrage wird
-mit normalem Polling und CSV seriell ausgeführt. Bereits gelesene Cloudwerte
-erscheinen sofort im offenen Dialog; Engineering-Werte werden nicht erneut
-als Modbus skaliert. Lokale Werte haben bei aktivem lokalem Transport Vorrang
-und bleiben getrennt von Cloud. Nach lokalem Disconnect zeigt AT Cloudwerte,
-auch wenn alte lokale Werte im Cache bleiben; nach Reconnect gewinnt lokal wieder.
-
-**Cloud-Schreiben:** Am **17.10.2026** hat der Betreiber an der GL9 alle sieben
-AT-Punkte einzeln und zusätzlich gemeinsam in einem 7-fach-Cloud-Write getestet.
-Der anschließende gemeinsame `getDataByCode`-Readback bestätigte alle sieben Werte
-exakt. Freigegeben sind die obigen sieben Codes, die lineare Kurve
-(`compensate_slope`/1234 und `compensate_offset`/1235) sowie H36 separat.
-Der tatsächliche 0-°C-Punkt bleibt `compensate_offset`, nicht CP1-4.
-
-Die Cloud-Schreibbuttons starten unmittelbar, ohne experimentelle Checkbox oder
-zusätzliche Nachfrage. Nur geänderte Kurvenwerte werden in **einem**
-`app/device/control?lang=en`-Request mit `appId: "16"` und `param[]` gesendet;
-die lineare Kurve verwendet bei zwei Änderungen ebenfalls einen gemeinsamen Batch.
-Alle geschriebenen Codes werden anschließend gemeinsam frisch gelesen. Nur ein
-Wert innerhalb einer halben Registerauflösung bestätigt das jeweilige Feld.
-Bei fehlenden, veralteten oder abweichenden Werten gibt es höchstens drei
-Readback-Versuche. Bestätigte Felder werden gespeichert; andere Änderungen bleiben
-offen. Neue manuelle Änderungen werden durch einen älteren Readback nicht gelöscht.
-
-Ein Timeout oder eine unklare Schreibantwort führt zu gezieltem Nachlesen,
-niemals zu blindem erneutem Schreiben. Es gibt keinen automatischen Rollback;
-ein Serverbatch ist nicht als atomar garantiert. Account-/Gerätewechsel bricht
-Folgeschritte ab. Lokale Bestätigungen bleiben erhalten. Beim Öffnen erscheinen
-Cachewerte sofort, danach lädt ein asynchroner gezielter Cloud-Snapshot aktuelle
-Werte, ohne bereits bearbeitete Felder zu überschreiben.
-
-Der Dialog zeigt sieben kompakte Eingabefelder und eine passende berechnete
-Werteübersicht ohne Scrolltabellen. Die Grafik bleibt mit den Feldern
-synchronisiert und per Maus bearbeitbar. Der Schreibbutton folgt dem ausgewählten
-Kurvenmodus; H36 bleibt eine eigene Aktion. Automatisches Nachlesen und
-Cloud-Polling überschreiben keine ungespeicherten Eingaben. **„Live-Werte
-übernehmen“** verwirft die eigenen Änderungen bewusst zugunsten des aktuellen
-Wertestands. R10/R11 und die bestehende Interpolation gelten weiterhin.
-
-## Warum startet die Wärmepumpe manchmal nicht?
-
-Wenn die WP trotz vermeintlicher Heizanforderung nicht startet, zuerst prüfen:
-
-1. Welcher Wert ist bei **H25** eingestellt?
-2. Ist der dafür benötigte Temperaturfühler tatsächlich vorhanden?
-3. Ist die **AT-Entschädigung** aktiv?
-4. Welche Solltemperatur ergibt sich dadurch aktuell?
-5. Liegt die gemessene Temperatur bereits innerhalb der Ein-/Ausschalthysterese?
-6. Ist überhaupt **Heizen** als Betriebsart aktiviert?
-7. Liegt ein Durchfluss- oder anderer Fehler vor?
-
-Gerade eine Kombination aus falscher H25-Auswahl und fehlendem Raum-/Pufferfühler kann zu schwer nachvollziehbarem Verhalten führen.
-
-
-## Empfehlung bei der Fehlersuche
-
-Für einen möglichst einfachen Testbetrieb:
-
-- **H25 = Outlet Water Temp.**
-- eine sinnvolle feste Heizwassertemperatur einstellen
-- AT-Entschädigung zunächst deaktivieren
-- prüfen, ob die WP sauber startet und die Solltemperatur erreicht
-
-Erst danach Heizkurve, Raumregelung oder externe Steuerung Schritt für Schritt ergänzen.
-
-Die genaue optimale Heizkurve hängt stark von Gebäude, Heizflächen und gewünschter Raumtemperatur ab und kann deshalb nicht allgemein vorgegeben werden.
+Mehr dazu: [Firmware-Versionen und Update](firmware.md).
