@@ -140,6 +140,22 @@ def test_restart_reuses_validated_device_and_supported_groups(fake_api):
     assert second.session.rows is not first.session.rows
 
 
+def test_manual_disconnect_snapshot_requires_full_scan_and_fresh_rows_replace_flags(fake_api):
+    first = poll_worker(poll_once=True)
+    first.run()
+    first.session.mark_stale()
+    assert not first.session.validated and not first.session.scanned
+    assert all(row["cached"] and row["stale"] for row in first.session.rows.values())
+    second = poll_worker(poll_once=True, session=first.session)
+    second.run()
+    reads = [call[1] for call in fake_api.created[-1].calls if isinstance(call, tuple) and call[0] == "read"]
+    assert reads == [second.codes]
+    assert second.session.validated and second.session.scanned
+    for row in second.session.rows.values():
+        if row.get("supported"):
+            assert not any(row.get(flag) for flag in ("stale", "cached", "currentEmpty"))
+
+
 @pytest.mark.parametrize("change", ["account", "device", "manual"])
 def test_rediscovery_when_session_is_not_reusable(fake_api, change, monkeypatch):
     first = poll_worker(poll_once=True)

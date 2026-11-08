@@ -67,8 +67,17 @@ class CloudSession:
             if not row.get("supported") and cached.get("supported"):
                 row = {**cached, "stale": True, "cached": True, "currentEmpty": True}
             else:
+                if (row.get("supported") and row.get("value") not in (None, "")
+                        and not any(row.get(flag) for flag in ("stale", "cached", "currentEmpty"))):
+                    row = {**row, "stale": False, "cached": False, "currentEmpty": False}
                 row = {**cached, **row}
             self.rows[code] = dict(row)
+
+    def mark_stale(self):
+        """Keep the last snapshot for display, requiring a fresh scan on reconnect."""
+        self.validated = self.scanned = False
+        self.rows = {code: {**row, "stale": True, "cached": True}
+                     for code, row in self.rows.items()}
 
     def classify(self, candidates, fresh_rows=None):
         self.candidates = list(candidates)
