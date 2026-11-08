@@ -167,8 +167,9 @@ def forbid_discovery(monkeypatch):
     monkeypatch.setattr(workers, "discover_cloud_devices", forbidden)
 
 
+@pytest.mark.parametrize("code", ["R02", "T60", "2060"])
 @pytest.mark.parametrize("mode", ["success", "expired", "error", "empty"])
-def test_main_single_read_session_result_and_cleanup(application, monkeypatch, mode):
+def test_main_single_read_session_result_and_cleanup(application, monkeypatch, mode, code):
     forbid_discovery(monkeypatch)
     requests = []
     logins = []
@@ -182,17 +183,17 @@ def test_main_single_read_session_result_and_cleanup(application, monkeypatch, m
     def request(api, endpoint, payload=None, **kwargs):
         requests.append((endpoint, payload, kwargs.get("token")))
         assert endpoint == warmlink_api.ENDPOINT_GET_DATA_BY_CODE
-        assert payload == {"deviceCode": "selected-device", "protocalCodes": ["R02"]}
+        assert payload == {"deviceCode": "selected-device", "protocalCodes": [code]}
         if mode == "expired" and len(requests) == 1:
             return {"error_code": "-100", "error_msg": "Please login again"}
         if mode == "error":
             raise RuntimeError("transport failed")
-        return {"isResultSuc": True, "objectResult": [] if mode == "empty" else [cloud_row(55)]}
+        return {"isResultSuc": True, "objectResult": [] if mode == "empty" else [cloud_row(55, code)]}
 
     monkeypatch.setattr(warmlink_api.WarmLinkCloudApi, "_request_json", request)
     monkeypatch.setattr(warmlink_api.WarmLinkCloudApi, "login", login)
     window = CloudWindow()
-    register = cloud_modbus_register("R02")
+    register = cloud_modbus_register(code)
     dialog = open_dialog(window, register)
     gui_thread = application.thread()
     callback_threads = []

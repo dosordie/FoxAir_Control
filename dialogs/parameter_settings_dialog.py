@@ -103,7 +103,7 @@ def register_block_and_clean_name(name: str) -> tuple[str, str, str]:
 def register_meta_parts(data_or_name: Any) -> tuple[str, str, str]:
     if isinstance(data_or_name, dict):
         name = str(data_or_name.get("name", "")).strip()
-        code = str(data_or_name.get("code", "")).strip()
+        code = str(data_or_name.get("display_code") or data_or_name.get("code") or "").strip()
         code_for_block = code.upper()
         block = str(data_or_name.get("block", "")).strip().upper()
         old_block, old_code, clean = register_block_and_clean_name(name)
@@ -246,6 +246,8 @@ class ParameterSettingsDialog(QDialog):
                 continue
             block, code, clean_name = register_meta_parts(data)
             app_label = str(data.get("app_label", ""))
+            if not code and block == "T":
+                code = str(reg_no)
             if not code:
                 # Kompatibilitaet fuer Alt-Mappings, bei denen der Code nur im App-Label steckt.
                 m = self.PARAM_RE.search(str(data.get("name", "")) + " " + app_label)
@@ -258,16 +260,16 @@ class ParameterSettingsDialog(QDialog):
                 # und sollen die normale Parameter-Einstellungsansicht nicht ueberladen.
                 continue
             mode = str(data.get("mode", ""))
-            is_t_diag = str(code).upper().startswith("T-DIAG")
             # Fuer diese Ansicht sind schreibbare/parametrierbare Register interessant.
             # App-Video-Labels nehmen wir immer mit, auch wenn mode fehlt.
-            # T-Diag-Werte sind Diagnosewerte, sollen aber als eigener Anhang im T-Block sichtbar sein.
-            if "w" not in mode.lower() and not app_label and not is_t_diag:
+            # Der T-Block enthält Livewerte unabhängig von Cloudcode/App-Label.
+            if "w" not in mode.lower() and not app_label and block != "T":
                 continue
             is_engineering = str(data.get("ui_visibility", "")).lower() == "engineering"
             items.append({
                 "reg": reg_no,
-                "code": code,
+                "code": str(data.get("code") or code),
+                "display_code": code,
                 "block": block,
                 "name": f"[Engineering] {clean_name}" if is_engineering else clean_name,
                 "app_label": app_label,
@@ -283,12 +285,10 @@ class ParameterSettingsDialog(QDialog):
                 "source_app_video": str(data.get("source_app_video", "")),
             })
         def sort_key(item: dict[str, Any]):
-            code_text = str(item["code"] or "")
+            code_text = str(item["display_code"] or "")
             num_match = re.search(r"(\d+)", code_text)
             num = int(num_match.group(1)) if num_match else 9999
-            # T-Diag-Diagnosewerte gehoeren ans Ende des T-Blocks, nicht zwischen T05/T10.
-            diag_tail = 1 if code_text.upper().startswith("T-DIAG") else 0
-            return (item["block"], diag_tail, num, item["reg"])
+            return (item["block"], num, item["reg"])
         return sorted(items, key=sort_key)
 
     def _build_ui(self):
@@ -464,7 +464,7 @@ class ParameterSettingsDialog(QDialog):
         for item in self._items:
             if block and item["block"] != block:
                 continue
-            if app_only and not item.get("app_label"):
+            if app_only and not item.get("app_label") and item["block"] != "T":
                 continue
             items.append(item)
         return items
@@ -514,8 +514,10 @@ class ParameterSettingsDialog(QDialog):
         parts: list[str] = []
         if include_title:
             technical_name = self._display_name_for_item(item)
-            title = f"{item.get('code', '')} / Register {item.get('reg')}: {technical_name}"
+            title = f"{item.get('display_code', item.get('code', ''))} / Register {item.get('reg')}: {technical_name}"
             parts.append(title)
+            if item.get("display_code") != item.get("code") and item.get("code"):
+                parts.append(f"Cloud-Abfragecode: {item['code']}")
             app_label = str(item.get("app_label") or "").strip()
             if app_label and app_label != technical_name:
                 parts.append(f"App-Name: {app_label}")
@@ -563,7 +565,7 @@ class ParameterSettingsDialog(QDialog):
             name_text = self._display_name_for_item(item)
             row_values = [
                 int(item["reg"]),
-                item.get("code") or item.get("block", ""),
+                item.get("display_code") or item.get("code") or item.get("block", ""),
                 name_text,
                 value_text,
                 raw_text,

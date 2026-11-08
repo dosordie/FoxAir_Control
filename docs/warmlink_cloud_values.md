@@ -439,3 +439,82 @@ Eine fehlende Inline-Hint-Definition bedeutet nicht zwingend
 „unbekannt“: weitere Overlay-/iOS308-Mappings werden im Modul nachträglich
 eingetragen. Vor einer Freigabe immer die **effektive** Mappingsicht und
 die reale Cloud-Antwort prüfen.
+
+## T-Mapping und Diagnoseanzeige (8. November 2026)
+
+Die Hauptregistertabelle trennt bei virtuellen T-Anzeigen `display_code` von
+`code`. `display_code` dient ausschließlich der Oberfläche; Cloud-Routing und
+`local_code`-Auflösung verwenden weiterhin `code` und bestätigte Cloud-Hints.
+Die MAIN-Adresse bleibt der JSON-Schlüssel. Ohne `display_code` zeigt die
+Oberfläche wie bisher den vorhandenen Code an.
+
+| MAIN | Anzeige | Cloud-Abfrage |
+| --- | --- | --- |
+| 2065 | T49 | T49 |
+| 2066 | T50 | T50 |
+| 2067 | T51 | T51 |
+| 2023 | T57 | T57 |
+| 2032 | T60 | T60 |
+| 2033 | T65 | T65 |
+| 2060 | T200 | 2060 |
+| 2054 | T201 | 2054 |
+| 2059 | T202 | 2059 |
+| 2029 | T203 | 2029 |
+| 2030 | T204 | 2030 |
+| 2031 | T205 | 2031 |
+
+T200–T205 waren unbelegt und stehen in keinem Cloud-Abfragekatalog. Die frühere
+lokale Zuordnung T60 → COP ist entfernt; die Kompressorlaufzeit bevorzugt
+ausdrücklich T60. Der bestätigte Alias `InputCurrent1` bleibt erhalten, bei
+Registerabfragen wird `2029` verwendet. Einträge mit `block: "T"` bleiben auch
+ohne App-Label und bei aktivem App-Filter im Diagnose-/Live-Reiter sichtbar.
+
+T49–T51, T57 und die Strom-Aliase übernehmen die vorhandene Live-Evidenz. T60,
+T65 und die numerischen Leistungs-/COP-Codes folgen dem bestätigten
+Konsolidierungsauftrag. Es gab keinen zusätzlichen Live-Abruf. T55, T58, T59,
+T99 und T101 bleiben ohne MAIN-Zuordnung; auch T54 erhält keine aus der früheren
+lokalen Anzeigenummer abgeleitete Zuordnung. Neue Transporttypen werden nicht
+aus Modbus-Typen abgeleitet. Der vorhandene Übersetzer berücksichtigt die
+API-Metadaten und erhält Cloudwerte ohne erneute lokale Skalierung.
+
+Gezielte Regressionen prüfen die tatsächlichen Einzelread-Payloads für T60 und
+2060, die Anfragecodes des T-Reiters, eindeutige Anzeigenummern, Sichtbarkeit
+ohne App-Label, Live-Einheiten sowie unabhängige Cloud-/Modbus-Skalierung.
+Der JSON-Vergleich gegen den Ausgangsstand bestätigt unveränderte Registerzahl
+und ausschließlich Änderungen an `code`, `block` und `display_code` der zwölf
+betroffenen Register. Die separate Display-Tabelle bleibt unverändert.
+
+Reproduzierbarer Regressionslauf (Qt nutzt über `tests/conftest.py` offscreen):
+
+```bash
+python -m pytest -q \
+  tests/test_cloud_mapping_audit.py \
+  tests/test_cloud_parameter_cache_full_scan.py \
+  tests/test_cloud_single_read_and_values.py \
+  tests/test_register_audit_20261015.py \
+  tests/test_register_mapping_integrity.py \
+  tests/test_cloud_resolver_and_quickwrite.py \
+  tests/test_cloud_metadata.py \
+  tests/test_cloud_ranges.py \
+  tests/test_cloud_polling.py \
+  tests/test_warmlink_value_translator.py \
+  tests/test_unit_aware_formatting.py \
+  tests/test_register_engineering_v35.py \
+  tests/test_ios308_registers_and_codes.py \
+  tests/test_configuration_cloud_writes.py \
+  tests/test_control_transport.py \
+  tests/test_cloud_batch_control.py \
+  tests/test_backup_restore_policy.py \
+  tests/test_csv_register_logger.py
+```
+
+Ergebnis am 08.11.2026: 1.316 bestanden; zwei zunächst veraltete
+Kataloggrößen-Erwartungen (Cloud-Liste und Logger) wurden an die fünf ergänzten
+Mappings angepasst. Der anschließende Lauf von
+`tests/test_ios308_registers_and_codes.py` und `tests/test_csv_register_logger.py`
+bestand vollständig mit 97 Tests. Damit sind alle 1.318 ausgewählten Testfälle
+nachgeprüft; es bleiben keine offenen Fehlschläge.
+
+Mapping-Audit: keine Fehler. Einheiten-/Bereichsaudit: 366 auflösbare Mappings,
+keine Konflikte. `git diff --check` ist sauber. Die Cloud-Payloadtests verwenden
+synthetische Antworten; ein zusätzlicher Test an einem Live-Gerät erfolgte nicht.

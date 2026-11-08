@@ -3018,7 +3018,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                         'write_allowed': False},
  'InputCurrent1': {'cloud_dataType': 'DIGI5',
                    'confidence': 'confirmed',
-                   'local_code': 'T-Diag5',
+                   'local_code': '2029',
                    'modbus_register': 2029,
                    'name': 'Input Current L1 / Eingangsstrom L1',
                    'note': 'GL9 live-confirmed 2026-10-03: InputCurrent1=3.4 A equals Cloud code 2029=3.4 A',
@@ -3026,7 +3026,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
                    'write_allowed': False},
  '2029': {'cloud_dataType': 'DIGI5',
           'confidence': 'confirmed',
-          'local_code': 'T-Diag5',
+          'local_code': '2029',
           'modbus_register': 2029,
           'name': 'Eingangsstrom L1',
           'note': 'GL9 Cloud live-confirmed 2026-10-03: 3.4 A; same value as InputCurrent1',
@@ -3034,7 +3034,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
           'write_allowed': False},
  '2030': {'cloud_dataType': 'DIGI5',
           'confidence': 'confirmed',
-          'local_code': 'T-Diag6',
+          'local_code': '2030',
           'modbus_register': 2030,
           'name': 'Eingangsstrom L2',
           'note': 'GL9 Cloud live-confirmed 2026-10-03: 0.0 A',
@@ -3042,7 +3042,7 @@ WARMLINK_CLOUD_CODE_HINTS: dict[str, dict[str, object]] = {'1206': {'allow_code_
           'write_allowed': False},
  '2031': {'cloud_dataType': 'DIGI5',
           'confidence': 'confirmed',
-          'local_code': 'T-Diag7',
+          'local_code': '2031',
           'modbus_register': 2031,
           'name': 'Eingangsstrom L3',
           'note': 'GL9 Cloud live-confirmed 2026-10-03: 0.0 A',
@@ -3129,21 +3129,21 @@ for _ios_code in WARMLINK_IOS308_CODES:
 # deliberately NOT inferred from local Modbus writeability.
 _IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
     "T49": {
-        "confidence": "confirmed", "local_code": "T-Diag1", "modbus_register": 2065,
+        "confidence": "confirmed", "local_code": "T49", "modbus_register": 2065,
         "name": "Verdampfungstemperatur", "cloud_dataType": "TEMP", "unit": "°C",
-        "note": "GL9 live-confirmed 2026-10-14: T49 matches MAIN:2065 / T-Diag1. Cloud value already in engineering units (#178).",
+        "note": "GL9 live-confirmed 2026-10-14: T49 matches MAIN:2065 / T49. Cloud value already in engineering units (#178).",
         "write_allowed": False,
     },
     "T50": {
-        "confidence": "confirmed", "local_code": "T-Diag2", "modbus_register": 2066,
+        "confidence": "confirmed", "local_code": "T50", "modbus_register": 2066,
         "name": "Abgasüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
-        "note": "GL9 live-confirmed 2026-10-14: T50 matches MAIN:2066 / T-Diag2. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "note": "GL9 live-confirmed 2026-10-14: T50 matches MAIN:2066 / T50. Temperature difference in K; Cloud value already in engineering units (#178).",
         "write_allowed": False,
     },
     "T51": {
-        "confidence": "confirmed", "local_code": "T-Diag3", "modbus_register": 2067,
+        "confidence": "confirmed", "local_code": "T51", "modbus_register": 2067,
         "name": "Rückgas-/Saugüberhitzung", "cloud_dataType": "TEMP", "unit": "K",
-        "note": "GL9 live-confirmed 2026-10-14: T51 matches MAIN:2067 / T-Diag3. Temperature difference in K; Cloud value already in engineering units (#178).",
+        "note": "GL9 live-confirmed 2026-10-14: T51 matches MAIN:2067 / T51. Temperature difference in K; Cloud value already in engineering units (#178).",
         "write_allowed": False,
     },
     "H41": {
@@ -3171,7 +3171,7 @@ _IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
         "unit": "°C", "write_allowed": False,
     },
     "T57": {
-        "confidence": "confirmed", "modbus_register": 2023,
+        "confidence": "confirmed", "local_code": "T57", "modbus_register": 2023,
         "name": "Anzahl Verdichter-Starts",
         "note": "GL9 live 2026-10-12: Cloud T57 tracked compressor starts 609->610 while local MAIN:2023 was 610.",
         "write_allowed": False,
@@ -3269,6 +3269,28 @@ _IOS308_CONFIRMED_READ_MAPPINGS: dict[str, dict[str, object]] = {
 }
 for _code, _reviewed in _IOS308_CONFIRMED_READ_MAPPINGS.items():
     WARMLINK_CLOUD_CODE_HINTS[_code].update(_reviewed)
+
+
+# Confirmed T routes from the Cloud-T consolidation request (2026-11-08).
+# Numeric query codes are independent of the local T200+ display labels.
+# No transport type is inferred from local Modbus scaling; live metadata wins.
+_CONSOLIDATED_T_READ_MAPPINGS = {
+    "T60": (2032, "Kompressor-Laufzeit", "h"),
+    "T65": (2033, "Externer AT-Fühler", "°C"),
+    "2060": (2060, "COP", "COP"),
+    "2054": (2054, "Elektrische Leistung / Unit Power", "kW"),
+    "2059": (2059, "Wärmeleistung / Unit Capacity", "kW"),
+}
+for _code, (_reg, _name, _unit) in _CONSOLIDATED_T_READ_MAPPINGS.items():
+    WARMLINK_CLOUD_CODE_HINTS[_code] = {
+        "confidence": "confirmed", "local_code": _code, "modbus_register": _reg,
+        "name": _name, "unit": _unit, "write_allowed": False,
+        "note": "Cloud→MAIN mapping confirmed by consolidation request 2026-11-08; cloud values retain API engineering scale.",
+    }
+ALL_WARMLINK_CLOUD_CODES = list(dict.fromkeys([
+    *ALL_WARMLINK_CLOUD_CODES, *_CONSOLIDATED_T_READ_MAPPINGS,
+]))
+DEFAULT_WARMLINK_CLOUD_CODES = list(ALL_WARMLINK_CLOUD_CODES)
 
 
 # WP on/off schedule: local KG register identity and independently live-matched

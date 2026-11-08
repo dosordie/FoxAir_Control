@@ -38,6 +38,52 @@ def parameter_cells(dialog, register):
     pytest.fail(f"Missing parameter row {register}")
 
 
+def test_t_diagnostics_show_display_codes_and_query_real_cloud_codes(application, monkeypatch):
+    window, dialog = parameter_window("T60")
+    expected = {2065: ("T49", "T49"), 2066: ("T50", "T50"),
+                2067: ("T51", "T51"), 2023: ("T57", "T57"),
+                2032: ("T60", "T60"), 2033: ("T65", "T65"),
+                2060: ("T200", "2060"), 2054: ("T201", "2054"),
+                2059: ("T202", "2059"), 2029: ("T203", "2029"),
+                2030: ("T204", "2030"), 2031: ("T205", "2031")}
+    # Even the App-only option must retain diagnostics with no app_label.
+    dialog.app_only_cb.setChecked(True)
+    items = {item["reg"]: item for item in dialog._visible_items()}
+    assert expected.keys() <= items.keys()
+    for row in range(dialog.table.rowCount()):
+        register = dialog.table.item(row, 0).data(Qt.UserRole)
+        if register in expected:
+            display, code = expected[register]
+            assert dialog.table.item(row, 1).text() == display
+            assert items[register]["code"] == code
+            assert gui.MainWindow._display_parts_for_register(window, register, "")[1] == display
+    requests = []
+    monkeypatch.setattr(window, "request_cloud_snapshot", requests.append)
+    monkeypatch.setattr(window, "send_read_request", lambda *a, **kw: pytest.fail("Unexpected Modbus read"))
+    dialog.read_visible_registers(auto=False)
+    assert len(requests) == 1
+    codes = requests[0].codes
+    assert {code for _, code in expected.values()} <= set(codes)
+    assert not any(code.startswith("T2") and code[1:].isdigit() and int(code[1:]) >= 200
+                   for code in codes)
+    assert "2032" not in codes
+    window.apply_cloud_rows_to_main([cloud_row(4.58, "2060"), cloud_row(1234, "T60")])
+    assert parameter_cells(dialog, 2060) == ["4.58 COP", "--", "4.58 COP"]
+    assert parameter_cells(dialog, 2032) == ["1234 h", "--", "1234 h"]
+    dialog.close()
+
+
+def test_t_block_collection_does_not_require_a_code_or_app_label():
+    owner = SimpleNamespace(settings={}, register_defs={
+        "2060": {"block": "T", "name": "COP", "mode": "read"},
+        "2054": {"block": "T", "code": "2054", "name": "Power", "mode": "read"},
+        "1200": {"block": "P", "code": "P04", "name": "Other", "mode": "read"},
+    })
+    dialog = SimpleNamespace(main_window=owner, PARAM_RE=ParameterSettingsDialog.PARAM_RE)
+    items = ParameterSettingsDialog._collect_parameter_items(dialog)
+    assert {item["reg"] for item in items} == {2060, 2054}
+
+
 @pytest.mark.parametrize("source", ["initial", "live", "static", "single", "write-readback"])
 def test_open_parameter_table_receives_every_cloud_update_without_reopening(application, source):
     window, dialog = parameter_window("H01")

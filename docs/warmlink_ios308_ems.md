@@ -73,8 +73,9 @@ dauerhafte Unsupported-Klassifikation daraus ableiten. Zeitgleiche lokale
 Kompressor-/Pumpenwerte wurden im Livetest nicht separat protokolliert.
 
 Bestätigte Cloud-Aliasse sind implementiert: T49→2065 (°C), T50→2066 (K),
-T51→2067 (K); die lokalen T-Diag1/2/3-Codes bleiben bestehen. Cloudwerte sind
-bereits Engineering-Werte, lokale TEMP1-Rohwerte werden durch 10 geteilt.
+T51→2067 (K); seit der Konsolidierung vom 08.11.2026 lauten auch die lokalen
+Codes T49/T50/T51. Cloudwerte sind bereits Engineering-Werte, lokale
+TEMP1-Rohwerte werden durch 10 geteilt.
 T14→2050, T57→2023, H41→1346, R40/R41→1193/1194 sowie 1250/CP1-1 und
 1256–1269 bleiben erhalten und sind auch lokal mit Cloud-Provenienz versehen.
 Die alte 1250-Metadatenbezeichnung ist kein neuer Beleg für einen Systemzeit-Schalter.
