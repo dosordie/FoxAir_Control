@@ -29,70 +29,12 @@ Eine kompakte Übersicht über bekannte **Mainboard-, Display- und LTE-DTU-Firmw
 
 Wichtig zur Einordnung: **Display V1.7 ist nicht Mainboard V1.7.** Bei FoxAir-Geräten können z. B. Display `82400463 / V1.7` und Mainboard `82400644 / V1.3`, `V3.3`, `V3.4` oder `V3.5` gleichzeitig installiert sein.
 
-Die analysierte **Mainboard-V3.5 stammt von einer FoxAir BlueLine (BL)**. BlueLine und GreenLine (GL) mit Mainboard-Softwarecode **`82400644`** verwenden dieselbe Mainboard-Firmwarelinie; die V3.5 ist für entsprechende Geräte dieser Familie untereinander kompatibel.
-
-
-### Warmlink RAW / Firmware-Logging
-
-Ab Version `0.2.51` enthält FoxAir Control einen Expertenmodus für den passiven Warmlink RAW Langzeit-Capture.  
-Damit können RX/TX-Rohdaten des Modbus-Warmlink/LTE-Datenstroms als Binärdateien gespeichert und über `events.jsonl` sowie `frame_complete` Events für spätere Offline-Analysen indexiert werden.
-
-Die Funktion ist für Diagnose und spätere Firmware-Update-Erkennung vorbereitet:
-- passive Beobachtung von Register `2104 / Hauptsoftwareversion`
-- Erkennung vollständiger Warmlink-/Modbus-Frames mit Offsets in die RAW-Dateien
-- robuste Segmentierung für Langzeitmitschnitte
-- keine aktive Firmware-, Replay- oder Schreibfunktion
-
-RAW-Captures können sensible Geräte-/Betriebsdaten enthalten und sollten nicht öffentlich geteilt werden.
 
 ## Cloud-Steuerung
 
-AT-Kompensation und SG Ready schreiben regulär ohne experimentelle Freigabe und
-starten Cloud-Writes direkt per Schreibbutton. Nur geänderte Kurven-/SG-Werte
-werden gesendet. Ein `app/device/control?lang=en`-Request mit `appId: "16"` und
-mehreren `param[]`-Einträgen ersetzt einzelne HTTP-Writes; alle geschriebenen Codes
-werden gemeinsam frisch zurückgelesen. Teiländerungen bleiben sichtbar und offen,
-soweit sie nicht bestätigt sind. Es gibt keinen automatischen Write-Retry oder Rollback.
+Die Cloud Steuerung wurde aus der Warmlink App rekonstruiert 
+und beitet schon viele der in der App vorhandenen Funktionen.
 
-Der Betreiber hat alle sieben AT-Punkte einzeln und einen gemeinsamen 7-fach-Write
-mit gemeinsamem Readback am **17.10.2026 an der GL9** bestätigt. Lineare Kurve,
-H36 und SG01–SG08 sind ebenfalls für den bestätigten Cloudweg freigegeben.
-Eine atomare Übernahme durch den Server wird daraus nicht abgeleitet.
-
-SG02–SG08 werden gemeinsam geprüft, bevor SG01 aktiviert/umgeschaltet wird.
-SG01=0 wird zuerst geschrieben und bestätigt. SG08 ist eine Aus/Ein-Auswahl;
-SG Status bleibt read-only, 8801 bleibt ausschließlich direktem Mainboard-Modbus vorbehalten.
-AT, SG, Parameterblöcke und Störungsdecoder laden beim Öffnen gezielt aktuelle
-Cloudwerte. Der Decoder verwendet alle elf aktuellen Fehlerwörter einschließlich
-Sammelstörung, keine Fehlerhistorie. Schreibtest und Wertefinder wurden entfernt.
-Lokale Bestätigungen und LTE-Recovery bleiben erhalten.
-
-Beim manuellen Cloud-Trennen bleiben die zuletzt angezeigten Werte erhalten.
-Sie sind als „zuletzt bekannt“ gekennzeichnet und gelten nicht als aktuelle
-Messung oder Schreibbestätigung. Geräte-/Kontowechsel entfernen die bisherigen
-Cloudwerte; lokale Modbus-Werte bleiben getrennt. „Hauptfenster leeren“ ist
-weiterhin möglich.
-
-Die Parameteransicht zeigt Parameter und T-Diagnosewerte nach Registerblock
-und Zugriffsmodus. Einen Filter „Nur App-Parameter“ gibt es nicht mehr.
-App-Bezeichnungen bleiben in Detailinformationen und Tooltips verfügbar;
-Engineering-Einträge benötigen weiterhin die entsprechende Freigabe der Anzeige.
-
-## Cloud-Decoder und Timer
-
-Kontaktdecoder (2034 / `S01~S10`) und Lastausgangsdecoder (2019 / `O01~023`)
-laden beim Öffnen frische Cloudwerte. „jetzt lesen“ und optionales Polling nutzen
-denselben asynchronen Cloudweg; fehlende Werte bleiben `--`. Die Decoder sind read-only.
-Bei lokaler Modbus-Verbindung gilt weiterhin die lokale Datenpriorität.
-
-Der Silentmodus-Timer lädt alle sechs Werte (1244–1249) gemeinsam. Geänderte Werte
-werden ohne zusätzliche Cloud-Bestätigung als Batch geschrieben und gemeinsam
-frisch zurückgelesen. Deaktivierungen werden zuerst bestätigt, geänderte Zeiten
-vor Aktivierungen. Nicht bestätigte Änderungen und neuere Eingaben bleiben offen.
-Der kombinierte WP-Ein/Aus-Timer-Editor zeigt über Cloud alle sechs WP-Timer
-und den Silentmodus. Auch die Betriebsart-Timer 1–6 laden ihre 45 M-Codes
-über Cloud und schreiben nur geänderte Werte mit Readback. Lokale Modbus- und
-Display-Abläufe bleiben erhalten; Cloud-only erfordert keine Display-Pakete.
 
 
 ## Screenshots
