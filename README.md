@@ -18,7 +18,7 @@ Wenn er dir gefällt oder dir weiterhilft, freue ich mich über eine kleine Spen
 
 ## Dokumentation
 
-- [FoxAir FAQ – Anleitungen und häufige Fragen](docs/FAQ/FAQ.md)
+- [FoxAir FAQ – Anleitungen und häufige Fragen](https://dosordie.github.io/FoxAir_Control/)
 
 
 ## Firmware-Übersicht
