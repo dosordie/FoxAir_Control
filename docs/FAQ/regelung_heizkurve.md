@@ -12,7 +12,7 @@ Wenn diese Einstellungen nicht zusammenpassen, wirkt es manchmal so, als würde 
 | H25 | Einstellung | Was bedeutet das? |
 | ---: | --- | --- |
 | **0** | **Outlet Water Temp.** (Vorlauf / Auslass) | Die Wärmepumpe orientiert sich an der Temperatur des Wassers, das sie zum Heizkreis schickt. |
-| **1** | **Room Temp.** (Raum) | Ein Raumfühler beeinflusst die benötigte Heizwassertemperatur. |
+| **1** | **Room Temp.** (Raum) | Die Hauptregelung schaltet den Heiz-/Kühlbedarf anhand der Raumtemperatur und R70–R74 mit Hysterese frei oder zurück. Der Kompressor-PID verwendet dabei weiterhin T02 (Vorlauf). |
 | **2** | **Buffer Tank Temp.** (Puffer) | Die Temperatur eines Pufferspeichers dient als Vorgabe für die Regelung. |
 | **3** | **Inlet Water Temp.** (Rücklauf / Einlass) | Die Wärmepumpe orientiert sich an der Temperatur des zurückkommenden Wassers. |
 
@@ -20,7 +20,7 @@ Wenn diese Einstellungen nicht zusammenpassen, wirkt es manchmal so, als würde 
 
 Bei **H25 = 1 oder 2** muss der passende Fühler auch wirklich angeschlossen und richtig positioniert sein. Fehlt er, kann die Wärmepumpe die gewünschte Raum- bzw. Puffertemperatur nicht zuverlässig beurteilen.
 
-Wichtig: Auch bei einer Raumtemperaturregelung wird die Heizleistung letztlich über das erwärmte Wasser bereitgestellt. Das ist keine direkte Einstellung der Kompressorfrequenz.
+Wichtig: **H25 = 1** bewirkt nach der **V3.5-Firmwareanalyse** eine übergeordnete Raum-Heiz-/Kühlanforderung, **keine nachgewiesene proportionale Verschiebung des Heizwasser-Sollwerts**. Nach Freigabe wird die Verdichterfrequenz weiterhin über die Vorlauftemperatur T02 geregelt; ein Raumvergleich führt nicht zwangsläufig sofort zu einem Verdichterstart oder -stopp. Mehr dazu: [Speicherfühler und BT/RT-Raumfühler](speicherfuehler.md).
 
 ## Feste Vorlauftemperatur oder Heizkurve?
 
