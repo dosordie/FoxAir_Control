@@ -35,6 +35,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 ## Sensoren und Anschlüsse
 
 - [Externer Außentemperaturfühler](externer_at_fuehler.md)
+- [Speicherfühler für Warmwasser und Puffer](speicherfuehler.md)
 - [Relaisausgänge](relais_ausgaenge.md)
 - [Modbus-Anschluss](modbus.md)
 
