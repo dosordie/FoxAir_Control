@@ -9,7 +9,7 @@ Die FoxAir kann die Temperaturen von **Warmwasserspeicher** und **Heizungs-Puffe
 | **TT (DHW / Warmwasser)** | Misst die Speichertemperatur und steuert damit die Warmwasserbereitung. | **H28 = 1** (Heizen/Kühlen + Warmwasser) oder **H28 = 2** (nur Warmwasser). Falls **H37** vorhanden: **H37 = 0** für den angeschlossenen Fühler statt Modbus. |
 | **BT (Buffer Tank / Puffer)** | Misst die Puffertemperatur. Die Wärmepumpe regelt den Heizbetrieb dann nach dem Puffer statt nach Vor- oder Rücklauf. | **H25 = 2** (*Buffer Tank Temp.*). |
 
-Die Parameter findest du am Display unter **Einstellungen → Factory Settings (H-Parameter)**; je nach Firmware auch über **WarmLink** oder **FoxAir Control**. Der BT-Eingang kann bei **H25 = 1** alternativ als Raumtemperaturfühler verwendet werden.
+Die Parameter findest du am Display unter **Einstellungen → Factory Settings (H-Parameter)**; je nach Firmware auch über **WarmLink** oder **FoxAir Control**. Bei den im FoxAir-Forum beschriebenen GL9-Versionen ist der **BT/RT-Eingang doppelt nutzbar**: **H25 = 1** mit Fühler im Raum, **H25 = 2** mit Fühler im Pufferspeicher. Die Funktion wurde von Anwendern bestätigt; die konkrete Klemmenbelegung ist geräteabhängig.
 
 ## Fühlertyp und Anschluss
 
