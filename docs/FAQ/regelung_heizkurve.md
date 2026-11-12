@@ -12,11 +12,11 @@ Wenn diese Einstellungen nicht zusammenpassen, wirkt es manchmal so, als würde 
 | H25 | Einstellung | Was bedeutet das? |
 | ---: | --- | --- |
 | **0** | **Outlet Water Temp.** (Vorlauf / Auslass) | Die Wärmepumpe orientiert sich an der Temperatur des Wassers, das sie zum Heizkreis schickt. |
-| **1** | **Room Temp.** (Raum) | Die Hauptregelung schaltet den Heiz-/Kühlbedarf anhand der Raumtemperatur und R70–R74 mit Hysterese frei oder zurück. Der Kompressor-PID verwendet dabei weiterhin T02 (Vorlauf). |
+| **1** | **Room Temp.** (Raum) | Die Hauptregelung schaltet den Heiz-/Kühlbedarf anhand der Raumtemperatur und R70–R74 mit Hysterese frei oder zurück. Die Wärmepumpe regelt ihre Heizleistung weiterhin anhand der Vorlauftemperatur. |
 | **2** | **Buffer Tank Temp.** (Puffer) | Die Temperatur eines Pufferspeichers dient als Vorgabe für die Regelung. |
 | **3** | **Inlet Water Temp.** (Rücklauf / Einlass) | Die Wärmepumpe orientiert sich an der Temperatur des zurückkommenden Wassers. |
 
-**Für viele Anlagen ohne zusätzlichen Raum- oder Pufferfühler ist H25 = 0 ein sinnvoller Ausgangspunkt.** Das gilt besonders, wenn die FoxAir direkt einen Heizkreis versorgt.
+**Ohne Raum- oder Pufferfühler wird normalerweise H25 = 0 (Vorlauftemperatur) verwendet.**
 
 Bei **H25 = 1 oder 2** muss der passende Fühler auch wirklich angeschlossen und richtig positioniert sein. Fehlt er, kann die Wärmepumpe die gewünschte Raum- bzw. Puffertemperatur nicht zuverlässig beurteilen.
 
