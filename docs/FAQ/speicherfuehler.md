@@ -15,9 +15,9 @@ Die Parameter findest du am Display unter **Einstellungen → Factory Settings (
 
 Bei **H25 = 1 (Room Temp.)** verwendet die Hauptregelung eine **Raumtemperatur**, um mit **R70 (Raumsolltemperatur)** und **R71/R72 (Heiz-Hysterese)** eine Heizanforderung ein- oder auszuschalten. **R73/R74** übernehmen diese Aufgabe beim Kühlen.
 
-Beispiel: **R70 = 21 °C, R71 = R72 = 0,5 K** → Heizbedarf bei **≤ 20,5 °C** anfordern, ab **≥ 21,5 °C** zurücknehmen. Die tatsächliche Verdichterreaktion hängt zusätzlich von Wasser-, Zeit-, Betriebs- und Schutzbedingungen ab. **Die Verdichterleistung wird weiterhin nach T02 (Vorlauf) geregelt** – eine proportionale Vorlaufsollwert-Anhebung durch die Raumabweichung ist in der V3.5-Firmwareanalyse nicht belegt.
+Beispiel: **R70 = 21 °C, R71 = R72 = 0,5 K** → Heizbedarf bei **≤ 20,5 °C** anfordern, ab **≥ 21,5 °C** zurücknehmen. Die tatsächliche Verdichterreaktion hängt zusätzlich von Wasser-, Zeit-, Betriebs- und Schutzbedingungen ab. **Die Wärmepumpe passt ihre Heizleistung weiterhin anhand der Vorlauftemperatur an** – eine proportionale Vorlaufsollwert-Anhebung durch die Raumabweichung ist in der V3.5-Firmwareanalyse nicht belegt.
 
-**Anschluss:** In Forumspraxis wird derselbe **BT/RT-Eingang** wahlweise für den Raumfühler (**H25 = 1**) oder den Pufferfühler (**H25 = 2**) beschrieben. Die **V3.5-Firmwareanalyse bestätigt die Raumregelungsfunktion**, kann die **physische Zuordnung BT/T09 für jede Mainboardvariante aber noch nicht abschließend bestätigen**. Die Raumfühler der separaten **Zonenregelung (Z01, AI/DI07 und AI17)** sind davon zu unterscheiden.
+**Anschluss:** In Forumspraxis wird derselbe **BT/RT-Eingang** wahlweise für den Raumfühler (**H25 = 1**) oder den Pufferfühler (**H25 = 2**) beschrieben. Die Raumfühler der separaten **Zonenregelung (Z01, AI/DI07 und AI17)** sind davon zu unterscheiden.
 
 ## Fühlertyp und Anschluss
 
