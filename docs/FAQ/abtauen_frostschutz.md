@@ -36,6 +36,18 @@ Dafür existieren zahlreiche Parameter aus der **D-Gruppe**, unter anderem für:
 
 Diese Werte sollten nicht ohne konkreten Grund verändert werden. Eine Änderung kann dazu führen, dass zu früh, zu spät oder unnötig lange abgetaut wird.
 
+## Durchflussfehler beim Abtauen
+
+Beim Abtauen sind drei unterschiedlich aufgebaute Fehlerüberwachungen zu unterscheiden:
+
+- **E030** prüft in einem zur Abtau-Zustandsmaschine gehörenden Zweig den wirksamen Wasserdurchfluss gegen **D22**. Bei **D22 = 0** ist **dieser** Unterdurchflussvergleich deaktiviert.
+- **E035** ist ein separater Softwareschutz gegen niedrigen Durchfluss, mit Schwellen bei **50 % bzw. 60 % von A40** sowie Betriebs- und Zeitfreigaben. **D22 = 0 deaktiviert E035 nicht.**
+- **E032** ist die eigene Durchflussschalterüberwachung; die vollständige direkte Zuordnung zum mechanischen Eingang S3/S03 ist noch offen.
+
+Die Bezeichnungen stammen aus der Fehleranzeige; die Grenzwerte und Qualifizierungen wurden in Mainboard-V3.5 per Reverse Engineering untersucht. E035 ist **nicht ausschließlich beim Abtauen** möglich, und die automatische Pumpenregelung hat **andere** Durchflussgrenzen als diese Fehlerüberwachungen.
+
+Mehr dazu: [Durchflussfehler E030/E032/E035 – Auslösebedingungen und Diagnose](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035-mainboard-firmware-v35).
+
 ## Eis am Verdampfer
 
 Eine gleichmäßige Reif- oder Eisschicht vor dem Abtauvorgang ist bei kalter, feuchter Witterung normal.
