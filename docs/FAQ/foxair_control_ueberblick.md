@@ -38,6 +38,8 @@ Die Unterschiede erklärt der Artikel [Verbindungsarten: Standard-Modbus, Displa
 
 Am einfachsten verwendest du eine der fertigen Windows-Versionen:
 
+**Systemvoraussetzung:** Mindestens **Windows 10**. Windows 7 und Windows 8/8.1 werden nicht unterstützt.
+
 **[Aktuelle Version über GitHub Releases herunterladen](https://github.com/dosordie/FoxAir_Control/releases/latest)**
 
 Dort gibt es je nach Release beispielsweise:
