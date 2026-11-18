@@ -70,6 +70,8 @@ Die Mainboard-Firmware V3.5 unterscheidet **drei verschiedene Durchflussüberwac
 | **E032** | Eigenständige **Durchflussschalterüberwachung** mit Status-/Zählbedingungen. Die ausschließliche direkte Verknüpfung mit dem mechanischen Schalter **S3/S03** ist noch nicht vollständig nachgewiesen. | **MAIN:2085, Bit 8** (`0x0100`) |
 | **E035** | Berechneter/wirksamer Durchfluss unter **50 % von A40**, nur bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; weitere Prüfung bei **60 % von A40**. | **MAIN:2085, Bit 13** (`0x2000`) |
 
+Bei Geräten mit **„3+“-Fehlergruppe** zeigt die Display-/Registerzuordnung zusätzlich **E032 (3+) = MAIN:2087 Bit 8** (`0x0100`) und **E035 (3+) = MAIN:2087 Bit 10** (`0x0400`). Die folgenden V3.5-Auslöseanalysen beziehen sich auf die oben genannten MAIN:2085-Pfade.
+
 **E035** wird im kurzen Auslösepfad nach **zwölf qualifizierten Prüfungen im nominellen 500-ms-Takt** gesetzt (ungefähr **5,5–6 s**), aber erst bei erreichter interner Vorqualifikation. Die Dauer ab Pumpen- oder Verdichterstart ist deshalb **nicht pauschal festgelegt**. E035 ist auch außerhalb der Abtauung möglich und benötigt bei einer GL9 ohne Hydraulikmodul keinen externen Durchflussmesser.
 
 Details zu Freigabebedingungen, A40/D22, PWM-Rückmeldung, Wiederherstellung und den offenen Punkten: [Wasserdurchfluss und Pumpenbetriebsarten – Durchflussfehler](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035-mainboard-firmware-v35).
