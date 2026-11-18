@@ -258,6 +258,8 @@ Die drei Fehler sind **unterschiedliche Überwachungspfade**. Die Zuordnung der 
 | **E032** | Durchflussschalterfehler: eigener, zustandsabhängiger Überwachungspfad mit Statusfeldern und Zählern. **Nicht** derselbe Vergleich wie E035. | **Bit 8** (Maske `0x0100`) |
 | **E035** | Niedriger Wasserdurchfluss: Softwarevergleich mit **50 % von A40** bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; außerdem gibt es einen **60-%-Vergleich** in der weiteren Zustandsverarbeitung. | **Bit 13** (Maske `0x2000`) |
 
+**Konfiguration „3+“:** In der Display-/Registerzuordnung werden zusätzlich **E032 (3+)** über **MAIN:2087 Bit 8** (`0x0100`) und **E035 (3+)** über **MAIN:2087 Bit 10** (`0x0400`) geführt. Diese Zuordnung ist von der normalen GL9-Fehlerausgabe über MAIN:2085 zu unterscheiden; die genauen 3+-Auslösepfade sind hier nicht separat untersucht.
+
 ### E030 – Durchflussprüfung mit D22
 
 Die Firmware vergleicht den *wirksamen* Durchfluss mit **D22 (MAIN:1127)**. Bei `D22 > 0`, zu geringem Durchfluss und gültiger Freigabe wird ein Unterdurchflusszähler erhöht. **20 qualifizierte Aufrufe** setzen E030; 20 qualifizierte Erholungsaufrufe können es wieder löschen. Eine feste Dauer in Sekunden ist für diesen Zähler noch nicht nachgewiesen.
