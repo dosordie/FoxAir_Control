@@ -60,6 +60,20 @@ FoxAir Control decodiert bekannte Fehlerbits automatisch in Klartext. Bei noch u
 
 [FoxAir Control auf GitHub](https://github.com/dosordie/FoxAir_Control)
 
+## Durchflussfehler E030, E032 und E035
+
+Die Mainboard-Firmware V3.5 unterscheidet **drei verschiedene Durchflussüberwachungen**. Sie sind nicht austauschbar:
+
+| Fehler | Kurzdiagnose | Fehlerregister |
+| --- | --- | --- |
+| **E030** | Softwareprüfung des wirksamen Durchflusses gegen **D22**, in einem zur Abtauung gehörenden Betriebszweig. Bei D22 = 0 wird dieser Unterdurchflussvergleich nicht ausgeführt. | **MAIN:2085, Bit 7** (`0x0080`) |
+| **E032** | Eigenständige **Durchflussschalterüberwachung** mit Status-/Zählbedingungen. Die ausschließliche direkte Verknüpfung mit dem mechanischen Schalter **S3/S03** ist noch nicht vollständig nachgewiesen. | **MAIN:2085, Bit 8** (`0x0100`) |
+| **E035** | Berechneter/wirksamer Durchfluss unter **50 % von A40**, nur bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; weitere Prüfung bei **60 % von A40**. | **MAIN:2085, Bit 13** (`0x2000`) |
+
+**E035** wird im kurzen Auslösepfad nach **zwölf qualifizierten Prüfungen im nominellen 500-ms-Takt** gesetzt (ungefähr **5,5–6 s**), aber erst bei erreichter interner Vorqualifikation. Die Dauer ab Pumpen- oder Verdichterstart ist deshalb **nicht pauschal festgelegt**. E035 ist auch außerhalb der Abtauung möglich und benötigt bei einer GL9 ohne Hydraulikmodul keinen externen Durchflussmesser.
+
+Details zu Freigabebedingungen, A40/D22, PWM-Rückmeldung, Wiederherstellung und den offenen Punkten: [Wasserdurchfluss und Pumpenbetriebsarten – Durchflussfehler](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035-mainboard-firmware-v35).
+
 ## Bei einer Fehleranfrage hilfreich
 
 Wenn ein Fehler genauer untersucht werden soll, sind folgende Angaben besonders nützlich:
