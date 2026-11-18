@@ -52,29 +52,27 @@ Damit lassen sich zusätzlich unter anderem anzeigen:
 - Wasserdurchfluss
 - Pumpenstatus
 - Fehlerregister und einzelne Fehlerbits
-- Rohwerte noch nicht vollständig erforschter Fehler
+- zusätzliche Angaben zur Fehlersuche
 
-Viele Fehler der FoxAir liegen intern nicht als einzelner Fehlercode vor, sondern als Bit in einem Fehlerregister.
-
-FoxAir Control decodiert bekannte Fehlerbits automatisch in Klartext. Bei noch unbekannten Bits bleibt der Rohwert sichtbar, was bei der weiteren Analyse hilfreich ist.
+FoxAir Control zeigt bekannte Fehler in Klartext an. Bei manchen Fehlern können zusätzliche Angaben helfen, die Ursache einzugrenzen.
 
 [FoxAir Control auf GitHub](https://github.com/dosordie/FoxAir_Control)
 
 ## Durchflussfehler E030, E032 und E035
 
-Die Mainboard-Firmware V3.5 unterscheidet **drei verschiedene Durchflussüberwachungen**. Sie sind nicht austauschbar:
+Diese drei Fehler klingen ähnlich, haben aber unterschiedliche Ursachen:
 
-| Fehler | Kurzdiagnose | Fehlerregister |
-| --- | --- | --- |
-| **E030** | Softwareprüfung des wirksamen Durchflusses gegen **D22**, in einem zur Abtauung gehörenden Betriebszweig. Bei D22 = 0 wird dieser Unterdurchflussvergleich nicht ausgeführt. | **MAIN:2085, Bit 7** (`0x0080`) |
-| **E032** | Eigenständige **Durchflussschalterüberwachung** mit Status-/Zählbedingungen. Die ausschließliche direkte Verknüpfung mit dem mechanischen Schalter **S3/S03** ist noch nicht vollständig nachgewiesen. | **MAIN:2085, Bit 8** (`0x0100`) |
-| **E035** | Berechneter/wirksamer Durchfluss unter **50 % von A40**, nur bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; weitere Prüfung bei **60 % von A40**. | **MAIN:2085, Bit 13** (`0x2000`) |
+| Fehler | Was bedeutet das? |
+| --- | --- |
+| **E030** | Beim Abtauen ist der Wasserdurchfluss zu gering. Die Grenze wird mit **D22** eingestellt. |
+| **E032** | Der mechanische **Durchflussschalter an Eingang S3** meldet eine Störung. |
+| **E035** | Der **berechnete Wasserdurchfluss** ist zu gering. Die Grenze liegt bei ungefähr **50 % von A40**. |
 
-Bei Geräten mit **„3+“-Fehlergruppe** zeigt die Display-/Registerzuordnung zusätzlich **E032 (3+) = MAIN:2087 Bit 8** (`0x0100`) und **E035 (3+) = MAIN:2087 Bit 10** (`0x0400`). Die folgenden V3.5-Auslöseanalysen beziehen sich auf die oben genannten MAIN:2085-Pfade.
+Bei **E035** kann die Störung nach etwa **6 Sekunden** zu geringem Durchfluss auftreten, sobald die Überwachung aktiv ist. Je nach Betriebszustand kann es auch länger dauern. E035 ist **auch beim Heizen** möglich und nicht auf das Abtauen beschränkt.
 
-**E035** wird im kurzen Auslösepfad nach **zwölf qualifizierten Prüfungen im nominellen 500-ms-Takt** gesetzt (ungefähr **5,5–6 s**), aber erst bei erreichter interner Vorqualifikation. Die Dauer ab Pumpen- oder Verdichterstart ist deshalb **nicht pauschal festgelegt**. E035 ist auch außerhalb der Abtauung möglich und benötigt bei einer GL9 ohne Hydraulikmodul keinen externen Durchflussmesser.
+Bei E032 zuerst prüfen, ob wirklich genügend Wasser fließt. Ist das der Fall, kommen auch der Durchflussschalter und sein Anschluss **S3** als Fehlerursache infrage. Bei E035 zusätzlich prüfen, ob der eingestellte Pumpentyp **H31** stimmt und ob der angezeigte Durchfluss plausibel ist.
 
-Details zu Freigabebedingungen, A40/D22, PWM-Rückmeldung, Wiederherstellung und den offenen Punkten: [Wasserdurchfluss und Pumpenbetriebsarten – Durchflussfehler](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035-mainboard-firmware-v35).
+Weitere Erläuterungen und Prüfschritte stehen unter [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035).
 
 ## Bei einer Fehleranfrage hilfreich
 
