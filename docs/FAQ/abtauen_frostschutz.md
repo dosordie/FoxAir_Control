@@ -38,15 +38,19 @@ Diese Werte sollten nicht ohne konkreten Grund verändert werden. Eine Änderung
 
 ## Durchflussfehler beim Abtauen
 
-Beim Abtauen sind drei unterschiedlich aufgebaute Fehlerüberwachungen zu unterscheiden:
+Beim Abtauen entzieht die Wärmepumpe dem Heizwasser Wärme. Dafür muss genügend Wasser durch die Anlage fließen.
 
-- **E030** prüft in einem zur Abtau-Zustandsmaschine gehörenden Zweig den wirksamen Wasserdurchfluss gegen **D22**. Bei **D22 = 0** ist **dieser** Unterdurchflussvergleich deaktiviert.
-- **E035** ist ein separater Softwareschutz gegen niedrigen Durchfluss, mit Schwellen bei **50 % bzw. 60 % von A40** sowie Betriebs- und Zeitfreigaben. **D22 = 0 deaktiviert E035 nicht.**
-- **E032** ist die eigene Durchflussschalterüberwachung; die vollständige direkte Zuordnung zum mechanischen Eingang S3/S03 ist noch offen.
+Es können verschiedene Durchflussfehler auftreten:
 
-Die Bezeichnungen stammen aus der Fehleranzeige; die Grenzwerte und Qualifizierungen wurden in Mainboard-V3.5 per Reverse Engineering untersucht. E035 ist **nicht ausschließlich beim Abtauen** möglich, und die automatische Pumpenregelung hat **andere** Durchflussgrenzen als diese Fehlerüberwachungen.
+- **E030:** Der Wasserdurchfluss ist für den Abtaubetrieb zu gering. Die eingestellte Grenze **D22** spielt dabei eine Rolle. Bei **D22 = 0** ist diese spezielle Prüfung deaktiviert.
+- **E032:** Der **mechanische Durchflussschalter an Eingang S3** meldet eine Störung.
+- **E035:** Der **berechnete Wasserdurchfluss** ist zu gering. Bei aktiver Überwachung kann der Fehler nach ungefähr **6 Sekunden** unterhalb von **50 % des eingestellten Werts A40** auftreten. Je nach Betriebszustand kann es auch länger dauern.
 
-Mehr dazu: [Durchflussfehler E030/E032/E035 – Auslösebedingungen und Diagnose](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035-mainboard-firmware-v35).
+**Wichtig:** Auch bei **D22 = 0** bleiben andere Schutzfunktionen aktiv. **E035** kann außerdem beim normalen Heizen auftreten und ist nicht auf das Abtauen beschränkt.
+
+Wenn ein Durchflussfehler auftritt, zuerst prüfen, ob die Umwälzpumpe läuft, alle Ventile geöffnet sind und der Heizkreis entlüftet ist.
+
+Mehr dazu: [Durchflussfehler E030, E032 und E035](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035).
 
 ## Eis am Verdampfer
 
