@@ -248,6 +248,64 @@ Der angezeigte Durchfluss wird bei vielen Pumpentypen aus der PWM-Rückmeldung *
 
 Mehr dazu: [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md).
 
+## Durchflussfehler E030, E032 und E035 (Mainboard-Firmware V3.5)
+
+Die drei Fehler sind **unterschiedliche Überwachungspfade**. Die Zuordnung der Fehlerbits stammt aus der DWIN-Display-Firmware; Grenzwerte, Zähler und Freigabebedingungen wurden zusätzlich in der Mainboard-Firmware **V3.5** untersucht (Reverse-Engineering-Stand: 18.11.2026). Abweichungen bei anderen Firmwareständen sind möglich.
+
+| Fehler | Bedeutung / Auslöser in V3.5 | MAIN:2085 |
+| --- | --- | --- |
+| **E030** | Durchfluss beim Abtauen zu gering: Softwarevergleich des wirksamen Durchflusses mit **D22**, wenn D22 ungleich 0 und der zugehörige Betriebszustand freigegeben ist. | **Bit 7** (Maske `0x0080`) |
+| **E032** | Durchflussschalterfehler: eigener, zustandsabhängiger Überwachungspfad mit Statusfeldern und Zählern. **Nicht** derselbe Vergleich wie E035. | **Bit 8** (Maske `0x0100`) |
+| **E035** | Niedriger Wasserdurchfluss: Softwarevergleich mit **50 % von A40** bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; außerdem gibt es einen **60-%-Vergleich** in der weiteren Zustandsverarbeitung. | **Bit 13** (Maske `0x2000`) |
+
+### E030 – Durchflussprüfung mit D22
+
+Die Firmware vergleicht den *wirksamen* Durchfluss mit **D22 (MAIN:1127)**. Bei `D22 > 0`, zu geringem Durchfluss und gültiger Freigabe wird ein Unterdurchflusszähler erhöht. **20 qualifizierte Aufrufe** setzen E030; 20 qualifizierte Erholungsaufrufe können es wieder löschen. Eine feste Dauer in Sekunden ist für diesen Zähler noch nicht nachgewiesen.
+
+Die Routine wird nur innerhalb eines bestimmten Betriebszustands ausgewertet, der zur Abtau-Zustandsmaschine gehört. Die ausschließlich auf eine laufende Abtauung begrenzte Wirksamkeit ist noch nicht für alle Zustandsübergänge nachgewiesen.
+
+**Bei D22 = 0 ist dieser E030-Unterdurchflussvergleich deaktiviert. Das schaltet E035 nicht ab.** Die getrennte Verwendung von D22 als Untergrenze der automatischen Pumpenregelung ist weiter oben beschrieben.
+
+### E032 – Durchflussschalterüberwachung
+
+E032 wird am Display als **Durchflussschalterfehler** bezeichnet. In V3.5 hat dieser Fehler einen **eigenständigen Erzeuger** mit Betriebsstatus-, Prüf- und Haltezählern. Ein Zweig qualifiziert über sechs Prüfungen; weitere Zweige haben längere Zähler und Abklingzustände. Deshalb lässt sich aus dem Fehlercode allein **keine allgemeine feste Auslösezeit** ableiten.
+
+**Noch nicht vollständig bewiesen:** Ob E032 bei jeder Konfiguration ausschließlich vom mechanischen Durchflussschalter **S3/S03** direkt am Mainboard ausgelöst wird. Der Firmwarepfad wertet zusätzliche Status-/Hilfsfelder aus; deren Herkunft ist noch nicht bis zum physischen Eingang zurückverfolgt. Die Bezeichnung „Durchflussschalter“ darf nicht mit einer bereits belegten reinen S3-Bitkopie verwechselt werden.
+
+### E035 – berechneter Durchfluss unter 50 % von A40
+
+Die V3.5-Firmware verwendet **A40 (MAIN:1344)** als Bezugswert. Im kurzen E035-Auslösepfad müssen **gleichzeitig** unter anderem folgende Voraussetzungen erfüllt sein:
+
+- **A40 ist ungleich 0**, und der wirksame Durchfluss liegt **unter 0,5 × A40**.
+- Die Durchflussquelle ist gültig; die betreffende Betriebsfreigabe ist gesetzt.
+- Die internen Zustände für **E032 und E035 sind zu Beginn des Kurzpfads 0**.
+- Ein gesonderter Vorqualifikationszähler hat mindestens **90** erreicht.
+- Danach ergeben **zwölf qualifizierte Prüfungen** unterhalb der 50-%-Grenze den E035-Zustand.
+
+Diese zwölf Prüfungen laufen laut rekonstruiertem V3.5-Scheduler nominell im **500-ms-Takt**. Wenn alle Voraussetzungen bereits erfüllt sind und bestehen bleiben, folgt die E035-Setzung nach **etwa 5,5–6 Sekunden**. Der 90er-Vorzähler wird ebenfalls nominell alle 500 ms ausgewertet, steigt aber nur in bestimmten Betriebszweigen an. **90 fortlaufende Inkremente entsprechen ungefähr 45 Sekunden**; das ist **keine pauschale 45-Sekunden-Verzögerung nach Verdichterstart**. Der Zähler kann je nach Betriebszustand anhalten oder zurückgesetzt werden.
+
+Ein weiterer Firmwarevergleich verwendet **0,6 × A40** und beeinflusst die anschließende E035-Zustands-/Abklinglogik. Das bedeutet **nicht**, dass E035 bei Erreichen von 60 % sofort gelöscht wird. Ein separater, längerer Zähler kann außerdem einen weiteren E035-Zustand erzeugen; seine Auslösebedingungen sind nicht mit den zwölf Prüfungen gleichzusetzen.
+
+**Rechenbeispiel:** Bei A40 = **1,20 m³/h** liegen die 50-%-Schwelle bei **0,60 m³/h** und die 60-%-Marke bei **0,72 m³/h**. Die Firmware speichert diese Durchflusswerte in Hundertstel m³/h (A40-Rohwert 120).
+
+**E035 ist nicht auf das Abtauen beschränkt.** Die Firmware kann seine Betriebsfreigabe auch außerhalb der Abtau-Zustandsmaschine setzen. Allerdings ist diese Freigabe zeit- und zustandsabhängig: Nicht jeder kurze Durchflusseinbruch während des normalen Heizens muss E035 auslösen. E032/E035 können in bestimmten Betriebszuständen eine Software-Ausgangsanforderung sperren; eine ausnahmslos sofortige elektrische Abschaltung des Verdichters ist damit noch nicht bewiesen.
+
+### Woher kommt der von E030/E035 geprüfte Durchfluss?
+
+Bei einer **GL9 ohne Hydraulikmodul** verwendet die V3.5-Firmware bei passendem **H31 (1–5)** den aus der **Pumpen-PWM-Rückmeldung (MAIN:2116)** und der **H31-Kennlinie** ermittelten Durchfluss. Der Korrekturwert **MAIN:1022** fließt ebenfalls in den wirksamen Durchfluss ein. Die Pumpenansteuerung **MAIN:2115** ist dagegen **nicht** dieser Rückmeldewert.
+
+**MAIN:2077 / T39** zeigt normalerweise denselben wirksamen Durchfluss, der in die E030-/E035-Vergleiche eingeht. Ein spezieller Anzeige-Override kann MAIN:2077 allerdings auf **0** setzen, ohne dass der interne Vergleichswert zwingend 0 ist. Deshalb bei Unklarheiten zusätzlich die echte Hydraulik bzw. einen unabhängigen Wärmemengenzähler prüfen.
+
+Ohne korrektes H31 (z. B. **H31 = 0** im untersuchten lokalen Zweig) kann das Durchfluss-Gültigkeitssignal fehlen. **D22 = 0 deaktiviert E035 nicht.** Auch die **80-%-/120-%-A40-Grenzen** der automatischen Pumpenregelung sind **keine** E035-Auslöseschwellen.
+
+### Diagnose bei E030 / E032 / E035
+
+In FoxAir Control für die Fehlersuche möglichst zeitgleich aufzeichnen: **MAIN:2085** (Fehlerbits), **2115** (Pumpenanforderung), **2116** (PWM-Rückmeldung), **2077/T39** (berechneter Durchfluss), **A40/1344**, **D22/1127**, **H31** und den Betriebs-/Abtaustatus. Den berechneten Durchfluss, soweit möglich, mit einem unabhängig gemessenen Volumenstrom vergleichen.
+
+Ein passender H31-Wert und eine plausible PWM-Rückmeldung ersetzen **keinen tatsächlich ausreichenden Wasserdurchfluss**. Schutzfunktionen nicht durch manipulierte Kennlinien, Offsetwerte oder überbrückte Sensoren außer Kraft setzen.
+
+Weiterführend: [PWM-Rückmeldung und Durchflusskennlinien](pwm_durchflusskennlinien.md) · [Fehler und Betriebszustände anzeigen](fehler_und_status.md).
+
 ## Bekannte Auffälligkeit der originalen Shimge-Pumpe
 
 In einigen GL9 ist eine **Shimge APM25-9-130 PWM1** verbaut.
