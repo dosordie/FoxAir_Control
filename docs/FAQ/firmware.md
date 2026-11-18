@@ -172,7 +172,7 @@ Für Mainboard-Updates gibt es den **FoxAir Updater**:
 
 [FoxAir Updater auf GitHub](https://github.com/dosordie/FoxAir_updater)
 
-Unter Windows ist die grafische Version der empfohlene Weg. Sie benötigt **mindestens Windows 10**; Windows 7 und Windows 8/8.1 werden nicht unterstützt. Alternativ kann der Updater unter Linux / Raspberry Pi verwendet werden.
+Unter Windows ist die grafische Version der empfohlene Weg. Sie benötigt **mindestens Windows 10**; Windows 7 und Windows 8/8.1 werden nicht unterstützt. Alternativ kann der [Updater unter Linux / Raspberry Pi](https://github.com/dosordie/FoxAir_updater/blob/main/docs/HowTo/PHNIX_UPDATER_ENDANWENDER.md#linux--raspberry-pi) verwendet werden.
 
 Die vollständige Schritt-für-Schritt-Anleitung für Windows steht hier:
 
