@@ -35,7 +35,7 @@ Der eingestellte Typ muss zur tatsächlich eingebauten Pumpe passen.
 
 Nicht einfach einen anderen Typ wählen, nur damit irgendein Durchflusswert erscheint.
 
-Die aus der Firmware rekonstruierten Umrechnungen sind im Artikel [PWM-Rückmeldung und Durchflusskennlinien](pwm_durchflusskennlinien.md) beschrieben.
+Wie der angezeigte Durchfluss zustande kommt, erklärt der Artikel [Wie wird der Durchfluss berechnet?](pwm_durchflusskennlinien.md).
 
 ## P01 – Betriebsmodus der Hauptumwälzpumpe
 
@@ -43,7 +43,7 @@ Parameter **P01** bestimmt vor allem das Verhalten der Hauptumwälzpumpe in Wart
 
 Ist die Wärmepumpe selbst ausgeschaltet, bleibt auch die Hauptumwälzpumpe normalerweise aus. Frostschutz-, Schutz- und andere Sonderanforderungen können die Pumpe trotzdem einschalten.
 
-Die V3.4-Firmware unterscheidet drei Modi:
+P01 bietet drei Betriebsarten:
 
 | P01 | Funktion |
 | ---: | --- |
@@ -61,7 +61,7 @@ Dieser Modus ist zum Testen einfach nachvollziehbar, verursacht aber unnötigen 
 
 ### 1 – Saving
 
-Der **Saving-Modus** verwendet für solche Wartephasen einen eigenen, fest in der Firmware hinterlegten Takt.
+Der **Saving-Modus** verwendet für diese Wartephasen einen festen Ein-/Aus-Takt.
 
 In den entsprechenden Ruhe-/Standbyphasen läuft die Pumpe ungefähr:
 
@@ -75,7 +75,7 @@ danach beginnt der Zyklus erneut
 
 Wichtig: Das bedeutet nicht, dass die Pumpe bei aktivem Heiz-, Warmwasser-, Frostschutz- oder anderem Sonderbetrieb immer 30 Minuten ausgeschaltet bleibt. Solche Anforderungen können die Pumpe unabhängig vom Saving-Takt einschalten.
 
-Der 2-/30-Minuten-Ablauf ist aus der Firmware bestätigt. Die genaue Herstellerbezeichnung des internen Freigabe-/Standbyzustands, in dem dieser Takt aktiv ist, ist noch nicht vollständig geklärt.
+Dieser Takt gilt für Wartephasen. Wenn die Wärmepumpe Wärme benötigt oder eine Schutzfunktion aktiv ist, kann die Pumpe unabhängig davon laufen.
 
 ### 2 – Interval
 
@@ -129,9 +129,9 @@ Dieser Parameter betrifft die Warmwasserpumpenlogik und ist nicht mit P01 der Ha
 
 Mit **H40 = 2** kann der Ausgang beispielsweise genutzt werden, um eine externe Pumpe beim Abtauen abzuschalten. Die tatsächliche Schaltwirkung hängt von der Verdrahtung ab.
 
-**Nicht verwechseln:** RO05 / K5 ist ein zusätzlicher Pumpenausgang. Die **Hauptumwälzpumpe** hängt an **RO04 / K4**; ihre Regelung über P01, P10 und die Pumpenautomatik wird durch H40 nicht umgestellt. Beim Abtauen muss der notwendige Heizwasserdurchfluss erhalten bleiben.
+**Nicht verwechseln:** RO05 / K5 ist ein zusätzlicher Pumpenausgang. Die **Hauptumwälzpumpe** hängt an **RO04 / K4**; ihre Regelung über P01, P10 und die Pumpenautomatik wird durch H40 nicht umgestellt. Beim Abtauen muss weiterhin genügend Heizwasser fließen.
 
-Die komplette Belegung steht unter [Relaisausgänge RO01–RO15 am Mainboard](relais_ausgaenge.md).
+Die komplette Belegung steht unter [Relaisausgänge RO01–RO15](relais_ausgaenge.md).
 
 ## P10 – Pumpendrehzahl
 
@@ -139,7 +139,7 @@ Die komplette Belegung steht unter [Relaisausgänge RO01–RO15 am Mainboard](re
 
 Bei älteren Firmwareständen bzw. manueller Regelung kann darüber direkt eine feste Pumpendrehzahl eingestellt werden.
 
-> **Wichtig bei festem P10:** Eine separate, einstellbare Drehzahlerhöhung fürs **Abtauen** ist nicht nachgewiesen. Die Firmware kann die feste Vorgabe zwar in Sonderzuständen übersteuern, darauf sollte man sich aber nicht verlassen. Der Durchfluss muss auch beim Abtauen ausreichen.
+> **Wichtig bei festem P10:** Eine separate, einstellbare Drehzahlerhöhung fürs **Abtauen** ist nicht nachgewiesen. Die Wärmepumpe kann die feste Vorgabe zwar in bestimmten Situationen übersteuern, darauf sollte man sich aber nicht verlassen. Der Durchfluss muss auch beim Abtauen ausreichen.
 
 Mehr dazu unter [Durchfluss beim Abtauen](#durchfluss-beim-abtauen).
 
@@ -151,7 +151,7 @@ Bei vielen FoxAir GL9 liegt die PWM-Steuerleitung ab Werk auf GND und muss für 
 
 ## Automatische Pumpenregelung ab V3.3
 
-Ab Mainboard-Firmware **V3.3** steht eine automatische Regelung der Pumpendrehzahl nach Temperaturdifferenz (ΔT / Spreizung) zur Verfügung.
+Ab Softwareversion **V3.3** steht eine automatische Regelung der Pumpendrehzahl nach Temperaturdifferenz (ΔT / Spreizung) zur Verfügung.
 
 Dafür wird **P10 = 0 %** verwendet. Die Firmware übernimmt dann die Drehzahlregelung selbst.
 
@@ -212,7 +212,7 @@ Beim Abtauen entzieht die Wärmepumpe dem Heizwasser Wärme. Dafür braucht sie 
 
 ### D22 – Mindestdurchfluss
 
-**D22 (Register 1127)** heißt beim Hersteller „Water Flow of Defrosting“. In der untersuchten Firmware dient er auch als **Untergrenze für die automatische Pumpenregelung**:
+**D22 (Register 1127)** heißt beim Hersteller „Water Flow of Defrosting“. Er dient außerdem als **Untergrenze für die automatische Pumpenregelung**:
 
 | D22 | Mindestdurchfluss der Automatik |
 | --- | --- |
@@ -225,7 +225,7 @@ Wird die Untergrenze erreicht, darf die Automatik die Pumpendrehzahl **nicht wei
 
 ### Pumpendrehzahl während des Abtauens
 
-- **P10 = 0 (Automatik, ab Mainboard-V3.3):** Beim Abtauen fordert die Firmware **100 % Pumpenleistung** an. Anschließend muss die Automatik ihre Freigabebedingungen erneut erfüllen. Daher kann die Pumpe noch etwa **10 Minuten oder länger** mit hoher Drehzahl laufen.
+- **P10 = 0 (Automatik, ab V3.3):** Beim Abtauen fordert die Firmware **100 % Pumpenleistung** an. Anschließend muss die Automatik ihre Freigabebedingungen erneut erfüllen. Daher kann die Pumpe noch etwa **10 Minuten oder länger** mit hoher Drehzahl laufen.
 - **P10 größer 0 (feste Drehzahl):** Eine separat einstellbare Abtau-Drehzahl ist **nicht nachgewiesen**. Schutz- und Sonderfunktionen können P10 zwar übersteuern, eine gezielte Erhöhung auf 100 % lässt sich damit aber nicht zuverlässig einstellen.
 
 Wer automatisch mehr Durchfluss beim Abtauen möchte, sollte prüfen, ob **P10 = 0** mit richtig eingestelltem **H31** und passenden **P11/P12** für seine Anlage geeignet ist.
@@ -248,65 +248,47 @@ Der angezeigte Durchfluss wird bei vielen Pumpentypen aus der PWM-Rückmeldung *
 
 Mehr dazu: [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md).
 
-## Durchflussfehler E030, E032 und E035 (Mainboard-Firmware V3.5)
+## Durchflussfehler E030, E032 und E035
 
-Die drei Fehler sind **unterschiedliche Überwachungspfade**. Die Zuordnung der Fehlerbits stammt aus der DWIN-Display-Firmware; Grenzwerte, Zähler und Freigabebedingungen wurden zusätzlich in der Mainboard-Firmware **V3.5** untersucht (Reverse-Engineering-Stand: 18.11.2026). Abweichungen bei anderen Firmwareständen sind möglich.
+Die FoxAir überwacht den Wasserdurchfluss auf verschiedene Arten. Deshalb haben die drei Fehler unterschiedliche Ursachen:
 
-| Fehler | Bedeutung / Auslöser in V3.5 | MAIN:2085 |
+| Fehler | Bedeutung | Was sollte man prüfen? |
 | --- | --- | --- |
-| **E030** | Durchfluss beim Abtauen zu gering: Softwarevergleich des wirksamen Durchflusses mit **D22**, wenn D22 ungleich 0 und der zugehörige Betriebszustand freigegeben ist. | **Bit 7** (Maske `0x0080`) |
-| **E032** | Durchflussschalterfehler: eigener, zustandsabhängiger Überwachungspfad mit Statusfeldern und Zählern. **Nicht** derselbe Vergleich wie E035. | **Bit 8** (Maske `0x0100`) |
-| **E035** | Niedriger Wasserdurchfluss: Softwarevergleich mit **50 % von A40** bei gültigem Durchfluss und zusätzlichen Betriebs-/Zeitfreigaben; außerdem gibt es einen **60-%-Vergleich** in der weiteren Zustandsverarbeitung. | **Bit 13** (Maske `0x2000`) |
+| **E030** | Beim Abtauen ist der Wasserdurchfluss zu gering. | Umwälzpumpe, Heizkreis und Einstellung **D22** |
+| **E032** | Der **mechanische Durchflussschalter an Eingang S3** meldet eine Störung. | Tatsächlichen Durchfluss, Schalter und Anschluss S3 |
+| **E035** | Der von der Wärmepumpe **berechnete Durchfluss** ist zu gering. | Pumpenbetrieb, PWM-Rückmeldung, **H31** und **A40** |
 
-**Konfiguration „3+“:** In der Display-/Registerzuordnung werden zusätzlich **E032 (3+)** über **MAIN:2087 Bit 8** (`0x0100`) und **E035 (3+)** über **MAIN:2087 Bit 10** (`0x0400`) geführt. Diese Zuordnung ist von der normalen GL9-Fehlerausgabe über MAIN:2085 zu unterscheiden; die genauen 3+-Auslösepfade sind hier nicht separat untersucht.
+### E030 – zu wenig Durchfluss beim Abtauen
 
-### E030 – Durchflussprüfung mit D22
+Beim Abtauen benötigt die Wärmepumpe genügend warmes Heizwasser. Unterschreitet der Durchfluss über eine gewisse Zeit den eingestellten Wert **D22**, kann E030 erscheinen.
 
-Die Firmware vergleicht den *wirksamen* Durchfluss mit **D22 (MAIN:1127)**. Bei `D22 > 0`, zu geringem Durchfluss und gültiger Freigabe wird ein Unterdurchflusszähler erhöht. **20 qualifizierte Aufrufe** setzen E030; 20 qualifizierte Erholungsaufrufe können es wieder löschen. Eine feste Dauer in Sekunden ist für diesen Zähler noch nicht nachgewiesen.
+**D22 = 0** deaktiviert diese spezielle Durchflussprüfung. Die anderen Schutzfunktionen bleiben weiterhin aktiv, insbesondere **E032 und E035**. Der Wert sollte deshalb nicht einfach verändert werden, um eine Störung zu vermeiden.
 
-Die Routine wird nur innerhalb eines bestimmten Betriebszustands ausgewertet, der zur Abtau-Zustandsmaschine gehört. Die ausschließlich auf eine laufende Abtauung begrenzte Wirksamkeit ist noch nicht für alle Zustandsübergänge nachgewiesen.
+### E032 – Durchflussschalter S3
 
-**Bei D22 = 0 ist dieser E030-Unterdurchflussvergleich deaktiviert. Das schaltet E035 nicht ab.** Die getrennte Verwendung von D22 als Untergrenze der automatischen Pumpenregelung ist weiter oben beschrieben.
+Der mechanische **Durchflussschalter ist am Eingang S3 der Steuerplatine angeschlossen**. Er überwacht, ob Wasser durch den Heizkreis strömt.
 
-### E032 – Durchflussschalterüberwachung
+Bei E032 sollte zuerst geprüft werden, ob die Umwälzpumpe tatsächlich läuft, alle Ventile geöffnet sind und sich keine Luft im System befindet. Ist der Durchfluss nachweislich ausreichend, kommen auch der Schalter selbst, sein Anschluss oder die Leitung zu S3 als Ursache infrage.
 
-E032 wird am Display als **Durchflussschalterfehler** bezeichnet. In V3.5 hat dieser Fehler einen **eigenständigen Erzeuger** mit Betriebsstatus-, Prüf- und Haltezählern. Ein Zweig qualifiziert über sechs Prüfungen; weitere Zweige haben längere Zähler und Abklingzustände. Deshalb lässt sich aus dem Fehlercode allein **keine allgemeine feste Auslösezeit** ableiten.
+### E035 – berechneter Wasserdurchfluss zu gering
 
-**Noch nicht vollständig bewiesen:** Ob E032 bei jeder Konfiguration ausschließlich vom mechanischen Durchflussschalter **S3/S03** direkt am Mainboard ausgelöst wird. Der Firmwarepfad wertet zusätzliche Status-/Hilfsfelder aus; deren Herkunft ist noch nicht bis zum physischen Eingang zurückverfolgt. Die Bezeichnung „Durchflussschalter“ darf nicht mit einer bereits belegten reinen S3-Bitkopie verwechselt werden.
+Für E035 vergleicht die FoxAir den berechneten Wasserdurchfluss mit dem eingestellten **Nenn-Wasserdurchfluss A40**. Sinkt er unter ungefähr **50 % von A40**, kann E035 ausgelöst werden.
 
-### E035 – berechneter Durchfluss unter 50 % von A40
+**Beispiel:** Ist A40 auf **1,2 m³/h** eingestellt, liegt diese Grenze bei ungefähr **0,6 m³/h**.
 
-Die V3.5-Firmware verwendet **A40 (MAIN:1344)** als Bezugswert. Im kurzen E035-Auslösepfad müssen **gleichzeitig** unter anderem folgende Voraussetzungen erfüllt sein:
+Wenn die Überwachung aktiv ist, muss der Durchfluss dafür ungefähr **6 Sekunden** zu niedrig bleiben. Je nach Betriebszustand kann der Fehler auch erst später auftreten. Zur weiteren Bewertung nutzt die Steuerung außerdem eine Grenze bei ungefähr **60 % von A40**. Der Fehler verschwindet daher nicht zwangsläufig sofort, sobald der Durchfluss wieder ansteigt.
 
-- **A40 ist ungleich 0**, und der wirksame Durchfluss liegt **unter 0,5 × A40**.
-- Die Durchflussquelle ist gültig; die betreffende Betriebsfreigabe ist gesetzt.
-- Die internen Zustände für **E032 und E035 sind zu Beginn des Kurzpfads 0**.
-- Ein gesonderter Vorqualifikationszähler hat mindestens **90** erreicht.
-- Danach ergeben **zwölf qualifizierte Prüfungen** unterhalb der 50-%-Grenze den E035-Zustand.
+**Wichtig:** E035 kann **auch beim normalen Heizen** auftreten, nicht nur beim Abtauen. Ein zusätzliches Hydraulikmodul oder ein eigener Durchflussmesser ist dafür nicht erforderlich.
 
-Diese zwölf Prüfungen laufen laut rekonstruiertem V3.5-Scheduler nominell im **500-ms-Takt**. Wenn alle Voraussetzungen bereits erfüllt sind und bestehen bleiben, folgt die E035-Setzung nach **etwa 5,5–6 Sekunden**. Der 90er-Vorzähler wird ebenfalls nominell alle 500 ms ausgewertet, steigt aber nur in bestimmten Betriebszweigen an. **90 fortlaufende Inkremente entsprechen ungefähr 45 Sekunden**; das ist **keine pauschale 45-Sekunden-Verzögerung nach Verdichterstart**. Der Zähler kann je nach Betriebszustand anhalten oder zurückgesetzt werden.
+### Warum können E032 und E035 unterschiedlich reagieren?
 
-Ein weiterer Firmwarevergleich verwendet **0,6 × A40** und beeinflusst die anschließende E035-Zustands-/Abklinglogik. Das bedeutet **nicht**, dass E035 bei Erreichen von 60 % sofort gelöscht wird. Ein separater, längerer Zähler kann außerdem einen weiteren E035-Zustand erzeugen; seine Auslösebedingungen sind nicht mit den zwölf Prüfungen gleichzusetzen.
+**E032** bezieht sich auf den mechanischen Durchflussschalter **S3**. Für **E035** nutzt die FoxAir dagegen einen Wert, den sie bei entsprechendem Pumpentyp aus der **PWM-Rückmeldung der Umwälzpumpe** berechnet.
 
-**Rechenbeispiel:** Bei A40 = **1,20 m³/h** liegen die 50-%-Schwelle bei **0,60 m³/h** und die 60-%-Marke bei **0,72 m³/h**. Die Firmware speichert diese Durchflusswerte in Hundertstel m³/h (A40-Rohwert 120).
+Damit die Berechnung stimmt, muss **H31** zur eingebauten Pumpe passen. Den berechneten Durchfluss zeigt **Register 2077 (T39)** an. Dieser Wert ist eine Schätzung und kann von einem unabhängig gemessenen Durchfluss abweichen.
 
-**E035 ist nicht auf das Abtauen beschränkt.** Die Firmware kann seine Betriebsfreigabe auch außerhalb der Abtau-Zustandsmaschine setzen. Allerdings ist diese Freigabe zeit- und zustandsabhängig: Nicht jeder kurze Durchflusseinbruch während des normalen Heizens muss E035 auslösen. E032/E035 können in bestimmten Betriebszuständen eine Software-Ausgangsanforderung sperren; eine ausnahmslos sofortige elektrische Abschaltung des Verdichters ist damit noch nicht bewiesen.
+**D22 = 0 schaltet E035 nicht ab.** Die 80-%- und 120-%-Grenzen der automatischen Pumpenregelung sind außerdem nicht mit der 50-%-Fehlergrenze von E035 zu verwechseln.
 
-### Woher kommt der von E030/E035 geprüfte Durchfluss?
-
-Bei einer **GL9 ohne Hydraulikmodul** verwendet die V3.5-Firmware bei passendem **H31 (1–5)** den aus der **Pumpen-PWM-Rückmeldung (MAIN:2116)** und der **H31-Kennlinie** ermittelten Durchfluss. Der Korrekturwert **MAIN:1022** fließt ebenfalls in den wirksamen Durchfluss ein. Die Pumpenansteuerung **MAIN:2115** ist dagegen **nicht** dieser Rückmeldewert.
-
-**MAIN:2077 / T39** zeigt normalerweise denselben wirksamen Durchfluss, der in die E030-/E035-Vergleiche eingeht. Ein spezieller Anzeige-Override kann MAIN:2077 allerdings auf **0** setzen, ohne dass der interne Vergleichswert zwingend 0 ist. Deshalb bei Unklarheiten zusätzlich die echte Hydraulik bzw. einen unabhängigen Wärmemengenzähler prüfen.
-
-Ohne korrektes H31 (z. B. **H31 = 0** im untersuchten lokalen Zweig) kann das Durchfluss-Gültigkeitssignal fehlen. **D22 = 0 deaktiviert E035 nicht.** Auch die **80-%-/120-%-A40-Grenzen** der automatischen Pumpenregelung sind **keine** E035-Auslöseschwellen.
-
-### Diagnose bei E030 / E032 / E035
-
-In FoxAir Control für die Fehlersuche möglichst zeitgleich aufzeichnen: **MAIN:2085** (Fehlerbits), **2115** (Pumpenanforderung), **2116** (PWM-Rückmeldung), **2077/T39** (berechneter Durchfluss), **A40/1344**, **D22/1127**, **H31** und den Betriebs-/Abtaustatus. Den berechneten Durchfluss, soweit möglich, mit einem unabhängig gemessenen Volumenstrom vergleichen.
-
-Ein passender H31-Wert und eine plausible PWM-Rückmeldung ersetzen **keinen tatsächlich ausreichenden Wasserdurchfluss**. Schutzfunktionen nicht durch manipulierte Kennlinien, Offsetwerte oder überbrückte Sensoren außer Kraft setzen.
-
-Weiterführend: [PWM-Rückmeldung und Durchflusskennlinien](pwm_durchflusskennlinien.md) · [Fehler und Betriebszustände anzeigen](fehler_und_status.md).
+Bei einer Störung helfen die Prüfpunkte [am Ende dieses Artikels](#wenn-ein-durchflussfehler-auftritt). Weitere Informationen: [Wie wird der Durchfluss berechnet?](pwm_durchflusskennlinien.md).
 
 ## Bekannte Auffälligkeit der originalen Shimge-Pumpe
 
@@ -333,7 +315,7 @@ Wenn ein Durchflussfehler sporadisch auftritt und hydraulisch nichts auffällig 
 
 ## Wenn ein Durchflussfehler auftritt
 
-Prüfen:
+Zuerst diese Punkte prüfen:
 
 - sind alle Absperrventile offen?
 - ist ausreichend Anlagendruck vorhanden?
@@ -344,6 +326,7 @@ Prüfen:
 - H31 passend zur eingebauten Pumpe?
 - PWM-Leitung korrekt angeschlossen?
 - Durchflusswert plausibel?
+- Bei **E032**: Durchflussschalter und Anschluss **S3** in Ordnung?
 - externe Pumpen bzw. Ventile richtig geschaltet?
 
 Bei einem frisch befüllten System ist **Luft im Heizkreis** eine häufige Ursache für schwankenden oder zu geringen Durchfluss.
