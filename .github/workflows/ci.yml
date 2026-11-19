@@ -1,15 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-    branches:
-      - work
-      - main
-  push:
-    branches:
-      - work
-      - main
-      - 'codex/**'
+  workflow_dispatch:
 
 jobs:
   compile:
