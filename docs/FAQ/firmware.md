@@ -47,7 +47,7 @@ Die Bezeichnung **AI** sollte technisch mit Vorsicht verwendet werden: Eine Clou
 > **BlueLine / GreenLine:** Die Bezeichnungen BL und GL bedeuten hier keine getrennten Firmwarezweige. Bei Geräten mit Mainboard-Softwarecode **`82400644`** wird dieselbe Mainboard-Firmwarelinie verwendet. Die vorliegende V3.5 aus einer BlueLine ist deshalb auch für entsprechende GreenLine-/GL-Geräte dieser `82400644`-Familie kompatibel – und umgekehrt. Bei einem unbekannten Modell sollte der Mainboard-Softwarecode vor einem Update trotzdem geprüft werden.
 >
 
-Eine ausführlichere technische Übersicht gibt es hier:
+Die bekannten Firmwareversionen und ihre Unterschiede sind hier verständlich zusammengefasst:
 
 [FoxAir / PHNIX Firmware-Übersicht](../firmware_overview.md)
 
