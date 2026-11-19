@@ -17,6 +17,7 @@ Die Dokumentation wird zusammen mit dem Open-Source-Projekt [FoxAir Control](htt
 - **[Lüfterregelung](luefterregelung.md)** – Warum ändert der Außenventilator seine Drehzahl?
 - **[EEV Auto oder Smart](eev_auto_smart.md)** – Unterschiede und bisherige Erkenntnisse zur Effizienz.
 - **[Wasserdurchfluss und Umwälzpumpe](wasserdurchfluss_pumpe.md)** – Was bedeutet eine geringe oder hohe Spreizung?
+- **[Fehlermeldungen und Fehlercodes](fehlermeldungen.md)** – Was bedeuten die Fehler, und was kann man prüfen?
 - **[Warmwasserbereitung](warmwasser.md)** – Wie funktioniert die Speicherladung?
 - **[Abtauen und Frostschutz](abtauen_frostschutz.md)** – Warum taut die Wärmepumpe ab?
 - **[Firmware und Updates](firmware.md)** – Welche Version ist installiert, und wie läuft ein Update?
