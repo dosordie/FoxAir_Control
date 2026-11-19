@@ -6,31 +6,43 @@ Hier findest du die bekannten Fehlermeldungen der FoxAir mit ihrer Bedeutung und
 
 ## Fehlerübersicht
 
-| Fehler / Anzeige | Bedeutung | Zuerst prüfen |
-| --- | --- | --- |
-| **E030** | Wasserdurchfluss beim Abtauen zu gering | Umwälzpumpe, Heizkreis, **D22** |
-| **E032** | Durchflussschalter am Eingang **S3** meldet eine Störung | Tatsächlichen Durchfluss, Schalter und S3-Anschluss |
-| **E035** | Berechneter Wasserdurchfluss zu gering | Umwälzpumpe, Pumpentyp **H31**, **A40** |
-| **Externer Außentemperaturfühler** | Aktivierter Außenfühler fehlt oder liefert ungültige Werte | Fühler, Anschluss und **1463** |
-| **P03** | Temperaturfühler am Warmwasserspeicher gestört | Speicherfühler und Anschluss |
-| **P03a** | Temperaturfühler am Pufferspeicher gestört | Pufferfühler und Anschluss |
-| **P42** | Raumtemperaturfühler gestört | Angeschlossenen Raumfühler prüfen |
-| **P105 / P106** | Raumtemperaturfühler Zone 1 / 2 gestört | Fühler der betroffenen Zone |
-| **P107** | Mischtemperaturfühler Zone 2 gestört | Fühler am gemischten Heizkreis |
-| **E08g / E08h** | Kommunikationsfehler Thermostat Zone 1 / 2 | Thermostat und Verbindung der betroffenen Zone |
-| **E04** | Übertemperaturstörung der elektrischen Zusatzheizung | Heizstab und Übertemperaturschutz |
-| **E065** | Austrittswassertemperatur zu hoch | Wasserdurchfluss, Vor- und Rücklauftemperatur |
-| **P182** | Heißgastemperatur zu hoch | Betriebswerte; bei Wiederholung Fachbetrieb |
-| **Hochdruckschutz** | Druck im Kältekreis zu hoch | Luftweg, Lüfter, Heizwasserdurchfluss |
-| **Niederdruckschutz** | Druck im Kältekreis zu niedrig | Luftweg, Vereisung; bei Wiederholung Fachbetrieb |
-| **PP12** | Hochdrucksensor gestört | Sensor und Anschluss fachlich prüfen |
-| **E103 / E203** | Lüftermotor 1 / 2 überlastet | Eis, blockierter Lüfter, Verschmutzung |
-| **E08c** | Kommunikation mit Hydraulikmodul gestört | Falls vorhanden: Modul, Versorgung, Verbindung |
-| **F151** | Kommunikation zwischen Verdichter- und Hauptsteuerung gestört | Verbindungen und Steuerung fachlich prüfen |
-| **Kommunikationsfehler Display / Steuerplatine** | Display und Hauptsteuerung kommunizieren nicht richtig | Verbindung und Versorgung fachlich prüfen |
-| **E19 / E29** | Primäre / sekundäre Frostschutzstörung | Wassertemperatur und Wasserumwälzung |
+Die Spalte **„Anzeigetext im Display“** übernimmt die Wortwahl aus der **deutschen Display-Firmware V1.7** (Fehleranzeige `108.ICO`). Lediglich die Zeilenumbrüche sind für die Tabelle zusammengezogen. Die Erklärungen in der dritten Spalte sind zusätzliche Hilfen, **nicht** Teil des Displaytexts.
 
-Die Übersicht enthält sowohl genau untersuchte Fehler als auch Meldungen, deren **Bezeichnung zuverlässig zugeordnet** ist. Wo genaue Grenzwerte oder Abschaltzeiten nicht bekannt sind, werden keine angenommen.
+| Fehlercode | Anzeigetext im Display (V1.7 DE) | Bedeutung / zuerst prüfen |
+| --- | --- | --- |
+| **E030** | **Abtau-Wasserdurchfluss zu gering** | Umwälzpumpe, Heizkreis und **D22** prüfen |
+| **E032** | **Durchflussschalter-Störung** | Mechanischen Durchflussschalter an **S3** und echten Durchfluss prüfen |
+| **E035** | **Wasserdurchfluss zu gering** | Berechneten Durchfluss, Pumpe, **H31** und **A40** prüfen |
+| **P03** | Sensorfehler WW-Speicher | Warmwasserspeicherfühler und Anschluss prüfen |
+| **P03a** | Sensorfehler Pufferspeichertemp. | Pufferfühler und Anschluss prüfen |
+| **P42** | Sensorfehler Raumtemperatur | Zugehörigen Raumfühler prüfen |
+| **P105** | Sensorfehler Raumtemp. Zone 1 | Raumfühler der Zone 1 prüfen |
+| **P106** | Sensorfehler Raumtemp. Zone 2 | Raumfühler der Zone 2 prüfen |
+| **P107** | Sensorfehler Mischtemp. Zone 2 | Mischtemperaturfühler der Zone 2 prüfen |
+| **E08g** | Kommunikationsfehler Thermostat Zone 1 | Thermostat und Verbindung der Zone 1 prüfen |
+| **E08h** | Kommunikationsfehler Thermostat Zone 2 | Thermostat und Verbindung der Zone 2 prüfen |
+| **E04** | Heizstab Übertemperatur | Übertemperaturschutz der Zusatzheizung prüfen lassen |
+| **E065** | Austrittstemperatur zu hoch | Wasserdurchfluss und Temperaturen prüfen |
+| **P182** | Heißgastemperatur zu hoch | Betriebswerte prüfen; bei Wiederholung Fachbetrieb |
+| **PP12** | Sensorfehler Hochdruck | Hochdrucksensor und Anschluss fachlich prüfen lassen |
+| **E103** | Überlast Lüftermotor 1 | Lüfter 1 auf Eis, Blockierung und Schmutz prüfen |
+| **E203** | Überlast Lüftermotor 2 | Lüfter 2 auf Eis, Blockierung und Schmutz prüfen |
+| **E08c** | **Kommunikationsfehler Hydraulikmodul** | Sofern vorhanden: Hydraulikmodul und Verbindung prüfen |
+| **F151** | Kommunikationsfehler Komp.-Treiber / PCB | Verbindung zur Verdichtersteuerung prüfen lassen |
+| **E19** | Primäre Frostschutzstörung | Wassertemperaturen und Umwälzpumpe prüfen |
+| **E29** | Sekundäre Frostschutzstörung | Wassertemperaturen und Umwälzpumpe prüfen |
+| **E122** | Fehler Mischventilregelung | Mischventil und Ansteuerung prüfen |
+| *Kein hier bestätigter Code* | Hochdruckstörung | Wasserdurchfluss, Luftweg und Lüfter prüfen |
+| *Kein hier bestätigter Code* | Niederdruckstörung | Vereisung und Luftweg prüfen; bei Wiederholung Fachbetrieb |
+| *Kein hier bestätigter Code* | Kommunikationsfehler Display / PCB | Verbindung zwischen Display und Steuerplatine prüfen |
+
+**Wichtig:** Die angeführten Fehlercodes stammen aus der displaybezogenen Fehlerzuordnung. Bei Meldungen ohne gesichert zugeordneten Code steht deshalb bewusst **kein erfundener Fehlercode**. Die genaue Schreibweise eines Codes links im ursprünglichen Icon lässt sich aus der Textübersetzung allein nicht in jedem Fall erneut prüfen.
+
+### Meldungen ohne bestätigten Anzeigetext in der V1.7-Fehlerliste
+
+Der **Fehler des externen Außentemperaturfühlers** ist bei entsprechend ausgestatteten Geräten bekannt und wurde praktisch geprüft. Er hat aber **keinen gesondert belegten Text-Eintrag in der untersuchten `108.ICO`-Fehlerliste**. Daher führen wir ihn **nicht** als vermeintlich wörtlichen Displaytext auf.
+
+Wenn der externe Fühler aktiviert, aber defekt oder nicht angeschlossen ist, kann die Wärmepumpe auf den internen Fühler **T04** zurückfallen und weiterlaufen. [Mehr zum externen Außentemperaturfühler](externer_at_fuehler.md).
 
 ## Die Durchflussfehler im Detail
 
@@ -65,19 +77,19 @@ Mehr dazu: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md)
 
 ## Weitere bekannte Fehler im Detail
 
-| Fehler / Anzeige | Was wissen wir dazu? | Was ist sinnvoll? |
+| Fehlercode / Displaytext | Was wissen wir dazu? | Was ist sinnvoll? |
 | --- | --- | --- |
-| **Externer Außentemperaturfühler** | Ist der externe Fühler über **1463** aktiviert, aber nicht vorhanden oder defekt, kann die FoxAir auf den **internen Außentemperaturfühler T04** zurückfallen und **weiterlaufen**, solange dieser gültig ist. | Prüfen, ob der Fühler richtig angeschlossen ist und 1463 zur Anlage passt. [Mehr zum Außenfühler](externer_at_fuehler.md). |
-| **P03 / P03a – Speicherfühler** | P03 betrifft den Warmwasserspeicher, P03a den Pufferspeicher. Welche Betriebsarten beeinträchtigt werden, hängt von der Anlagenkonfiguration ab. | Temperaturanzeige, Fühler, Stecker und Leitung prüfen. [Mehr zu Speicherfühlern](speicherfuehler.md). |
-| **P42 / P105 / P106 / P107** | P42 bezeichnet einen Raumtemperaturfühlerfehler; die weiteren Codes unterscheiden die Raumfühler von **Zone 1 und 2** sowie den Mischtemperaturfühler von **Zone 2**. | Anschlüsse und angezeigte Temperaturen der betroffenen Fühler prüfen. [Mehr zur Zonenregelung](zonenregelung.md). |
-| **E04 – Zusatzheizung zu heiß** | Der Fehler gehört zur Übertemperaturüberwachung der elektrischen Zusatzheizung. Eine allgemein gültige Auslöseschwelle ist hier nicht gesichert. | Heizstab und Übertemperaturschutz durch eine Fachkraft überprüfen lassen. [Mehr zum Heizstab](heizstab.md). |
-| **E065 – Austrittswasser zu heiß** | Die Wärmepumpe meldet eine zu hohe Wasseraustrittstemperatur. Die genaue Grenze kann je nach Ausführung abweichen. | Vor- und Rücklauftemperatur, Umwälzpumpe und Ventile prüfen. |
+| **Externer Außentemperaturfühler** (kein gesicherter V1.7-Anzeigetext) | Ist der externe Fühler über **1463** aktiviert, aber nicht vorhanden oder defekt, kann die FoxAir auf den **internen Außentemperaturfühler T04** zurückfallen und **weiterlaufen**, solange dieser gültig ist. | Prüfen, ob der Fühler richtig angeschlossen ist und 1463 zur Anlage passt. [Mehr zum Außenfühler](externer_at_fuehler.md). |
+| **P03 – Sensorfehler WW-Speicher / P03a – Sensorfehler Pufferspeichertemp.** | P03 betrifft den Warmwasserspeicher, P03a den Pufferspeicher. Welche Betriebsarten beeinträchtigt werden, hängt von der Anlagenkonfiguration ab. | Temperaturanzeige, Fühler, Stecker und Leitung prüfen. [Mehr zu Speicherfühlern](speicherfuehler.md). |
+| **P42 – Sensorfehler Raumtemperatur / P105–P107 – Fühlerfehler der Zonen** | P42 bezeichnet einen Raumtemperaturfühlerfehler; die weiteren Codes unterscheiden die Raumfühler von **Zone 1 und 2** sowie den Mischtemperaturfühler von **Zone 2**. | Anschlüsse und angezeigte Temperaturen der betroffenen Fühler prüfen. [Mehr zur Zonenregelung](zonenregelung.md). |
+| **E04 – Heizstab Übertemperatur** | Der Fehler gehört zur Übertemperaturüberwachung der elektrischen Zusatzheizung. Eine allgemein gültige Auslöseschwelle ist hier nicht gesichert. | Heizstab und Übertemperaturschutz durch eine Fachkraft überprüfen lassen. [Mehr zum Heizstab](heizstab.md). |
+| **E065 – Austrittstemperatur zu hoch** | Die Wärmepumpe meldet eine zu hohe Wasseraustrittstemperatur. Die genaue Grenze kann je nach Ausführung abweichen. | Vor- und Rücklauftemperatur, Umwälzpumpe und Ventile prüfen. |
 | **P182 – Heißgastemperatur zu hoch** | Die Meldung betrifft den Verdichterausgang. Normale Leistungsbegrenzungen wegen hoher Temperatur sind nicht automatisch dieselbe Fehlermeldung. | Betriebswerte beobachten; bei Wiederholung den Kältekreis fachlich prüfen lassen. |
-| **Hochdruck- / Niederdruckschutz und PP12** | Hoch- und Niederdruckschutz melden einen unzulässigen Druckzustand. **PP12** steht dagegen für einen **Hochdrucksensorfehler** – das ist nicht dieselbe Meldung. Die genauen Auslösezeiten und Druckgrenzen sind hier nicht für alle Geräte gesichert. | Luftweg, Lüfter und Vereisung prüfen; bei Hochdruck auch den Heizwasserdurchfluss. Bei PP12 den Drucksensor fachlich prüfen lassen. |
-| **E103 / E203 – Lüfterüberlast** | Betroffen ist Lüftermotor 1 bzw. 2. Ein Lüfterstillstand während des Abtauens allein ist **kein** Beweis für einen Fehler. | Lüfter auf Blockierungen, Eis und Fremdkörper prüfen. [Mehr zur Lüfterregelung](luefterregelung.md). |
-| **E08c / E08g / E08h – Kommunikation** | E08c betrifft das optionale Hydraulikmodul; E08g und E08h die Kommunikation mit dem Thermostat der **Zone 1 bzw. 2**. | Nur bei entsprechender Ausstattung: Versorgung und Verbindung des betroffenen Geräts prüfen. |
-| **F151 / Kommunikation Display–Steuerplatine** | F151 betrifft die Verbindung zur Verdichtersteuerung. Für das Display gibt es eine eigene Kommunikationsfehlermeldung. Der Text allein zeigt nicht zwingend, welches Bauteil die Ursache ist. | Bei wiederkehrender Meldung Verbindungen und Steuerung fachlich prüfen lassen. |
-| **E19 / E29 – Frostschutz** | Zwei getrennt angezeigte Frostschutzstufen. Die jeweilige Wirkung hängt vom Betriebszustand ab. | Temperaturen und Wasserumwälzung prüfen. [Mehr zum Frostschutz](abtauen_frostschutz.md). |
+| **Hochdruckstörung / Niederdruckstörung / PP12 – Sensorfehler Hochdruck** | Hoch- und Niederdruckschutz melden einen unzulässigen Druckzustand. **PP12** steht dagegen für einen **Hochdrucksensorfehler** – das ist nicht dieselbe Meldung. Die genauen Auslösezeiten und Druckgrenzen sind hier nicht für alle Geräte gesichert. | Luftweg, Lüfter und Vereisung prüfen; bei Hochdruck auch den Heizwasserdurchfluss. Bei PP12 den Drucksensor fachlich prüfen lassen. |
+| **E103 – Überlast Lüftermotor 1 / E203 – Überlast Lüftermotor 2** | Betroffen ist Lüftermotor 1 bzw. 2. Ein Lüfterstillstand während des Abtauens allein ist **kein** Beweis für einen Fehler. | Lüfter auf Blockierungen, Eis und Fremdkörper prüfen. [Mehr zur Lüfterregelung](luefterregelung.md). |
+| **E08c – Kommunikationsfehler Hydraulikmodul / E08g / E08h – Kommunikationsfehler Thermostat Zone 1 / 2** | E08c betrifft das optionale Hydraulikmodul; E08g und E08h die Kommunikation mit dem Thermostat der **Zone 1 bzw. 2**. | Nur bei entsprechender Ausstattung: Versorgung und Verbindung des betroffenen Geräts prüfen. |
+| **F151 – Kommunikationsfehler Komp.-Treiber / PCB; außerdem Kommunikationsfehler Display / PCB** | F151 betrifft die Verbindung zur Verdichtersteuerung. Für das Display gibt es eine eigene Kommunikationsfehlermeldung. Der Text allein zeigt nicht zwingend, welches Bauteil die Ursache ist. | Bei wiederkehrender Meldung Verbindungen und Steuerung fachlich prüfen lassen. |
+| **E19 – Primäre Frostschutzstörung / E29 – Sekundäre Frostschutzstörung** | Zwei getrennt angezeigte Frostschutzstufen. Die jeweilige Wirkung hängt vom Betriebszustand ab. | Temperaturen und Wasserumwälzung prüfen. [Mehr zum Frostschutz](abtauen_frostschutz.md). |
 
 ## Was tun, wenn ein Fehler angezeigt wird?
 
