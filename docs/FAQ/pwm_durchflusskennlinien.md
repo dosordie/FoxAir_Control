@@ -33,14 +33,6 @@ Kleine Schwankungen sind normal. Bei ungewöhnlich kleinen oder großen Anzeigew
 
 ## Welche Bedeutung hat das für Durchflussfehler?
 
-Der berechnete Durchfluss wird auch für die Fehlerüberwachung verwendet:
+Der aus der Pumpenrückmeldung berechnete Durchfluss wird auch für die Überwachung verwendet. Deshalb ist ein korrekt eingestellter Pumpentyp **H31** wichtig. Die Meldung **E035** betrifft diesen berechneten Durchfluss; **E032** dagegen den mechanischen Schalter **S3**.
 
-- **E035:** Ist der berechnete Durchfluss bei aktiver Überwachung ungefähr **6 Sekunden lang unter 50 % von A40**, kann der Fehler auftreten und den Verdichter stoppen. Je nach Betriebszustand kann es länger dauern. Der Fehler kann wieder verschwinden, wenn der Durchfluss ungefähr **10 Sekunden lang über 60 % von A40** liegt.
-- **E030:** Beim Abtauen gibt es zusätzlich eine Durchflussüberwachung mit dem Einstellwert **D22**. Bei anhaltendem Unterdurchfluss kann nach ungefähr **10 Sekunden** die Verdichterdrehzahl auf höchstens **50 Hz** begrenzt werden.
-- **E032:** Dieser Fehler gehört zum **mechanischen Durchflussschalter am Eingang S3** und ist von der Berechnung über die Pumpe zu unterscheiden. Er kann den Verdichter stoppen; nach behobener Ursache kann die Meldung nach ungefähr **3 Sekunden** verschwinden.
-
-**Wichtig:** Ein plausibler angezeigter Durchfluss garantiert nicht, dass tatsächlich genügend Wasser fließt. Und **D22 = 0 deaktiviert E035 nicht**.
-
-Nach E032 oder E035 ist ein **automatischer Verdichter-Wiederanlauf möglich**, wenn der Fehler verschwunden ist, Wärme benötigt wird und keine andere Sperre vorliegt. Die genannten Zeiten gelten für die Fehlerrücknahme, nicht für den tatsächlichen Motorstart.
-
-Weitere Informationen und praktische Prüfschritte: [Wasserdurchfluss und Pumpenbetriebsarten](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035).
+Was die einzelnen Fehler bedeuten und wann sie wieder verschwinden, steht in der [Fehlermeldungsübersicht](fehlermeldungen.md#die-durchflussfehler-im-detail).
