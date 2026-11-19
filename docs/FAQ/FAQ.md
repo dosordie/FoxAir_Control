@@ -55,6 +55,7 @@ Die Themen sind bewusst kurz und verständlich gehalten. Technische Hintergründ
 
 ## Fehlersuche
 
+- [Fehlermeldungen und Fehlercodes](fehlermeldungen.md)
 - [Fehler und Statuswerte](fehler_und_status.md)
 - [Factory Settings](factory_settings.md)
 
