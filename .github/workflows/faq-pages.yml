@@ -13,21 +13,7 @@ on:
       - "docs_pages_hooks.py"
       - "requirements-docs.txt"
       - ".github/workflows/faq-pages.yml"
-  pull_request:
-    paths:
-      - "docs/FAQ/**"
-      - "docs/firmware_overview.md"
-      - "data/*.json"
-      - "build_register_browser.py"
-      - "prepare_faq_pages.py"
-      - "mkdocs.yml"
-      - "docs_pages_hooks.py"
-      - "requirements-docs.txt"
-      - ".github/workflows/faq-pages.yml"
   workflow_dispatch:
-  # Externe Updater-Artikel auch ohne Commits in diesem Repo nachziehen.
-  schedule:
-    - cron: "37 5 * * *"
 
 permissions:
   contents: read
