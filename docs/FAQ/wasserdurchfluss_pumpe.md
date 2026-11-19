@@ -260,7 +260,9 @@ Die FoxAir überwacht den Wasserdurchfluss auf verschiedene Arten. Deshalb haben
 
 ### E030 – zu wenig Durchfluss beim Abtauen
 
-Beim Abtauen benötigt die Wärmepumpe genügend warmes Heizwasser. Unterschreitet der Durchfluss über eine gewisse Zeit den eingestellten Wert **D22**, kann E030 erscheinen.
+Beim Abtauen benötigt die Wärmepumpe genügend warmes Heizwasser. Liegt der Durchfluss bei aktiver Abtauung ungefähr **10 Sekunden** unter dem eingestellten Wert **D22**, kann E030 erscheinen.
+
+**Was passiert dann?** Die Wärmepumpe begrenzt die Verdichterdrehzahl beim Abtauen auf maximal **50 Hz**. E030 führt dabei nicht unmittelbar zu einer Verdichterabschaltung. Andere Schutzfunktionen können den Betrieb allerdings weiterhin unterbrechen.
 
 **D22 = 0** deaktiviert diese spezielle Durchflussprüfung. Die anderen Schutzfunktionen bleiben weiterhin aktiv, insbesondere **E032 und E035**. Der Wert sollte deshalb nicht einfach verändert werden, um eine Störung zu vermeiden.
 
@@ -270,15 +272,25 @@ Der mechanische **Durchflussschalter ist am Eingang S3 der Steuerplatine angesch
 
 Bei E032 sollte zuerst geprüft werden, ob die Umwälzpumpe tatsächlich läuft, alle Ventile geöffnet sind und sich keine Luft im System befindet. Ist der Durchfluss nachweislich ausreichend, kommen auch der Schalter selbst, sein Anschluss oder die Leitung zu S3 als Ursache infrage.
 
+**Was passiert dann?** E032 kann den Verdichter stoppen. Ist die Ursache behoben, kann der Fehler nach ungefähr **3 Sekunden** wieder verschwinden. Je nach Betriebszustand kann das auch länger dauern. Eine manuelle Quittierung ist nicht grundsätzlich erforderlich.
+
 ### E035 – berechneter Wasserdurchfluss zu gering
 
 Für E035 vergleicht die FoxAir den berechneten Wasserdurchfluss mit dem eingestellten **Nenn-Wasserdurchfluss A40**. Sinkt er unter ungefähr **50 % von A40**, kann E035 ausgelöst werden.
 
 **Beispiel:** Ist A40 auf **1,2 m³/h** eingestellt, liegt diese Grenze bei ungefähr **0,6 m³/h**.
 
-Wenn die Überwachung aktiv ist, muss der Durchfluss dafür ungefähr **6 Sekunden** zu niedrig bleiben. Je nach Betriebszustand kann der Fehler auch erst später auftreten. Zur weiteren Bewertung nutzt die Steuerung außerdem eine Grenze bei ungefähr **60 % von A40**. Der Fehler verschwindet daher nicht zwangsläufig sofort, sobald der Durchfluss wieder ansteigt.
+Wenn die Überwachung aktiv ist, muss der Durchfluss dafür ungefähr **6 Sekunden** zu niedrig bleiben. Je nach Betriebszustand kann der Fehler auch erst später auftreten.
+
+**Was passiert dann?** E035 kann den Verdichter stoppen. Damit der Fehler wieder verschwindet, muss der berechnete Durchfluss bei gültiger Pumpenrückmeldung normalerweise ungefähr **10 Sekunden lang über 60 % von A40** liegen. Bei **A40 = 1,2 m³/h** entspricht das **mehr als 0,72 m³/h**. Je nach Betriebszustand kann es länger dauern.
 
 **Wichtig:** E035 kann **auch beim normalen Heizen** auftreten, nicht nur beim Abtauen. Ein zusätzliches Hydraulikmodul oder ein eigener Durchflussmesser ist dafür nicht erforderlich.
+
+### Läuft der Verdichter danach automatisch wieder an?
+
+**Ja, das ist bei E032 und E035 grundsätzlich möglich.** Sobald die Störung verschwunden ist, prüft die Wärmepumpe erneut, ob sie starten darf. Besteht weiterhin Heiz- oder Warmwasserbedarf und ist keine andere Sperre aktiv, kann der Verdichter **ohne manuelles Zurücksetzen** wieder anlaufen.
+
+Der Wiederanlauf erfolgt aber **nicht nach einer festgelegten Sekundenzahl**. Ist die Ursache weiterhin vorhanden, bleibt die Wärmepumpe möglicherweise stehen oder der Fehler tritt erneut auf. Im Zweifel zuerst den tatsächlichen Durchfluss prüfen und nicht nur den Fehlerspeicher löschen.
 
 ### Warum können E032 und E035 unterschiedlich reagieren?
 
