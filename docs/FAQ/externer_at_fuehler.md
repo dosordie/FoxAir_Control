@@ -186,7 +186,7 @@ Ist der externe Fühler aktiviert, aber nicht angeschlossen oder defekt:
 - der effektive AT-Selector fällt auf den **internen T04** zurück, solange dieser gültig ist
 - die Wärmepumpe läuft weiter
 
-Ein Ausfall des externen Fühlers legt die Wärmepumpe daher nicht still.
+Ein Ausfall des externen Fühlers legt die Wärmepumpe daher nicht still. Weitere bekannte Fehler und ihre Bedeutung stehen in der [Fehlermeldungsübersicht](fehlermeldungen.md).
 
 ## Praktische Einordnung
 
