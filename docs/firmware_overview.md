@@ -1,225 +1,204 @@
-# FoxAir / PHNIX Firmware-Übersicht
+# FoxAir / PHNIX – Firmwareversionen und ihre Unterschiede
 
-Stand: 2026-10-26
+**Stand: 19. November 2026**
 
-Diese Seite soll die häufige Verwechslung zwischen **Mainboard-Firmware**, **Display-Firmware** und **LTE-/DTU-Firmware** vermeiden. Eine Versionsnummer wie `V1.7` oder `V3.4` ist **ohne den zugehörigen Software-/Gerätecode nicht eindeutig**.
+Welche Firmware ist auf meiner FoxAir installiert? Was bringt eine neuere Version? Und warum kann auf dem Display V1.7 stehen, obwohl die Wärmepumpe bereits V3.5 verwendet?
 
-> Kurz gesagt: **Display V1.7 ist nicht Mainboard V1.7.** Bei vielen FoxAir-Geräten läuft z. B. Display V1.7 zusammen mit Mainboard V1.2, V1.3, V3.3, V3.4 oder V3.5.
+Der wichtigste Punkt vorweg: **Die Wärmepumpe besteht aus mehreren Geräten, die jeweils eine eigene Softwareversion haben.** Diese Versionen dürfen nicht miteinander verwechselt werden.
 
-## Welche Firmware gehört wohin?
+## Drei verschiedene Firmwareversionen
 
-| Komponente | Typischer Code | Updateweg | Beispiel |
-|---|---|---|---|
-| Mainboard / Hauptsteuerung | `82400644` | OTA über PHNIX/WarmLink/LTE-DTU | `V3.3`, `V3.4`, `V3.5` |
-| kleines DWIN/LCD-Display | `82400463` | SD-Karte / `DWIN_SET` | `V1.3`, `V1.7` |
-| LTE-DTU / Kommunikationsmodul | `82400409` (beobachtet) | eigener DTU-OTA-Pfad | `V1.2` (beobachtet) |
+| Bauteil | Wofür ist es zuständig? | Bekannte Versionsbeispiele | Wie wird es aktualisiert? |
+| --- | --- | --- | --- |
+| **Hauptsteuerung (Mainboard)** | Heizbetrieb, Verdichter, Pumpen, Abtauung und Schutzfunktionen | V1.2, V1.3, V3.3, V3.4, V3.5 | Über das Kommunikationsmodul, zum Beispiel mit dem FoxAir Updater |
+| **Touch-Display** | Anzeige, Menüs und Bedienung direkt an der Wärmepumpe | V1.3, V1.7 | Per SD-Karte |
+| **LTE-/WarmLink-Modul** | Verbindung zur WarmLink-App und zum Internet | z. B. V1.2 | Über einen eigenen Updateweg des Kommunikationsmoduls |
 
-Die Codes sind wichtiger als die reine Versionsnummer: PHNIX verwendet dieselbe Versionsnummern-Systematik für unterschiedliche Komponenten und Controllerfamilien.
+**Beispiel:** Eine FoxAir kann gleichzeitig **Display V1.7** und **Hauptsteuerung V3.5** haben. Das ist kein Fehler, sondern vollkommen normal.
+
+### Wozu brauche ich den Softwarecode?
+
+Neben der Versionsnummer gibt es eine längere **Software-Kennnummer**. Sie zeigt, **für welche Geräte- bzw. Steuerungsfamilie** eine Firmware vorgesehen ist.
+
+| Bauteil | Bekannte Kennnummer |
+| --- | --- |
+| Hauptsteuerung vieler FoxAir GL9/GL9-1 | **82400644** |
+| Kleines DWIN-Touch-Display | **82400463** |
+| LTE-/WarmLink-Modul, bei einem Gerät festgestellt | **82400409** |
+
+Die Nummern sind **keine Versionsnummern**. Beispielsweise kann dieselbe Hauptsteuerungs-Kennnummer `82400644` sowohl mit V3.3 als auch mit V3.5 vorkommen.
+
+**Vor einem Firmwareupdate immer beide Angaben prüfen: Softwarecode und Version.** Eine passende Versionsnummer allein bedeutet noch nicht, dass das Update zum eigenen Gerät passt.
 
 ---
 
-## Mainboard / Hauptsteuerung
+## Hauptsteuerung – welche Versionen sind bekannt?
 
-### FoxAir GL9 / GL9-1 – Controllerfamilie `82400644`
+Die folgenden Angaben beziehen sich überwiegend auf die FoxAir-GL9-/GL9-1-Familie mit der **Software-Kennnummer 82400644**.
 
-Für FoxAir GL9/GL9-1 ist die Mainboard-Familie mit Softwarecode **`82400644`** durch Forumsmeldungen und durch analysierte Original-Firmware bestätigt. Der Code scheint jedoch **nicht exklusiv FoxAir** zu sein: auch andere PHNIX-OEM-/Rebrand-Geräte verwenden `82400644`. Deshalb sollte man den Code eher als **PHNIX-Controller-/Softwarefamilie** verstehen.
+| Version | Woher kennen wir sie? | Wichtigste bekannte Merkmale |
+| --- | --- | --- |
+| **V1.2** | Auf FoxAir-Geräten beobachtet | Älterer Softwarestand; ein vollständiges Änderungsprotokoll liegt nicht vor |
+| **V1.3** | Auf GL9/GL9-1 beobachtet | Älterer Softwarestand; häufig zusammen mit Display V1.7 anzutreffen |
+| **V3.3** | Auf GL9 verwendet und untersucht | Automatische Umwälzpumpenregelung und erweiterte SG-Ready-Funktionen |
+| **V3.4** | Original-Firmware untersucht und im Forum als Update gemeldet | Verbesserungen bei Heizkurve, Timern, Kaltstart und Strombegrenzung |
+| **V3.5** | Original-Firmware aus einer FoxAir BlueLine untersucht | Zusätzliche Möglichkeiten für eine externe Leistungs- und Sollwertregelung |
 
-| Mainboard-Version | Softwarecode | Zuordnung / Status | Knapper Änderungsstand |
-|---|---|---|---|
-| `V1.2` | `82400644` bzw. Code-Endung `644` | auf FoxAir GL-Serie beobachtet | ältere Basisversion; kein belastbares vollständiges Changelog bekannt |
-| `V1.3` | `82400644` bzw. `644` | auf FoxAir GL9/GL9-1 beobachtet | ältere Basisversion; im Forum zusammen mit Display V1.7 beobachtet |
-| `V2.4` | `82400644` | PHNIX-OEM/Rebrand-Handbücher, nicht als FoxAir-Release bestätigt | belegt, dass `82400644` über FoxAir hinaus als Controllerfamilie verwendet wird |
-| `V2.6` | Mainboard-Nr. `644` beobachtet; vollständiger Code dort nicht sicher ausgelesen | PHNIX/WarmLink-Nutzer im Wärmepumpenforum | Zwischenstand derselben/nahen PHNIX-Plattform; nicht als FoxAir-GL9-Release gesichert |
-| `V3.3` | **`82400644`** | FoxAir GL9 praktisch und im Original-Binary bestätigt | automatische Heizkreispumpenregelung; erweiterte Wannenheizungslogik; deutlich mehr Modbus-Parameter; SG-Ready-Parameter verfügbar |
-| `V3.4` | **`82400644`** | Original-Binary analysiert; auch als Update im Forum gemeldet | AT-Kurve + Leistungstimer gleichzeitig; überarbeitete A34-Cold-Start-Vorheizung; neue dreiphasige Strombegrenzung; erweiterte SG/PV-Logik |
-| `V3.5` | **`82400644`** | Original-Binary analysiert; Quelle: FoxAir **BlueLine (BL)**; Kennung `824006440035` | Dieselbe `82400644`-Firmwarelinie wie entsprechende GreenLine-/GL-Geräte; Weiterentwicklung von V3.4 mit zusätzlichen Remote-/Adaptive-Regelpfaden |
+In Unterlagen zu **anderen PHNIX-Geräten** kommen außerdem V2.4 und V2.6 vor. Diese Versionen sind deshalb **nicht automatisch als Updates für die FoxAir GL9** geeignet.
 
 ### V3.3 – wichtigste bekannte Änderungen
 
-Im praktischen Betrieb wurde für V3.3 insbesondere berichtet:
+Für Anwender sind vor allem diese Erweiterungen interessant:
 
-- automatische Regelung der Heizkreispumpe auf die gewünschte Spreizung,
-- beim Abtauen weiterhin hohe/volle Pumpendrehzahl,
-- Wannenheizung kann nach dem Abtauen zeitlich begrenzt werden,
-- zusätzliche Modbus-Register/Parameter, insbesondere im Bereich 1300–1400,
-- SG-Ready-Steuerung wird über zusätzliche Parameter zugänglich.
+- **Automatische Regelung der Heizkreispumpe:** Die Wärmepumpe kann die Pumpendrehzahl passend zur Temperaturdifferenz zwischen Vor- und Rücklauf anpassen.
+- **Mehr Pumpenleistung beim Abtauen:** Im Automatikbetrieb wird die Pumpe während des Abtauens mit hoher Drehzahl betrieben.
+- **Verbesserte Wannenheizung:** Die Heizung der Bodenwanne kann nach dem Abtauen zeitlich begrenzt weiterlaufen.
+- **Mehr Einstellungen für SG Ready und PV-Überschuss:** Die Steuerung bietet zusätzliche Möglichkeiten für die Einbindung einer Photovoltaikanlage.
+- **Zusätzliche Einstell- und Anzeigewerte:** Neuere Programme und Displays können weitere Funktionen zugänglich machen.
+
+**Was bringt das im Alltag?** Vor allem die automatische Pumpenregelung kann unnötig hohe Pumpendrehzahlen vermeiden, sofern die Anlage richtig eingestellt ist.
+
+Weitere Informationen: [Wasserdurchfluss und Pumpenbetriebsarten](https://dosordie.github.io/FoxAir_Control/wasserdurchfluss_pumpe/) und [Automatische Pumpenregelung](https://dosordie.github.io/FoxAir_Control/automatische_up_regelung/).
 
 ### V3.4 – wichtigste bekannte Änderungen
 
-Aus Forumshinweisen und unserem statischen Vergleich V3.3 → V3.4:
+V3.4 erweitert die Funktionen von V3.3:
 
-- **Außentemperatur-/Heizkurve kann gleichzeitig mit den Leistungstimern verwendet werden.**
-- A34 / Kurbelgehäuse-/Ölsumpf-Vorheizung wurde für echte Kaltstarts robuster gestaltet; die normale 8/10-°C-Thermostatlogik der Kurbelgehäuseheizung bleibt davon getrennt.
-- neuer dreiphasiger Soft-Strombegrenzer auf Basis des höchsten Eingangsstroms aus L1/L2/L3,
-- erweiterte SG-/PV-State-Machine; zusätzlich zu klassischem SG Ready existiert ab V3.4 eine zweite 3-stufige SG/PV-Familie.
+- **Heizkurve und Leistungstimer gleichzeitig:** Beide Funktionen können zusammen verwendet werden. Bei älteren Softwareständen gab es dabei Einschränkungen.
+- **Überarbeiteter Kaltstart:** Die Vorheizung des Verdichters vor einem Kaltstart wurde verbessert. Die normale Verdichter-/Ölsumpfheizung arbeitet unabhängig davon weiter.
+- **Verbesserte Strombegrenzung:** Die Wärmepumpe kann bei dreiphasiger Versorgung die Belastung der einzelnen Phasen berücksichtigen.
+- **Erweiterte SG-Ready-/PV-Funktionen:** Weitere Möglichkeiten zur Beeinflussung des Betriebs durch externe Vorgaben sind vorhanden.
+
+**Was bringt das im Alltag?** Besonders die gleichzeitige Nutzung von Heizkurve und Leistungstimern ist eine praktische Verbesserung.
 
 ### V3.5 – wichtigste bekannte Änderungen
 
-V3.5 ist als nächste Revision derselben `82400644`-Firmwarelinie bestätigt. **Die analysierte V3.5 stammt von einer FoxAir BlueLine (BL).** Dieselbe Mainboard-Firmwarelinie wird bei entsprechenden FoxAir GreenLine-/GL-Geräten mit Softwarecode `82400644` verwendet:
+V3.5 baut auf V3.4 auf. **Die bekannten Grundfunktionen bleiben erhalten.** Neu sind vor allem zusätzliche Möglichkeiten, die Wärmepumpe durch eine übergeordnete Steuerung oder über eine passende Fernanbindung zu beeinflussen.
 
-```text
-824006440035
-^^^^^^^^  ^^^^
-SW-Code   Version 0035 / V3.5
-```
+| Bereich | Was ist neu bzw. erweitert? | Was bedeutet das für Nutzer? |
+| --- | --- | --- |
+| **Verdichterleistung** | Zusätzliche Vorgaben zur Begrenzung der Verdichterfrequenz beim Heizen, Kühlen und bei der Warmwasserbereitung | Eine geeignete externe Steuerung kann die Leistung gezielter beeinflussen |
+| **Solltemperaturen** | Erweiterte Möglichkeiten, die Solltemperaturen für Heizung, Kühlung und Warmwasser anzupassen | Interessant für eine Einbindung in Energiemanagement oder Hausautomation |
+| **Raum- und Zonenregelung** | Zusätzliche Korrekturmöglichkeiten für die Temperaturregelung einzelner Zonen | Vor allem bei Anlagen mit entsprechender Zonenregelung relevant |
+| **Angepasste Leistungsregelung** | Weitere Regeln für den Umgang mit externen Leistungsanforderungen | Die Wärmepumpe kann externe Vorgaben feiner umsetzen |
+| **Anzeige des Heizsollwerts** | Der tatsächlich berechnete Heizungs-Sollwert lässt sich zusätzlich auslesen | Hilfreich, wenn man verstehen möchte, welche Temperatur die Steuerung gerade anstrebt |
 
-Der Vergleich mit V3.4 zeigt weiterhin dieselbe ARM-Cortex-M-/Thumb-2-Architektur und dieselbe Flash-Basis `0x08050000`. Das V3.5-Image ist gegenüber der untersuchten V3.4 um 3180 Byte größer.
+**Wichtig:** Diese neuen Möglichkeiten werden nicht automatisch bei jeder Wärmepumpe genutzt. Ein Teil davon setzt eine entsprechend eingerichtete externe Steuerung voraus. Wer seine FoxAir ausschließlich über das Touch-Display bedient, bemerkt deshalb möglicherweise kaum einen Unterschied.
 
-Besonders relevant sind die erweiterten Remote-/Optimierungspfade:
+#### Was ist mit „AI Saving“ und dynamischen Stromtarifen?
 
-- `8021` / `8022` / `8023`: Remote-Kompressorfrequenzobergrenzen für Kühlen / Heizen / Warmwasser
-- `8024` / `8025` / `8026`: Kühl-, Heiz- und Warmwasser-Sollwertkorrekturen
-- `8027` / `8028`: Zonen-Raumtemperatur-Offsets
-- `8055`: zusätzlicher skalierter Sollwert-Modulationskanal in bestimmten Multi-Zone-T-Modi
-- `MAIN:1540`: Enable eines zusätzlichen adaptiven Inverter-/Leistungsregelpfads mit zeitlich begrenzten Runtimewerten und 6-Hz-Frequenzstufung
+Einige Apps und Steuerungsvarianten bieten eine Funktion namens **AI Saving** beziehungsweise eine Anpassung an Strompreise an.
 
-#### Details der neuen V3.5-Regelpfade
+- **Nicht erst seit V3.5:** Die grundlegende Unterstützung für eine entsprechende Fernregelung war bereits in **V3.4** vorhanden.
+- **In V3.5 erweitert:** Neuere Softwarestände bieten zusätzliche Möglichkeiten, Leistung und Temperaturen von außen anzupassen.
+- **Keine automatische Garantie:** Ein Firmwareupdate allein aktiviert weder einen dynamischen Stromtarif noch eine passende Optimierung.
+- **„AI“ ist eine Funktionsbezeichnung:** Ob bei der Auswertung tatsächlich künstliche Intelligenz eingesetzt wird, lässt sich daraus nicht ableiten.
 
-`MAIN:1540` ist ein persistentes **uint8-Gate** für die zusätzlichen Warmlink-Werte **8021–8028**. Die Kompressorfrequenz wird dabei **nicht** einfach auf feste Werte wie 30/36/42/48 Hz quantisiert. Stattdessen nähert die Logik einen bisherigen Frequenzbefehl bei Bedarf in Schritten von höchstens **6 Hz** an die Remote-/Adaptivreferenz an, ohne diese zu unterschreiten. Erst anschließend wird intern ein 6-Hz-Bin-Index berechnet. **C02, C03 sowie die dynamischen Min-/Max-Grenzen bleiben wirksam.**
+**Kurz gesagt:** V3.5 erweitert die Möglichkeiten für externe Energie- und Leistungsoptimierung. Eine generell höhere Effizienz oder automatisch niedrigere Stromkosten lassen sich daraus nicht versprechen.
 
-`MAIN:2017` exportiert ab V3.5 den effektiven berechneten Heiz-Wassersollwert **read-only (FC03) als signed int16, RAW/10 °C**, inklusive wirksamer Korrekturen und normaler Heiztemperaturbegrenzung. Er wird unabhängig vom aktiven Betriebsmodus berechnet. Die frühere Zuordnung `MAIN:1557` war falsch; 1557 ist im untersuchten direkten V3.5-Dispatcher kein gültiger Export.
+#### Kann ich V3.5 auch auf einer GreenLine verwenden?
 
-Die direkten RAM-Engineering-Korrekturen **8802–8808** und die Auswahl über **MAIN:1334/1540** sind in [Engineering-Register V3.5](register_engineering_v35.md) dokumentiert. Insbesondere wirkt 8803 regulär nur bei 1334=0 und 1540=0, nicht bei SG01=7 (auch nicht in Neutral). 2014/2016 spiegeln dasselbe betriebsabhängige Sollwertfeld; 2013 ist ein gesondertes internes Feld.
+Die untersuchte V3.5 stammt von einer **FoxAir BlueLine**. BlueLine und entsprechende GreenLine-/GL-Geräte verwenden jedoch dieselbe Firmwarefamilie, **wenn die Software-Kennnummer 82400644 übereinstimmt**.
 
-`MAIN:1492` enthält im **High Byte** den Korrekturfaktor des 8055-Pfads und im **Low Byte** den Hardware-Eingangsselector. Beide Bytes sind persistente Engineeringparameter. `MAIN:1430` existierte bereits vor V3.5; in V3.5 ist zusätzlich seine Verwendung als Gate des **8055-Pfads** bestätigt.
+Daher ist die V3.5 dieser Firmwarefamilie grundsätzlich auch für passende GreenLine-/GL-Geräte vorgesehen. **Entscheidend ist die Kennnummer der Hauptsteuerung, nicht allein die Modellbezeichnung.** Bei anderen Kennnummern darf die Firmware nicht einfach als kompatibel angenommen werden.
 
-Der App-Modus **AI Saving** über `SG01 / MAIN:1334 = 4` gehört zum älteren Remote-Komplex um **8001/8004/8006**, **0x20016A54** und **MAIN1691/1692**, der bereits in V3.4 existiert. Ein interner Setter `SG01=4 -> MAIN1540=1` ist nicht bestätigt: **SG01=4 ist nicht MAIN1540=1**.
+#### Gibt es bereits praktische Erfahrungen mit Firmwareupdates?
 
-Wichtig für die Einordnung: Der grundlegende Remote-Energy-Control-/AI-Saving-Komplex ist **bereits in V3.4 funktional vorhanden**. V3.5 führt diese Funktion nicht erstmals ein, sondern erweitert sie um zusätzliche Stellgrößen und lokale Verbraucher.
+Ja. Mit dem [FoxAir Updater](https://github.com/dosordie/FoxAir_updater) wurden unter anderem diese Wechsel erfolgreich durchgeführt:
 
-Die Firmwareanalyse belegt Cloud-/Remote-Eingänge und deren lokale Anwendung. Ob serverseitig tatsächlich Machine Learning bzw. „AI“ eingesetzt wird, ist damit nicht bewiesen.
+- **V1.2 → V3.4**
+- **V3.3 → V3.4**
+- **Update auf V3.5**
+- **Downgrade V3.5 → V3.4**
 
-> **BlueLine-/GreenLine-Kompatibilität:** Für Geräte mit Mainboard-Softwarecode `82400644` sind BlueLine und GreenLine keine getrennten Firmwarezweige. Die untersuchte V3.5 aus einer BlueLine ist firmwareseitig dieselbe V3.5-Linie wie bei entsprechenden GreenLine-/GL-Geräten und daher zwischen diesen Geräten kompatibel. Das gilt ausdrücklich für die gemeinsame `82400644`-Firmwarefamilie; bei anderen Softwarecodes ist daraus keine Kompatibilität abzuleiten.
->
-> **OTA-Status:** Mit dem **FoxAir Updater** wurden inzwischen vollständige Firmwarewechsel **auf V3.5** sowie der **Downgrade V3.5 → V3.4** real erfolgreich durchgeführt. Ebenfalls bestätigt sind unter anderem **V3.3 → V3.4** und **V1.2 → V3.4**. Die praktischen Tests decken nicht automatisch alle Gerätevarianten, Firmwarestände oder Fehlerfälle ab. Vor jedem Update den Mainboard-Softwarecode und die Eignung des Firmwarepakets prüfen.
-
----
-
-## Display-Firmware – kleines DWIN/LCD
-
-Die Display-Firmware ist **eine separate Firmware** und hat mit der Mainboard-Version nichts zu tun.
-
-Für die bei FoxAir häufig mitgelieferten kleinen Displays sind zwei englische Firmwarepakete dokumentiert:
-
-| Display-Version | Display-/Softwarecode | Build-Kennung | Hinweis |
-|---|---|---|---|
-| `V1.3` | **`82400463`** | `202207212023` | englisches DWIN/LCD-Paket, ca. 54 MB |
-| `V1.7` | **`82400463`** | `202311131429` | englisches DWIN/LCD-Paket, ca. 88 MB; häufig für Umstellung polnisch → englisch verwendet |
-
-Updateweg: SD-Karte mit dem kompletten `DWIN_SET`-Ordner; das Display wird dabei unabhängig vom Mainboard aktualisiert.
-
-Ein typischer realer Zustand ist daher völlig korrekt:
-
-```text
-Display:   82400463 / V1.7
-Mainboard: 82400644 / V1.3
-```
-
-oder ebenso:
-
-```text
-Display:   82400463 / V1.7
-Mainboard: 82400644 / V3.4
-```
-
-Die Aussage „ich habe Firmware 1.7“ ist deshalb ohne Zusatz **nicht ausreichend** – gemeint ist bei FoxAir häufig nur das Display.
-
-Andere PHNIX-/OEM-Geräte können andere Displaycodes besitzen (z. B. `82400417`). Auch deshalb sollte beim Vergleichen immer **Code + Version** genannt werden.
+Das sind erfolgreiche Tests, **keine Garantie für jede Geräte- und Versionskombination**. Vorher die Software-Kennnummer prüfen und die passende Firmware verwenden.
 
 ---
 
-## LTE-DTU / WarmLink-Kommunikationsmodul
+## Touch-Display – unabhängig von der Hauptsteuerung
 
-Auch das LTE-DTU besitzt eine eigene Firmware und fragt selbst OTA-Updates ab.
+Das kleine DWIN-Touch-Display hat seine **eigene Firmware**. Eine ältere Anzeige bedeutet daher nicht automatisch, dass auch die Wärmepumpe selbst veraltete Software nutzt.
 
-Bei einem analysierten FoxAir-LTE-DTU wurde folgendes OTA-Identitätstelegramm beobachtet:
+| Displayversion | Software-Kennnummer | Bekanntes Paket |
+| --- | --- | --- |
+| **V1.3** | **82400463** | Englisch, Stand Juli 2022 |
+| **V1.7** | **82400463** | Englisch, Stand November 2023 |
 
-```text
-DTU Hardwarecode: 82300225
-DTU Softwarecode: 82400409
-DTU Version:      V1.2
-```
+Ein Update des Displays erfolgt **über eine SD-Karte** mit dem vollständigen Ordner `DWIN_SET`. Die Software der Hauptsteuerung wird dadurch nicht verändert.
 
-Diese Werte beschreiben **das LTE-/WarmLink-Modul**, nicht Mainboard oder Display. Die Zuordnung ist bisher an mindestens einem realen Modul bestätigt und sollte noch nicht als zwingend identisch für jede FoxAir-Generation verstanden werden.
+**Warum lohnt sich V1.7?** Ältere Displayversionen kennen manche später ergänzten Funktionen nicht. Die Wärmepumpe kann trotzdem laufen, aber einzelne Einstellungen oder Anzeigen fehlen dann möglicherweise.
 
----
+Bei einer Hauptsteuerung mit **V3.3, V3.4 oder V3.5** ist daher nach Möglichkeit **Display V1.7** sinnvoll.
 
-## Gerätegenerationen und Zuordnung
+Neben der englischen V1.7 gibt es auch eine **deutsch übersetzte Community-Version**. Deren Sprache und Darstellung können von der Originalversion abweichen.
 
-### GL9 / GL9-1
-
-Für die FoxAir **GL9/GL9-1** ist `82400644` als Mainboard-/Softwarefamilie gut belegt. Zusätzlich ist `82400644` auch bei BlueLine-Modellen wie **BL12-3** dokumentiert. Die analysierte V3.5 stammt aus einer BlueLine und gehört eindeutig zu derselben Firmwarefamilie wie die entsprechenden GreenLine-/GL-Geräte.
-
-Da derselbe Mainboardcode `82400644` auch in PHNIX-OEM-/Rebrand-Unterlagen auftaucht, ist die wahrscheinlichste Einordnung:
-
-```text
-PHNIX Controller-/Softwarefamilie 82400644
-        ↓
-verschiedene OEM-/Rebrand-Geräte
-        ↓
-u. a. FoxAir GL9 / GL9-1
-```
-
-Entscheidend für die Firmwarezuordnung ist deshalb nicht allein die Bezeichnung **BlueLine** oder **GreenLine**, sondern der tatsächlich ausgelesene Mainboard-Softwarecode. Für die hier dokumentierte gemeinsame Familie **`82400644`** sind BL und GL firmwareseitig kompatibel. Für Geräte mit einem anderen Softwarecode darf diese Kompatibilität nicht automatisch angenommen werden.
-
-### Warum die Version allein nicht reicht
-
-Beispiele aus PHNIX-/OEM-Quellen zeigen `82400644` auch mit Versionen wie V2.4; im Wärmepumpenforum wurde bei einem PHNIX/WarmLink-Gerät eine Mainboard-Nr. `644` mit V2.6 ausgelesen. Gleichzeitig existieren völlig andere Mainboardfamilien wie `82400416` in älteren/anderen PHNIX-Geräten.
-
-Damit gilt für Vergleiche immer:
-
-```text
-Hersteller/OEM + Modell + Softwarecode + Firmwareversion
-```
-
-statt nur:
-
-```text
-Firmwareversion
-```
+Eine Updateanleitung und Hinweise zu den Displaypaketen findest du unter [Firmware-Versionen und Display-Update](https://dosordie.github.io/FoxAir_Control/firmware/).
 
 ---
 
-## Quellen und Community-Nachweise
+## LTE-/WarmLink-Modul – nochmals eine eigene Version
 
-### Photovoltaikforum – FoxAir-Thread
+Das LTE-Modul verbindet die Wärmepumpe mit WarmLink und den Online-Diensten. Es besitzt ebenfalls eine eigene Software.
 
-- Displaypakete `82400463` V1.3 / V1.7:  
-  https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=7
-- GL9 mit Display V1.7 und Mainboard-Firmware getrennt betrachtet:  
-  https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=12
-- GL9 mit Mainboard V3.3; Pumpenregelung, Wannenheizung, neue Modbus-Parameter:  
-  https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=48
-- beobachtete Mainboard-Versionen V1.2/V1.3 und Hinweis auf V3.4:  
-  https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=85
-- klare Trennung Display V1.7 ↔ Mainboard V3.x:  
-  https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=91
+Bei einem untersuchten Gerät wurden folgende Daten festgestellt:
 
-### Wärmepumpenforum – PHNIX / WarmLink
+| Kennung | Beobachteter Wert |
+| --- | --- |
+| Hardwarecode | 82300225 |
+| Softwarecode | 82400409 |
+| Version | V1.2 |
 
-- Erfahrungsaustausch mit PHNIX/WarmLink, u. a. Mainboard-Nr. `644`, Version V2.6 und Register-/Firmwarevergleich:  
-  https://www.waermepumpenforum.com/forum/thread/4752-suche-zwecks-erfahrungsaustausch-phnix-warmlink-nutzer/?pageNo=2
-- ältere Timer-/Heizkurvenbeobachtung: Leistungstimer verlangte festen Temperatursollwert und verdrängte damit die Heizkurve – passend zum späteren V3.4-Fix:  
-  https://www.waermepumpenforum.com/forum/thread/4752-suche-zwecks-erfahrungsaustausch-phnix-warmlink-nutzer/
+Diese Angaben gelten für das untersuchte Modul und müssen **nicht bei allen FoxAir-Geräten identisch** sein.
 
-### Ergänzende PHNIX-/OEM-Nachweise
-
-Andere PHNIX-OEM-Unterlagen zeigen ebenfalls Mainboardcode `82400644`, z. B. mit Version V2.4. Das stützt die Einordnung als Controllerfamilie und nicht als FoxAir-exklusiven Code.
+Ein Update dieses Moduls ist etwas anderes als ein Update der Hauptsteuerung oder des Touch-Displays.
 
 ---
 
-## Beim Melden einer neuen Firmware bitte immer angeben
+## Welche Firmware passt zu meiner FoxAir?
 
-Damit neue Funde eindeutig eingeordnet werden können, möglichst folgende Angaben zusammen notieren:
+Für **GL9 und GL9-1** ist die Hauptsteuerungs-Kennnummer **82400644** gut dokumentiert. Dieselbe Kennnummer kommt aber auch bei anderen PHNIX-Geräten vor.
 
-```text
-Modell / Leistungsstufe:
-Mainboard-Code:
-Mainboard-Version:
-Display-Code:
-Display-Version:
-DTU-Softwarecode / DTU-Version (falls bekannt):
-Quelle / Foto / App-Anzeige / Registerdump:
-```
+Deshalb sollte man vor einem Update Folgendes abgleichen:
 
-Für Mainboard `82400644` können insbesondere Register/Device-Info aus FoxAir Control zur eindeutigen Identifikation genutzt werden.
+1. **Welches Modell habe ich?** Zum Beispiel GL9, GL9-1 oder BlueLine.
+2. **Welche Software-Kennnummer hat die Hauptsteuerung?**
+3. **Welche Version ist aktuell installiert?**
+4. **Für welche Geräte und Software-Kennnummer ist die neue Firmware vorgesehen?**
+
+Wer unsicher ist, sollte **nicht allein nach einer höheren Versionsnummer aktualisieren**.
+
+Die benötigten Angaben lassen sich je nach Gerät über die Geräteinformationen, WarmLink oder [FoxAir Control](https://github.com/dosordie/FoxAir_Control) auslesen.
+
+## Firmware aktualisieren – wo finde ich die Anleitung?
+
+| Vorhaben | Richtige Anleitung |
+| --- | --- |
+| **Display-Firmware aktualisieren** | [Display-Update per SD-Karte](https://dosordie.github.io/FoxAir_Control/firmware/#display-firmware-aktualisieren) |
+| **Hauptsteuerung unter Windows aktualisieren** | [FoxAir Updater – Windows-Anleitung](https://dosordie.github.io/FoxAir_Control/firmwareupdate-windows/) |
+| **Hauptsteuerung unter Linux / Raspberry Pi aktualisieren** | [Linux-/Raspberry-Pi-Anleitung](https://dosordie.github.io/FoxAir_Control/firmwareupdate-linux/) |
+| **LTE-Modul sichern / vorbereiten** | [LTE-Modem-Anleitung](https://dosordie.github.io/FoxAir_Control/lte-modem-backup/) |
+
+**Achtung:** Ein Firmwareupdate erfolgt auf eigenes Risiko. Während des Updates dürfen Wärmepumpe und Kommunikationsmodul nicht einfach ausgeschaltet werden. Auch eine Anzeige von 100 % bei der Datenübertragung bedeutet noch nicht, dass das Update vollständig abgeschlossen ist.
+
+---
+
+## Quellen und Erfahrungen aus der Community
+
+Die bekannten Änderungen beruhen auf verfügbaren Firmwareständen, praktischen Tests und Berichten anderer FoxAir-/PHNIX-Nutzer. Ein vollständiges offizielles Änderungsprotokoll des Herstellers liegt nicht für jede Version vor.
+
+- [FoxAir im Photovoltaikforum – Erfahrungen und Firmwareversionen](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=48)
+- [Diskussion zu älteren Hauptsteuerungs-Versionen](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=85)
+- [Unterschied zwischen Display- und Hauptsteuerungs-Firmware](https://www.photovoltaikforum.com/thread/242531-foxair-w%C3%A4rmepumpen-erfahrungen-meinungen-tipps/?pageNo=91)
+- [PHNIX-/WarmLink-Nutzer im Wärmepumpenforum](https://www.waermepumpenforum.com/forum/thread/4752-suche-zwecks-erfahrungsaustausch-phnix-warmlink-nutzer/)
+
+## Neue Firmware entdeckt?
+
+Damit andere Nutzer eine Version eindeutig zuordnen können, sind diese Angaben hilfreich:
+
+- **Modell:** zum Beispiel FoxAir GL9
+- **Hauptsteuerung:** Software-Kennnummer und Version
+- **Display:** Software-Kennnummer und Version
+- **WarmLink-Modul:** Version, sofern bekannt
+- **Quelle:** zum Beispiel Foto des Displays oder Informationen aus der App
+
+So lässt sich leichter erkennen, ob es sich um eine wirklich neue Version für die jeweilige FoxAir handelt.
