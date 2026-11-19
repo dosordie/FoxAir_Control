@@ -38,21 +38,9 @@ Diese Werte sollten nicht ohne konkreten Grund verändert werden. Eine Änderung
 
 ## Durchflussfehler beim Abtauen
 
-Beim Abtauen entzieht die Wärmepumpe dem Heizwasser Wärme. Dafür muss genügend Wasser durch die Anlage fließen.
+Beim Abtauen muss genügend warmes Heizwasser durch die Wärmepumpe fließen. Ist das nicht der Fall, kann beispielsweise **E030** erscheinen. Daneben gibt es den Durchflussschalterfehler **E032** und die Durchflussüberwachung **E035**.
 
-Es können verschiedene Durchflussfehler auftreten:
-
-- **E030:** Der Wasserdurchfluss ist für den Abtaubetrieb ungefähr **10 Sekunden lang** zu gering. Die Grenze wird mit **D22** eingestellt. Die Wärmepumpe begrenzt daraufhin die Verdichterdrehzahl beim Abtauen auf maximal **50 Hz**, statt ihn wegen dieses Fehlers direkt abzuschalten. Bei **D22 = 0** ist diese spezielle Prüfung deaktiviert.
-- **E032:** Der **mechanische Durchflussschalter an Eingang S3** meldet eine Störung. Dadurch kann der Verdichter gestoppt werden.
-- **E035:** Der **berechnete Wasserdurchfluss** ist zu gering. Bei aktiver Überwachung kann der Fehler nach ungefähr **6 Sekunden** unterhalb von **50 % des eingestellten Werts A40** auftreten. Je nach Betriebszustand kann es auch länger dauern. Auch E035 kann den Verdichter stoppen.
-
-**Wichtig:** Auch bei **D22 = 0** bleiben andere Schutzfunktionen aktiv. **E035** kann außerdem beim normalen Heizen auftreten und ist nicht auf das Abtauen beschränkt.
-
-Nach behobener Ursache können **E032 und E035 automatisch zurückgehen**. Bei E032 ist das nach ungefähr **3 Sekunden** möglich. Bei E035 muss der berechnete Durchfluss normalerweise ungefähr **10 Sekunden über 60 % von A40** liegen. Wenn noch Wärme benötigt wird und keine andere Störung vorliegt, kann der Verdichter danach **von selbst wieder anlaufen**. Der tatsächliche Start kann länger dauern.
-
-Wenn ein Durchflussfehler auftritt, zuerst prüfen, ob die Umwälzpumpe läuft, alle Ventile geöffnet sind und der Heizkreis entlüftet ist.
-
-Mehr dazu: [Durchflussfehler E030, E032 und E035](wasserdurchfluss_pumpe.md#durchflussfehler-e030-e032-und-e035).
+Die Unterschiede, Schutzreaktionen und Prüfschritte sind in der zentralen [Fehlermeldungsübersicht](fehlermeldungen.md#die-durchflussfehler-im-detail) erklärt.
 
 ## Eis am Verdampfer
 
