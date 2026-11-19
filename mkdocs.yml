@@ -101,6 +101,7 @@ nav:
       - Solltemperaturen extern korrigieren: externe_sollwertkorrektur.md
       - WarmLink und LTE: warmlink_lte.md
   - Fehlersuche:
+      - Fehlermeldungen und Fehlercodes: fehlermeldungen.md
       - Fehler und Statuswerte: fehler_und_status.md
       - Factory Settings: factory_settings.md
   - FoxAir Control:
