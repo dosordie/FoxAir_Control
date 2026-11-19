@@ -248,59 +248,11 @@ Der angezeigte Durchfluss wird bei vielen Pumpentypen aus der PWM-Rückmeldung *
 
 Mehr dazu: [Automatische Regelung der Umwälzpumpe](automatische_up_regelung.md).
 
-## Durchflussfehler E030, E032 und E035
+## Wenn ein Durchflussfehler erscheint
 
-Die FoxAir überwacht den Wasserdurchfluss auf verschiedene Arten. Deshalb haben die drei Fehler unterschiedliche Ursachen:
+**E030**, **E032** und **E035** haben unterschiedliche Ursachen: E030 betrifft den Durchfluss beim Abtauen, E032 den mechanischen Durchflussschalter **S3** und E035 den von der Wärmepumpe berechneten Wasserdurchfluss.
 
-| Fehler | Bedeutung | Was sollte man prüfen? |
-| --- | --- | --- |
-| **E030** | Beim Abtauen ist der Wasserdurchfluss zu gering. | Umwälzpumpe, Heizkreis und Einstellung **D22** |
-| **E032** | Der **mechanische Durchflussschalter an Eingang S3** meldet eine Störung. | Tatsächlichen Durchfluss, Schalter und Anschluss S3 |
-| **E035** | Der von der Wärmepumpe **berechnete Durchfluss** ist zu gering. | Pumpenbetrieb, PWM-Rückmeldung, **H31** und **A40** |
-
-### E030 – zu wenig Durchfluss beim Abtauen
-
-Beim Abtauen benötigt die Wärmepumpe genügend warmes Heizwasser. Liegt der Durchfluss bei aktiver Abtauung ungefähr **10 Sekunden** unter dem eingestellten Wert **D22**, kann E030 erscheinen.
-
-**Was passiert dann?** Die Wärmepumpe begrenzt die Verdichterdrehzahl beim Abtauen auf maximal **50 Hz**. E030 führt dabei nicht unmittelbar zu einer Verdichterabschaltung. Andere Schutzfunktionen können den Betrieb allerdings weiterhin unterbrechen.
-
-**D22 = 0** deaktiviert diese spezielle Durchflussprüfung. Die anderen Schutzfunktionen bleiben weiterhin aktiv, insbesondere **E032 und E035**. Der Wert sollte deshalb nicht einfach verändert werden, um eine Störung zu vermeiden.
-
-### E032 – Durchflussschalter S3
-
-Der mechanische **Durchflussschalter ist am Eingang S3 der Steuerplatine angeschlossen**. Er überwacht, ob Wasser durch den Heizkreis strömt.
-
-Bei E032 sollte zuerst geprüft werden, ob die Umwälzpumpe tatsächlich läuft, alle Ventile geöffnet sind und sich keine Luft im System befindet. Ist der Durchfluss nachweislich ausreichend, kommen auch der Schalter selbst, sein Anschluss oder die Leitung zu S3 als Ursache infrage.
-
-**Was passiert dann?** E032 kann den Verdichter stoppen. Ist die Ursache behoben, kann der Fehler nach ungefähr **3 Sekunden** wieder verschwinden. Je nach Betriebszustand kann das auch länger dauern. Eine manuelle Quittierung ist nicht grundsätzlich erforderlich.
-
-### E035 – berechneter Wasserdurchfluss zu gering
-
-Für E035 vergleicht die FoxAir den berechneten Wasserdurchfluss mit dem eingestellten **Nenn-Wasserdurchfluss A40**. Sinkt er unter ungefähr **50 % von A40**, kann E035 ausgelöst werden.
-
-**Beispiel:** Ist A40 auf **1,2 m³/h** eingestellt, liegt diese Grenze bei ungefähr **0,6 m³/h**.
-
-Wenn die Überwachung aktiv ist, muss der Durchfluss dafür ungefähr **6 Sekunden** zu niedrig bleiben. Je nach Betriebszustand kann der Fehler auch erst später auftreten.
-
-**Was passiert dann?** E035 kann den Verdichter stoppen. Damit der Fehler wieder verschwindet, muss der berechnete Durchfluss bei gültiger Pumpenrückmeldung normalerweise ungefähr **10 Sekunden lang über 60 % von A40** liegen. Bei **A40 = 1,2 m³/h** entspricht das **mehr als 0,72 m³/h**. Je nach Betriebszustand kann es länger dauern.
-
-**Wichtig:** E035 kann **auch beim normalen Heizen** auftreten, nicht nur beim Abtauen. Ein zusätzliches Hydraulikmodul oder ein eigener Durchflussmesser ist dafür nicht erforderlich.
-
-### Läuft der Verdichter danach automatisch wieder an?
-
-**Ja, das ist bei E032 und E035 grundsätzlich möglich.** Sobald die Störung verschwunden ist, prüft die Wärmepumpe erneut, ob sie starten darf. Besteht weiterhin Heiz- oder Warmwasserbedarf und ist keine andere Sperre aktiv, kann der Verdichter **ohne manuelles Zurücksetzen** wieder anlaufen.
-
-Der Wiederanlauf erfolgt aber **nicht nach einer festgelegten Sekundenzahl**. Ist die Ursache weiterhin vorhanden, bleibt die Wärmepumpe möglicherweise stehen oder der Fehler tritt erneut auf. Im Zweifel zuerst den tatsächlichen Durchfluss prüfen und nicht nur den Fehlerspeicher löschen.
-
-### Warum können E032 und E035 unterschiedlich reagieren?
-
-**E032** bezieht sich auf den mechanischen Durchflussschalter **S3**. Für **E035** nutzt die FoxAir dagegen einen Wert, den sie bei entsprechendem Pumpentyp aus der **PWM-Rückmeldung der Umwälzpumpe** berechnet.
-
-Damit die Berechnung stimmt, muss **H31** zur eingebauten Pumpe passen. Den berechneten Durchfluss zeigt **Register 2077 (T39)** an. Dieser Wert ist eine Schätzung und kann von einem unabhängig gemessenen Durchfluss abweichen.
-
-**D22 = 0 schaltet E035 nicht ab.** Die 80-%- und 120-%-Grenzen der automatischen Pumpenregelung sind außerdem nicht mit der 50-%-Fehlergrenze von E035 zu verwechseln.
-
-Bei einer Störung helfen die Prüfpunkte [am Ende dieses Artikels](#wenn-ein-durchflussfehler-auftritt). Weitere Informationen: [Wie wird der Durchfluss berechnet?](pwm_durchflusskennlinien.md).
+**Alle Grenzwerte, ungefähren Zeiten, Schutzreaktionen und Hinweise zum Wiederanlauf** stehen zentral im Artikel [Fehlermeldungen – Übersicht und Hilfe](fehlermeldungen.md#die-durchflussfehler-im-detail).
 
 ## Bekannte Auffälligkeit der originalen Shimge-Pumpe
 
